@@ -2,8 +2,11 @@ import { advanceClock, closeUp, endOfDay, isOpen, openShop, startNextDay } from 
 import { spawnArrivals, updateCustomers } from './customers';
 import { getIngredient } from './data/ingredients';
 import { applyRestockSuggestion, buyIngredient, toggleMenuItem } from './inventory';
+import { advanceCampaigns, runCampaign } from './marketing';
 import { brew, cleanTable, collectCash, deliver, takeOrder, updatePlayerTasks } from './orders';
 import { recordExperiencesSince } from './reviews';
+import { assignRole, clearStaffTasks, fireStaff, hireStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
+import { buyUpgrade } from './upgrades';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -15,10 +18,12 @@ function tick(state: GameState): void {
   if (state.phase !== 'closing') spawnArrivals(state);
   const eventsBefore = state.events.length;
   updatePlayerTasks(state);
+  updateStaff(state);
   updateCustomers(state);
   recordExperiencesSince(state, eventsBefore);
   if (state.phase === 'closing' && state.customers.length === 0) {
     closeUp(state);
+    clearStaffTasks(state);
     endOfDay(state);
   }
 }
@@ -54,7 +59,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
     case 'start_day':
       return openShop(state);
     case 'next_day':
-      return startNextDay(state);
+      if (!startNextDay(state)) return false;
+      advanceCampaigns(state);
+      startStaffDay(state);
+      return true;
     case 'set_speed':
       if (!(cmd.speed > 0)) return false;
       state.speed = cmd.speed;
@@ -83,8 +91,20 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       if (entry.enabled !== cmd.enabled) toggleMenuItem(state, cmd.itemId);
       return true;
     }
+    case 'hire_staff':
+      return hireStaff(state, cmd.candidateId, cmd.role) !== null;
+    case 'fire_staff':
+      return fireStaff(state, cmd.staffId);
+    case 'assign_role':
+      return assignRole(state, cmd.staffId, cmd.role);
+    case 'set_auto_assign':
+      setAutoAssign(state, cmd.enabled);
+      return true;
+    case 'buy_upgrade':
+      return buyUpgrade(state, cmd.upgradeId).ok;
+    case 'start_campaign':
+      return runCampaign(state, cmd.campaignId).ok;
     default:
-      // Staff, upgrade and marketing commands land with their features.
       return false;
   }
 }
@@ -102,3 +122,6 @@ export {
   toggleMenuItem,
 } from './inventory';
 export { buildDailyReport, closeDay } from './report';
+export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
+export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
+export { buyUpgrade, getShopLayout, nextUpgradeCost } from './upgrades';

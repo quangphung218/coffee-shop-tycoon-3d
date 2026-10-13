@@ -1,8 +1,8 @@
 import { DIFFICULTIES } from './data/difficulty';
-import { getCampaign } from './data/marketing';
 import { getMenuItem } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake } from './inventory';
+import { customerMultiplier } from './marketing';
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
 
@@ -48,9 +48,7 @@ function seatPos(table: Table, seatIndex: number): Vec2 {
 /** base × rating × marketing × weather × hour × difficulty (× decor appeal), in customers per minute. */
 export function arrivalRate(state: GameState): number {
   const rating = Math.max(0.2, state.rating / 3);
-  const marketing = state.campaigns
-    .filter((c) => c.daysLeft > 0)
-    .reduce((m, c) => m * getCampaign(c.id).customerMult, 1);
+  const marketing = customerMultiplier(state);
   const weather = WEATHER_ARRIVALS[state.weather];
   const hour = state.phase === 'peak' ? PEAK_MULT : 1;
   const difficulty = DIFFICULTIES[state.difficulty].customerMult;
