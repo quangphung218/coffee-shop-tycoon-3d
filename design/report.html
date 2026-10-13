@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Daily Report và Đánh giá</title>
+<style>
+:root{
+--color-coffee-900:#3B2418;--color-coffee-700:#5C3A26;--color-coffee-500:#8A5A3B;--color-coffee-300:#C9A27E;
+--color-cream-50:#FFF9F0;--color-cream-100:#FBEFDD;--color-cream-200:#F3DFC2;
+--color-mint-800:#0B5444;--color-mint-700:#0F6B57;--color-mint-500:#2FB898;--color-mint-100:#DDF6EE;
+--color-neutral-0:#FFFFFF;--color-neutral-500:#8C7F75;--color-neutral-700:#6B5E55;--color-neutral-900:#2A211C;
+--color-ok-700:#1E7A46;--color-ok-100:#E3F5EA;
+--color-warning-700:#7A4A00;--color-warning-500:#F2A516;--color-warning-100:#FFF1D6;
+--color-danger-700:#B3261E;--color-danger-400:#F2675B;--color-danger-100:#FDE7E5;
+--color-star-500:#C77700;--color-focus-500:#0B57D0;--color-focus-300:#FFD166;
+--color-scene-sky:#BFE6F5;--color-scene-ground:#B9DE9A;--color-scene-road:#8E9AA6;--color-scene-floor:#E9CFA8;--color-scene-wall:#F6E3C6;--color-scene-wall-shade:#E2C59D;--color-scene-awning:#E07A5F;--color-scene-wood:#A0704C;--color-scene-plant:#3FA66B;
+--text-primary:var(--color-neutral-900);--text-muted:var(--color-neutral-700);--text-inverse:var(--color-cream-50);--text-inverse-muted:var(--color-coffee-300);--text-on-accent:var(--color-neutral-0);--text-on-bright:var(--color-coffee-900);--text-ok:var(--color-ok-700);--text-warning:var(--color-warning-700);--text-danger:var(--color-danger-700);--text-danger-inverse:var(--color-danger-400);
+--surface-app:var(--color-cream-100);--surface-panel:rgba(255,249,240,.94);--surface-panel-solid:var(--color-cream-50);--surface-sunken:var(--color-cream-100);--surface-hud:rgba(59,36,24,.92);--surface-hud-solid:var(--color-coffee-900);--surface-hud-raised:var(--color-coffee-700);--surface-ok:var(--color-ok-100);--surface-warning:var(--color-warning-100);--surface-danger:var(--color-danger-100);--surface-disabled:var(--color-cream-200);--surface-selected:var(--color-mint-100);--surface-scrim:rgba(42,33,28,.55);
+--border-subtle:var(--color-cream-200);--border-strong:var(--color-neutral-500);--border-inverse:var(--color-coffee-300);
+--accent-primary:var(--color-coffee-700);--accent-primary-hover:var(--color-coffee-900);--accent-mint:var(--color-mint-700);--accent-mint-hover:var(--color-mint-800);--accent-mint-bright:var(--color-mint-500);
+--data-bar:var(--color-coffee-500);--data-track:var(--color-cream-200);
+--rating-star:var(--color-star-500);--rating-empty:var(--color-neutral-500);
+--focus-ring:var(--color-focus-500);--focus-ring-inverse:var(--color-focus-300);
+--font-family-base:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+--font-size-xs:12px;--font-size-sm:14px;--font-size-md:16px;--font-size-lg:20px;--font-size-xl:24px;--font-size-2xl:32px;--font-size-3xl:40px;
+--font-weight-regular:400;--font-weight-semibold:600;--font-weight-bold:700;
+--line-height-tight:1.2;--line-height-base:1.5;
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-pill:999px;
+--shadow-sm:0 1px 2px 0 rgba(59,36,24,.18);--shadow-md:0 4px 12px 0 rgba(59,36,24,.2);--shadow-lg:0 12px 32px 0 rgba(59,36,24,.28);
+--duration-fast:120ms;--duration-base:200ms;--duration-slow:320ms;--easing-standard:cubic-bezier(.2,0,0,1);
+--size-target:44px;--size-target-lg:56px;--size-panel:360px;--size-dialog:720px;--size-border-thin:1px;--size-border-thick:4px;--size-focus-width:3px;--size-focus-offset:2px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-family-base);font-size:var(--font-size-md);line-height:var(--line-height-base);color:var(--text-primary);background:var(--surface-app)}
+h1,h2,h3,h4,p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+.doc-head{background:var(--surface-hud-solid);color:var(--text-inverse);padding:var(--space-6) var(--space-4)}
+.doc-head h1{font-size:var(--font-size-2xl);line-height:var(--line-height-tight)}
+.doc-head p{color:var(--text-inverse-muted);margin-top:var(--space-2);max-width:80ch}
+.state{padding:var(--space-8) var(--space-4);border-bottom:var(--size-border-thin) solid var(--border-subtle);max-width:1440px;margin:0 auto}
+.state>h2{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.state-note{color:var(--text-muted);font-size:var(--font-size-sm);margin:var(--space-2) 0 var(--space-4);max-width:80ch}
+.tag-state{display:inline-block;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);background:var(--surface-hud-solid);color:var(--text-inverse);border-radius:var(--radius-pill);padding:0 var(--space-2);margin-right:var(--space-2);vertical-align:middle}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.stage{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:var(--color-scene-sky);box-shadow:var(--shadow-md)}
+.scene{position:absolute;inset:0;width:100%;height:100%}
+.sc-sky{fill:var(--color-scene-sky)}.sc-ground{fill:var(--color-scene-ground)}.sc-floor{fill:var(--color-scene-floor)}.sc-wall{fill:var(--color-scene-wall)}.sc-shade{fill:var(--color-scene-wall-shade)}.sc-awning{fill:var(--color-scene-awning)}.sc-wood{fill:var(--color-scene-wood)}.sc-plant{fill:var(--color-scene-plant)}
+.scrim{position:relative;background:var(--surface-scrim);padding:var(--space-8) var(--space-4);display:flex;justify-content:center}
+.dialog{background:var(--surface-panel-solid);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:var(--size-dialog);overflow:hidden}
+.dialog-head{padding:var(--space-6) var(--space-6) 0}
+.dialog-head h3{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.dialog-sub{color:var(--text-muted);margin-top:var(--space-1);font-size:var(--font-size-sm)}
+.dialog-body{padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-6)}
+.dialog-foot{padding:var(--space-4) var(--space-6);border-top:var(--size-border-thin) solid var(--border-subtle);display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3);align-items:center;justify-content:flex-end;background:var(--surface-sunken)}
+.dialog-foot .save{margin-right:auto}
+.tabs{display:flex;gap:var(--space-1);padding:var(--space-4) var(--space-6) 0;border-bottom:var(--size-border-thin) solid var(--border-subtle)}
+.tab{min-height:var(--size-target);display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-4);border:0;border-bottom:var(--size-border-thick) solid transparent;background:transparent;color:var(--text-muted);font:inherit;font-weight:var(--font-weight-semibold);cursor:pointer;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.tab:hover{background:var(--surface-sunken);color:var(--text-primary)}
+.tab[aria-selected="true"]{color:var(--text-primary);border-bottom-color:var(--accent-primary);font-weight:var(--font-weight-bold)}
+.tab:focus-visible,.tab.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:0}
+.h4{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);line-height:var(--line-height-tight);margin-bottom:var(--space-2)}
+.muted{color:var(--text-muted);font-size:var(--font-size-sm)}
+.result{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-4);border-radius:var(--radius-md);border-left:var(--size-border-thick) solid var(--text-ok);background:var(--surface-ok);color:var(--text-ok)}
+.result-label{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold)}
+.result-value{font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);line-height:var(--line-height-tight);font-variant-numeric:tabular-nums}
+.result-note{flex-basis:100%;font-size:var(--font-size-sm)}
+.result.is-loss{border-left-color:var(--text-danger);background:var(--surface-danger);color:var(--text-danger)}
+.result.is-none{border-left-color:var(--border-strong);background:var(--surface-sunken);color:var(--text-primary)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-6)}
+.stat-list{margin:0}
+.stat-row{display:flex;justify-content:space-between;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:var(--size-border-thin) solid var(--border-subtle)}
+.stat-row dt{color:var(--text-muted)}
+.stat-row dd{margin:0;font-weight:var(--font-weight-semibold);font-variant-numeric:tabular-nums;text-align:right}
+.stat-row.total{border-bottom:0;border-top:2px solid var(--text-primary);font-size:var(--font-size-lg)}
+.stat-row.total dt{color:var(--text-primary);font-weight:var(--font-weight-bold)}
+.pos{color:var(--text-ok)}.neg{color:var(--text-danger)}
+.rating-box{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-4);border-radius:var(--radius-md);background:var(--surface-sunken)}
+.stars{display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-lg);font-variant-numeric:tabular-nums}
+.stars .num{font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);margin-left:var(--space-1)}
+.star{color:var(--rating-star)}.star-empty{color:var(--rating-empty)}
+.stars-sm{font-size:var(--font-size-md)}
+.arrow{font-size:var(--font-size-xl);color:var(--text-muted)}
+.delta{font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);border-radius:var(--radius-pill);padding:0 var(--space-2)}
+.delta.up{background:var(--surface-ok);color:var(--text-ok)}
+.delta.down{background:var(--surface-danger);color:var(--text-danger)}
+.bars{display:flex;flex-direction:column;gap:var(--space-2)}
+.bar-row{display:grid;grid-template-columns:minmax(96px,1fr) 2fr auto;align-items:center;gap:var(--space-3);font-size:var(--font-size-sm)}
+.bar-track{height:var(--space-3);border-radius:var(--radius-pill);background:var(--data-track);overflow:hidden}
+.bar-fill{display:block;height:100%;background:var(--data-bar);border-radius:var(--radius-pill)}
+.bar-num{font-weight:var(--font-weight-semibold);font-variant-numeric:tabular-nums;min-width:6ch;text-align:right}
+.out{display:flex;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--surface-warning);color:var(--text-warning);font-size:var(--font-size-sm)}
+.tips{display:flex;flex-direction:column;gap:var(--space-2);counter-reset:tip}
+.tip{display:grid;grid-template-columns:auto 1fr;gap:var(--space-1) var(--space-3);padding:var(--space-3);border:var(--size-border-thin) solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-panel-solid)}
+.tip-icon{font-size:var(--font-size-lg)}
+.tip-title{font-weight:var(--font-weight-semibold)}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--space-2);padding:var(--space-8) var(--space-4);border:2px dashed var(--border-strong);border-radius:var(--radius-md)}
+.empty-icon{font-size:var(--font-size-3xl)}
+.btn{min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:0 var(--space-4);border-radius:var(--radius-md);border:var(--size-border-thin) solid transparent;font:inherit;font-weight:var(--font-weight-semibold);cursor:pointer}
+.btn-primary{background:var(--accent-primary);color:var(--text-on-accent)}
+.btn-primary:hover{background:var(--accent-primary-hover)}
+.btn-secondary{background:var(--surface-panel-solid);color:var(--text-primary);border-color:var(--border-strong)}
+.btn-secondary:hover{background:var(--surface-sunken)}
+.btn:focus-visible,.btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.btn-lg{min-height:var(--size-target-lg);font-size:var(--font-size-lg)}
+.link-btn{min-height:var(--size-target);padding:0 var(--space-2);margin-left:calc(-1 * var(--space-2));border:0;background:transparent;font:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--accent-primary);text-decoration:underline;cursor:pointer;border-radius:var(--radius-sm);justify-self:start}
+.link-btn:focus-visible,.link-btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:0}
+.save{display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--text-ok)}
+.save-err{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);padding:var(--space-3);border-radius:var(--radius-sm);background:var(--surface-danger);color:var(--text-danger);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold)}
+.save-err p{flex:1 1 220px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:var(--space-1);padding:var(--space-1);background:var(--surface-sunken);border-radius:var(--radius-md);border:var(--size-border-thin) solid var(--border-strong)}
+.seg-opt{position:relative}
+.seg-opt input{position:absolute;opacity:0;width:1px;height:1px}
+.seg-opt span{display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--size-target);padding:0 var(--space-3);border-radius:var(--radius-sm);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);cursor:pointer}
+.seg-opt input:checked+span{background:var(--accent-primary);color:var(--text-on-accent)}
+.seg-opt input:focus-visible+span,.seg-opt.is-focus span{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.themes{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.chip{display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);line-height:var(--space-6);background:var(--surface-sunken);color:var(--text-primary)}
+.chip.good{background:var(--surface-ok);color:var(--text-ok)}
+.chip.bad{background:var(--surface-danger);color:var(--text-danger)}
+.review{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);border:var(--size-border-thin) solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-panel-solid)}
+.review-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3)}
+.review-name{font-weight:var(--font-weight-bold)}
+.review-time{margin-left:auto;color:var(--text-muted);font-size:var(--font-size-sm)}
+.skel{background:var(--surface-disabled);border-radius:var(--radius-sm);height:var(--space-4)}
+@media (max-width:640px){
+.scrim{padding:var(--space-4) var(--space-2)}
+.dialog-head,.dialog-body{padding-left:var(--space-4);padding-right:var(--space-4)}
+.tabs{padding:var(--space-2) var(--space-4) 0}
+.dialog-foot{padding:var(--space-3) var(--space-4)}
+.dialog-foot .btn{flex:1 1 100%}
+.result-value{font-size:var(--font-size-2xl)}
+.doc-head h1{font-size:var(--font-size-xl)}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+<h1>Daily Report · Đánh giá</h1>
+<p>Mockup tĩnh. Báo cáo là lớp phủ cuối ngày (sau khi khách cuối rời đi), có 2 tab: Tổng kết và Đánh giá. Game đã tự lưu trước khi báo cáo hiện ra; nút chính là "Sang ngày mới".</p>
+</header>
+
+<!-- 1. Lãi -->
+<section class="state" aria-labelledby="r1">
+<h2 id="r1"><span class="tag-state">Màn 7</span>Daily Report — ngày có lãi</h2>
+<p class="state-note">Thứ tự đọc: kết quả (lãi/lỗ, bằng số lớn + chữ "Lãi" + mũi tên) → vì sao (thu chi, khách) → đánh giá cũ → mới → món → việc nên làm ngày mai. Mỗi gợi ý có nút dẫn thẳng tới tab liên quan của ngày hôm sau.</p>
+<div class="stage">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+<polygon class="sc-awning" points="600,120 920,290 920,322 600,152"/>
+<ellipse class="sc-wood" cx="700" cy="430" rx="34" ry="18"/><ellipse class="sc-wood" cx="560" cy="480" rx="34" ry="18"/>
+<circle class="sc-plant" cx="330" cy="420" r="22"/>
+</svg>
+<div class="scrim">
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="d1t">
+<div class="dialog-head"><h3 id="d1t">🌙 Hết ngày 12 · Cà Phê Gió Mùa</h3><p class="dialog-sub">Thứ Bảy · 07:00–21:00 · Thường</p></div>
+<div class="tabs" role="tablist" aria-label="Báo cáo ngày">
+<button class="tab" role="tab" type="button" aria-selected="true">📊 Tổng kết</button>
+<button class="tab" role="tab" type="button" aria-selected="false">💬 Đánh giá (12)</button>
+</div>
+<div class="dialog-body" role="tabpanel" aria-labelledby="d1t">
+<div class="result"><span class="result-label">▲ Lãi</span><span class="result-value">+1.380.000đ</span><span class="result-note">Cao hơn hôm qua 220.000đ. Tiền hiện có: 3.120.000đ.</span></div>
+<div class="grid2">
+<div>
+<p class="h4">💵 Thu chi</p>
+<dl class="stat-list">
+<div class="stat-row"><dt>Doanh thu (93 món)</dt><dd class="pos">+3.240.000đ</dd></div>
+<div class="stat-row"><dt>Nguyên liệu đã dùng</dt><dd class="neg">−1.050.000đ</dd></div>
+<div class="stat-row"><dt>Lương 3 nhân viên</dt><dd class="neg">−450.000đ</dd></div>
+<div class="stat-row"><dt>Marketing</dt><dd class="neg">−150.000đ</dd></div>
+<div class="stat-row"><dt>Mặt bằng, điện nước</dt><dd class="neg">−210.000đ</dd></div>
+<div class="stat-row total"><dt>Lợi nhuận</dt><dd class="pos">+1.380.000đ</dd></div>
+</dl>
+</div>
+<div class="stack">
+<div>
+<p class="h4">👥 Khách</p>
+<dl class="stat-list">
+<div class="stat-row"><dt>Đã phục vụ</dt><dd>86 khách</dd></div>
+<div class="stat-row"><dt>Bỏ đi vì chờ lâu</dt><dd class="neg">5 khách</dd></div>
+<div class="stat-row"><dt>Bỏ đi vì hết món</dt><dd class="neg">2 khách</dd></div>
+</dl>
+</div>
+<div>
+<p class="h4">⭐ Đánh giá quán</p>
+<div class="rating-box">
+<span class="stars stars-sm" role="img" aria-label="Hôm qua 3,8 trên 5 sao"><span class="star">★★★</span><span class="star-empty">★★</span><span class="num">3,8</span></span>
+<span class="arrow" aria-hidden="true">→</span>
+<span class="stars" role="img" aria-label="Hôm nay 3,9 trên 5 sao"><span class="star">★★★★</span><span class="star-empty">★</span><span class="num">3,9</span></span>
+<span class="delta up">▲ +0,1</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid2">
+<div>
+<p class="h4">🏆 Món bán chạy</p>
+<div class="bars">
+<div class="bar-row"><span>🥛 Bạc xỉu</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:100%"></span></span><span class="bar-num">28 ly</span></div>
+<div class="bar-row"><span>☕ Cappuccino</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:75%"></span></span><span class="bar-num">21 ly</span></div>
+<div class="bar-row"><span>☕ Cà phê đen</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:61%"></span></span><span class="bar-num">17 ly</span></div>
+<div class="bar-row"><span>🥐 Croissant</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:54%"></span></span><span class="bar-num">15 cái</span></div>
+<div class="bar-row"><span>🍑 Trà đào</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:43%"></span></span><span class="bar-num">12 ly</span></div>
+</div>
+</div>
+<div>
+<p class="h4">⛔ Món hết hàng</p>
+<ul class="stack" style="gap:var(--space-2)">
+<li class="out">🍑 <span><b>Trà đào</b> hết lúc 15:20 · khoảng 6 khách không mua được</span></li>
+<li class="out">🥐 <span><b>Croissant</b> hết lúc 17:45 · khoảng 3 khách không mua được</span></li>
+</ul>
+</div>
+</div>
+<div>
+<p class="h4">💡 Gợi ý cho ngày 13</p>
+<ol class="tips">
+<li class="tip"><span class="tip-icon" aria-hidden="true">📦</span><div><p class="tip-title">Nhập thêm 3 hũ đào ngâm và 10 croissant</p><p class="muted">Cả hai hết trước giờ cao điểm chiều.</p><button class="link-btn" type="button">Mở Kho ngày 13 →</button></div></li>
+<li class="tip"><span class="tip-icon" aria-hidden="true">👥</span><div><p class="tip-title">Thêm 1 người vào Pha chế lúc 11:00–13:00</p><p class="muted">5 khách bỏ đi đều rơi vào khung này; đơn chờ dài nhất 9 phút.</p><button class="link-btn" type="button">Mở Nhân viên →</button></div></li>
+<li class="tip"><span class="tip-icon" aria-hidden="true">📣</span><div><p class="tip-title">Chủ Nhật thường đông: cân nhắc Phát tờ rơi (150.000đ)</p><p class="muted">Lãi hôm nay đủ trả cho chiến dịch này.</p><button class="link-btn" type="button">Mở Marketing →</button></div></li>
+</ol>
+</div>
+</div>
+<div class="dialog-foot">
+<span class="save" role="status">✓ Đã tự lưu lúc 21:00 · Slot 1</span>
+<button class="btn btn-secondary" type="button">💬 Xem đánh giá</button>
+<button class="btn btn-primary btn-lg is-focus" type="button">☀️ Sang ngày 13</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 2. Lỗ -->
+<section class="state" aria-labelledby="r2">
+<h2 id="r2"><span class="tag-state">Màn 7 · lỗ</span>Daily Report — ngày bị lỗ, đánh giá giảm</h2>
+<p class="state-note">Lỗ dùng nền đỏ nhạt, mũi tên ▼, chữ "Lỗ" và dấu "−". Câu dưới số tiền nói nguyên nhân lớn nhất, gợi ý đầu tiên xử lý đúng nguyên nhân đó. Không trách người chơi.</p>
+<div class="dialog" role="dialog" aria-labelledby="d2t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d2t">🌙 Hết ngày 4 · Cà Phê Gió Mùa</h3><p class="dialog-sub">Thứ Hai · Thường</p></div>
+<div class="tabs" role="tablist" aria-label="Báo cáo ngày"><button class="tab" role="tab" type="button" aria-selected="true">📊 Tổng kết</button><button class="tab" role="tab" type="button" aria-selected="false">💬 Đánh giá (5)</button></div>
+<div class="dialog-body" role="tabpanel" aria-labelledby="d2t">
+<div class="result is-loss"><span class="result-label">▼ Lỗ</span><span class="result-value">−320.000đ</span><span class="result-note">Nguyên nhân chính: 18 khách bỏ đi vì chờ lâu, trong khi đã trả lương 3 người. Tiền hiện có: 1.180.000đ.</span></div>
+<div class="grid2">
+<dl class="stat-list">
+<div class="stat-row"><dt>Doanh thu (38 món)</dt><dd class="pos">+1.140.000đ</dd></div>
+<div class="stat-row"><dt>Nguyên liệu đã dùng</dt><dd class="neg">−600.000đ</dd></div>
+<div class="stat-row"><dt>Lương 3 nhân viên</dt><dd class="neg">−450.000đ</dd></div>
+<div class="stat-row"><dt>Mặt bằng, điện nước</dt><dd class="neg">−210.000đ</dd></div>
+<div class="stat-row"><dt>Nguyên liệu hỏng (croissant quá hạn)</dt><dd class="neg">−200.000đ</dd></div>
+<div class="stat-row total"><dt>Lợi nhuận</dt><dd class="neg">−320.000đ</dd></div>
+</dl>
+<div class="stack">
+<div class="rating-box">
+<span class="stars stars-sm" role="img" aria-label="Hôm qua 3,8 trên 5 sao"><span class="star">★★★</span><span class="star-empty">★★</span><span class="num">3,8</span></span>
+<span class="arrow" aria-hidden="true">→</span>
+<span class="stars" role="img" aria-label="Hôm nay 3,6 trên 5 sao"><span class="star">★★★</span><span class="star-empty">★★</span><span class="num">3,6</span></span>
+<span class="delta down">▼ −0,2</span>
+</div>
+<dl class="stat-list">
+<div class="stat-row"><dt>Đã phục vụ</dt><dd>34 khách</dd></div>
+<div class="stat-row"><dt>Bỏ đi vì chờ lâu</dt><dd class="neg">18 khách</dd></div>
+</dl>
+</div>
+</div>
+<div>
+<p class="h4">💡 Gợi ý cho ngày 5</p>
+<ol class="tips">
+<li class="tip"><span class="tip-icon" aria-hidden="true">👥</span><div><p class="tip-title">Chỉ có 1 người Pha chế, 2 người Dọn dẹp</p><p class="muted">Chuyển Minh sang Pha chế, hoặc bật Tự phân vai.</p><button class="link-btn is-focus" type="button">Mở Nhân viên →</button></div></li>
+<li class="tip"><span class="tip-icon" aria-hidden="true">🥐</span><div><p class="tip-title">Nhập croissant ít hơn (bánh hết hạn sau 1 ngày)</p><p class="muted">Hôm nay bỏ 20 cái. Gợi ý nhập tự động sẽ tính theo khách dự kiến.</p><button class="link-btn" type="button">Mở Kho →</button></div></li>
+</ol>
+</div>
+</div>
+<div class="dialog-foot">
+<span class="save" role="status">✓ Đã tự lưu lúc 21:00 · Slot 1</span>
+<button class="btn btn-secondary" type="button">💬 Xem đánh giá</button>
+<button class="btn btn-primary btn-lg" type="button">☀️ Sang ngày 5</button>
+</div>
+</div>
+</section>
+
+<!-- 3. Không khách -->
+<section class="state" aria-labelledby="r3">
+<h2 id="r3"><span class="tag-state">Màn 7 · không khách</span>Daily Report — cả ngày không có khách</h2>
+<p class="state-note">Trạng thái rỗng: không vẽ biểu đồ trống, nói thẳng vì sao (game biết nguyên nhân) và một việc cụ thể để sửa. Đánh giá giữ nguyên.</p>
+<div class="dialog" role="dialog" aria-labelledby="d3t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d3t">🌙 Hết ngày 2 · Cà Phê Gió Mùa</h3><p class="dialog-sub">Chủ Nhật · Thường</p></div>
+<div class="tabs" role="tablist" aria-label="Báo cáo ngày"><button class="tab" role="tab" type="button" aria-selected="true">📊 Tổng kết</button><button class="tab" role="tab" type="button" aria-selected="false">💬 Đánh giá (0)</button></div>
+<div class="dialog-body" role="tabpanel" aria-labelledby="d3t">
+<div class="result is-none"><span class="result-label">○ Không có khách</span><span class="result-value">−360.000đ</span><span class="result-note">Chỉ có chi phí cố định (lương, mặt bằng). Tiền hiện có: 1.640.000đ.</span></div>
+<div class="empty">
+<span class="empty-icon" aria-hidden="true">🚪</span>
+<p class="tip-title">Không món nào trong menu bán được</p>
+<p class="muted">Kho hết sữa tươi và hạt cà phê từ sáng, nên cả 4 món đang bật đều bị khóa. Khách nhìn bảng menu rồi đi tiếp.</p>
+<button class="btn btn-primary is-focus" type="button">✨ Gợi ý nhập hàng cho ngày 3</button>
+</div>
+<div class="rating-box">
+<span class="stars" role="img" aria-label="Giữ nguyên 3,8 trên 5 sao"><span class="star">★★★</span><span class="star-empty">★★</span><span class="num">3,8</span></span>
+<span class="delta" style="background:var(--surface-panel-solid);color:var(--text-muted)">= Không đổi</span>
+</div>
+<p class="muted">🏆 Món bán chạy và ⛔ món hết hàng: chưa có dữ liệu hôm nay.</p>
+</div>
+<div class="dialog-foot">
+<span class="save" role="status">✓ Đã tự lưu lúc 21:00 · Slot 1</span>
+<button class="btn btn-primary btn-lg" type="button">☀️ Sang ngày 3</button>
+</div>
+</div>
+</section>
+
+<!-- 4. Loading + save error -->
+<section class="state" aria-labelledby="r4">
+<h2 id="r4"><span class="tag-state">Màn 7 · trạng thái</span>Đang tổng kết, và tự lưu thất bại</h2>
+<p class="state-note">Tổng kết thường tức thì; khung xương chỉ hiện nếu quá 300 ms. Nếu tự lưu lỗi (bộ nhớ trình duyệt đầy, chế độ ẩn danh), báo cáo vẫn hiện nhưng chân trang đổi thành dải lỗi có nút thử lại, và "Sang ngày mới" vẫn bấm được (không khóa người chơi).</p>
+<div class="stack" style="gap:var(--space-8)">
+<div class="dialog" aria-busy="true" aria-labelledby="d4t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d4t">🌙 Hết ngày 12</h3><p class="dialog-sub" role="status">⏳ Đang tổng kết…</p></div>
+<div class="dialog-body">
+<div class="skel" style="height:var(--space-16)"></div>
+<div class="grid2"><div class="stack"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="stack"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+</div>
+</div>
+<div class="dialog" aria-labelledby="d5t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d5t">🌙 Hết ngày 12 · Cà Phê Gió Mùa</h3><p class="dialog-sub">(phần thân như báo cáo có lãi)</p></div>
+<div class="dialog-body">
+<div class="save-err" role="alert"><p>⚠️ Chưa tự lưu được: bộ nhớ trình duyệt đã đầy. Tiến độ ngày 12 sẽ mất nếu đóng tab.</p><button class="btn btn-secondary is-focus" type="button">🔄 Thử lưu lại</button><button class="btn btn-secondary" type="button">🗑️ Xóa slot cũ</button></div>
+</div>
+<div class="dialog-foot"><button class="btn btn-primary btn-lg" type="button">☀️ Sang ngày 13</button></div>
+</div>
+</div>
+</section>
+
+<!-- 5. Reviews -->
+<section class="state" aria-labelledby="r5">
+<h2 id="r5"><span class="tag-state">Màn 8</span>Đánh giá — có dữ liệu</h2>
+<p class="state-note">Tóm tắt chủ đề khách nhắc nhiều nhất ở đầu (đọc nhanh), lọc Tất cả/Tốt/Chưa tốt bằng nút chọn một. Mỗi đánh giá có sao bằng ký hiệu + số, món, và nhãn sự kiện (chờ lâu, hết món).</p>
+<div class="dialog" role="dialog" aria-labelledby="d6t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d6t">🌙 Hết ngày 12 · Cà Phê Gió Mùa</h3></div>
+<div class="tabs" role="tablist" aria-label="Báo cáo ngày"><button class="tab" role="tab" type="button" aria-selected="false">📊 Tổng kết</button><button class="tab is-focus" role="tab" type="button" aria-selected="true">💬 Đánh giá (12)</button></div>
+<div class="dialog-body" role="tabpanel" aria-labelledby="d6t">
+<div>
+<p class="h4">Khách nhắc nhiều</p>
+<div class="themes"><span class="chip good">👍 Đồ uống ngon · 7</span><span class="chip good">👍 Quán đẹp · 3</span><span class="chip bad">👎 Chờ lâu · 3</span><span class="chip bad">👎 Hết món · 2</span></div>
+</div>
+<fieldset style="border:0;margin:0;padding:0">
+<legend class="muted" style="margin-bottom:var(--space-2)">Lọc đánh giá</legend>
+<div class="seg">
+<label class="seg-opt"><input type="radio" name="rf" checked="checked"><span>Tất cả · 12</span></label>
+<label class="seg-opt"><input type="radio" name="rf"><span>👍 Tốt · 9</span></label>
+<label class="seg-opt"><input type="radio" name="rf"><span>👎 Chưa tốt · 3</span></label>
+</div>
+</fieldset>
+<ul class="stack">
+<li class="review">
+<div class="review-head"><span class="review-name">Chị Hoa · khách quen</span><span class="stars stars-sm" role="img" aria-label="5 trên 5 sao"><span class="star">★★★★★</span> 5</span><span class="review-time">09:12</span></div>
+<p>"Bạc xỉu đậm vị, quán thơm mùi cà phê. Mai ghé tiếp."</p>
+<div class="themes"><span class="chip">🥛 Bạc xỉu</span><span class="chip">⏱ Chờ 2 phút</span></div>
+</li>
+<li class="review">
+<div class="review-head"><span class="review-name">Anh Khoa</span><span class="stars stars-sm" role="img" aria-label="4 trên 5 sao"><span class="star">★★★★</span><span class="star-empty">★</span> 4</span><span class="review-time">12:05</span></div>
+<p>"Cappuccino ngon, nhưng trưa đông phải đợi khá lâu."</p>
+<div class="themes"><span class="chip">☕ Cappuccino</span><span class="chip bad">⏱ Chờ 7 phút</span></div>
+</li>
+<li class="review">
+<div class="review-head"><span class="review-name">Bạn Vy</span><span class="stars stars-sm" role="img" aria-label="2 trên 5 sao"><span class="star">★★</span><span class="star-empty">★★★</span> 2</span><span class="review-time">15:40</span></div>
+<p>"Đi xa tới uống trà đào mà quán hết mất rồi."</p>
+<div class="themes"><span class="chip bad">⛔ Hết Trà đào</span></div>
+</li>
+<li class="review">
+<div class="review-head"><span class="review-name">Ông Tâm</span><span class="stars stars-sm" role="img" aria-label="1 trên 5 sao"><span class="star">★</span><span class="star-empty">★★★★</span> 1</span><span class="review-time">12:31</span></div>
+<p>"Đứng mười phút không ai ra lấy order, về luôn."</p>
+<div class="themes"><span class="chip bad">😠 Bỏ đi</span></div>
+</li>
+</ul>
+</div>
+<div class="dialog-foot"><button class="btn btn-secondary" type="button">📊 Về Tổng kết</button><button class="btn btn-primary btn-lg" type="button">☀️ Sang ngày 13</button></div>
+</div>
+</section>
+
+<!-- 6. Reviews empty -->
+<section class="state" aria-labelledby="r6">
+<h2 id="r6"><span class="tag-state">Màn 8 · rỗng</span>Đánh giá — chưa có đánh giá nào</h2>
+<p class="state-note">Nói cách để có đánh giá, không chỉ "Không có dữ liệu".</p>
+<div class="dialog" role="dialog" aria-labelledby="d7t" style="margin:0 auto">
+<div class="dialog-head"><h3 id="d7t">🌙 Hết ngày 2 · Cà Phê Gió Mùa</h3></div>
+<div class="tabs" role="tablist" aria-label="Báo cáo ngày"><button class="tab" role="tab" type="button" aria-selected="false">📊 Tổng kết</button><button class="tab" role="tab" type="button" aria-selected="true">💬 Đánh giá (0)</button></div>
+<div class="dialog-body" role="tabpanel" aria-labelledby="d7t">
+<div class="empty">
+<span class="empty-icon" aria-hidden="true">💬</span>
+<p class="tip-title">Chưa có đánh giá nào</p>
+<p class="muted">Khách chỉ viết đánh giá sau khi được phục vụ xong hoặc khi bỏ đi. Phục vụ khách đầu tiên để thấy họ nói gì.</p>
+<button class="btn btn-secondary is-focus" type="button">📊 Về Tổng kết</button>
+</div>
+</div>
+<div class="dialog-foot"><button class="btn btn-primary btn-lg" type="button">☀️ Sang ngày 3</button></div>
+</div>
+</section>
+
+</body>
+</html>
