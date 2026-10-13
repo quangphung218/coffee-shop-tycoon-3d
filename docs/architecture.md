@@ -53,7 +53,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | --- | --- |
 | `start_day` | Chuẩn bị → mở cửa. |
 | `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). |
-| `set_menu_item`, `set_price` | Bật/tắt món, đổi giá. |
+| `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu. |
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. |
