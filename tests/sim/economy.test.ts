@@ -3,13 +3,17 @@ import { DIFFICULTIES } from '../../src/sim/data/difficulty';
 import { getMenuItem } from '../../src/sim/data/menu';
 import {
   DEBT_LIMIT,
-  costOfGoodsSold,
+  ingredientCostUsed,
   isOverDebtLimit,
   payMarketing,
   profit,
   settleDay,
   totalWages,
 } from '../../src/sim/economy';
+import { ENTER_MINUTES, spawnCustomer, updateCustomers } from '../../src/sim/customers';
+import { dispatch } from '../../src/sim/index';
+import { consume } from '../../src/sim/inventory';
+import { TASK_MINUTES, updatePlayerTasks } from '../../src/sim/orders';
 import { createNewGame, generateCandidates } from '../../src/sim/state';
 import type { GameEvent, GameState } from '../../src/sim/types';
 
@@ -24,13 +28,38 @@ function notices(s: GameState): GameEvent[] {
 }
 
 describe('costs', () => {
-  it('prices ingredients sold at the item cost', () => {
+  it('prices every serving taken out of stock at the item cost', () => {
     const s = createNewGame('A', 'normal', 1);
-    s.today.sold = { latte: 3, espresso: 2 };
-    expect(costOfGoodsSold(s)).toBe(3 * getMenuItem('latte').cost + 2 * getMenuItem('espresso').cost);
+    for (const id of ['latte', 'latte', 'latte', 'espresso', 'espresso'] as const) consume(s, id);
+    expect(ingredientCostUsed(s)).toBe(3 * getMenuItem('latte').cost + 2 * getMenuItem('espresso').cost);
     const hard = createNewGame('A', 'hard', 1);
-    hard.today.sold = { latte: 3 };
-    expect(costOfGoodsSold(hard)).toBe(Math.round(3 * getMenuItem('latte').cost * DIFFICULTIES.hard.priceMult));
+    for (let i = 0; i < 3; i++) consume(hard, 'latte');
+    expect(ingredientCostUsed(hard)).toBe(Math.round(3 * getMenuItem('latte').cost * DIFFICULTIES.hard.priceMult));
+  });
+
+  it('counts the drink made for a customer who left before getting it', () => {
+    const s = createNewGame('A', 'normal', 42);
+    for (const m of s.menu) m.enabled = m.id === 'latte';
+    dispatch(s, { type: 'start_day' });
+    const tick = (minutes: number): void => {
+      for (let i = 0; i < minutes; i++) {
+        updatePlayerTasks(s);
+        updateCustomers(s);
+      }
+    };
+    const c = spawnCustomer(s)!;
+    tick(ENTER_MINUTES);
+    expect(dispatch(s, { type: 'take_order', customerId: c.id })).toBe(true);
+    tick(TASK_MINUTES.take_order);
+    expect(c.state).toBe('waiting');
+    c.patience = 0;
+    tick(1);
+    expect(c.state).toBe('angry_leave');
+    expect(s.today.sold).toEqual({});
+
+    settleDay(s);
+    expect(s.today.ingredientCost).toBe(getMenuItem('latte').cost);
+    expect(profit(s.today)).toBe(s.today.revenue - getMenuItem('latte').cost);
   });
 
   it('adds up staff wages and handles no staff', () => {
@@ -57,7 +86,8 @@ describe('settleDay', () => {
     const s = createNewGame('A', 'normal', 1);
     hire(s, 150000, 130000);
     s.today.revenue = 900000;
-    s.today.sold = { latte: 10, americano: 8 };
+    for (let i = 0; i < 10; i++) consume(s, 'latte');
+    for (let i = 0; i < 8; i++) consume(s, 'americano');
     s.today.marketingCost = 150000;
     const money = s.money;
     settleDay(s);

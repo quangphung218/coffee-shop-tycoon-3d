@@ -141,8 +141,8 @@ export function nextUpgradeCost(state: GameState, id: UpgradeId): number | null 
 export type UpgradeResult = { ok: true; cost: number; level: number } | { ok: false; reason: string };
 
 /**
- * Buys the next level of an upgrade. Seating upgrades add tables to
- * `state.tables`; rating, appeal and brew speed take effect through the upgrade
+ * Buys the next level of an upgrade. Upgrades with capacity (seating, and
+ * decor such as the window bar) add tables to `state.tables`; rating, appeal and brew speed take effect through the upgrade
  * levels. Refused at max level or when the money does not cover the price.
  */
 export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {

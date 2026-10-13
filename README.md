@@ -4,6 +4,8 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên brow
 
 Người chơi mở một quán nhỏ với vốn hạn chế: chọn menu, nhập nguyên liệu, phục vụ khách, thuê nhân viên, chạy marketing và nâng cấp quán qua từng ngày. Toàn bộ hình 3D, nhân vật và âm thanh sinh bằng code, không cần asset ngoài. Chữ trong game là tiếng Việt, tiền tính bằng đồng (vd `25.000đ`).
 
+Trạng thái: đã chơi được trọn vòng ngày (chuẩn bị → mở cửa → cao điểm → đóng cửa → báo cáo), có nhân viên, nâng cấp, phố xá và save/load. Camera mặc định xoay bằng `Q`/`E`, pan bằng `WASD` và phím mũi tên; tắt **Cài đặt → Di chuyển camera bằng WASD** để chuyển sang chế độ phím `Q`/`A` xoay (xem [Điều khiển](#điều-khiển)).
+
 ## Yêu cầu
 
 - Node.js và npm.
@@ -21,7 +23,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **New Game**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng trên HUD (📋 Việc, 🍽️ Menu, 📦 Kho, 👥 Nhân viên, 📣 Marketing, 🛠️ Nâng cấp) để bật món, đặt giá, nhập hàng, tuyển và phân vai nhân viên. Bấm **🔔 Mở cửa**.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng trên HUD (📋 Việc, 🍽️ Menu, 📦 Kho, 👥 Nhân viên, 📣 Marketing, 🛠️ Nâng cấp) để bật/tắt món, nhập hàng, tuyển và phân vai nhân viên. Bấm **🔔 Mở cửa**.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món. Bấm khách, quầy hay bàn trong cảnh để tự nhận order, pha, mang đồ, thu tiền, dọn bàn khi chưa đủ nhân viên.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report**: lãi/lỗ, thu chi, khách, món bán chạy, món hết nguyên liệu, rating, review và gợi ý cho ngày mai. Game tự lưu trước khi báo cáo hiện ra. Bấm **☀️ Ngày tiếp theo** để sang ngày mới.
