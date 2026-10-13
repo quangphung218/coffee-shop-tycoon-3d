@@ -227,6 +227,53 @@ describe('staff panel', () => {
   });
 });
 
+describe('focus after an action', () => {
+  it('keeps focus in the panel after hiring, on the next candidate', () => {
+    const state = game();
+    const { body } = mount(renderStaffPanel, state);
+    const [first, second] = state.candidates;
+    const hire = q<HTMLButtonElement>(body, `[data-candidate="${first!.id}"] [data-action="hire"]`);
+    hire.focus();
+    hire.click();
+    expect(hire.isConnected).toBe(false);
+    expect(body.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(q(body, `[data-candidate="${second!.id}"] [data-action="hire"]`));
+  });
+
+  it('keeps focus in the panel after letting the last staff member go', async () => {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    const { body } = mount(renderStaffPanel, state);
+    q<HTMLButtonElement>(body, '[data-action="fire"]').click();
+    await Promise.resolve();
+    const ok = q<HTMLButtonElement>(body, '.confirm [data-action="confirm"]');
+    ok.focus();
+    ok.click();
+    expect(state.staff).toHaveLength(0);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(body.contains(document.activeElement)).toBe(true);
+  });
+
+  it('moves focus to the next staff row when one of two is let go', () => {
+    const state = game();
+    const [a, b] = state.candidates;
+    simDispatch(state, { type: 'hire_staff', candidateId: a!.id, role: 'barista' });
+    simDispatch(state, { type: 'hire_staff', candidateId: b!.id, role: 'server' });
+    const { body } = mount(renderStaffPanel, state);
+    q<HTMLButtonElement>(body, `li[data-staff="${a!.id}"] [data-action="fire"]`).click();
+    q<HTMLButtonElement>(body, `li[data-staff="${a!.id}"] .confirm [data-action="confirm"]`).click();
+    expect(q(body, `li[data-staff="${b!.id}"]`).contains(document.activeElement)).toBe(true);
+  });
+
+  it('returns focus to the upgrade row after buying', () => {
+    const state = game();
+    const { body } = mount(renderUpgradesPanel, state);
+    q<HTMLButtonElement>(body, '[data-upgrade="plants"] [data-action="buy"]').click();
+    q<HTMLButtonElement>(body, '[data-upgrade="plants"] .confirm [data-action="confirm"]').click();
+    expect(document.activeElement).toBe(q(body, '[data-upgrade="plants"] [data-action="buy"]'));
+  });
+});
+
 describe('task board', () => {
   it('shows the checklist and opens the shop with start_day', () => {
     const state = game();

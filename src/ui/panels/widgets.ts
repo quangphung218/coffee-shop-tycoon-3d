@@ -297,6 +297,45 @@ export function sender(ctx: PanelContext, refresh: (state: GameState) => void): 
   };
 }
 
+const FOCUS_TARGET = 'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])';
+
+function firstFocusable(root: Element, action: string | null): HTMLElement | null {
+  const items = [...root.querySelectorAll<HTMLElement>(FOCUS_TARGET)].filter((el) => !el.hidden && !el.closest('[hidden]'));
+  return items.find((el) => action !== null && el.getAttribute('data-action') === action) ?? items[0] ?? null;
+}
+
+/**
+ * Runs `update` (hire, fire, buy…) and, if that removed or hid the focused
+ * control, moves focus to the same row (matched by its data-* key when the
+ * row was rebuilt), else the next row, else the previous one, else `scope`
+ * itself. Without this, focus falls to <body> and Space opens Pause.
+ */
+export function keepFocus(row: HTMLElement, scope: HTMLElement, update: () => void): void {
+  const list = row.parentElement;
+  const index = list ? [...list.children].indexOf(row) : -1;
+  const key = [...row.attributes].find((a) => a.name.startsWith('data-'));
+  const active = document.activeElement;
+  const action = active instanceof HTMLElement && row.contains(active) ? active.getAttribute('data-action') : null;
+  update();
+
+  const now = document.activeElement;
+  if (now instanceof HTMLElement && now !== document.body && scope.contains(now) && !now.closest('[hidden]')) return;
+  const rows = list ? [...list.children] : [];
+  const same = row.isConnected ? row : key ? rows.find((r) => r.getAttribute(key.name) === key.value) : undefined;
+  // A removed row's slot now holds the next row, so start there.
+  const start = same ? rows.indexOf(same) : Math.max(0, index);
+  const order = [...rows.slice(start), ...rows.slice(0, start).reverse()];
+  for (const r of order) {
+    const target = r && firstFocusable(r, action);
+    if (target) {
+      target.focus();
+      return;
+    }
+  }
+  if (!scope.hasAttribute('tabindex')) scope.setAttribute('tabindex', '-1');
+  scope.focus();
+}
+
 /** Clicks the HUD button of another panel (Task Board links "Mở Kho →"). */
 export function openOtherPanel(id: string): void {
   document.querySelector<HTMLButtonElement>(`.hud [data-panel="${id}"]`)?.click();

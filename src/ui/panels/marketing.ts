@@ -3,7 +3,7 @@ import type { GameState } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { reasonLine, sender, setReason, shortOfMoney } from './widgets';
+import { keepFocus, reasonLine, sender, setReason, shortOfMoney } from './widgets';
 
 /**
  * Marketing: each campaign with price, effect (+% khách) and length. Running
@@ -19,7 +19,8 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
     const why = reasonLine();
     const side = h('span', { class: 'item-side' });
     run.addEventListener('click', () => {
-      if (!isAriaDisabled(run)) send({ type: 'start_campaign', campaignId: def.id });
+      // A started campaign hides its button, so focus moves on to the next row.
+      if (!isAriaDisabled(run)) keepFocus(li, body, () => send({ type: 'start_campaign', campaignId: def.id }));
     });
     const days = def.days === 1 ? 'hôm nay' : `${def.days} ngày`;
     w.watch(
@@ -46,7 +47,7 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
         setReason(why, run, reason);
       },
     );
-    return h(
+    const li = h(
       'li',
       { class: 'item', attrs: { 'data-campaign': def.id } },
       h('span', { class: 'item-icon', attrs: { 'aria-hidden': 'true' }, text: def.icon }),
@@ -54,6 +55,7 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
       side,
       h('div', { class: 'item-actions' }, run, why),
     );
+    return li;
   });
 
   body.append(h('div', { class: 'prep' }, h('p', { class: 'intro', text: 'Trả tiền một lần lúc chuẩn bị; khách tăng ngay từ hôm nay. Nhiều chiến dịch cùng chạy thì cộng dồn.' }), h('ul', { class: 'stack' }, ...rows)));

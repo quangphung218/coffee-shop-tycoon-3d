@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { Scene, Vector3 } from 'three';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CLICK_THRESHOLD_PX,
   DEFAULT_PITCH,
@@ -13,7 +14,9 @@ import {
   keyAction,
   orbitOffset,
   panVector,
+  shouldCameraHandleKey,
   zoomFromWheel,
+  type CameraKeyEvent,
 } from '../../src/render/scene/camera';
 import { commandForHit } from '../../src/render/scene/picking';
 import { pixelRatioFor, shadowsFor } from '../../src/render/scene/renderer';
@@ -147,6 +150,55 @@ describe('keyAction', () => {
     expect(keyAction('KeyW', 'qa-arrows')).toBeNull();
     expect(keyAction('KeyD', 'qa-arrows')).toBeNull();
     expect(keyAction('ArrowLeft', 'qa-arrows')).toBe('panLeft');
+  });
+});
+
+describe('shouldCameraHandleKey', () => {
+  beforeAll(() => {
+    document.body.innerHTML = `
+    <canvas id="c"></canvas>
+    <button id="hud">Nút</button>
+    <input id="name">
+    <textarea id="note"></textarea>
+    <select id="pick"><option>1</option></select>
+    <div id="edit" contenteditable="true"><b id="edit-in">x</b></div>
+    <div class="dd"><button id="dd-btn"></button><ul role="listbox" id="list"><li role="option" id="opt">A</li></ul></div>
+    <div role="tablist" id="tabs"><button role="tab" id="tab">Tab</button></div>
+    <div role="menu"><button role="menuitem" id="item">Mục</button></div>`;
+  });
+  afterAll(() => document.body.replaceChildren());
+  const key = (target: EventTarget | null, extra: Partial<CameraKeyEvent> = {}): CameraKeyEvent => ({
+    defaultPrevented: false,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    target,
+    ...extra,
+  });
+  const el = (id: string): Element => document.getElementById(id)!;
+
+  it('lets keys on the page, the canvas and plain buttons move the camera', () => {
+    expect(shouldCameraHandleKey(key(document.body))).toBe(true);
+    expect(shouldCameraHandleKey(key(el('c')))).toBe(true);
+    expect(shouldCameraHandleKey(key(el('hud')))).toBe(true);
+    expect(shouldCameraHandleKey(key(el('dd-btn')))).toBe(true);
+    expect(shouldCameraHandleKey(key(null))).toBe(true);
+  });
+
+  it('ignores keys the UI already handled or that carry a modifier', () => {
+    expect(shouldCameraHandleKey(key(document.body, { defaultPrevented: true }))).toBe(false);
+    expect(shouldCameraHandleKey(key(el('dd-btn'), { defaultPrevented: true }))).toBe(false);
+    expect(shouldCameraHandleKey(key(document.body, { ctrlKey: true }))).toBe(false);
+    expect(shouldCameraHandleKey(key(document.body, { metaKey: true }))).toBe(false);
+    expect(shouldCameraHandleKey(key(document.body, { altKey: true }))).toBe(false);
+  });
+
+  it('ignores keys typed into fields', () => {
+    for (const id of ['name', 'note', 'pick', 'edit', 'edit-in']) expect(shouldCameraHandleKey(key(el(id))), id).toBe(false);
+  });
+
+  it('ignores keys inside dropdowns, menus and tabs', () => {
+    for (const id of ['list', 'opt', 'tabs', 'tab', 'item']) expect(shouldCameraHandleKey(key(el(id))), id).toBe(false);
   });
 });
 
