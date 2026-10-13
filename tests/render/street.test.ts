@@ -1,0 +1,286 @@
+import { Color, DirectionalLight, HemisphereLight, Scene } from 'three';
+import { describe, expect, it } from 'vitest';
+import type { Quality } from '../../src/save/settings';
+import { createStreet } from '../../src/render/street';
+import {
+  FAR_WALK,
+  LANES,
+  NEAR_BUILDINGS_MIN_X,
+  NEAR_WALK,
+  ROAD,
+  STREET_HALF,
+  STREET_SPAN,
+  WALK_LINES,
+  buildingLots,
+  createLighting,
+  densityFor,
+  lightingAt,
+  minLaneGap,
+  propSpots,
+  rainY,
+  RAIN_BOX,
+  travelX,
+  vehicleSlots,
+  walkerSlot,
+  wrapX,
+} from '../../src/render/street/layout';
+import { createNewGame } from '../../src/sim/state';
+import { INDOOR_AREA } from '../../src/sim/upgrades';
+import type { GameState } from '../../src/sim/types';
+
+const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
+
+function newState(): GameState {
+  const state = createNewGame('Test', 'normal', 7);
+  state.phase = 'opening';
+  state.paused = false;
+  state.weather = 'sunny';
+  return state;
+}
+
+function newScene(): { scene: Scene; sun: DirectionalLight; hemi: HemisphereLight } {
+  const scene = new Scene();
+  scene.background = new Color(0xbfe6f5);
+  const hemi = new HemisphereLight(0xffffff, 0x888888, 1.6);
+  const sun = new DirectionalLight(0xffffff, 1.8);
+  scene.add(hemi, sun);
+  return { scene, sun, hemi };
+}
+
+describe('wrapX / travelX', () => {
+  it('keeps every x inside the street', () => {
+    for (const x of [-1000, -STREET_HALF, -1, 0, 3.3, STREET_HALF, STREET_HALF + 0.5, 12345.6]) {
+      const w = wrapX(x);
+      expect(w).toBeGreaterThanOrEqual(-STREET_HALF);
+      expect(w).toBeLessThan(STREET_HALF);
+    }
+    expect(wrapX(STREET_HALF + 1)).toBeCloseTo(-STREET_HALF + 1);
+    expect(wrapX(-STREET_HALF - 1)).toBeCloseTo(STREET_HALF - 1);
+    expect(wrapX(Number.NaN)).toBe(-STREET_HALF);
+  });
+
+  it('moves along the lane direction and comes back around after one lap', () => {
+    expect(travelX(0, 1, 5, 2)).toBeCloseTo(10);
+    expect(travelX(0, -1, 5, 2)).toBeCloseTo(-10);
+    const lap = STREET_SPAN / 7;
+    expect(travelX(4, 1, 7, lap)).toBeCloseTo(4);
+    // Driving off the +x end reappears at the -x end.
+    expect(travelX(STREET_HALF - 1, 1, 1, 2)).toBeCloseTo(-STREET_HALF + 1);
+    expect(travelX(-STREET_HALF + 1, -1, 1, 2)).toBeCloseTo(STREET_HALF - 1);
+  });
+});
+
+describe('densityFor', () => {
+  it('gives low fewer vehicles and walkers than high, and no rain particles on low', () => {
+    const low = densityFor('low');
+    const medium = densityFor('medium');
+    const high = densityFor('high');
+    const traffic = (d: typeof low) => d.cars + d.bikes + d.buses;
+    expect(traffic(low)).toBeLessThan(traffic(medium));
+    expect(traffic(medium)).toBeLessThan(traffic(high));
+    expect(low.pedestrians).toBeLessThan(medium.pedestrians);
+    expect(medium.pedestrians).toBeLessThan(high.pedestrians);
+    expect(low.rainDrops).toBe(0);
+    expect(high.rainDrops).toBeGreaterThan(medium.rainDrops);
+    expect(high.props).toBe(1);
+    for (const q of QUALITIES) expect(traffic(densityFor(q))).toBeGreaterThan(0);
+  });
+
+  it('falls back to medium for an unknown quality', () => {
+    expect(densityFor('ultra' as Quality)).toBe(densityFor('medium'));
+  });
+});
+
+describe('vehicleSlots', () => {
+  it('puts each kind in its own lanes, both directions, without overlapping bumpers', () => {
+    for (const q of QUALITIES) {
+      const d = densityFor(q);
+      const slots = vehicleSlots({ car: d.cars, bike: d.bikes, bus: d.buses });
+      expect(slots.filter((s) => s.kind === 'car')).toHaveLength(d.cars);
+      expect(slots.filter((s) => s.kind === 'bike')).toHaveLength(d.bikes);
+      expect(slots.filter((s) => s.kind === 'bus')).toHaveLength(d.buses);
+      for (const s of slots) expect(LANES[s.lane]!.kinds).toContain(s.kind);
+      const dirs = new Set(slots.map((s) => LANES[s.lane]!.dir));
+      expect(dirs.size).toBe(2);
+      // Everyone in a lane shares its speed, so the gap at t = 0 holds forever.
+      expect(minLaneGap(slots)).toBeGreaterThan(2);
+    }
+  });
+
+  it('keeps lanes on the road and the bike lanes by the kerb', () => {
+    for (const lane of LANES) {
+      expect(lane.z).toBeGreaterThan(ROAD.minZ);
+      expect(lane.z).toBeLessThan(ROAD.maxZ);
+    }
+  });
+});
+
+describe('walkers, buildings and props', () => {
+  it('keeps walk lines on the sidewalks', () => {
+    for (const line of WALK_LINES) {
+      const onNear = line.z > NEAR_WALK.minZ && line.z < NEAR_WALK.maxZ;
+      const onFar = line.z > FAR_WALK.minZ && line.z < FAR_WALK.maxZ;
+      expect(onNear || onFar).toBe(true);
+    }
+    expect(new Set(WALK_LINES.map((l) => l.dir)).size).toBe(2);
+  });
+
+  it('hands out stable, varied walkers', () => {
+    expect(walkerSlot(5)).toEqual(walkerSlot(5));
+    const starts = new Set(Array.from({ length: 18 }, (_, i) => walkerSlot(i).start.toFixed(2)));
+    expect(starts.size).toBe(18);
+    for (let i = 0; i < 18; i++) expect(walkerSlot(i).speed).toBeGreaterThan(0);
+  });
+
+  it('keeps buildings off the road and clear of the largest shop', () => {
+    const lots = buildingLots();
+    expect(lots.length).toBeGreaterThan(10);
+    for (const lot of lots) {
+      if (lot.facesPlusZ) {
+        expect(Math.abs(lot.x) - lot.width / 2).toBeGreaterThanOrEqual(NEAR_BUILDINGS_MIN_X - 1e-6);
+        expect(lot.z + lot.depth / 2).toBeLessThanOrEqual(NEAR_WALK.minZ);
+      } else {
+        expect(lot.z - lot.depth / 2).toBeGreaterThanOrEqual(FAR_WALK.maxZ);
+      }
+    }
+    // expand_area at its max level reaches x = 9.5.
+    expect(NEAR_BUILDINGS_MIN_X).toBeGreaterThan(9.5);
+    expect(NEAR_WALK.minZ).toBeGreaterThan(INDOOR_AREA.maxZ + 3);
+  });
+
+  it('alternates trees and lamps and leaves the shop door clear', () => {
+    const spots = propSpots();
+    expect(spots.some((s) => s.kind === 'tree')).toBe(true);
+    expect(spots.some((s) => s.kind === 'lamp')).toBe(true);
+    for (const s of spots) if (s.facesPlusZ) expect(Math.abs(s.x)).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('lightingAt', () => {
+  it('is brightest around noon and warmer and darker in the evening', () => {
+    const morning = lightingAt(7 * 60, 'sunny');
+    const noon = lightingAt(12 * 60, 'sunny');
+    const evening = lightingAt(20 * 60, 'sunny');
+    expect(noon.sunIntensity).toBeGreaterThan(morning.sunIntensity);
+    expect(noon.sunIntensity).toBeGreaterThan(evening.sunIntensity);
+    expect(evening.sky[2]).toBeLessThan(noon.sky[2]);
+    expect(noon.lamps).toBe(0);
+    expect(evening.lamps).toBeGreaterThan(0.5);
+  });
+
+  it('dims and greys the sky in the rain and lights the lamps', () => {
+    const sunny = lightingAt(12 * 60, 'sunny');
+    const rainy = lightingAt(12 * 60, 'rainy');
+    expect(rainy.sunIntensity).toBeLessThan(sunny.sunIntensity);
+    expect(rainy.lamps).toBeGreaterThan(0);
+  });
+
+  it('writes into the given object and handles odd minutes', () => {
+    const out = createLighting();
+    expect(lightingAt(12 * 60, 'sunny', out)).toBe(out);
+    for (const m of [-100, 0, 3 * 60, 23 * 60, Number.NaN]) {
+      const l = lightingAt(m, 'hot');
+      expect(Number.isFinite(l.sunIntensity)).toBe(true);
+      for (const c of [...l.sun, ...l.sky]) {
+        expect(c).toBeGreaterThanOrEqual(0);
+        expect(c).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe('rainY', () => {
+  it('falls and wraps back to the top', () => {
+    expect(rainY(10, 0)).toBeCloseTo(10);
+    expect(rainY(10, 0.1)).toBeLessThan(10);
+    for (const t of [0, 0.3, 1, 10, 1000]) {
+      const y = rainY(5, t);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThan(RAIN_BOX.top);
+    }
+  });
+});
+
+describe('createStreet', () => {
+  it('shows traffic and walkers by quality and moves them over time', () => {
+    const { scene, sun } = newScene();
+    const street = createStreet(scene, { quality: 'high', sun });
+    const state = newState();
+    const high = densityFor('high');
+    let stats = street.stats();
+    expect(stats.vehicles).toEqual({ car: high.cars, bike: high.bikes, bus: high.buses });
+    expect(stats.pedestrians).toBe(high.pedestrians);
+
+    const root = scene.getObjectByName('street')!;
+    const before = root.children.map((c) => c.position.clone());
+    const firstWalker = scene.getObjectByName('street-walkers')!.children[0]!;
+    const x0 = firstWalker.position.x;
+    street.update(state, 0, 0.1);
+    street.update(state, 0, 0.1);
+    expect(street.stats().time).toBeCloseTo(0.2);
+    expect(firstWalker.position.x).not.toBeCloseTo(x0, 3);
+    expect(root.children.map((c) => c.position.clone())).toEqual(before);
+
+    street.setQuality('low');
+    stats = street.stats();
+    const low = densityFor('low');
+    expect(stats.vehicles).toEqual({ car: low.cars, bike: low.bikes, bus: low.buses });
+    expect(stats.pedestrians).toBe(low.pedestrians);
+    // Characters stay pooled when the quality drops and comes back.
+    street.setQuality('high');
+    expect(street.stats().charactersCreated).toBe(high.pedestrians);
+    street.dispose();
+    expect(scene.getObjectByName('street')).toBeUndefined();
+  });
+
+  it('builds no new walkers while frames run', () => {
+    const { scene, sun } = newScene();
+    const street = createStreet(scene, { quality: 'medium', sun });
+    const state = newState();
+    for (let i = 0; i < 200; i++) street.update(state, 0.5, 1 / 60);
+    expect(street.stats().charactersCreated).toBe(densityFor('medium').pedestrians);
+    street.dispose();
+  });
+
+  it('freezes while paused', () => {
+    const { scene } = newScene();
+    const street = createStreet(scene, { quality: 'medium' });
+    const state = newState();
+    state.paused = true;
+    street.update(state, 0, 0.1);
+    expect(street.stats().time).toBe(0);
+    street.dispose();
+  });
+
+  it('rains only when the sim says so and the quality allows particles', () => {
+    const { scene } = newScene();
+    const street = createStreet(scene, { quality: 'high' });
+    const state = newState();
+    street.update(state, 0, 0.016);
+    expect(street.stats().rainDrops).toBe(0);
+    state.weather = 'rainy';
+    street.update(state, 0, 0.016);
+    expect(street.stats().rainDrops).toBe(densityFor('high').rainDrops);
+    street.setQuality('low');
+    street.update(state, 0, 0.016);
+    expect(street.stats().rainDrops).toBe(0);
+    street.dispose();
+  });
+
+  it('tints the sun, sky and hemisphere light by the game clock', () => {
+    const { scene, sun, hemi } = newScene();
+    const street = createStreet(scene, { quality: 'medium', sun });
+    const state = newState();
+    state.minute = 12 * 60;
+    street.update(state, 0, 0.016);
+    const noonSun = sun.intensity;
+    const noonSky = (scene.background as Color).clone();
+    const noonHemi = hemi.intensity;
+    state.minute = 20 * 60;
+    street.update(state, 0, 0.016);
+    expect(sun.intensity).toBeLessThan(noonSun);
+    expect(hemi.intensity).toBeLessThan(noonHemi);
+    expect((scene.background as Color).equals(noonSky)).toBe(false);
+    street.dispose();
+  });
+});

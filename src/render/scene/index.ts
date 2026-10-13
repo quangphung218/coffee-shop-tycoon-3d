@@ -2,6 +2,7 @@ import { Raycaster, Vector2 } from 'three';
 import type { CameraKeys, Quality } from '../../save/settings';
 import type { Command, GameState } from '../../sim/types';
 import { createActors } from '../actors';
+import { createStreet } from '../street';
 import { CameraController } from './camera';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
@@ -37,6 +38,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene);
   const actors = createActors(view.scene);
+  const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
   const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
@@ -75,9 +77,13 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
         firstLayout = false;
       }
       actors.update(state, alpha);
+      street.update(state, alpha, dt);
       view.renderer.render(view.scene, camera.camera);
     },
-    setQuality: (q) => view.setQuality(q),
+    setQuality: (q) => {
+      view.setQuality(q);
+      street.setQuality(q);
+    },
     setCameraKeys: (mode) => camera.setCameraKeys(mode),
     setEdgePan: (enabled) => {
       camera.edgePan = enabled;
@@ -90,6 +96,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     dispose(): void {
       handlers.clear();
       camera.dispose();
+      street.dispose();
       actors.dispose();
       shop.dispose();
       view.dispose();
