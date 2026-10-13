@@ -25,6 +25,8 @@ export interface World {
   setCameraKeys(mode: CameraKeys): void;
   setEdgePan(enabled: boolean): void;
   resetCamera(): void;
+  /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
+  rotateCamera(dYaw: number): void;
   /** Registers a handler for Commands from clicks in the scene; returns an unsubscribe function. */
   onCommand(handler: (cmd: Command) => void): () => void;
   dispose(): void;
@@ -89,6 +91,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       camera.edgePan = enabled;
     },
     resetCamera: () => camera.reset(),
+    rotateCamera: (dYaw) => camera.rotate(dYaw),
     onCommand(handler) {
       handlers.add(handler);
       return () => handlers.delete(handler);
