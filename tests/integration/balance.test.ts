@@ -73,6 +73,32 @@ function averageProfit(run: Run): number {
   return run.reports.reduce((s, r) => s + r.profit, 0) / run.reports.length;
 }
 
+/** Served / arrived over the whole week. */
+function serveRate(run: Run): number {
+  const arrived = run.days.reduce((s, d) => s + d.customersArrived, 0);
+  const served = run.days.reduce((s, d) => s + d.customersServed, 0);
+  return served / arrived;
+}
+
+/**
+ * Week results of the sample strategy at seed 777, measured on 2026-10-14:
+ * serve rate easy 0.943, normal 0.960, hard 0.969; end-of-week rating easy
+ * 4.39, normal 4.40, hard 4.53. The bands allow ±30% around them so tuning
+ * can move the numbers, but a change that breaks service (most customers
+ * walk out) or sinks the rating fails. Bounds are clipped to what the
+ * quantity can reach (serve rate ≤ 1, rating ≤ 5).
+ */
+const MEASURED: Record<Difficulty, { serveRate: number; rating: number }> = {
+  easy: { serveRate: 0.943, rating: 4.39 },
+  normal: { serveRate: 0.96, rating: 4.4 },
+  hard: { serveRate: 0.969, rating: 4.53 },
+};
+const TOLERANCE = 0.3;
+
+function band(value: number, max: number): [number, number] {
+  return [value * (1 - TOLERANCE), Math.min(max, value * (1 + TOLERANCE))];
+}
+
 describe('balance over seven days', () => {
   const runs = Object.fromEntries(DIFFICULTIES.map((d) => [d, simulateWeek(d, SAMPLE)])) as Record<Difficulty, Run>;
 
@@ -97,6 +123,38 @@ describe('balance over seven days', () => {
 
   it('earns less on Hard than on Easy', () => {
     expect(averageProfit(runs.hard)).toBeLessThan(averageProfit(runs.easy));
+  });
+
+  it('stays within the debt limit on Normal', () => {
+    const normal = runs.normal;
+    expect(normal.overDebt).toBe(false);
+    expect(isOverDebtLimit(normal.state)).toBe(false);
+  });
+
+  it('ranks the average profit Easy > Normal > Hard', () => {
+    const easy = averageProfit(runs.easy);
+    const normal = averageProfit(runs.normal);
+    const hard = averageProfit(runs.hard);
+    expect(easy).toBeGreaterThan(normal);
+    expect(normal).toBeGreaterThan(hard);
+  });
+
+  it('serves a sensible share of customers on every difficulty', () => {
+    for (const d of DIFFICULTIES) {
+      const [lo, hi] = band(MEASURED[d].serveRate, 1);
+      const rate = serveRate(runs[d]);
+      expect(rate, d).toBeGreaterThanOrEqual(lo);
+      expect(rate, d).toBeLessThanOrEqual(hi);
+    }
+  });
+
+  it('ends the week with a sensible rating on every difficulty', () => {
+    for (const d of DIFFICULTIES) {
+      const [lo, hi] = band(MEASURED[d].rating, MAX_RATING);
+      const rating = runs[d].state.rating;
+      expect(rating, d).toBeGreaterThanOrEqual(lo);
+      expect(rating, d).toBeLessThanOrEqual(hi);
+    }
   });
 
   it('loses more customers on day 5 without a barista', () => {
