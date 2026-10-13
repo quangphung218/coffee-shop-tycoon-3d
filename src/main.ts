@@ -7,6 +7,7 @@ import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
+import { registerPrepPanels } from './ui/panels';
 import { createShell } from './ui/screens/shell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
@@ -33,6 +34,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   const audio = createAudio({ music: settings.musicVolume, sfx: settings.sfxVolume });
   audio.setMusic(true);
 
+  registerPrepPanels();
   const shell = createShell({
     root: ui,
     storage,

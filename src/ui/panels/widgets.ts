@@ -1,0 +1,308 @@
+/**
+ * Small controls shared by the preparation panels, after design/prep.html:
+ * switch, quantity stepper, select-only dropdown (menu sổ), in-place confirm.
+ * Disabled controls use aria-disabled so they stay focusable and their reason
+ * stays readable.
+ */
+import type { Command, GameState } from '../../sim/types';
+import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
+import type { PanelContext } from '../hud/panels';
+
+export interface Toggle {
+  el: HTMLButtonElement;
+  set(checked: boolean, disabled?: boolean, describedBy?: string): void;
+}
+
+/** role="switch" button with a text state ("Bán"/"Không"). */
+export function toggle(label: string, onText: string, offText: string, onChange: (next: boolean) => void): Toggle {
+  const state = h('span', { class: 'toggle-state' });
+  const el = h(
+    'button',
+    {
+      class: 'toggle',
+      attrs: { type: 'button', role: 'switch', 'aria-checked': 'false', 'aria-label': label },
+      on: {
+        click: () => {
+          if (isAriaDisabled(el)) return;
+          onChange(el.getAttribute('aria-checked') !== 'true');
+        },
+      },
+    },
+    h('span', { class: 'toggle-track', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'toggle-thumb' })),
+    state,
+  );
+  return {
+    el,
+    set(checked, disabled = false, describedBy) {
+      el.setAttribute('aria-checked', String(checked));
+      state.textContent = checked ? onText : offText;
+      setAriaDisabled(el, disabled);
+      if (describedBy) el.setAttribute('aria-describedby', describedBy);
+      else el.removeAttribute('aria-describedby');
+    },
+  };
+}
+
+export interface Stepper {
+  el: HTMLElement;
+  input: HTMLInputElement;
+  readonly value: number;
+  set(value: number): void;
+}
+
+/** − [n] + with a typed-in field; ↑ ↓ in the field also step. Values are whole numbers in [min, max]. */
+export function stepper(label: string, min: number, max: number, onChange: (value: number) => void): Stepper {
+  let value = min;
+  const dec = h('button', { attrs: { type: 'button', 'aria-label': `Bớt 1 · ${label}` }, text: '−' });
+  const inc = h('button', { attrs: { type: 'button', 'aria-label': `Thêm 1 · ${label}` }, text: '+' });
+  const id = uid('step');
+  const input = h('input', { id, attrs: { type: 'text', inputmode: 'numeric', autocomplete: 'off' }, props: { value: String(min) } });
+
+  function set(next: number, notify: boolean): void {
+    const v = Math.min(max, Math.max(min, Math.round(Number.isFinite(next) ? next : min)));
+    const changed = v !== value;
+    value = v;
+    input.value = String(v);
+    setAriaDisabled(dec, v <= min);
+    setAriaDisabled(inc, v >= max);
+    if (changed && notify) onChange(v);
+  }
+  dec.addEventListener('click', () => {
+    if (!isAriaDisabled(dec)) set(value - 1, true);
+  });
+  inc.addEventListener('click', () => {
+    if (!isAriaDisabled(inc)) set(value + 1, true);
+  });
+  input.addEventListener('change', () => set(Number.parseInt(input.value.replace(/\D/g, ''), 10) || 0, true));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      set(value + (e.key === 'ArrowUp' ? 1 : -1), true);
+    }
+  });
+  set(min, false);
+
+  const el = h(
+    'div',
+    { class: 'stepper', attrs: { role: 'group', 'aria-label': label } },
+    dec,
+    h('label', { class: 'sr-only', attrs: { for: id }, text: label }),
+    input,
+    inc,
+  );
+  return {
+    el,
+    input,
+    get value() {
+      return value;
+    },
+    set: (v) => set(v, false),
+  };
+}
+
+export interface DropdownOption<T extends string> {
+  value: T;
+  label: string;
+  note?: string;
+}
+
+export interface Dropdown<T extends string> {
+  el: HTMLElement;
+  button: HTMLButtonElement;
+  /** Shows `value`; `display` overrides the button text (e.g. "🤖 Tự động: Pha chế"). */
+  set(value: T, opts?: { disabled?: boolean; warn?: boolean; display?: string; describedBy?: string }): void;
+  setNotes(notes: Partial<Record<T, string>>): void;
+  readonly open: boolean;
+  close(): void;
+}
+
+/**
+ * Select-only combobox (APG): a button that opens a listbox in place.
+ * ↑ ↓ Home End move, Enter/Space picks, Esc closes without leaving the panel.
+ */
+export function dropdown<T extends string>(label: string, options: readonly DropdownOption<T>[], onPick: (value: T) => void): Dropdown<T> {
+  let current: T = options[0]!.value;
+  let active = 0;
+  const listId = uid('dd');
+  const text = h('span');
+  const button = h(
+    'button',
+    { class: 'dd-btn', attrs: { type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': label } },
+    text,
+    h('span', { attrs: { 'aria-hidden': 'true' }, text: '▾' }),
+  );
+  const noteEls: HTMLElement[] = [];
+  const optEls = options.map((o, i) => {
+    const note = h('small', { text: o.note ?? '' });
+    noteEls.push(note);
+    return h(
+      'li',
+      {
+        class: 'dd-opt',
+        id: `${listId}-${i}`,
+        attrs: { role: 'option', 'aria-selected': 'false', 'data-value': o.value },
+        on: {
+          click: () => pick(i),
+          mousemove: () => setActive(i),
+        },
+      },
+      o.label,
+      note,
+    );
+  });
+  const list = h('ul', { class: 'dd-list', id: listId, hidden: true, attrs: { role: 'listbox', tabindex: '-1', 'aria-label': label } }, ...optEls);
+
+  function setActive(i: number): void {
+    active = Math.max(0, Math.min(options.length - 1, i));
+    optEls.forEach((el, j) => el.classList.toggle('is-active', j === active));
+    list.setAttribute('aria-activedescendant', optEls[active]!.id);
+  }
+  function openList(): void {
+    if (isAriaDisabled(button)) return;
+    list.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    button.setAttribute('aria-controls', listId);
+    setActive(Math.max(0, options.findIndex((o) => o.value === current)));
+    list.focus();
+  }
+  function close(refocus = true): void {
+    if (list.hidden) return;
+    list.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    if (refocus) button.focus();
+  }
+  function pick(i: number): void {
+    const o = options[i];
+    close();
+    if (o && o.value !== current) onPick(o.value);
+  }
+
+  button.addEventListener('click', () => (list.hidden ? openList() : close()));
+  button.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      openList();
+    }
+  });
+  list.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        setActive(active + 1);
+        break;
+      case 'ArrowUp':
+        setActive(active - 1);
+        break;
+      case 'Home':
+        setActive(0);
+        break;
+      case 'End':
+        setActive(options.length - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        pick(active);
+        break;
+      case 'Escape':
+        // Close only the list, not the whole panel.
+        e.stopPropagation();
+        close();
+        break;
+      case 'Tab':
+        close(false);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+  });
+  list.addEventListener('focusout', (e) => {
+    const next = (e as FocusEvent).relatedTarget;
+    if (!(next instanceof Node) || !el.contains(next)) close(false);
+  });
+
+  const el = h('div', { class: 'dd' }, button, list);
+  return {
+    el,
+    button,
+    set(value, opts = {}) {
+      current = value;
+      const o = options.find((x) => x.value === value);
+      text.textContent = opts.display ?? o?.label ?? value;
+      optEls.forEach((li, i) => li.setAttribute('aria-selected', String(options[i]!.value === value)));
+      setAriaDisabled(button, !!opts.disabled);
+      button.classList.toggle('is-warn', !!opts.warn);
+      if (opts.describedBy) button.setAttribute('aria-describedby', opts.describedBy);
+      else button.removeAttribute('aria-describedby');
+      if (opts.disabled) close(false);
+    },
+    setNotes(notes) {
+      options.forEach((o, i) => (noteEls[i]!.textContent = notes[o.value] ?? o.note ?? ''));
+    },
+    get open() {
+      return !list.hidden;
+    },
+    close: () => close(false),
+  };
+}
+
+/**
+ * In-place confirmation row ("Mua với 900.000đ? Hủy · Mua"). Focus goes to
+ * "Hủy" first. Returns the element; it removes itself on either choice.
+ */
+export function inlineConfirm(question: string, okText: string, okClass: string, onOk: () => void, onCancel: () => void): HTMLElement {
+  const cancel = h('button', { class: 'btn btn-secondary btn-sm', attrs: { type: 'button', 'data-action': 'cancel' }, text: 'Hủy' });
+  const ok = h('button', { class: `btn ${okClass} btn-sm`, attrs: { type: 'button', 'data-action': 'confirm' }, text: okText });
+  const el = h('div', { class: 'confirm', attrs: { role: 'group', 'aria-label': question } }, h('p', { text: question }), cancel, ok);
+  cancel.addEventListener('click', () => {
+    el.remove();
+    onCancel();
+  });
+  ok.addEventListener('click', () => {
+    el.remove();
+    onOk();
+  });
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      el.remove();
+      onCancel();
+    }
+  });
+  queueMicrotask(() => {
+    if (el.isConnected) cancel.focus();
+  });
+  return el;
+}
+
+/** "🔒 reason" line wired to a control through aria-describedby. */
+export function reasonLine(danger = true): HTMLElement {
+  return h('p', { class: danger ? 'reason reason-danger' : 'reason', id: uid('why'), hidden: true });
+}
+
+/** Shows or hides a reason line and points `control` at it. */
+export function setReason(line: HTMLElement, control: HTMLElement, text: string | null): void {
+  line.hidden = !text;
+  line.textContent = text ?? '';
+  if (text) control.setAttribute('aria-describedby', line.id);
+  else if (control.getAttribute('aria-describedby') === line.id) control.removeAttribute('aria-describedby');
+}
+
+/** Dispatch that refreshes the panel right away instead of waiting for the next frame. */
+export function sender(ctx: PanelContext, refresh: (state: GameState) => void): (cmd: Command) => boolean {
+  return (cmd) => {
+    const ok = ctx.dispatch(cmd);
+    const state = ctx.getState();
+    if (state) refresh(state);
+    return ok;
+  };
+}
+
+/** Clicks the HUD button of another panel (Task Board links "Mở Kho →"). */
+export function openOtherPanel(id: string): void {
+  document.querySelector<HTMLButtonElement>(`.hud [data-panel="${id}"]`)?.click();
+}
+
+/** "Thiếu 110.000đ (cần 1.850.000đ, có 1.740.000đ)." */
+export function shortOfMoney(need: number, have: number, fmt: (n: number) => string): string {
+  return `🔒 Thiếu ${fmt(need - have)} (cần ${fmt(need)}, có ${fmt(have)}).`;
+}

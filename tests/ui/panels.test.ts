@@ -1,0 +1,290 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { dispatch as simDispatch } from '../../src/sim';
+import { getIngredient } from '../../src/sim/data/ingredients';
+import { autoRestockSuggestion } from '../../src/sim/inventory';
+import { createNewGame } from '../../src/sim/state';
+import type { Command, GameState } from '../../src/sim/types';
+import { createHud } from '../../src/ui/hud/hud';
+import { listPanels, type PanelContext, type PanelHandle, type PanelRender } from '../../src/ui/hud/panels';
+import { PREP_PANELS, registerPrepPanels } from '../../src/ui/panels';
+import { renderInventoryPanel } from '../../src/ui/panels/inventory';
+import { renderMarketingPanel } from '../../src/ui/panels/marketing';
+import { renderMenuPanel } from '../../src/ui/panels/menu';
+import { renderStaffPanel } from '../../src/ui/panels/staff';
+import { renderTasksPanel } from '../../src/ui/panels/tasks';
+import { renderUpgradesPanel } from '../../src/ui/panels/upgrades';
+
+function game(): GameState {
+  return createNewGame('Quán Thử', 'normal', 42);
+}
+
+interface Mounted {
+  body: HTMLElement;
+  sent: Command[];
+  handle: PanelHandle | void;
+}
+
+/** Renders a panel into the document with a dispatch that records commands and applies them to the sim. */
+function mount(render: PanelRender, state: GameState): Mounted {
+  const body = document.createElement('div');
+  document.body.append(body);
+  const sent: Command[] = [];
+  const ctx: PanelContext = {
+    dispatch: (cmd) => {
+      sent.push(cmd);
+      return simDispatch(state, cmd);
+    },
+    getState: () => state,
+    close: () => {},
+  };
+  return { body, sent, handle: render(body, ctx) };
+}
+
+function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
+  const el = root.querySelector<T>(selector);
+  if (!el) throw new Error(`missing ${selector}`);
+  return el;
+}
+
+afterEach(() => {
+  document.body.replaceChildren();
+});
+
+describe('registration', () => {
+  it('registers the six preparation panels as HUD buttons', () => {
+    const off = registerPrepPanels();
+    try {
+      expect(listPanels().map((p) => p.id)).toEqual(['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades']);
+      const state = game();
+      const hud = createHud({ dispatch: () => true, getState: () => state, onPause() {}, onSettings() {}, onResetCamera() {} });
+      document.body.append(hud.el, hud.panelEl);
+      expect(hud.el.querySelectorAll('[data-panel]')).toHaveLength(PREP_PANELS.length);
+      q<HTMLButtonElement>(hud.el, '[data-panel="inventory"]').click();
+      expect(hud.openPanelId).toBe('inventory');
+      expect(hud.panelEl.querySelectorAll('[data-ingredient]').length).toBeGreaterThan(0);
+      hud.dispose();
+    } finally {
+      off();
+    }
+    expect(listPanels()).toHaveLength(0);
+  });
+});
+
+describe('menu panel', () => {
+  it('lists the 10 items and locks one that lacks an ingredient, with the reason', () => {
+    const state = game();
+    state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
+    const { body, sent } = mount(renderMenuPanel, state);
+    expect(body.querySelectorAll('li.item')).toHaveLength(10);
+
+    const mocha = q(body, '[data-item="mocha"]');
+    const sw = q<HTMLButtonElement>(mocha, '[role="switch"]');
+    expect(mocha.classList.contains('is-locked')).toBe(true);
+    expect(sw.getAttribute('aria-disabled')).toBe('true');
+    const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
+    expect(why.textContent).toContain(getIngredient('cacao').name);
+
+    sw.click();
+    expect(sent).toHaveLength(0);
+    expect(state.menu.find((m) => m.id === 'mocha')!.enabled).toBe(false);
+  });
+
+  it('toggles an available item through set_menu_item', () => {
+    const state = game();
+    const { body, sent } = mount(renderMenuPanel, state);
+    const sw = q<HTMLButtonElement>(body, '[data-item="espresso"] [role="switch"]');
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    sw.click();
+    expect(sent).toEqual([{ type: 'set_menu_item', itemId: 'espresso', enabled: false }]);
+    expect(sw.getAttribute('aria-checked')).toBe('false');
+  });
+});
+
+describe('inventory panel', () => {
+  it('fills the steppers with the auto-restock suggestion before buying, then buys those packs', () => {
+    const state = game();
+    const suggestion = autoRestockSuggestion(state);
+    expect(suggestion.items.length).toBeGreaterThan(0);
+    state.money = suggestion.totalCost + 1000;
+    const { body, sent } = mount(renderInventoryPanel, state);
+
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    expect(sent).toHaveLength(0);
+    for (const line of suggestion.items) {
+      const packs = line.qty / getIngredient(line.id).packSize;
+      expect(q<HTMLInputElement>(body, `.stepper[data-ingredient="${line.id}"] input`).value).toBe(String(packs));
+      expect(q(body, `li[data-ingredient="${line.id}"]`).classList.contains('is-suggested')).toBe(true);
+    }
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    expect(buy.getAttribute('aria-disabled')).toBeNull();
+
+    buy.click();
+    expect(sent).toEqual(
+      suggestion.items.map((l) => ({ type: 'buy_ingredient', ingredientId: l.id, packs: l.qty / getIngredient(l.id).packSize })),
+    );
+    expect(state.money).toBe(1000);
+  });
+
+  it('dims the buy button with the shortfall when money is short', () => {
+    const state = game();
+    state.money = 1000;
+    const { body, sent } = mount(renderInventoryPanel, state);
+    q<HTMLButtonElement>(body, '.stepper[data-ingredient="coffee_beans"] button[aria-label^="Thêm"]').click();
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Thiếu');
+    buy.click();
+    expect(sent).toHaveLength(0);
+  });
+
+  it('shows a low-stock badge', () => {
+    const state = game();
+    state.inventory.find((i) => i.id === 'milk')!.qty = 10;
+    state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
+    const { body } = mount(renderInventoryPanel, state);
+    expect(q(body, 'li[data-ingredient="milk"] .badge').textContent).toContain('Sắp hết');
+    expect(q(body, 'li[data-ingredient="cacao"] .badge').textContent).toContain('Hết');
+  });
+});
+
+describe('money checks', () => {
+  it('disables upgrade and campaign buttons when money is short', () => {
+    const state = game();
+    state.money = 0;
+    const up = mount(renderUpgradesPanel, state);
+    const buy = q<HTMLButtonElement>(up.body, '[data-upgrade="tables"] [data-action="buy"]');
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+    buy.click();
+    expect(up.body.querySelector('.confirm')).toBeNull();
+
+    const mk = mount(renderMarketingPanel, state);
+    const run = q<HTMLButtonElement>(mk.body, '[data-campaign="flyers"] [data-action="run"]');
+    expect(run.getAttribute('aria-disabled')).toBe('true');
+    run.click();
+    expect([...up.sent, ...mk.sent]).toHaveLength(0);
+  });
+
+  it('buys an upgrade after the in-place confirm', () => {
+    const state = game();
+    const { body, sent } = mount(renderUpgradesPanel, state);
+    q<HTMLButtonElement>(body, '[data-upgrade="plants"] [data-action="buy"]').click();
+    q<HTMLButtonElement>(body, '[data-upgrade="plants"] .confirm [data-action="confirm"]').click();
+    expect(sent).toEqual([{ type: 'buy_upgrade', upgradeId: 'plants' }]);
+    expect(state.upgrades.plants).toBe(1);
+    expect(q(body, '[data-upgrade="plants"]').textContent).toContain('Cấp 1/');
+  });
+});
+
+describe('staff panel', () => {
+  it('sends assign_role when a role is picked from the dropdown', () => {
+    const state = game();
+    const candidate = state.candidates[0]!;
+    simDispatch(state, { type: 'hire_staff', candidateId: candidate.id, role: 'barista' });
+    const { body, sent } = mount(renderStaffPanel, state);
+
+    const dd = q(body, `.dd[data-staff="${candidate.id}"]`);
+    const btn = q<HTMLButtonElement>(dd, '.dd-btn');
+    btn.click();
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    const list = q(dd, '[role="listbox"]');
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(sent).toEqual([{ type: 'assign_role', staffId: candidate.id, role: 'cleaner' }]);
+    expect(state.staff[0]!.role).toBe('cleaner');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    expect(btn.textContent).toContain('Dọn dẹp');
+  });
+
+  it('locks the role dropdown while auto-assign is on', () => {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    const { body, sent } = mount(renderStaffPanel, state);
+    q<HTMLButtonElement>(body, '.setting [role="switch"]').click();
+    expect(sent).toEqual([{ type: 'set_auto_assign', enabled: true }]);
+    const btn = q<HTMLButtonElement>(body, '.dd-btn');
+    expect(btn.getAttribute('aria-disabled')).toBe('true');
+    expect(btn.textContent).toContain('Tự động');
+    btn.click();
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('hires a candidate and lets staff go after an in-place confirm', () => {
+    const state = game();
+    const { body, sent } = mount(renderStaffPanel, state);
+    const id = state.candidates[0]!.id;
+    q<HTMLButtonElement>(body, `[data-candidate="${id}"] [data-action="hire"]`).click();
+    expect(sent[0]).toEqual({ type: 'hire_staff', candidateId: id, role: 'barista' });
+    expect(body.querySelector(`li[data-staff="${id}"]`)).not.toBeNull();
+
+    q<HTMLButtonElement>(body, `li[data-staff="${id}"] [data-action="fire"]`).click();
+    expect(sent).toHaveLength(1);
+    q<HTMLButtonElement>(body, `li[data-staff="${id}"] .confirm [data-action="confirm"]`).click();
+    expect(sent[1]).toEqual({ type: 'fire_staff', staffId: id });
+    expect(state.staff).toHaveLength(0);
+  });
+});
+
+describe('task board', () => {
+  it('shows the checklist and opens the shop with start_day', () => {
+    const state = game();
+    const { body, sent } = mount(renderTasksPanel, state);
+    expect([...body.querySelectorAll('[data-task]')].map((t) => t.getAttribute('data-task'))).toEqual(['menu', 'restock', 'staff', 'marketing']);
+    expect(q(body, '[data-task="staff"]').getAttribute('data-done')).toBe('false');
+
+    const open = q<HTMLButtonElement>(body, '[data-action="open"]');
+    open.click();
+    expect(sent).toEqual([{ type: 'start_day' }]);
+    expect(state.phase).not.toBe('preparation');
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('lists suggestions from the last report', () => {
+    const state = game();
+    state.lastReport = {
+      day: 1,
+      revenue: 0,
+      ingredientCost: 0,
+      wages: 0,
+      marketingCost: 0,
+      profit: 0,
+      money: state.money,
+      customersArrived: 0,
+      customersServed: 0,
+      customersLost: 0,
+      topSellers: [],
+      outOfStock: [],
+      ratingStart: 3,
+      ratingEnd: 3,
+      reviews: [],
+      suggestions: [{ kind: 'hire_barista', text: '5 khách bỏ về vì chờ lâu' }],
+    };
+    const { body } = mount(renderTasksPanel, state);
+    expect(body.textContent).toContain('5 khách bỏ về vì chờ lâu');
+    expect(body.querySelector('[data-goto="staff"]')).not.toBeNull();
+  });
+
+  it('updates in place on later frames', () => {
+    const state = game();
+    const { body, handle } = mount(renderTasksPanel, state);
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    (handle as PanelHandle).update!(state);
+    expect(q(body, '[data-task="staff"]').getAttribute('data-done')).toBe('true');
+  });
+});
+
+describe('dropdown keyboard', () => {
+  it('Escape closes the list without bubbling to the panel', () => {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    const { body } = mount(renderStaffPanel, state);
+    const onPanelKey = vi.fn();
+    body.addEventListener('keydown', onPanelKey);
+    q<HTMLButtonElement>(body, '.dd-btn').click();
+    q(body, '[role="listbox"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(q(body, '.dd-btn').getAttribute('aria-expanded')).toBe('false');
+    expect(onPanelKey).not.toHaveBeenCalled();
+  });
+});
