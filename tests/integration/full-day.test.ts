@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest';
+import { autoRestockSuggestion, buyIngredient, dispatch } from '../../src/sim/index';
+import { DAY_START_MINUTE, createNewGame } from '../../src/sim/state';
+import type { DailyReport } from '../../src/sim/types';
+import { playDay } from './helpers';
+
+const SEED = 20261014;
+
+const REPORT_FIELDS: readonly (keyof DailyReport)[] = [
+  'day',
+  'revenue',
+  'ingredientCost',
+  'wages',
+  'marketingCost',
+  'profit',
+  'money',
+  'customersArrived',
+  'customersServed',
+  'customersLost',
+  'topSellers',
+  'outOfStock',
+  'ratingStart',
+  'ratingEnd',
+  'reviews',
+  'suggestions',
+];
+
+describe('full day, headless', () => {
+  it('plays a Normal day from preparation through the report and into day 2', () => {
+    const state = createNewGame('Quán Tích Hợp', 'normal', SEED);
+    const startMoney = state.money;
+
+    // Menu for today, then stock it the way the restock button would.
+    expect(dispatch(state, { type: 'set_menu_item', itemId: 'cappuccino', enabled: true })).toBe(true);
+    const suggestion = autoRestockSuggestion(state);
+    expect(suggestion.items.length).toBeGreaterThan(0);
+    let spent = 0;
+    for (const line of suggestion.items) {
+      const r = buyIngredient(state, line.id, line.qty);
+      expect(r.ok, line.id).toBe(true);
+      if (r.ok) spent += r.cost;
+    }
+    expect(spent).toBe(suggestion.totalCost);
+    expect(state.money).toBe(startMoney - spent);
+    expect(autoRestockSuggestion(state).items).toEqual([]);
+    const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
+    expect(enabled).toEqual(['espresso', 'americano', 'latte', 'cappuccino', 'lemon_tea']);
+
+    const events = playDay(state);
+
+    const t = state.today;
+    expect(t.customersArrived).toBeGreaterThan(0);
+    expect(t.customersServed).toBeGreaterThan(0);
+    expect(t.customersServed + t.customersLost).toBe(t.customersArrived);
+    expect(Object.keys(t.sold).every((id) => enabled.includes(id as (typeof enabled)[number]))).toBe(true);
+
+    const report = state.lastReport;
+    expect(report).toBeTruthy();
+    if (!report) return;
+    for (const field of REPORT_FIELDS) expect(report, field).toHaveProperty(field);
+    expect(report.day).toBe(1);
+    expect(report.customersArrived).toBe(t.customersArrived);
+    expect(report.customersServed).toBe(t.customersServed);
+    expect(report.revenue).toBe(t.revenue);
+    expect(report.revenue).toBeGreaterThan(0);
+    expect(report.profit).toBe(report.revenue - report.ingredientCost - report.wages - report.marketingCost);
+    expect(report.money).toBe(state.money);
+    expect(report.ratingEnd).toBe(state.rating);
+    expect(report.topSellers.length).toBeGreaterThan(0);
+
+    // Ingredients are paid when bought; wages and marketing at the end of the day.
+    expect(state.money).toBe(startMoney - spent + report.revenue - report.wages - report.marketingCost - t.upgradeCost);
+
+    const ended = events.filter((e) => e.type === 'dayEnded');
+    expect(ended).toEqual([{ type: 'dayEnded', day: 1 }]);
+    expect(events[events.length - 1]).toEqual({ type: 'dayEnded', day: 1 });
+
+    expect(dispatch(state, { type: 'next_day' })).toBe(true);
+    expect(state.day).toBe(2);
+    expect(state.phase).toBe('preparation');
+    expect(state.minute).toBe(DAY_START_MINUTE);
+    expect(state.history).toHaveLength(1);
+    expect(state.today.day).toBe(2);
+    expect(state.today.customersArrived).toBe(0);
+    expect(state.lastReport?.day).toBe(1);
+  });
+});
