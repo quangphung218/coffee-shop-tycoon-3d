@@ -1,5 +1,7 @@
+import { Raycaster, Vector2 } from 'three';
 import type { CameraKeys, Quality } from '../../save/settings';
 import type { Command, GameState } from '../../sim/types';
+import { createActors } from '../actors';
 import { CameraController } from './camera';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
@@ -34,6 +36,8 @@ const MAX_FRAME_DT = 0.1;
 export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {}): World {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene);
+  const actors = createActors(view.scene);
+  const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
   let lastTime = -1;
@@ -44,7 +48,12 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     edgePan: options.edgePan,
     onClick: (x, y) => {
       if (!lastState || handlers.size === 0) return;
-      const cmd = picker.pick(lastState, x, y, canvas.clientWidth, canvas.clientHeight);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      // People stand in front of the furniture, so they get the click first.
+      ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera.camera);
+      const cmd = actors.pick(ray) ?? picker.pick(lastState, x, y, w, h);
       if (cmd) for (const handler of handlers) handler(cmd);
     },
   });
@@ -52,7 +61,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   view.onResize((w, h) => camera.setAspect(w / h));
 
   return {
-    update(state: GameState): void {
+    update(state: GameState, alpha: number): void {
       lastState = state;
       const now = performance.now() / 1000;
       const dt = lastTime < 0 ? 0 : Math.min(now - lastTime, MAX_FRAME_DT);
@@ -65,6 +74,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
         if (firstLayout) camera.reset(true);
         firstLayout = false;
       }
+      actors.update(state, alpha);
       view.renderer.render(view.scene, camera.camera);
     },
     setQuality: (q) => view.setQuality(q),
@@ -80,6 +90,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     dispose(): void {
       handlers.clear();
       camera.dispose();
+      actors.dispose();
       shop.dispose();
       view.dispose();
     },
