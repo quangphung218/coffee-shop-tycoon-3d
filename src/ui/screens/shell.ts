@@ -10,6 +10,7 @@ import { ScreenManager } from '../core/screens';
 import { Toasts } from '../core/toast';
 import { toastForEvent } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
+import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
 import { createLoadGame } from './loadGame';
 import { createMainMenu } from './mainMenu';
 import { createNewGame } from './newGame';
@@ -42,6 +43,8 @@ export interface Shell {
   /** Visible full-screen layer, or null during gameplay. */
   readonly screen: ShellScreen | null;
   readonly hud: Hud;
+  /** Daily Report overlay, shown in the report phase when no other screen is up. */
+  readonly report: DailyReportView;
   readonly toasts: Toasts;
   /** Single entry for player commands from the UI and scene picking. */
   dispatch(cmd: Command): boolean;
@@ -80,7 +83,26 @@ export function createShell(options: ShellOptions): Shell {
     onSettings: () => openSettings(),
     onResetCamera: () => options.onResetCamera?.(),
   });
-  root.append(hud.el, hud.panelEl, toasts.el);
+  function runAutosave(game: GameState, day: number): SaveStatus {
+    const r = autosave(game, storage);
+    return r.ok ? { day, ok: true, savedAt: r.value.savedAt } : { day, ok: false };
+  }
+  const report = createDailyReport({
+    dispatch: (cmd) => {
+      const ok = dispatch(cmd);
+      if (state) hud.update(state);
+      syncReport();
+      // "Ngày tiếp theo" closes the report; keep focus on the HUD's next step ("Mở cửa").
+      if (!report.visible) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
+      return ok;
+    },
+    onRetrySave: () => (state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false }),
+  });
+  root.append(hud.el, hud.panelEl, report.el, toasts.el);
+
+  function syncReport(): void {
+    report.update(state, state?.phase === 'report' && screens.current === null);
+  }
 
   function startGame(next: GameState): void {
     state = next;
@@ -92,8 +114,10 @@ export function createShell(options: ShellOptions): Shell {
     hud.el.hidden = false;
     screens.show(null);
     hud.update(state);
+    report.setSaveStatus(null);
+    syncReport();
     options.onGameStart?.(state);
-    hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
+    if (!report.visible) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
   }
 
   function showMenu(): void {
@@ -102,6 +126,7 @@ export function createShell(options: ShellOptions): Shell {
     toasts.clear();
     hud.el.hidden = true;
     screens.show('menu');
+    syncReport();
     options.onMenu?.();
   }
 
@@ -217,7 +242,7 @@ export function createShell(options: ShellOptions): Shell {
   }
   // Space keeps its usual meaning (press the focused control) on Settings and other screens.
   function spaceTogglesPause(target: EventTarget | null): boolean {
-    if (target instanceof Node && hud.panelEl.contains(target)) return false;
+    if (target instanceof Node && (hud.panelEl.contains(target) || report.el.contains(target))) return false;
     return screens.current === null || screens.current === 'pause';
   }
   function onVisibility(): void {
@@ -240,10 +265,12 @@ export function createShell(options: ShellOptions): Shell {
       return screens.current;
     },
     hud,
+    report,
     toasts,
     dispatch,
     update() {
       if (state) hud.update(state);
+      syncReport();
     },
     handleEvents(events) {
       if (!state) return;
@@ -251,7 +278,8 @@ export function createShell(options: ShellOptions): Shell {
         const toast = toastForEvent(event, state);
         if (toast) toasts.show(toast);
         if (event.type === 'dayEnded') {
-          const r = autosave(state, storage);
+          const r = runAutosave(state, event.day);
+          report.setSaveStatus(r);
           toasts.show(
             r.ok
               ? { level: 'success', icon: '💾', title: `Đã tự lưu ngày ${event.day}` }
