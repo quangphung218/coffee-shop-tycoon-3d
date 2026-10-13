@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Main Menu, New Game, Load Game, Settings</title>
+<style>
+:root{
+--color-coffee-900:#3B2418;--color-coffee-700:#5C3A26;--color-coffee-500:#8A5A3B;--color-coffee-300:#C9A27E;
+--color-cream-50:#FFF9F0;--color-cream-100:#FBEFDD;--color-cream-200:#F3DFC2;
+--color-mint-800:#0B5444;--color-mint-700:#0F6B57;--color-mint-500:#2FB898;--color-mint-100:#DDF6EE;
+--color-neutral-0:#FFFFFF;--color-neutral-500:#8C7F75;--color-neutral-700:#6B5E55;--color-neutral-900:#2A211C;
+--color-ok-700:#1E7A46;--color-ok-100:#E3F5EA;
+--color-warning-700:#7A4A00;--color-warning-500:#F2A516;--color-warning-100:#FFF1D6;
+--color-danger-700:#B3261E;--color-danger-400:#F2675B;--color-danger-100:#FDE7E5;
+--color-star-500:#C77700;--color-focus-500:#0B57D0;--color-focus-300:#FFD166;
+--color-scene-sky:#BFE6F5;--color-scene-ground:#B9DE9A;--color-scene-road:#8E9AA6;--color-scene-floor:#E9CFA8;--color-scene-wall:#F6E3C6;--color-scene-wall-shade:#E2C59D;--color-scene-awning:#E07A5F;--color-scene-wood:#A0704C;--color-scene-plant:#3FA66B;
+--text-primary:var(--color-neutral-900);--text-muted:var(--color-neutral-700);--text-inverse:var(--color-cream-50);--text-inverse-muted:var(--color-coffee-300);--text-on-accent:var(--color-neutral-0);--text-on-bright:var(--color-coffee-900);--text-ok:var(--color-ok-700);--text-warning:var(--color-warning-700);--text-danger:var(--color-danger-700);--text-danger-inverse:var(--color-danger-400);
+--surface-app:var(--color-cream-100);--surface-panel:rgba(255,249,240,.94);--surface-panel-solid:var(--color-cream-50);--surface-sunken:var(--color-cream-100);--surface-hud:rgba(59,36,24,.92);--surface-hud-solid:var(--color-coffee-900);--surface-hud-raised:var(--color-coffee-700);--surface-ok:var(--color-ok-100);--surface-warning:var(--color-warning-100);--surface-danger:var(--color-danger-100);--surface-disabled:var(--color-cream-200);--surface-selected:var(--color-mint-100);--surface-scrim:rgba(42,33,28,.55);
+--border-subtle:var(--color-cream-200);--border-strong:var(--color-neutral-500);--border-inverse:var(--color-coffee-300);
+--accent-primary:var(--color-coffee-700);--accent-primary-hover:var(--color-coffee-900);--accent-mint:var(--color-mint-700);--accent-mint-hover:var(--color-mint-800);--accent-mint-bright:var(--color-mint-500);
+--data-bar:var(--color-coffee-500);--data-track:var(--color-cream-200);
+--patience-high:var(--color-mint-500);--patience-mid:var(--color-warning-500);--patience-low:var(--color-danger-400);--patience-track:var(--color-coffee-700);
+--rating-star:var(--color-star-500);--rating-empty:var(--color-neutral-500);
+--focus-ring:var(--color-focus-500);--focus-ring-inverse:var(--color-focus-300);
+--font-family-base:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+--font-size-xs:12px;--font-size-sm:14px;--font-size-md:16px;--font-size-lg:20px;--font-size-xl:24px;--font-size-2xl:32px;--font-size-3xl:40px;
+--font-weight-regular:400;--font-weight-semibold:600;--font-weight-bold:700;
+--line-height-tight:1.2;--line-height-base:1.5;
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-pill:999px;
+--shadow-sm:0 1px 2px 0 rgba(59,36,24,.18);--shadow-md:0 4px 12px 0 rgba(59,36,24,.2);--shadow-lg:0 12px 32px 0 rgba(59,36,24,.28);
+--duration-fast:120ms;--duration-base:200ms;--duration-slow:320ms;--easing-standard:cubic-bezier(.2,0,0,1);
+--size-target:44px;--size-target-lg:56px;--size-panel:360px;--size-dialog:720px;--size-border-thin:1px;--size-border-thick:4px;--size-focus-width:3px;--size-focus-offset:2px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-family-base);font-size:var(--font-size-md);line-height:var(--line-height-base);color:var(--text-primary);background:var(--surface-app)}
+h1,h2,h3,h4,p{margin:0}
+.doc-head{background:var(--surface-hud-solid);color:var(--text-inverse);padding:var(--space-6) var(--space-4)}
+.doc-head h1{font-size:var(--font-size-2xl);line-height:var(--line-height-tight)}
+.doc-head p{color:var(--text-inverse-muted);margin-top:var(--space-2);max-width:80ch}
+.state{padding:var(--space-8) var(--space-4);border-bottom:var(--size-border-thin) solid var(--border-subtle);max-width:1440px;margin:0 auto}
+.state>h2{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.state-note{color:var(--text-muted);font-size:var(--font-size-sm);margin:var(--space-2) 0 var(--space-4);max-width:80ch}
+.tag-state{display:inline-block;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);background:var(--surface-hud-solid);color:var(--text-inverse);border-radius:var(--radius-pill);padding:0 var(--space-2);margin-right:var(--space-2);vertical-align:middle}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-start}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.stage{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:var(--color-scene-sky);box-shadow:var(--shadow-md)}
+.scene{position:absolute;inset:0;width:100%;height:100%}
+.sc-sky{fill:var(--color-scene-sky)}.sc-ground{fill:var(--color-scene-ground)}.sc-road{fill:var(--color-scene-road)}.sc-floor{fill:var(--color-scene-floor)}.sc-wall{fill:var(--color-scene-wall)}.sc-shade{fill:var(--color-scene-wall-shade)}.sc-awning{fill:var(--color-scene-awning)}.sc-wood{fill:var(--color-scene-wood)}.sc-plant{fill:var(--color-scene-plant)}.sc-cust{fill:var(--color-mint-500)}.sc-staff{fill:var(--color-coffee-700)}.sc-head{fill:var(--color-scene-wall-shade)}.sc-line{fill:var(--color-cream-50)}
+.stage-flow{position:relative;padding:var(--space-12) var(--space-4);display:flex;justify-content:center}
+.card{background:var(--surface-panel-solid);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--space-6);width:100%}
+.card h3{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.card-sub{color:var(--text-muted);margin-top:var(--space-1)}
+.btn{min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:0 var(--space-4);border-radius:var(--radius-md);border:var(--size-border-thin) solid transparent;font:inherit;font-weight:var(--font-weight-semibold);cursor:pointer;text-decoration:none;transition:background-color var(--duration-fast) var(--easing-standard)}
+.btn-primary{background:var(--accent-primary);color:var(--text-on-accent)}
+.btn-primary:hover,.btn-primary.is-hover{background:var(--accent-primary-hover)}
+.btn-accent{background:var(--accent-mint);color:var(--text-on-accent)}
+.btn-accent:hover,.btn-accent.is-hover{background:var(--accent-mint-hover)}
+.btn-secondary{background:var(--surface-panel-solid);color:var(--text-primary);border-color:var(--border-strong)}
+.btn-secondary:hover,.btn-secondary.is-hover{background:var(--surface-sunken)}
+.btn-danger{background:var(--surface-panel-solid);color:var(--text-danger);border-color:var(--text-danger)}
+.btn-danger:hover,.btn-danger.is-hover{background:var(--surface-danger)}
+.btn:focus-visible,.btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.btn:active,.btn.is-active{transform:translateY(1px)}
+.btn-primary:active,.btn-primary.is-active{background:var(--accent-primary-hover)}
+.btn[aria-disabled="true"]{background:var(--surface-disabled);color:var(--text-muted);border-color:var(--surface-disabled);cursor:not-allowed;transform:none}
+.btn-block{width:100%;justify-content:flex-start}
+.btn-lg{min-height:var(--size-target-lg);font-size:var(--font-size-lg)}
+.btn-sm-text{font-size:var(--font-size-sm);font-weight:var(--font-weight-regular);opacity:1;margin-left:auto}
+.reason{display:flex;gap:var(--space-1);font-size:var(--font-size-sm);color:var(--text-muted);margin-top:var(--space-1)}
+.reason-danger{color:var(--text-danger)}
+.field{display:flex;flex-direction:column;gap:var(--space-1)}
+.label{font-weight:var(--font-weight-semibold)}
+.hint{font-size:var(--font-size-sm);color:var(--text-muted)}
+.input{min-height:var(--size-target);padding:0 var(--space-3);border:var(--size-border-thin) solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface-panel-solid);font:inherit;color:var(--text-primary);width:100%}
+.input:focus-visible,.input.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.field-error{border-left:var(--size-border-thick) solid var(--text-danger);padding-left:var(--space-3)}
+.field-error .input{border-color:var(--text-danger)}
+.error-msg{color:var(--text-danger);font-weight:var(--font-weight-semibold);font-size:var(--font-size-sm)}
+.error-summary{border:var(--size-border-thick) solid var(--text-danger);border-radius:var(--radius-md);padding:var(--space-4);background:var(--surface-panel-solid)}
+.error-summary h4{font-size:var(--font-size-lg)}
+.error-summary a{color:var(--text-danger);font-weight:var(--font-weight-semibold)}
+.error-summary a:focus-visible{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-weight:var(--font-weight-semibold);padding:0;margin-bottom:var(--space-2)}
+.choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-3)}
+.choice{position:relative;display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);border:var(--size-border-thin) solid var(--border-strong);border-radius:var(--radius-md);background:var(--surface-panel-solid);cursor:pointer}
+.choice input{position:absolute;opacity:0;width:1px;height:1px}
+.choice:hover,.choice.is-hover{background:var(--surface-sunken)}
+.choice.is-checked{border:var(--size-focus-width) solid var(--accent-primary);padding:calc(var(--space-4) - 2px)}
+.choice.is-focus,.choice:focus-within{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.choice-title{font-weight:var(--font-weight-bold);font-size:var(--font-size-lg)}
+.choice-meta{font-size:var(--font-size-sm);color:var(--text-muted)}
+.choice-check{font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--text-ok)}
+.badge{display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);white-space:nowrap;line-height:var(--space-6)}
+.badge-ok{background:var(--surface-ok);color:var(--text-ok)}
+.badge-warn{background:var(--surface-warning);color:var(--text-warning)}
+.badge-danger{background:var(--surface-danger);color:var(--text-danger)}
+.badge-neutral{background:var(--surface-sunken);color:var(--text-muted)}
+.stars{display:inline-flex;align-items:center;gap:var(--space-1);font-variant-numeric:tabular-nums}
+.star{color:var(--rating-star)}.star-empty{color:var(--rating-empty)}
+.slot{display:grid;grid-template-columns:auto 1fr;gap:var(--space-2) var(--space-4);padding:var(--space-4);border:var(--size-border-thin) solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-panel-solid)}
+.slot-thumb{width:var(--space-16);height:var(--space-16);border-radius:var(--radius-sm);background:var(--surface-sunken);display:grid;place-items:center;font-size:var(--font-size-2xl)}
+.slot-title{font-weight:var(--font-weight-bold);font-size:var(--font-size-lg);display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+.slot-meta{font-size:var(--font-size-sm);color:var(--text-muted);font-variant-numeric:tabular-nums}
+.slot-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.slot-empty{border-style:dashed;border-color:var(--border-strong);background:transparent}
+.slot-broken{background:var(--surface-danger);border-color:var(--text-danger)}
+.confirm{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--surface-panel-solid);border:var(--size-border-thin) solid var(--text-danger)}
+.confirm p{flex:1 1 200px;font-weight:var(--font-weight-semibold)}
+.progress{height:var(--space-2);border-radius:var(--radius-pill);background:var(--data-track);overflow:hidden}
+.progress span{display:block;height:100%;background:var(--data-bar)}
+.toggle{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-target);padding:0 var(--space-1);border:0;background:transparent;font:inherit;color:var(--text-primary);cursor:pointer;border-radius:var(--radius-sm)}
+.toggle-track{position:relative;width:var(--size-target);height:var(--space-6);border-radius:var(--radius-pill);background:var(--surface-panel-solid);border:2px solid var(--border-strong);flex:none}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:var(--space-4);height:var(--space-4);border-radius:50%;background:var(--border-strong);transition:left var(--duration-fast) var(--easing-standard)}
+.toggle[aria-checked="true"] .toggle-track{background:var(--accent-mint);border-color:var(--accent-mint)}
+.toggle[aria-checked="true"] .toggle-thumb{left:22px;background:var(--color-neutral-0)}
+.toggle-state{font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);min-width:4ch;text-align:left}
+.toggle:focus-visible,.toggle.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.set-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2) var(--space-4);padding:var(--space-3) 0;border-bottom:var(--size-border-thin) solid var(--border-subtle)}
+.set-row .field{flex:1 1 220px}
+.range-wrap{display:flex;align-items:center;gap:var(--space-3);flex:1 1 220px}
+.range{flex:1;min-height:var(--size-target);accent-color:var(--accent-mint)}
+.range:focus-visible,.range.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.range-val{min-width:5ch;text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold)}
+.seg{display:inline-flex;flex-wrap:wrap;gap:var(--space-1);padding:var(--space-1);background:var(--surface-sunken);border-radius:var(--radius-md);border:var(--size-border-thin) solid var(--border-strong)}
+.seg-opt{position:relative}
+.seg-opt input{position:absolute;opacity:0;width:1px;height:1px}
+.seg-opt span{display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--size-target);min-width:var(--size-target);padding:0 var(--space-3);border-radius:var(--radius-sm);font-weight:var(--font-weight-semibold);cursor:pointer;color:var(--text-primary)}
+.seg-opt input:checked+span{background:var(--accent-primary);color:var(--text-on-accent)}
+.seg-opt input:focus-visible+span,.seg-opt.is-focus span{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.section-title{font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:var(--space-4)}
+kbd{font-family:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);background:var(--surface-sunken);border:var(--size-border-thin) solid var(--border-strong);border-radius:var(--radius-sm);padding:0 var(--space-2)}
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-2) var(--space-4);font-size:var(--font-size-sm);margin-top:var(--space-2)}
+.status-line{display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-sm);color:var(--text-ok);font-weight:var(--font-weight-semibold)}
+.foot{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;justify-content:flex-end;margin-top:var(--space-6)}
+.foot .status-line{margin-right:auto}
+.logo{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-6)}
+.logo svg{width:var(--space-16);height:var(--space-16);flex:none}
+.logo-title{font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);line-height:var(--line-height-tight)}
+.menu-list{display:flex;flex-direction:column;gap:var(--space-3)}
+.menu-foot{margin-top:var(--space-6);font-size:var(--font-size-sm);color:var(--text-muted);display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);justify-content:space-between}
+.w-menu{max-width:440px}
+.w-form{max-width:640px}
+.w-wide{max-width:var(--size-dialog)}
+@media (max-width:640px){
+.logo-title{font-size:var(--font-size-2xl)}
+.stage-flow{padding:var(--space-6) var(--space-3)}
+.card{padding:var(--space-4)}
+.doc-head h1{font-size:var(--font-size-xl)}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+<h1>Main Menu · Ván mới · Tải game · Cài đặt</h1>
+<p>Mockup tĩnh. Mỗi khu bên dưới là một màn hoặc một trạng thái, xếp dọc để xem cùng lúc. Lớp <code>is-hover / is-focus / is-active</code> chỉ để minh họa trạng thái, bản thật dùng :hover, :focus-visible, :active.</p>
+</header>
+
+<!-- 1. Main menu, có bản lưu -->
+<section class="state" aria-labelledby="s1">
+<h2 id="s1"><span class="tag-state">Màn 1</span>Main Menu — đã có bản lưu</h2>
+<p class="state-note">Nút đầu là "Tiếp tục" (lối đi phổ biến nhất). Nền là quán 3D quay chậm phía sau; menu là thẻ đặc, không trong suốt, để chữ luôn đạt tương phản. Phím ↑ ↓ di chuyển, Enter chọn, focus thấy rõ.</p>
+<div class="stage">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<rect class="sc-road" x="0" y="620" width="1200" height="80"/>
+<rect class="sc-line" x="80" y="656" width="80" height="8"/><rect class="sc-line" x="320" y="656" width="80" height="8"/><rect class="sc-line" x="560" y="656" width="80" height="8"/><rect class="sc-line" x="800" y="656" width="80" height="8"/><rect class="sc-line" x="1040" y="656" width="80" height="8"/>
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+<polygon class="sc-awning" points="600,120 920,290 920,322 600,152"/>
+<polygon class="sc-wood" points="460,340 560,286 600,307 500,361"/>
+<polygon class="sc-shade" points="460,340 500,361 500,391 460,370"/>
+<ellipse class="sc-wood" cx="700" cy="430" rx="34" ry="18"/><ellipse class="sc-wood" cx="560" cy="480" rx="34" ry="18"/><ellipse class="sc-wood" cx="790" cy="500" rx="34" ry="18"/>
+<circle class="sc-plant" cx="330" cy="420" r="22"/><circle class="sc-plant" cx="880" cy="440" r="22"/>
+<rect class="sc-staff" x="520" y="296" width="18" height="28" rx="4"/><circle class="sc-head" cx="529" cy="288" r="9"/>
+<rect class="sc-cust" x="690" y="390" width="20" height="30" rx="4"/><circle class="sc-head" cx="700" cy="380" r="10"/>
+<rect class="sc-cust" x="550" y="440" width="20" height="30" rx="4"/><circle class="sc-head" cx="560" cy="430" r="10"/>
+</svg>
+<div class="stage-flow">
+<nav class="card w-menu" aria-label="Menu chính">
+<div class="logo">
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect class="sc-awning" x="0" y="0" width="64" height="64" rx="16"/><path class="sc-line" d="M16 26h28v14a10 10 0 0 1-10 10h-8a10 10 0 0 1-10-10z"/><path class="sc-line" d="M44 30h4a5 5 0 0 1 0 10h-4v-4h4a1 1 0 0 0 0-2h-4z"/><rect class="sc-line" x="22" y="12" width="4" height="10" rx="2"/><rect class="sc-line" x="30" y="10" width="4" height="12" rx="2"/><rect class="sc-line" x="38" y="12" width="4" height="10" rx="2"/></svg>
+<div><div class="logo-title">Coffee Shop Tycoon 3D</div><p class="card-sub">Mở quán cà phê từ con số 0</p></div>
+</div>
+<div class="menu-list">
+<button class="btn btn-primary btn-lg btn-block is-focus" type="button">▶️ Tiếp tục <span class="btn-sm-text">Cà Phê Gió Mùa · Ngày 12</span></button>
+<button class="btn btn-secondary btn-lg btn-block" type="button">✨ Ván mới</button>
+<button class="btn btn-secondary btn-lg btn-block is-hover" type="button">📂 Tải game</button>
+<button class="btn btn-secondary btn-lg btn-block" type="button">⚙️ Cài đặt</button>
+</div>
+<div class="menu-foot"><span>Lưu trên trình duyệt này</span><span>↑ ↓ di chuyển · Enter chọn</span></div>
+</nav>
+</div>
+</div>
+</section>
+
+<!-- 2. Main menu, chưa có bản lưu -->
+<section class="state" aria-labelledby="s2">
+<h2 id="s2"><span class="tag-state">Màn 1b</span>Main Menu — lần đầu chơi (chưa có bản lưu)</h2>
+<p class="state-note">Không có "Tiếp tục"; "Ván mới" lên làm nút chính. "Tải game" vẫn hiện nhưng mờ và nói rõ lý do, để người chơi biết tính năng có tồn tại.</p>
+<div class="card w-menu">
+<div class="menu-list">
+<button class="btn btn-primary btn-lg btn-block" type="button">✨ Ván mới</button>
+<div>
+<button class="btn btn-secondary btn-lg btn-block" type="button" aria-disabled="true" aria-describedby="r-noload">📂 Tải game</button>
+<p class="reason" id="r-noload">🔒 Chưa có bản lưu nào. Chơi hết ngày 1 để game tự lưu.</p>
+</div>
+<button class="btn btn-secondary btn-lg btn-block" type="button">⚙️ Cài đặt</button>
+</div>
+</div>
+</section>
+
+<!-- 3. Button states -->
+<section class="state" aria-labelledby="s3">
+<h2 id="s3"><span class="tag-state">Thành phần</span>Button — đủ trạng thái</h2>
+<p class="state-note">Mặc định · hover · focus (viền xanh 3px, cách 2px) · nhấn (lún 1px, nền đậm) · vô hiệu (dùng aria-disabled để vẫn focus được và đọc được lý do).</p>
+<div class="stack">
+<div class="row">
+<button class="btn btn-primary" type="button">Mặc định</button>
+<button class="btn btn-primary is-hover" type="button">Hover</button>
+<button class="btn btn-primary is-focus" type="button">Focus</button>
+<button class="btn btn-primary is-active" type="button">Đang nhấn</button>
+<button class="btn btn-primary" type="button" aria-disabled="true">🔒 Vô hiệu</button>
+</div>
+<div class="row">
+<button class="btn btn-secondary" type="button">Mặc định</button>
+<button class="btn btn-secondary is-hover" type="button">Hover</button>
+<button class="btn btn-secondary is-focus" type="button">Focus</button>
+<button class="btn btn-secondary is-active" type="button">Đang nhấn</button>
+<button class="btn btn-secondary" type="button" aria-disabled="true">🔒 Vô hiệu</button>
+</div>
+<div class="row">
+<button class="btn btn-accent" type="button">✅ Accent (Mở cửa)</button>
+<button class="btn btn-accent is-hover" type="button">Hover</button>
+<button class="btn btn-danger" type="button">🗑️ Nguy hiểm</button>
+<button class="btn btn-danger is-hover" type="button">Hover</button>
+<button class="btn btn-danger is-focus" type="button">Focus</button>
+</div>
+</div>
+</section>
+
+<!-- 4. New Game -->
+<section class="state" aria-labelledby="s4">
+<h2 id="s4"><span class="tag-state">Màn 2</span>Ván mới — mặc định</h2>
+<p class="state-note">Một màn duy nhất: tên quán, độ khó, slot lưu. Độ khó là nhóm radio dạng thẻ, ghi rõ khác biệt bằng chữ. Mặc định chọn "Thường". Thẻ "Khó" đang ở trạng thái focus bàn phím.</p>
+<form class="card w-form" aria-labelledby="ng-title">
+<h3 id="ng-title">✨ Ván mới</h3>
+<p class="card-sub">Đặt tên quán và chọn độ khó. Có thể đổi âm lượng, đồ họa sau trong Cài đặt.</p>
+<div class="stack" style="margin-top:var(--space-6);gap:var(--space-6)">
+<div class="field">
+<label class="label" for="shop-name">Tên quán</label>
+<span class="hint" id="shop-hint">2–24 ký tự. Hiện trên biển hiệu, báo cáo và bản lưu.</span>
+<input class="input" id="shop-name" name="shop-name" type="text" value="Cà Phê Gió Mùa" maxlength="24" aria-describedby="shop-hint shop-count">
+<span class="hint" id="shop-count">14/24 ký tự</span>
+</div>
+<fieldset>
+<legend>Độ khó</legend>
+<div class="choice-grid">
+<label class="choice"><input type="radio" name="diff" value="easy"><span class="choice-title">🌱 Dễ</span><span class="choice-meta">Vốn 3.000.000đ</span><span class="choice-meta">Khách kiên nhẫn hơn, ít sự cố</span></label>
+<label class="choice is-checked"><input type="radio" name="diff" value="normal" checked="checked"><span class="choice-title">☕ Thường</span><span class="choice-meta">Vốn 2.000.000đ</span><span class="choice-meta">Cân bằng, nên chọn lần đầu</span><span class="choice-check">✓ Đang chọn</span></label>
+<label class="choice is-focus"><input type="radio" name="diff" value="hard"><span class="choice-title">🔥 Khó</span><span class="choice-meta">Vốn 1.200.000đ</span><span class="choice-meta">Khách khó tính, giá nhập cao hơn</span></label>
+</div>
+</fieldset>
+<fieldset>
+<legend>Lưu vào</legend>
+<div class="seg" role="radiogroup" aria-label="Slot lưu">
+<label class="seg-opt"><input type="radio" name="slot" value="1"><span>Slot 1 · đã có</span></label>
+<label class="seg-opt"><input type="radio" name="slot" value="2" checked="checked"><span>✓ Slot 2 · trống</span></label>
+<label class="seg-opt"><input type="radio" name="slot" value="3"><span>Slot 3 · hỏng</span></label>
+</div>
+<p class="hint" style="margin-top:var(--space-2)">Chọn slot đã có sẽ ghi đè khi lưu cuối ngày 1; game nhắc lại ngay dưới ô chọn, không bật hộp thoại.</p>
+</fieldset>
+</div>
+<div class="foot">
+<button class="btn btn-secondary" type="button">← Quay lại</button>
+<button class="btn btn-primary" type="submit">Bắt đầu ngày 1 →</button>
+</div>
+</form>
+</section>
+
+<!-- 5. New Game error -->
+<section class="state" aria-labelledby="s5">
+<h2 id="s5"><span class="tag-state">Màn 2 · lỗi</span>Ván mới — tên quán bị trống</h2>
+<p class="state-note">Theo mẫu GOV.UK: khung tóm tắt lỗi ở đầu form (nhận focus khi bấm Bắt đầu), liên kết tới ô lỗi; ô lỗi có vạch đỏ bên trái và câu nói cách sửa, không chỉ dựa vào màu.</p>
+<form class="card w-form" aria-labelledby="ng2-title">
+<h3 id="ng2-title">✨ Ván mới</h3>
+<div class="stack" style="margin-top:var(--space-4);gap:var(--space-6)">
+<div class="error-summary" role="alert" tabindex="-1">
+<h4>⚠️ Cần sửa 1 mục trước khi bắt đầu</h4>
+<ul><li><a href="#shop-name-err">Nhập tên quán, từ 2 đến 24 ký tự</a></li></ul>
+</div>
+<div class="field field-error">
+<label class="label" for="shop-name-err">Tên quán</label>
+<span class="hint" id="shop-hint-err">2–24 ký tự. Hiện trên biển hiệu, báo cáo và bản lưu.</span>
+<span class="error-msg" id="shop-err">⛔ Lỗi: Nhập tên quán, từ 2 đến 24 ký tự</span>
+<input class="input is-focus" id="shop-name-err" name="shop-name-err" type="text" value="" maxlength="24" aria-invalid="true" aria-describedby="shop-hint-err shop-err">
+</div>
+</div>
+<div class="foot">
+<button class="btn btn-secondary" type="button">← Quay lại</button>
+<button class="btn btn-primary" type="submit">Bắt đầu ngày 1 →</button>
+</div>
+</form>
+</section>
+
+<!-- 6. Load Game -->
+<section class="state" aria-labelledby="s6">
+<h2 id="s6"><span class="tag-state">Màn 3</span>Tải game — slot có dữ liệu, trống, hỏng</h2>
+<p class="state-note">Bản tự lưu cuối ngày luôn ở đầu. Slot hỏng nói rõ chuyện gì xảy ra và lối ra (dùng bản tự lưu, hoặc xóa). Không có nút nào chỉ có biểu tượng.</p>
+<div class="card w-wide">
+<h3>📂 Tải game</h3>
+<p class="card-sub">Dữ liệu lưu trong trình duyệt này (localStorage). Xóa dữ liệu trình duyệt sẽ mất bản lưu.</p>
+<ul class="stack" style="list-style:none;margin:var(--space-6) 0 0;padding:0">
+<li class="slot">
+<div class="slot-thumb" aria-hidden="true">☕</div>
+<div><div class="slot-title">Tự lưu <span class="badge badge-ok">✅ Mới nhất</span></div>
+<div>Cà Phê Gió Mùa · Thường · Ngày 12</div>
+<div class="slot-meta">💰 2.465.000đ · <span class="stars"><span class="star" aria-hidden="true">★</span> 3,8/5</span> · Lưu 21:00, 13/10/2026</div></div>
+<div class="slot-actions"><button class="btn btn-primary" type="button">▶️ Tải tự lưu</button></div>
+</li>
+<li class="slot">
+<div class="slot-thumb" aria-hidden="true">☕</div>
+<div><div class="slot-title">Slot 1</div>
+<div>Cà Phê Gió Mùa · Thường · Ngày 10</div>
+<div class="slot-meta">💰 1.980.000đ · <span class="stars"><span class="star" aria-hidden="true">★</span> 3,5/5</span> · Lưu 22:14, 12/10/2026</div></div>
+<div class="slot-actions"><button class="btn btn-primary is-focus" type="button">▶️ Tải slot 1</button><button class="btn btn-danger" type="button">🗑️ Xóa</button></div>
+</li>
+<li class="slot slot-empty">
+<div class="slot-thumb" aria-hidden="true">＋</div>
+<div><div class="slot-title">Slot 2 <span class="badge badge-neutral">Trống</span></div>
+<div class="slot-meta">Chưa có ván nào ở đây.</div></div>
+<div class="slot-actions"><button class="btn btn-secondary" type="button">✨ Ván mới ở slot 2</button></div>
+</li>
+<li class="slot slot-broken">
+<div class="slot-thumb" aria-hidden="true">⚠️</div>
+<div><div class="slot-title">Slot 3 <span class="badge badge-danger">⛔ Hỏng</span></div>
+<div>Không đọc được dữ liệu của slot này.</div>
+<div class="slot-meta">Có thể do bản lưu từ phiên bản cũ hoặc bị ghi dở. Bản tự lưu phía trên vẫn dùng được.</div></div>
+<div class="slot-actions"><button class="btn btn-secondary" type="button" aria-disabled="true" aria-describedby="r-broken">▶️ Tải slot 3</button><button class="btn btn-danger" type="button">🗑️ Xóa slot 3</button></div>
+<p class="reason reason-danger" id="r-broken" style="grid-column:1/-1">🔒 Không tải được vì dữ liệu hỏng.</p>
+</li>
+</ul>
+<div class="foot"><button class="btn btn-secondary" type="button">← Quay lại</button></div>
+</div>
+</section>
+
+<!-- 7. Load Game, confirm + loading -->
+<section class="state" aria-labelledby="s7">
+<h2 id="s7"><span class="tag-state">Màn 3 · trạng thái</span>Tải game — xác nhận xóa tại chỗ, đang tải, tải lỗi</h2>
+<p class="state-note">Xóa là thao tác nhỏ nên xác nhận ngay trong slot (sửa tại chỗ), không mở hộp thoại. Focus chuyển vào nút "Hủy" trước, để Enter vô tình không xóa mất.</p>
+<ul class="stack w-wide" style="list-style:none;margin:0;padding:0">
+<li class="slot">
+<div class="slot-thumb" aria-hidden="true">☕</div>
+<div><div class="slot-title">Slot 1</div><div>Cà Phê Gió Mùa · Thường · Ngày 10</div></div>
+<div class="confirm" role="group" aria-label="Xác nhận xóa slot 1">
+<p>🗑️ Xóa slot 1? Không hoàn tác được.</p>
+<button class="btn btn-secondary is-focus" type="button">Hủy</button>
+<button class="btn btn-danger" type="button">Xóa vĩnh viễn</button>
+</div>
+</li>
+<li class="slot">
+<div class="slot-thumb" aria-hidden="true">⏳</div>
+<div><div class="slot-title">Tự lưu</div>
+<div class="slot-meta" role="status">Đang tải ngày 12… 60%</div>
+<div class="progress" style="margin-top:var(--space-2)" aria-hidden="true"><span style="width:60%"></span></div></div>
+<div class="slot-actions"><button class="btn btn-primary" type="button" aria-disabled="true">⏳ Đang tải…</button></div>
+</li>
+<li class="slot slot-broken">
+<div class="slot-thumb" aria-hidden="true">⚠️</div>
+<div><div class="slot-title">Slot 1 <span class="badge badge-danger">⛔ Tải lỗi</span></div>
+<div role="alert">Không mở được bản lưu. Thử lại, hoặc tải bản tự lưu.</div></div>
+<div class="slot-actions"><button class="btn btn-primary" type="button">🔄 Thử lại</button><button class="btn btn-secondary" type="button">Tải bản tự lưu</button></div>
+</li>
+</ul>
+</section>
+
+<!-- 8. Settings -->
+<section class="state" aria-labelledby="s8">
+<h2 id="s8"><span class="tag-state">Màn 4</span>Cài đặt</h2>
+<p class="state-note">Đổi là có hiệu lực và tự lưu ngay (không cần nút Lưu). Mở được từ Main Menu và từ nút ⚙️ trên HUD; trong ván, mở Cài đặt sẽ tự tạm dừng. Thanh "Nhạc nền" đang ở trạng thái focus.</p>
+<form class="card w-wide" aria-labelledby="set-title">
+<h3 id="set-title">⚙️ Cài đặt</h3>
+<p class="section-title">Âm thanh</p>
+<div class="set-row">
+<label class="label" for="vol-music">🎵 Nhạc nền</label>
+<div class="range-wrap"><input class="range is-focus" id="vol-music" type="range" min="0" max="100" step="5" value="60" aria-valuetext="60 phần trăm"><span class="range-val">60%</span></div>
+</div>
+<div class="set-row">
+<label class="label" for="vol-sfx">🔔 Hiệu ứng (chuông cửa, máy pha, tiền)</label>
+<div class="range-wrap"><input class="range" id="vol-sfx" type="range" min="0" max="100" step="5" value="80" aria-valuetext="80 phần trăm"><span class="range-val">80%</span></div>
+</div>
+<div class="set-row">
+<span class="label" id="mute-l">🔇 Tắt toàn bộ âm thanh</span>
+<button class="toggle" type="button" role="switch" aria-checked="false" aria-labelledby="mute-l"><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-state">Tắt</span></button>
+</div>
+<p class="section-title">Đồ họa</p>
+<div class="set-row">
+<div class="field"><span class="label" id="gfx-l">🖥️ Chất lượng</span><span class="hint">Thấp: không bóng đổ, phố thưa. Cao: bóng đổ, phố đông xe và người.</span></div>
+<div class="seg" role="radiogroup" aria-labelledby="gfx-l">
+<label class="seg-opt"><input type="radio" name="gfx" value="low"><span>Thấp</span></label>
+<label class="seg-opt"><input type="radio" name="gfx" value="mid" checked="checked"><span>✓ Vừa</span></label>
+<label class="seg-opt"><input type="radio" name="gfx" value="high"><span>Cao</span></label>
+</div>
+</div>
+<p class="section-title">Trò chơi</p>
+<div class="set-row">
+<div class="field"><span class="label" id="spd-l">⏩ Tốc độ khi mở cửa</span><span class="hint">Có thể đổi bất cứ lúc nào trên HUD.</span></div>
+<div class="seg" role="radiogroup" aria-labelledby="spd-l">
+<label class="seg-opt"><input type="radio" name="spd" value="1" checked="checked"><span>✓ 1x</span></label>
+<label class="seg-opt"><input type="radio" name="spd" value="2"><span>2x</span></label>
+<label class="seg-opt"><input type="radio" name="spd" value="4"><span>4x</span></label>
+</div>
+</div>
+<div class="set-row">
+<div class="field"><span class="label" id="blur-l">⏸ Tự tạm dừng khi rời tab</span><span class="hint">Quán đứng yên khi bạn chuyển sang tab khác.</span></div>
+<button class="toggle" type="button" role="switch" aria-checked="true" aria-labelledby="blur-l"><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-state">Bật</span></button>
+</div>
+<div class="set-row">
+<div class="field"><span class="label" id="pan-l">⌨️ Di chuyển camera bằng WASD</span><span class="hint">Tắt để dùng Q/A xoay camera như phím gốc; khi bật, xoay bằng Q/E.</span></div>
+<button class="toggle is-focus" type="button" role="switch" aria-checked="true" aria-labelledby="pan-l"><span class="toggle-track"><span class="toggle-thumb"></span></span><span class="toggle-state">Bật</span></button>
+</div>
+<p class="section-title">Phím tắt</p>
+<div class="keys">
+<span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / mũi tên: di chuyển camera</span>
+<span><kbd>Q</kbd> <kbd>E</kbd>: xoay camera</span>
+<span>Kéo chuột trái: xoay · Cuộn: thu phóng</span>
+<span><kbd>Space</kbd>: tạm dừng · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>: tốc độ</span>
+<span><kbd>Home</kbd>: đặt lại camera</span>
+<span><kbd>Esc</kbd>: đóng panel / mở Tạm dừng</span>
+</div>
+<div class="foot">
+<span class="status-line" role="status">✓ Đã lưu cài đặt</span>
+<button class="btn btn-secondary" type="button">↺ Về mặc định</button>
+<button class="btn btn-primary" type="button">Xong</button>
+</div>
+</form>
+</section>
+
+</body>
+</html>

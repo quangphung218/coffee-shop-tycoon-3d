@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · HUD, toast, nhãn khách, Tạm dừng</title>
+<style>
+:root{
+--color-coffee-900:#3B2418;--color-coffee-700:#5C3A26;--color-coffee-500:#8A5A3B;--color-coffee-300:#C9A27E;
+--color-cream-50:#FFF9F0;--color-cream-100:#FBEFDD;--color-cream-200:#F3DFC2;
+--color-mint-800:#0B5444;--color-mint-700:#0F6B57;--color-mint-500:#2FB898;--color-mint-100:#DDF6EE;
+--color-neutral-0:#FFFFFF;--color-neutral-500:#8C7F75;--color-neutral-700:#6B5E55;--color-neutral-900:#2A211C;
+--color-ok-700:#1E7A46;--color-ok-100:#E3F5EA;
+--color-warning-700:#7A4A00;--color-warning-500:#F2A516;--color-warning-100:#FFF1D6;
+--color-danger-700:#B3261E;--color-danger-400:#F2675B;--color-danger-100:#FDE7E5;
+--color-star-500:#C77700;--color-focus-500:#0B57D0;--color-focus-300:#FFD166;
+--color-scene-sky:#BFE6F5;--color-scene-ground:#B9DE9A;--color-scene-road:#8E9AA6;--color-scene-floor:#E9CFA8;--color-scene-wall:#F6E3C6;--color-scene-wall-shade:#E2C59D;--color-scene-awning:#E07A5F;--color-scene-wood:#A0704C;--color-scene-plant:#3FA66B;
+--text-primary:var(--color-neutral-900);--text-muted:var(--color-neutral-700);--text-inverse:var(--color-cream-50);--text-inverse-muted:var(--color-coffee-300);--text-on-accent:var(--color-neutral-0);--text-on-bright:var(--color-coffee-900);--text-ok:var(--color-ok-700);--text-warning:var(--color-warning-700);--text-danger:var(--color-danger-700);--text-danger-inverse:var(--color-danger-400);
+--surface-app:var(--color-cream-100);--surface-panel:rgba(255,249,240,.94);--surface-panel-solid:var(--color-cream-50);--surface-sunken:var(--color-cream-100);--surface-hud:rgba(59,36,24,.92);--surface-hud-solid:var(--color-coffee-900);--surface-hud-raised:var(--color-coffee-700);--surface-ok:var(--color-ok-100);--surface-warning:var(--color-warning-100);--surface-danger:var(--color-danger-100);--surface-disabled:var(--color-cream-200);--surface-selected:var(--color-mint-100);--surface-scrim:rgba(42,33,28,.55);
+--border-subtle:var(--color-cream-200);--border-strong:var(--color-neutral-500);--border-inverse:var(--color-coffee-300);
+--accent-primary:var(--color-coffee-700);--accent-primary-hover:var(--color-coffee-900);--accent-mint:var(--color-mint-700);--accent-mint-hover:var(--color-mint-800);--accent-mint-bright:var(--color-mint-500);
+--data-bar:var(--color-coffee-500);--data-track:var(--color-cream-200);
+--patience-high:var(--color-mint-500);--patience-mid:var(--color-warning-500);--patience-low:var(--color-danger-400);--patience-track:var(--color-coffee-700);
+--rating-star:var(--color-star-500);--rating-empty:var(--color-neutral-500);
+--focus-ring:var(--color-focus-500);--focus-ring-inverse:var(--color-focus-300);
+--font-family-base:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+--font-size-xs:12px;--font-size-sm:14px;--font-size-md:16px;--font-size-lg:20px;--font-size-xl:24px;--font-size-2xl:32px;--font-size-3xl:40px;
+--font-weight-regular:400;--font-weight-semibold:600;--font-weight-bold:700;
+--line-height-tight:1.2;--line-height-base:1.5;
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-pill:999px;
+--shadow-sm:0 1px 2px 0 rgba(59,36,24,.18);--shadow-md:0 4px 12px 0 rgba(59,36,24,.2);--shadow-lg:0 12px 32px 0 rgba(59,36,24,.28);
+--duration-fast:120ms;--duration-base:200ms;--duration-slow:320ms;--easing-standard:cubic-bezier(.2,0,0,1);
+--size-target:44px;--size-target-lg:56px;--size-panel:360px;--size-dialog:720px;--size-border-thin:1px;--size-border-thick:4px;--size-focus-width:3px;--size-focus-offset:2px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-family-base);font-size:var(--font-size-md);line-height:var(--line-height-base);color:var(--text-primary);background:var(--surface-app)}
+h1,h2,h3,h4,p{margin:0}
+.doc-head{background:var(--surface-hud-solid);color:var(--text-inverse);padding:var(--space-6) var(--space-4)}
+.doc-head h1{font-size:var(--font-size-2xl);line-height:var(--line-height-tight)}
+.doc-head p{color:var(--text-inverse-muted);margin-top:var(--space-2);max-width:80ch}
+.state{padding:var(--space-8) var(--space-4);border-bottom:var(--size-border-thin) solid var(--border-subtle);max-width:1440px;margin:0 auto}
+.state>h2{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.state-note{color:var(--text-muted);font-size:var(--font-size-sm);margin:var(--space-2) 0 var(--space-4);max-width:80ch}
+.tag-state{display:inline-block;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);background:var(--surface-hud-solid);color:var(--text-inverse);border-radius:var(--radius-pill);padding:0 var(--space-2);margin-right:var(--space-2);vertical-align:middle}
+.row{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-start}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.stage{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:var(--color-scene-sky);box-shadow:var(--shadow-md);min-height:600px}
+.stage-short{min-height:200px}
+.scene{position:absolute;inset:0;width:100%;height:100%}
+.sc-sky{fill:var(--color-scene-sky)}.sc-ground{fill:var(--color-scene-ground)}.sc-road{fill:var(--color-scene-road)}.sc-floor{fill:var(--color-scene-floor)}.sc-wall{fill:var(--color-scene-wall)}.sc-shade{fill:var(--color-scene-wall-shade)}.sc-awning{fill:var(--color-scene-awning)}.sc-wood{fill:var(--color-scene-wood)}.sc-plant{fill:var(--color-scene-plant)}.sc-cust{fill:var(--color-mint-500)}.sc-staff{fill:var(--color-coffee-700)}.sc-head{fill:var(--color-scene-wall-shade)}.sc-line{fill:var(--color-cream-50)}
+/* HUD */
+.hud{position:absolute;top:var(--space-3);left:var(--space-3);right:var(--space-3);display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-2) var(--space-3);background:var(--surface-hud);color:var(--text-inverse);border-radius:var(--radius-lg);box-shadow:var(--shadow-md)}
+.hud.is-static{position:relative;top:auto;left:auto;right:auto}
+.hud-group{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.hud-spacer{flex:1 1 0}
+.hud-stat{display:flex;flex-direction:column;line-height:var(--line-height-tight);min-width:var(--size-target)}
+.hud-stat small{font-size:var(--font-size-xs);color:var(--text-inverse-muted)}
+.hud-stat b{font-size:var(--font-size-lg);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hud-stat .sub{font-size:var(--font-size-xs);color:var(--text-inverse-muted)}
+.phases{display:flex;flex-wrap:wrap;gap:var(--space-1);list-style:none;margin:0;padding:0}
+.phases li{font-size:var(--font-size-sm);padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);color:var(--text-inverse-muted);white-space:nowrap}
+.phases li[aria-current="step"]{background:var(--accent-mint-bright);color:var(--text-on-bright);font-weight:var(--font-weight-bold)}
+.phase-count{display:none}
+.money-delta{color:var(--accent-mint-bright);font-weight:var(--font-weight-bold);font-size:var(--font-size-sm)}
+.money-delta.neg{color:var(--text-danger-inverse)}
+.hud-btn{min-width:var(--size-target);min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);padding:0 var(--space-3);border-radius:var(--radius-md);border:var(--size-border-thin) solid var(--border-inverse);background:transparent;color:var(--text-inverse);font:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);cursor:pointer;white-space:nowrap;transition:background-color var(--duration-fast) var(--easing-standard)}
+.hud-btn:hover,.hud-btn.is-hover{background:var(--surface-hud-raised)}
+.hud-btn[aria-pressed="true"]{background:var(--accent-mint-bright);color:var(--text-on-bright);border-color:var(--accent-mint-bright)}
+.hud-btn:focus-visible,.hud-btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring-inverse);outline-offset:var(--size-focus-offset)}
+.hud-btn:active,.hud-btn.is-active{transform:translateY(1px);background:var(--surface-hud-raised)}
+.hud-btn[aria-disabled="true"]{border-style:dashed;color:var(--text-inverse-muted);cursor:not-allowed;background:transparent;transform:none}
+.hud-btn-cta{background:var(--accent-mint-bright);color:var(--text-on-bright);border-color:var(--accent-mint-bright);font-size:var(--font-size-md);padding:0 var(--space-4)}
+.hud-btn-cta:hover,.hud-btn-cta.is-hover{background:var(--color-mint-100)}
+.speed{display:inline-flex;gap:var(--space-1)}
+.hud-note{flex-basis:100%;font-size:var(--font-size-sm);color:var(--text-inverse-muted);border-top:var(--size-border-thin) solid var(--surface-hud-raised);padding-top:var(--space-2)}
+.star{color:var(--rating-star)}.star-empty{color:var(--rating-empty)}
+/* customer tags */
+.cust{position:absolute;transform:translate(-50%,-100%);background:var(--surface-hud);color:var(--text-inverse);border-radius:var(--radius-md);padding:var(--space-1) var(--space-2);font-size:var(--font-size-sm);box-shadow:var(--shadow-sm);width:152px}
+.cust::after{content:"";position:absolute;left:50%;bottom:calc(-1 * var(--space-2));margin-left:calc(-1 * var(--space-2));border-left:var(--space-2) solid transparent;border-right:var(--space-2) solid transparent;border-top:var(--space-2) solid var(--surface-hud-solid)}
+.cust.is-static{position:relative;transform:none}
+.cust-order{display:flex;gap:var(--space-1);align-items:center;font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat{display:flex;align-items:center;gap:var(--space-1);margin-top:var(--space-1);font-size:var(--font-size-xs);font-variant-numeric:tabular-nums}
+.pat-track{flex:1;height:var(--space-2);border-radius:var(--radius-pill);background:var(--patience-track);overflow:hidden}
+.pat-fill{display:block;height:100%;border-radius:var(--radius-pill)}
+.pat-high{background:var(--patience-high)}.pat-mid{background:var(--patience-mid)}.pat-low{background:var(--patience-low)}
+.cust-angry{color:var(--text-danger-inverse);font-weight:var(--font-weight-bold)}
+.cust-ok{color:var(--accent-mint-bright);font-weight:var(--font-weight-bold)}
+/* toasts */
+.toasts{position:absolute;left:var(--space-3);bottom:var(--space-3);display:flex;flex-direction:column;gap:var(--space-2);width:min(360px,calc(100% - var(--space-6)))}
+.toasts.is-static{position:relative;left:auto;bottom:auto;width:100%;max-width:400px}
+.toast{display:flex;gap:var(--space-3);align-items:flex-start;background:var(--surface-panel-solid);color:var(--text-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);border-left:var(--size-border-thick) solid var(--border-strong)}
+.toast-info{border-left-color:var(--accent-mint)}.toast-ok{border-left-color:var(--text-ok)}.toast-warn{border-left-color:var(--text-warning)}.toast-err{border-left-color:var(--text-danger)}
+.toast-icon{font-size:var(--font-size-lg);line-height:var(--line-height-tight);padding-top:var(--space-2)}
+.toast-body{flex:1;padding:var(--space-1) 0}
+.toast-title{font-weight:var(--font-weight-bold);font-size:var(--font-size-sm)}
+.toast-ok .toast-title{color:var(--text-ok)}.toast-warn .toast-title{color:var(--text-warning)}.toast-err .toast-title{color:var(--text-danger)}
+.toast-text{font-size:var(--font-size-sm);color:var(--text-muted)}
+.toast-actions{display:flex;gap:var(--space-2);margin-top:var(--space-1)}
+.link-btn{min-height:var(--size-target);padding:0 var(--space-2);margin-left:calc(-1 * var(--space-2));border:0;background:transparent;font:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--accent-primary);text-decoration:underline;cursor:pointer;border-radius:var(--radius-sm)}
+.link-btn:focus-visible,.link-btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:0}
+.icon-btn{min-width:var(--size-target);min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font:inherit;font-size:var(--font-size-xs);cursor:pointer}
+.icon-btn:hover,.icon-btn.is-hover{background:var(--surface-sunken);color:var(--text-primary)}
+.icon-btn:focus-visible,.icon-btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:0}
+/* overlay */
+.scrim{position:absolute;inset:0;background:var(--surface-scrim);display:flex;align-items:center;justify-content:center;padding:var(--space-4)}
+.card{background:var(--surface-panel-solid);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--space-6);width:100%}
+.card h3{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.card-sub{color:var(--text-muted);margin-top:var(--space-1)}
+.btn{min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:flex-start;gap:var(--space-2);padding:0 var(--space-4);border-radius:var(--radius-md);border:var(--size-border-thin) solid transparent;font:inherit;font-weight:var(--font-weight-semibold);cursor:pointer;width:100%}
+.btn-primary{background:var(--accent-primary);color:var(--text-on-accent)}
+.btn-primary:hover{background:var(--accent-primary-hover)}
+.btn-secondary{background:var(--surface-panel-solid);color:var(--text-primary);border-color:var(--border-strong)}
+.btn-secondary:hover{background:var(--surface-sunken)}
+.btn:focus-visible,.btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.btn kbd{margin-left:auto}
+kbd{font-family:inherit;font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);background:var(--surface-sunken);color:var(--text-primary);border:var(--size-border-thin) solid var(--border-strong);border-radius:var(--radius-sm);padding:0 var(--space-1)}
+.status-line{font-size:var(--font-size-sm);color:var(--text-ok);font-weight:var(--font-weight-semibold);margin-top:var(--space-3)}
+.w-pause{max-width:400px}
+.demo-dark{background:var(--surface-hud-solid);border-radius:var(--radius-lg);padding:var(--space-4);display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-start}
+.demo-label{display:block;font-size:var(--font-size-xs);color:var(--text-inverse-muted);margin-bottom:var(--space-1)}
+@media (max-width:640px){
+.stage{min-height:640px}
+.phases li:not([aria-current]){display:none}
+.phase-count{display:inline}
+.hud{gap:var(--space-2) var(--space-3)}
+.hud-stat b{font-size:var(--font-size-md)}
+.hud-spacer{display:none}
+.hud-btn .lbl-long{display:none}
+.doc-head h1{font-size:var(--font-size-xl)}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+<h1>HUD · Toast · Nhãn trên đầu khách · Tạm dừng</h1>
+<p>Mockup tĩnh. HUD là một thanh duy nhất ở mép trên; toast ở góc dưới trái; nhãn khách nổi theo nhân vật. Vùng giữa màn luôn để trống cho quán. Lớp is-hover / is-focus / is-active chỉ minh họa trạng thái.</p>
+</header>
+
+<!-- 1. Peak -->
+<section class="state" aria-labelledby="h1s">
+<h2 id="h1s"><span class="tag-state">Màn 5</span>HUD giờ cao điểm — 2x, có toast và nhãn khách</h2>
+<p class="state-note">Thứ tự trái → phải theo câu hỏi người chơi hay hỏi: "mấy giờ rồi, đang pha nào" → "có bao nhiêu tiền, khách chấm mấy sao" → "chỉnh nhịp chơi". Nút tốc độ dùng aria-pressed; nút đang chọn có nền mint và chữ đậm. Ở 390 px, chỉ hiện pha hiện tại kèm "3/4".</p>
+<div class="stage">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<rect class="sc-road" x="0" y="620" width="1200" height="80"/>
+<rect class="sc-line" x="80" y="656" width="80" height="8"/><rect class="sc-line" x="320" y="656" width="80" height="8"/><rect class="sc-line" x="560" y="656" width="80" height="8"/><rect class="sc-line" x="800" y="656" width="80" height="8"/><rect class="sc-line" x="1040" y="656" width="80" height="8"/>
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+<polygon class="sc-awning" points="600,120 920,290 920,322 600,152"/>
+<polygon class="sc-wood" points="460,340 560,286 600,307 500,361"/>
+<polygon class="sc-shade" points="460,340 500,361 500,391 460,370"/>
+<ellipse class="sc-wood" cx="700" cy="430" rx="34" ry="18"/><ellipse class="sc-wood" cx="560" cy="480" rx="34" ry="18"/><ellipse class="sc-wood" cx="790" cy="500" rx="34" ry="18"/>
+<circle class="sc-plant" cx="330" cy="420" r="22"/><circle class="sc-plant" cx="880" cy="440" r="22"/>
+<rect class="sc-staff" x="520" y="296" width="18" height="28" rx="4"/><circle class="sc-head" cx="529" cy="288" r="9"/>
+<rect class="sc-cust" x="690" y="390" width="20" height="30" rx="4"/><circle class="sc-head" cx="700" cy="380" r="10"/>
+<rect class="sc-cust" x="550" y="440" width="20" height="30" rx="4"/><circle class="sc-head" cx="560" cy="430" r="10"/>
+<rect class="sc-cust" x="780" y="460" width="20" height="30" rx="4"/><circle class="sc-head" cx="790" cy="450" r="10"/>
+</svg>
+<header class="hud" aria-label="Thanh trạng thái">
+<div class="hud-group">
+<div class="hud-stat"><small>Ngày</small><b>12</b></div>
+<div class="hud-stat"><small>Giờ</small><b>11:42</b></div>
+</div>
+<ol class="phases" aria-label="Pha trong ngày">
+<li>✓ Chuẩn bị</li><li>✓ Mở cửa</li><li aria-current="step">🔥 Cao điểm <span class="phase-count">3/4</span></li><li>Đóng cửa</li>
+</ol>
+<div class="hud-spacer"></div>
+<div class="hud-group">
+<div class="hud-stat"><small>Tiền</small><b>💰 2.465.000đ</b></div>
+<span class="money-delta" aria-live="polite">+39.000đ</span>
+<div class="hud-stat"><small>Đánh giá</small><b><span class="star" aria-hidden="true">★</span> 3,8</b></div>
+</div>
+<div class="hud-group">
+<div class="speed" role="group" aria-label="Tốc độ game">
+<button class="hud-btn" type="button" aria-pressed="false">1x</button>
+<button class="hud-btn" type="button" aria-pressed="true">▶▶ 2x</button>
+<button class="hud-btn" type="button" aria-pressed="false">4x</button>
+</div>
+<button class="hud-btn" type="button">⏸ <span>Dừng</span></button>
+<button class="hud-btn" type="button">🎥 <span class="lbl-long">Đặt lại</span> camera</button>
+<button class="hud-btn" type="button">⚙️ <span class="lbl-long">Cài đặt</span></button>
+</div>
+</header>
+<div class="cust" style="left:58%;top:47%" role="group" aria-label="Khách 1: Cappuccino, kiên nhẫn 85%">
+<div class="cust-order">☕ Cappuccino</div>
+<div class="pat"><span aria-hidden="true">😊</span><span class="pat-track"><span class="pat-fill pat-high" style="width:85%"></span></span><span>85%</span></div>
+</div>
+<div class="cust" style="left:44%;top:57%" role="group" aria-label="Khách 2: Bạc xỉu và Croissant, kiên nhẫn 45%">
+<div class="cust-order">🥛 Bạc xỉu + 🥐</div>
+<div class="pat"><span aria-hidden="true">😐</span><span class="pat-track"><span class="pat-fill pat-mid" style="width:45%"></span></span><span>45%</span></div>
+</div>
+<div class="cust" style="left:68%;top:62%" role="group" aria-label="Khách 3: Trà đào, kiên nhẫn 15%, sắp bỏ đi">
+<div class="cust-order">🍑 Trà đào</div>
+<div class="pat"><span aria-hidden="true">😠</span><span class="pat-track"><span class="pat-fill pat-low" style="width:15%"></span></span><span>15%</span></div>
+</div>
+<div class="toasts" aria-live="polite">
+<div class="toast toast-warn" role="status"><span class="toast-icon" aria-hidden="true">⚠️</span><div class="toast-body"><p class="toast-title">Sắp hết sữa tươi</p><p class="toast-text">Còn 1,5 L, đủ khoảng 8 ly.</p><div class="toast-actions"><button class="link-btn" type="button">Mở Kho</button></div></div><button class="icon-btn" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+<div class="toast toast-ok" role="status"><span class="toast-icon" aria-hidden="true">💰</span><div class="toast-body"><p class="toast-title">+39.000đ · Cappuccino</p><p class="toast-text">Khách bàn 2 khen "thơm, vừa miệng".</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+</div>
+</div>
+</section>
+
+<!-- 2. Preparation -->
+<section class="state" aria-labelledby="h2s">
+<h2 id="h2s"><span class="tag-state">Màn 5 · Chuẩn bị</span>HUD pha Chuẩn bị — giờ đứng yên, chờ "Mở cửa"</h2>
+<p class="state-note">Trong Chuẩn bị, nhóm tốc độ được thay bằng nút "Mở cửa" (hành động chính của pha). Dòng phụ nói rõ đồng hồ chỉ chạy sau khi mở cửa. Panel chuẩn bị xem ở prep.html.</p>
+<div class="stage stage-short">
+<header class="hud" aria-label="Thanh trạng thái">
+<div class="hud-group">
+<div class="hud-stat"><small>Ngày</small><b>12</b></div>
+<div class="hud-stat"><small>Giờ</small><b>07:00</b></div>
+</div>
+<ol class="phases" aria-label="Pha trong ngày">
+<li aria-current="step">🧺 Chuẩn bị <span class="phase-count">1/4</span></li><li>Mở cửa</li><li>Cao điểm</li><li>Đóng cửa</li>
+</ol>
+<div class="hud-spacer"></div>
+<div class="hud-group">
+<div class="hud-stat"><small>Tiền</small><b>💰 1.740.000đ</b></div>
+<div class="hud-stat"><small>Đánh giá</small><b><span class="star" aria-hidden="true">★</span> 3,8</b></div>
+</div>
+<div class="hud-group">
+<button class="hud-btn hud-btn-cta is-focus" type="button">🔔 Mở cửa</button>
+<button class="hud-btn" type="button">🎥 <span class="lbl-long">Đặt lại</span> camera</button>
+<button class="hud-btn" type="button">⚙️ <span class="lbl-long">Cài đặt</span></button>
+</div>
+<p class="hud-note">🕖 Đồng hồ dừng ở 07:00 cho tới khi bấm "Mở cửa". Còn 3 việc chưa xong trong Task Board.</p>
+</header>
+</div>
+</section>
+
+<!-- 3. Opening + Closing -->
+<section class="state" aria-labelledby="h3s">
+<h2 id="h3s"><span class="tag-state">Màn 5 · Mở cửa / Đóng cửa</span>HUD pha Mở cửa (1x) và Đóng cửa (4x, tiền giảm)</h2>
+<p class="state-note">Pha Đóng cửa có dòng phụ: không nhận khách mới, còn bao nhiêu khách. Số tiền bị trừ (trả lương) hiện màu đỏ nhạt trên nền tối kèm dấu "−", không chỉ dựa vào màu.</p>
+<div class="stack">
+<header class="hud is-static" aria-label="Thanh trạng thái, pha Mở cửa">
+<div class="hud-group"><div class="hud-stat"><small>Ngày</small><b>12</b></div><div class="hud-stat"><small>Giờ</small><b>08:15</b></div></div>
+<ol class="phases" aria-label="Pha trong ngày"><li>✓ Chuẩn bị</li><li aria-current="step">🚪 Mở cửa <span class="phase-count">2/4</span></li><li>Cao điểm</li><li>Đóng cửa</li></ol>
+<div class="hud-spacer"></div>
+<div class="hud-group"><div class="hud-stat"><small>Tiền</small><b>💰 1.805.000đ</b></div><div class="hud-stat"><small>Đánh giá</small><b><span class="star" aria-hidden="true">★</span> 3,8</b></div></div>
+<div class="hud-group"><div class="speed" role="group" aria-label="Tốc độ game"><button class="hud-btn" type="button" aria-pressed="true">▶ 1x</button><button class="hud-btn" type="button" aria-pressed="false">2x</button><button class="hud-btn" type="button" aria-pressed="false">4x</button></div><button class="hud-btn" type="button">⏸ <span>Dừng</span></button><button class="hud-btn" type="button">🎥 <span class="lbl-long">Đặt lại</span> camera</button><button class="hud-btn" type="button">⚙️ <span class="lbl-long">Cài đặt</span></button></div>
+</header>
+<header class="hud is-static" aria-label="Thanh trạng thái, pha Đóng cửa">
+<div class="hud-group"><div class="hud-stat"><small>Ngày</small><b>12</b></div><div class="hud-stat"><small>Giờ</small><b>20:40</b></div></div>
+<ol class="phases" aria-label="Pha trong ngày"><li>✓ Chuẩn bị</li><li>✓ Mở cửa</li><li>✓ Cao điểm</li><li aria-current="step">🌙 Đóng cửa <span class="phase-count">4/4</span></li></ol>
+<div class="hud-spacer"></div>
+<div class="hud-group"><div class="hud-stat"><small>Tiền</small><b>💰 3.120.000đ</b></div><span class="money-delta neg">−450.000đ lương</span><div class="hud-stat"><small>Đánh giá</small><b><span class="star" aria-hidden="true">★</span> 3,9</b></div></div>
+<div class="hud-group"><div class="speed" role="group" aria-label="Tốc độ game"><button class="hud-btn" type="button" aria-pressed="false">1x</button><button class="hud-btn" type="button" aria-pressed="false">2x</button><button class="hud-btn" type="button" aria-pressed="true">▶▶▶ 4x</button></div><button class="hud-btn" type="button">⏸ <span>Dừng</span></button><button class="hud-btn" type="button">🎥 <span class="lbl-long">Đặt lại</span> camera</button><button class="hud-btn" type="button">⚙️ <span class="lbl-long">Cài đặt</span></button></div>
+<p class="hud-note">🚫 Không nhận khách mới. Còn 3 khách trong quán; báo cáo ngày mở khi khách cuối rời đi.</p>
+</header>
+</div>
+</section>
+
+<!-- 4. HUD button states -->
+<section class="state" aria-labelledby="h4s">
+<h2 id="h4s"><span class="tag-state">Thành phần</span>Nút HUD — đủ trạng thái trên nền tối</h2>
+<p class="state-note">Vòng focus trên HUD dùng màu vàng (focus-ring.inverse) vì xanh không đủ tương phản trên nền cà phê. Mỗi nút tối thiểu 44×44 px.</p>
+<div class="demo-dark">
+<div><span class="demo-label">Mặc định</span><button class="hud-btn" type="button" aria-pressed="false">2x</button></div>
+<div><span class="demo-label">Hover</span><button class="hud-btn is-hover" type="button" aria-pressed="false">2x</button></div>
+<div><span class="demo-label">Focus</span><button class="hud-btn is-focus" type="button" aria-pressed="false">2x</button></div>
+<div><span class="demo-label">Đang nhấn</span><button class="hud-btn is-active" type="button" aria-pressed="false">2x</button></div>
+<div><span class="demo-label">Đang chọn</span><button class="hud-btn" type="button" aria-pressed="true">▶▶ 2x</button></div>
+<div><span class="demo-label">Đang chọn + focus</span><button class="hud-btn is-focus" type="button" aria-pressed="true">▶▶ 2x</button></div>
+<div><span class="demo-label">Vô hiệu (viền gạch)</span><button class="hud-btn" type="button" aria-disabled="true">4x 🔒</button></div>
+<div><span class="demo-label">Camera vừa đặt lại</span><button class="hud-btn" type="button">✓ Đã đặt lại camera</button></div>
+</div>
+</section>
+
+<!-- 5. Toast variants -->
+<section class="state" aria-labelledby="h5s">
+<h2 id="h5s"><span class="tag-state">Thành phần</span>Toast — thông tin, thành công, cảnh báo, lỗi</h2>
+<p class="state-note">Tối đa 3 toast cùng lúc, mới nhất ở dưới. Thông tin và thành công tự ẩn sau 4 giây (dừng đếm khi rê chuột hoặc focus vào toast); cảnh báo và lỗi ở lại tới khi đóng. Nút "Đóng" có chữ, 44×44 px. Toast không bao giờ đè lên HUD hay panel.</p>
+<div class="row">
+<div class="toasts is-static">
+<div class="toast toast-info" role="status"><span class="toast-icon" aria-hidden="true">🔔</span><div class="toast-body"><p class="toast-title">Khách mới vào quán</p><p class="toast-text">Nhóm 3 người, chọn bàn cạnh cửa sổ.</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+<div class="toast toast-ok" role="status"><span class="toast-icon" aria-hidden="true">⭐</span><div class="toast-body"><p class="toast-title">Đánh giá tăng lên 3,9</p><p class="toast-text">5 khách liên tiếp hài lòng.</p></div><button class="icon-btn is-hover" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+</div>
+<div class="toasts is-static">
+<div class="toast toast-warn" role="status"><span class="toast-icon" aria-hidden="true">⚠️</span><div class="toast-body"><p class="toast-title">Máy pha espresso quá tải</p><p class="toast-text">Đơn chờ 6 ly. Thêm 1 người vào vai Pha chế?</p><div class="toast-actions"><button class="link-btn is-focus" type="button">Phân vai</button></div></div><button class="icon-btn" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+<div class="toast toast-err" role="alert"><span class="toast-icon" aria-hidden="true">😠</span><div class="toast-body"><p class="toast-title">Khách bỏ đi vì chờ lâu</p><p class="toast-text">Đơn Trà đào chưa làm. Đánh giá −0,1.</p></div><button class="icon-btn is-focus" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+</div>
+</div>
+</section>
+
+<!-- 6. Customer tags -->
+<section class="state" aria-labelledby="h6s">
+<h2 id="h6s"><span class="tag-state">Thành phần</span>Nhãn trên đầu khách — các trạng thái</h2>
+<p class="state-note">Mức kiên nhẫn được nói bằng 3 cách cùng lúc: độ dài thanh, mặt cảm xúc và con số %. Màu chỉ là lớp thứ tư. Nhãn chỉ hiện với khách đang chờ; khi zoom xa, nhãn thu còn biểu tượng món + mặt cảm xúc.</p>
+<div class="demo-dark">
+<div><span class="demo-label">Vừa gọi món</span><div class="cust is-static"><div class="cust-order">☕ Cappuccino</div><div class="pat"><span aria-hidden="true">😊</span><span class="pat-track"><span class="pat-fill pat-high" style="width:100%"></span></span><span>100%</span></div></div></div>
+<div><span class="demo-label">Chờ lâu (dưới 60%)</span><div class="cust is-static"><div class="cust-order">🥛 Bạc xỉu + 🥐</div><div class="pat"><span aria-hidden="true">😐</span><span class="pat-track"><span class="pat-fill pat-mid" style="width:45%"></span></span><span>45%</span></div></div></div>
+<div><span class="demo-label">Sắp bỏ đi (dưới 30%)</span><div class="cust is-static"><div class="cust-order">🍑 Trà đào</div><div class="pat"><span aria-hidden="true">😠</span><span class="pat-track"><span class="pat-fill pat-low" style="width:15%"></span></span><span>15%</span></div></div></div>
+<div><span class="demo-label">Đã nhận món</span><div class="cust is-static"><div class="cust-order">☕ Cappuccino</div><div class="pat cust-ok">✓ Đã phục vụ</div></div></div>
+<div><span class="demo-label">Bỏ đi</span><div class="cust is-static"><div class="cust-order">🍑 Trà đào</div><div class="pat cust-angry">😠 Bỏ đi · −0,1 ★</div></div></div>
+<div><span class="demo-label">Zoom xa (rút gọn)</span><div class="cust is-static" style="width:auto"><div class="cust-order">🍑 😠 15%</div></div></div>
+</div>
+</section>
+
+<!-- 7. Pause -->
+<section class="state" aria-labelledby="h7s">
+<h2 id="h7s"><span class="tag-state">Lớp phủ</span>Tạm dừng</h2>
+<p class="state-note">Một trong hai lớp phủ duy nhất (cùng Daily Report). Mở bằng ⏸ hoặc Space/Esc; focus bị giữ trong thẻ, Esc hoặc Space để tiếp tục. HUD vẫn thấy mờ phía sau để người chơi nhớ đang ở đâu.</p>
+<div class="stage">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+<polygon class="sc-awning" points="600,120 920,290 920,322 600,152"/>
+</svg>
+<div class="scrim">
+<div class="card w-pause" role="dialog" aria-modal="true" aria-labelledby="pause-t">
+<h3 id="pause-t">⏸ Đang tạm dừng</h3>
+<p class="card-sub">Ngày 12 · 11:42 · Cao điểm</p>
+<div class="stack" style="margin-top:var(--space-6)">
+<button class="btn btn-primary is-focus" type="button">▶️ Tiếp tục <kbd>Space</kbd></button>
+<button class="btn btn-secondary" type="button">💾 Lưu ngay vào Slot 1</button>
+<button class="btn btn-secondary" type="button">⚙️ Cài đặt</button>
+<button class="btn btn-secondary" type="button">🏠 Về Main Menu</button>
+</div>
+<p class="status-line" role="status">✓ Đã lưu lúc 11:40 · Slot 1</p>
+</div>
+</div>
+</div>
+</section>
+
+</body>
+</html>

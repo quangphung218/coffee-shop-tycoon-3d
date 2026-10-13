@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Tổng quan UI overlay (HUD, panel, report)</title>
+<style>
+:root{
+--color-coffee-900:#3B2418;--color-coffee-700:#5C3A26;--color-coffee-500:#8A5A3B;--color-coffee-300:#C9A27E;
+--color-cream-50:#FFF9F0;--color-cream-100:#FBEFDD;--color-cream-200:#F3DFC2;
+--color-mint-800:#0B5444;--color-mint-700:#0F6B57;--color-mint-500:#2FB898;--color-mint-100:#DDF6EE;
+--color-neutral-0:#FFFFFF;--color-neutral-500:#8C7F75;--color-neutral-700:#6B5E55;--color-neutral-900:#2A211C;
+--color-ok-700:#1E7A46;--color-ok-100:#E3F5EA;
+--color-warning-700:#7A4A00;--color-warning-500:#F2A516;--color-warning-100:#FFF1D6;
+--color-danger-700:#B3261E;--color-danger-400:#F2675B;--color-danger-100:#FDE7E5;
+--color-star-500:#C77700;--color-focus-500:#0B57D0;--color-focus-300:#FFD166;
+--color-scene-sky:#BFE6F5;--color-scene-ground:#B9DE9A;--color-scene-road:#8E9AA6;--color-scene-floor:#E9CFA8;--color-scene-wall:#F6E3C6;--color-scene-wall-shade:#E2C59D;--color-scene-awning:#E07A5F;--color-scene-wood:#A0704C;--color-scene-plant:#3FA66B;
+--text-primary:var(--color-neutral-900);--text-muted:var(--color-neutral-700);--text-inverse:var(--color-cream-50);--text-inverse-muted:var(--color-coffee-300);--text-on-accent:var(--color-neutral-0);--text-on-bright:var(--color-coffee-900);--text-ok:var(--color-ok-700);--text-warning:var(--color-warning-700);--text-danger:var(--color-danger-700);--text-danger-inverse:var(--color-danger-400);
+--surface-app:var(--color-cream-100);--surface-panel:rgba(255,249,240,.94);--surface-panel-solid:var(--color-cream-50);--surface-sunken:var(--color-cream-100);--surface-hud:rgba(59,36,24,.92);--surface-hud-solid:var(--color-coffee-900);--surface-hud-raised:var(--color-coffee-700);--surface-ok:var(--color-ok-100);--surface-warning:var(--color-warning-100);--surface-danger:var(--color-danger-100);--surface-disabled:var(--color-cream-200);--surface-scrim:rgba(42,33,28,.55);
+--border-subtle:var(--color-cream-200);--border-strong:var(--color-neutral-500);--border-inverse:var(--color-coffee-300);
+--accent-primary:var(--color-coffee-700);--accent-primary-hover:var(--color-coffee-900);--accent-mint:var(--color-mint-700);--accent-mint-bright:var(--color-mint-500);
+--data-bar:var(--color-coffee-500);--data-track:var(--color-cream-200);
+--patience-high:var(--color-mint-500);--patience-mid:var(--color-warning-500);--patience-low:var(--color-danger-400);--patience-track:var(--color-coffee-700);
+--rating-star:var(--color-star-500);--rating-empty:var(--color-neutral-500);
+--focus-ring:var(--color-focus-500);--focus-ring-inverse:var(--color-focus-300);
+--font-family-base:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+--font-size-xs:12px;--font-size-sm:14px;--font-size-md:16px;--font-size-lg:20px;--font-size-xl:24px;--font-size-2xl:32px;--font-size-3xl:40px;
+--font-weight-regular:400;--font-weight-semibold:600;--font-weight-bold:700;
+--line-height-tight:1.2;--line-height-base:1.5;
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-pill:999px;
+--shadow-sm:0 1px 2px 0 rgba(59,36,24,.18);--shadow-md:0 4px 12px 0 rgba(59,36,24,.2);--shadow-lg:0 12px 32px 0 rgba(59,36,24,.28);
+--size-target:44px;--size-target-lg:56px;--size-panel:360px;--size-dialog:720px;--size-border-thin:1px;--size-border-thick:4px;--size-focus-width:3px;--size-focus-offset:2px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-family-base);font-size:var(--font-size-md);line-height:var(--line-height-base);color:var(--text-primary);background:var(--surface-app)}
+h1,h2,h3,h4,p{margin:0}
+ul,ol,dl{margin:0;padding:0;list-style:none}
+.doc-head{background:var(--surface-hud-solid);color:var(--text-inverse);padding:var(--space-6) var(--space-4)}
+.doc-head h1{font-size:var(--font-size-2xl);line-height:var(--line-height-tight)}
+.doc-head p{color:var(--text-inverse-muted);margin-top:var(--space-2);max-width:80ch}
+.state{padding:var(--space-8) var(--space-4);border-bottom:var(--size-border-thin) solid var(--border-subtle);max-width:1440px;margin:0 auto}
+.state>h2{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.state-note{color:var(--text-muted);font-size:var(--font-size-sm);margin:var(--space-2) 0 var(--space-4);max-width:80ch}
+.tag-state{display:inline-block;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);background:var(--surface-hud-solid);color:var(--text-inverse);border-radius:var(--radius-pill);padding:0 var(--space-2);margin-right:var(--space-2);vertical-align:middle}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.stage{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:var(--color-scene-sky);box-shadow:var(--shadow-md);min-height:760px;display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-3)}
+.scene{position:absolute;inset:0;width:100%;height:100%}
+.sc-sky{fill:var(--color-scene-sky)}.sc-ground{fill:var(--color-scene-ground)}.sc-road{fill:var(--color-scene-road)}.sc-floor{fill:var(--color-scene-floor)}.sc-wall{fill:var(--color-scene-wall)}.sc-shade{fill:var(--color-scene-wall-shade)}.sc-awning{fill:var(--color-scene-awning)}.sc-wood{fill:var(--color-scene-wood)}.sc-plant{fill:var(--color-scene-plant)}.sc-cust{fill:var(--color-mint-500)}.sc-staff{fill:var(--color-coffee-700)}.sc-head{fill:var(--color-scene-wall-shade)}.sc-line{fill:var(--color-cream-50)}
+.stage-body{position:relative;flex:1;display:flex;justify-content:space-between;align-items:stretch;gap:var(--space-3)}
+.hud{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-2) var(--space-3);background:var(--surface-hud);color:var(--text-inverse);border-radius:var(--radius-lg);box-shadow:var(--shadow-md)}
+.hud-group{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.hud-spacer{flex:1 1 0}
+.hud-stat{display:flex;flex-direction:column;line-height:var(--line-height-tight)}
+.hud-stat small{font-size:var(--font-size-xs);color:var(--text-inverse-muted)}
+.hud-stat b{font-size:var(--font-size-lg);font-variant-numeric:tabular-nums;white-space:nowrap}
+.phases{display:flex;flex-wrap:wrap;gap:var(--space-1)}
+.phases li{font-size:var(--font-size-sm);padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);color:var(--text-inverse-muted);white-space:nowrap}
+.phases li[aria-current="step"]{background:var(--accent-mint-bright);color:var(--text-on-bright);font-weight:var(--font-weight-bold)}
+.phase-count{display:none}
+.money-delta{color:var(--accent-mint-bright);font-weight:var(--font-weight-bold);font-size:var(--font-size-sm)}
+.hud-btn{min-width:var(--size-target);min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);padding:0 var(--space-3);border-radius:var(--radius-md);border:var(--size-border-thin) solid var(--border-inverse);background:transparent;color:var(--text-inverse);font:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);cursor:pointer;white-space:nowrap}
+.hud-btn:hover{background:var(--surface-hud-raised)}
+.hud-btn[aria-pressed="true"]{background:var(--accent-mint-bright);color:var(--text-on-bright);border-color:var(--accent-mint-bright)}
+.hud-btn:focus-visible,.hud-btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring-inverse);outline-offset:var(--size-focus-offset)}
+.speed{display:inline-flex;gap:var(--space-1)}
+.star{color:var(--rating-star)}.star-empty{color:var(--rating-empty)}
+.cust{position:absolute;transform:translate(-50%,-100%);background:var(--surface-hud);color:var(--text-inverse);border-radius:var(--radius-md);padding:var(--space-1) var(--space-2);font-size:var(--font-size-sm);box-shadow:var(--shadow-sm);width:152px}
+.cust-order{font-weight:var(--font-weight-semibold);white-space:nowrap}
+.pat{display:flex;align-items:center;gap:var(--space-1);margin-top:var(--space-1);font-size:var(--font-size-xs);font-variant-numeric:tabular-nums}
+.pat-track{flex:1;height:var(--space-2);border-radius:var(--radius-pill);background:var(--patience-track);overflow:hidden}
+.pat-fill{display:block;height:100%;border-radius:var(--radius-pill)}
+.pat-high{background:var(--patience-high)}.pat-mid{background:var(--patience-mid)}.pat-low{background:var(--patience-low)}
+.toasts{align-self:flex-end;display:flex;flex-direction:column;gap:var(--space-2);width:min(340px,100%)}
+.toast{display:flex;gap:var(--space-3);align-items:flex-start;background:var(--surface-panel-solid);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);border-left:var(--size-border-thick) solid var(--text-warning)}
+.toast-icon{font-size:var(--font-size-lg);padding-top:var(--space-2)}
+.toast-body{flex:1;padding:var(--space-1) 0}
+.toast-title{font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);color:var(--text-warning)}
+.toast-text{font-size:var(--font-size-sm);color:var(--text-muted)}
+.panel{position:relative;flex:0 1 var(--size-panel);display:flex;flex-direction:column;background:var(--surface-panel);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;align-self:stretch}
+.panel-head{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-4);border-bottom:var(--size-border-thin) solid var(--border-subtle);background:var(--surface-panel-solid)}
+.panel-head h3{flex:1;font-size:var(--font-size-lg);line-height:var(--line-height-tight)}
+.panel-body{padding:var(--space-3) var(--space-4);flex:1;display:flex;flex-direction:column;gap:var(--space-2)}
+.panel-foot{padding:var(--space-3) var(--space-4);border-top:var(--size-border-thin) solid var(--border-subtle);display:flex;flex-direction:column;gap:var(--space-2);background:var(--surface-panel-solid)}
+.foot-sum{display:flex;justify-content:space-between;gap:var(--space-2);font-size:var(--font-size-sm);font-variant-numeric:tabular-nums}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-1);padding:var(--space-2);background:var(--surface-sunken);border-bottom:var(--size-border-thin) solid var(--border-subtle)}
+.tab{min-height:var(--size-target);display:flex;align-items:center;justify-content:center;gap:var(--space-1);border:0;border-bottom:var(--size-border-thick) solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font:inherit;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold)}
+.tab[aria-selected="true"]{background:var(--surface-panel-solid);color:var(--text-primary);border-bottom-color:var(--accent-primary);font-weight:var(--font-weight-bold)}
+.tab-count{font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);border-radius:var(--radius-pill);padding:0 var(--space-1);background:var(--surface-warning);color:var(--text-warning)}
+.icon-btn{min-width:var(--size-target);min-height:var(--size-target);border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font:inherit;font-size:var(--font-size-sm)}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-2) var(--space-3);align-items:center;padding:var(--space-2) var(--space-3);background:var(--surface-panel-solid);border:var(--size-border-thin) solid var(--border-subtle);border-radius:var(--radius-md)}
+.item-icon{font-size:var(--font-size-xl);width:var(--space-12);height:var(--space-12);display:grid;place-items:center;background:var(--surface-sunken);border-radius:var(--radius-sm)}
+.item-title{font-weight:var(--font-weight-semibold);line-height:var(--line-height-tight)}
+.item-meta{font-size:var(--font-size-sm);color:var(--text-muted)}
+.item-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;justify-content:space-between}
+.badge{display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);white-space:nowrap;line-height:var(--space-6)}
+.badge-ok{background:var(--surface-ok);color:var(--text-ok)}.badge-warn{background:var(--surface-warning);color:var(--text-warning)}.badge-danger{background:var(--surface-danger);color:var(--text-danger)}
+.stepper{display:inline-flex;border:var(--size-border-thin) solid var(--border-strong);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface-panel-solid)}
+.stepper button{width:var(--size-target);min-height:var(--size-target);border:0;background:var(--surface-sunken);font:inherit;font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--text-primary)}
+.stepper input{width:var(--space-16);border:0;text-align:center;font:inherit;font-weight:var(--font-weight-semibold);background:transparent;color:var(--text-primary)}
+.stepper .is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:calc(-1 * var(--size-focus-width))}
+.stepper-label{font-size:var(--font-size-sm);color:var(--text-muted)}
+.btn{min-height:var(--size-target);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:0 var(--space-4);border-radius:var(--radius-md);border:var(--size-border-thin) solid transparent;font:inherit;font-weight:var(--font-weight-semibold)}
+.btn-primary{background:var(--accent-primary);color:var(--text-on-accent)}
+.btn-secondary{background:var(--surface-panel-solid);color:var(--text-primary);border-color:var(--border-strong)}
+.btn[aria-disabled="true"]{background:var(--surface-disabled);color:var(--text-muted);border-color:var(--surface-disabled)}
+.btn.is-focus{outline:var(--size-focus-width) solid var(--focus-ring);outline-offset:var(--size-focus-offset)}
+.btn-block{width:100%}
+.btn-lg{min-height:var(--size-target-lg);font-size:var(--font-size-lg)}
+.reason{font-size:var(--font-size-sm);color:var(--text-danger);font-weight:var(--font-weight-semibold)}
+.scrim{position:relative;background:var(--surface-scrim);padding:var(--space-8) var(--space-4);display:flex;justify-content:center}
+.dialog{background:var(--surface-panel-solid);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:var(--size-dialog);overflow:hidden}
+.dialog-head{padding:var(--space-6) var(--space-6) var(--space-2)}
+.dialog-head h3{font-size:var(--font-size-xl);line-height:var(--line-height-tight)}
+.dialog-body{padding:var(--space-4) var(--space-6) var(--space-6);display:flex;flex-direction:column;gap:var(--space-6)}
+.dialog-foot{padding:var(--space-4) var(--space-6);border-top:var(--size-border-thin) solid var(--border-subtle);display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3);align-items:center;justify-content:flex-end;background:var(--surface-sunken)}
+.save{margin-right:auto;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--text-ok)}
+.result{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-4);border-radius:var(--radius-md);border-left:var(--size-border-thick) solid var(--text-ok);background:var(--surface-ok);color:var(--text-ok)}
+.result-label{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold)}
+.result-value{font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);line-height:var(--line-height-tight)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-6)}
+.h4{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);margin-bottom:var(--space-2)}
+.stat-row{display:flex;justify-content:space-between;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:var(--size-border-thin) solid var(--border-subtle)}
+.stat-row dt{color:var(--text-muted)}
+.stat-row dd{margin:0;font-weight:var(--font-weight-semibold);font-variant-numeric:tabular-nums}
+.pos{color:var(--text-ok)}.neg{color:var(--text-danger)}
+.rating-box{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);background:var(--surface-sunken);font-size:var(--font-size-lg)}
+.delta{font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);border-radius:var(--radius-pill);padding:0 var(--space-2);background:var(--surface-ok);color:var(--text-ok)}
+.bar-row{display:grid;grid-template-columns:minmax(96px,1fr) 2fr auto;align-items:center;gap:var(--space-3);font-size:var(--font-size-sm);margin-bottom:var(--space-2)}
+.bar-track{height:var(--space-3);border-radius:var(--radius-pill);background:var(--data-track);overflow:hidden}
+.bar-fill{display:block;height:100%;background:var(--data-bar)}
+@media (max-width:640px){
+.stage{min-height:1080px;padding:var(--space-2)}
+.stage-body{flex-direction:column;justify-content:flex-end}
+.toasts{align-self:stretch;width:auto}
+.panel{flex:0 0 auto}
+.phases li:not([aria-current]){display:none}
+.phase-count{display:inline}
+.hud-spacer,.lbl-long{display:none}
+.hud-stat b{font-size:var(--font-size-md)}
+.dialog-head,.dialog-body,.dialog-foot{padding-left:var(--space-4);padding-right:var(--space-4)}
+.dialog-foot .btn{flex:1 1 100%}
+.result-value{font-size:var(--font-size-2xl)}
+.doc-head h1{font-size:var(--font-size-xl)}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+<h1>Coffee Shop Tycoon 3D — tổng quan UI overlay</h1>
+<p>Trang tóm tắt để xem nhanh. Đủ mọi màn và trạng thái nằm trong design/main-menu.html, hud.html, prep.html, report.html; token ở design/tokens.json; quyết định ở design/NOTES.md.</p>
+</header>
+
+<section class="state" aria-labelledby="o1">
+<h2 id="o1"><span class="tag-state">Gameplay</span>HUD + nhãn khách + toast + panel Kho đang mở</h2>
+<p class="state-note">HUD một thanh ở mép trên; panel 360 px ở cạnh phải, quán dồn sang trái; toast ở góc dưới trái; nhãn khách nổi trên đầu nhân vật. Ở 390 px panel thành tấm kéo từ đáy.</p>
+<div class="stage">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<rect class="sc-road" x="0" y="620" width="1200" height="80"/>
+<rect class="sc-line" x="80" y="656" width="80" height="8"/><rect class="sc-line" x="320" y="656" width="80" height="8"/><rect class="sc-line" x="560" y="656" width="80" height="8"/>
+<g transform="translate(-140 0)">
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+<polygon class="sc-awning" points="600,120 920,290 920,322 600,152"/>
+<polygon class="sc-wood" points="460,340 560,286 600,307 500,361"/>
+<polygon class="sc-shade" points="460,340 500,361 500,391 460,370"/>
+<ellipse class="sc-wood" cx="700" cy="430" rx="34" ry="18"/><ellipse class="sc-wood" cx="560" cy="480" rx="34" ry="18"/>
+<circle class="sc-plant" cx="330" cy="420" r="22"/>
+<rect class="sc-staff" x="520" y="296" width="18" height="28" rx="4"/><circle class="sc-head" cx="529" cy="288" r="9"/>
+<rect class="sc-cust" x="690" y="390" width="20" height="30" rx="4"/><circle class="sc-head" cx="700" cy="380" r="10"/>
+<rect class="sc-cust" x="550" y="440" width="20" height="30" rx="4"/><circle class="sc-head" cx="560" cy="430" r="10"/>
+</g>
+</svg>
+<header class="hud" aria-label="Thanh trạng thái">
+<div class="hud-group"><div class="hud-stat"><small>Ngày</small><b>12</b></div><div class="hud-stat"><small>Giờ</small><b>11:42</b></div></div>
+<ol class="phases" aria-label="Pha trong ngày"><li>✓ Chuẩn bị</li><li>✓ Mở cửa</li><li aria-current="step">🔥 Cao điểm <span class="phase-count">3/4</span></li><li>Đóng cửa</li></ol>
+<div class="hud-spacer"></div>
+<div class="hud-group"><div class="hud-stat"><small>Tiền</small><b>💰 2.465.000đ</b></div><span class="money-delta">+39.000đ</span><div class="hud-stat"><small>Đánh giá</small><b><span class="star" aria-hidden="true">★</span> 3,8</b></div></div>
+<div class="hud-group"><div class="speed" role="group" aria-label="Tốc độ game"><button class="hud-btn" type="button" aria-pressed="false">1x</button><button class="hud-btn is-focus" type="button" aria-pressed="true">▶▶ 2x</button><button class="hud-btn" type="button" aria-pressed="false">4x</button></div><button class="hud-btn" type="button">⏸ Dừng</button><button class="hud-btn" type="button">🎥 <span class="lbl-long">Đặt lại</span> camera</button><button class="hud-btn" type="button">⚙️ <span class="lbl-long">Cài đặt</span></button></div>
+</header>
+<div class="stage-body">
+<div class="cust" style="left:38%;top:30%" role="group" aria-label="Khách: Cappuccino, kiên nhẫn 85%"><div class="cust-order">☕ Cappuccino</div><div class="pat"><span aria-hidden="true">😊</span><span class="pat-track"><span class="pat-fill pat-high" style="width:85%"></span></span><span>85%</span></div></div>
+<div class="cust" style="left:26%;top:44%" role="group" aria-label="Khách: Trà đào, kiên nhẫn 15%"><div class="cust-order">🍑 Trà đào</div><div class="pat"><span aria-hidden="true">😠</span><span class="pat-track"><span class="pat-fill pat-low" style="width:15%"></span></span><span>15%</span></div></div>
+<div class="toasts" aria-live="polite">
+<div class="toast" role="status"><span class="toast-icon" aria-hidden="true">⚠️</span><div class="toast-body"><p class="toast-title">Sắp hết sữa tươi</p><p class="toast-text">Còn 1,5 L, đủ khoảng 8 ly.</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo">✕ Đóng</button></div>
+</div>
+<aside class="panel" aria-labelledby="op">
+<div class="panel-head"><h3 id="op">📦 Kho</h3><button class="icon-btn" type="button" aria-label="Đóng panel (Esc)">✕ Đóng</button></div>
+<div class="tabs" role="tablist" aria-label="Quản lý">
+<button class="tab" role="tab" type="button" aria-selected="false">📋 Việc</button>
+<button class="tab" role="tab" type="button" aria-selected="false">🍽️ Menu</button>
+<button class="tab" role="tab" type="button" aria-selected="true">📦 Kho <span class="tab-count" aria-label="2 cảnh báo">⚠ 2</span></button>
+<button class="tab" role="tab" type="button" aria-selected="false">👥 Nhân viên</button>
+<button class="tab" role="tab" type="button" aria-selected="false">📣 Marketing</button>
+<button class="tab" role="tab" type="button" aria-selected="false">🛠️ Nâng cấp</button>
+</div>
+<div class="panel-body" role="tabpanel" aria-labelledby="op">
+<button class="btn btn-secondary btn-block" type="button">✨ Gợi ý nhập tự động</button>
+<div class="item"><span class="item-icon" aria-hidden="true">🥛</span><div><p class="item-title">Sữa tươi</p><p class="item-meta">Còn 1,5 L · 32.000đ/L</p></div><span class="badge badge-warn">⚠️ Sắp hết</span>
+<div class="item-actions"><span class="stepper-label" id="ol1">Nhập thêm (L)</span><div class="stepper" role="group" aria-labelledby="ol1"><button type="button" aria-label="Bớt 1">−</button><label class="sr-only" for="oq1">Số lít sữa tươi</label><input id="oq1" type="text" inputmode="numeric" value="6"><button class="is-focus" type="button" aria-label="Thêm 1">+</button></div></div></div>
+<div class="item"><span class="item-icon" aria-hidden="true">🍵</span><div><p class="item-title">Bột matcha</p><p class="item-meta">Còn 0 g · khóa Matcha latte</p></div><span class="badge badge-danger">⛔ Hết</span></div>
+<div class="item"><span class="item-icon" aria-hidden="true">🫘</span><div><p class="item-title">Hạt cà phê</p><p class="item-meta">Còn 1,2 kg</p></div><span class="badge badge-ok">✅ Đủ</span></div>
+</div>
+<div class="panel-foot">
+<div class="foot-sum"><span>Tổng nhập</span><b>2.700.000đ</b></div>
+<button class="btn btn-primary btn-block" type="button" aria-disabled="true" aria-describedby="or1">📦 Nhập hàng</button>
+<p class="reason" id="or1">🔒 Thiếu 235.000đ (cần 2.700.000đ, có 2.465.000đ).</p>
+</div>
+</aside>
+</div>
+</div>
+</section>
+
+<section class="state" aria-labelledby="o2">
+<h2 id="o2"><span class="tag-state">Cuối ngày</span>Daily Report — ngày có lãi (lớp phủ)</h2>
+<p class="state-note">Một trong hai lớp phủ duy nhất (cùng Tạm dừng). Bản đầy đủ có tab Đánh giá, trạng thái lỗ, không khách, đang tổng kết và lỗi tự lưu.</p>
+<div class="stage" style="min-height:0;padding:0">
+<svg class="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+<rect class="sc-sky" x="0" y="0" width="1200" height="700"/>
+<rect class="sc-ground" x="0" y="330" width="1200" height="370"/>
+<polygon class="sc-floor" points="600,260 920,430 600,600 280,430"/>
+<polygon class="sc-shade" points="280,430 600,260 600,120 280,290"/>
+<polygon class="sc-wall" points="600,260 920,430 920,290 600,120"/>
+</svg>
+<div class="scrim">
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="od">
+<div class="dialog-head"><h3 id="od">🌙 Hết ngày 12 · Cà Phê Gió Mùa</h3></div>
+<div class="dialog-body">
+<div class="result"><span class="result-label">▲ Lãi</span><span class="result-value">+1.380.000đ</span></div>
+<div class="grid2">
+<dl>
+<div class="stat-row"><dt>Doanh thu</dt><dd class="pos">+3.240.000đ</dd></div>
+<div class="stat-row"><dt>Chi phí</dt><dd class="neg">−1.860.000đ</dd></div>
+<div class="stat-row"><dt>Khách phục vụ / bỏ đi</dt><dd>86 / 7</dd></div>
+</dl>
+<div>
+<div class="rating-box"><span role="img" aria-label="Từ 3,8 lên 3,9 sao"><span class="star">★</span> 3,8 → <span class="star">★</span> 3,9</span><span class="delta">▲ +0,1</span></div>
+</div>
+</div>
+<div>
+<p class="h4">🏆 Món bán chạy</p>
+<div class="bar-row"><span>🥛 Bạc xỉu</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:100%"></span></span><span>28 ly</span></div>
+<div class="bar-row"><span>☕ Cappuccino</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:75%"></span></span><span>21 ly</span></div>
+</div>
+</div>
+<div class="dialog-foot"><span class="save" role="status">✓ Đã tự lưu lúc 21:00 · Slot 1</span><button class="btn btn-secondary" type="button">💬 Xem đánh giá</button><button class="btn btn-primary btn-lg is-focus" type="button">☀️ Sang ngày 13</button></div>
+</div>
+</div>
+</div>
+</section>
+
+</body>
+</html>
