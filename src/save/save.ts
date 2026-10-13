@@ -65,6 +65,9 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     state.reviews ??= [];
     state.candidates ??= [];
     state.spawnAccumulator ??= 0;
+    state.weather ??= 'sunny';
+    state.tickAccumulator ??= 0;
+    state.playerTasks ??= [];
     if (!isObject(state.today)) {
       const day = typeof state.day === 'number' ? state.day : 1;
       const rating = typeof state.rating === 'number' ? state.rating : 3;

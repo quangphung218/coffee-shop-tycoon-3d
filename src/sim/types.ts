@@ -23,6 +23,9 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 
 export type Phase = 'preparation' | 'opening' | 'peak' | 'closing' | 'report';
 
+/** Rolled once per day; shifts arrivals and the hot/cold drink mix. */
+export type Weather = 'sunny' | 'rainy' | 'hot';
+
 /** Ground-plane position in world units (y is up in the renderer). */
 export interface Vec2 {
   x: number;
@@ -229,11 +232,14 @@ export interface Table {
   occupants: number[];
 }
 
+export type OrderStatus = 'pending' | 'brewing' | 'ready' | 'delivered';
+
 /** An order waiting at the counter or being prepared. */
 export interface Order {
   id: number;
   customerId: number;
   itemId: MenuItemId;
+  status: OrderStatus;
   /** Minutes of preparation left; 0 = ready to serve. */
   remaining: number;
   staffId: number | null;
@@ -254,9 +260,13 @@ export interface DayStats {
   wages: number;
   marketingCost: number;
   upgradeCost: number;
+  customersArrived: number;
   customersServed: number;
+  /** Customers who left angry (out of patience or out of stock). */
   customersLost: number;
   sold: Partial<Record<MenuItemId, number>>;
+  /** Orders lost because the item ran out of ingredients. */
+  outOfStock: Partial<Record<MenuItemId, number>>;
   ratingStart: number;
   ratingEnd: number;
 }
@@ -275,6 +285,9 @@ export interface GameState {
   /** Game minutes since midnight. */
   minute: number;
   phase: Phase;
+  weather: Weather;
+  /** Fraction of a game minute carried toward the next fixed tick (render interpolation alpha). */
+  tickAccumulator: number;
   paused: boolean;
   /** Game speed multiplier chosen by the player (1, 2 or 4). */
   speed: number;
@@ -289,6 +302,8 @@ export interface GameState {
   candidates: Staff[];
   tables: Table[];
   orders: Order[];
+  /** Work queued by the player when serving alone; only the head task progresses. */
+  playerTasks: StaffTask[];
   upgrades: Partial<Record<UpgradeId, number>>;
   campaigns: ActiveCampaign[];
   /** Fractional customers accumulated toward the next arrival. */
@@ -314,7 +329,12 @@ export type Command =
   | { type: 'buy_upgrade'; upgradeId: UpgradeId }
   | { type: 'start_campaign'; campaignId: MarketingId }
   | { type: 'set_speed'; speed: number }
-  | { type: 'set_paused'; paused: boolean };
+  | { type: 'set_paused'; paused: boolean }
+  | { type: 'take_order'; customerId: number }
+  | { type: 'brew'; orderId: number }
+  | { type: 'deliver'; orderId: number }
+  | { type: 'collect_cash'; tableId: number }
+  | { type: 'clean_table'; tableId: number };
 
 export type NotifyLevel = 'info' | 'success' | 'warning' | 'error';
 
