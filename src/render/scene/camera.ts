@@ -287,6 +287,11 @@ export class CameraController {
     }
   }
 
+  /** Turns the orbit target by `dYaw` radians (damped like other input). */
+  rotate(dYaw: number): void {
+    this.target.yaw += dYaw;
+  }
+
   setCameraKeys(mode: CameraKeys): void {
     this.cameraKeys = mode;
     this.releaseKeys();
