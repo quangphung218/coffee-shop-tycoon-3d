@@ -245,12 +245,16 @@ export interface Order {
   staffId: number | null;
 }
 
+/** Main thing a customer liked or disliked. */
+export type ReviewReason = 'fast_service' | 'tasty' | 'nice_decor' | 'long_wait' | 'out_of_stock' | 'dirty_table';
+
 export interface Review {
   day: number;
   /** 1..5 */
   stars: number;
   text: string;
   author: string;
+  reason?: ReviewReason;
 }
 
 export interface DayStats {
@@ -269,6 +273,41 @@ export interface DayStats {
   outOfStock: Partial<Record<MenuItemId, number>>;
   ratingStart: number;
   ratingEnd: number;
+  /** Sum over served customers of the share of patience spent waiting for the drink (0..1 each). */
+  waitShareSum?: number;
+  /** Takeaway customers who could not sit because the free seats were dirty. */
+  dirtyTableHits?: number;
+}
+
+export type SuggestionKind = 'restock' | 'hire_barista' | 'hire_server' | 'hire_cleaner' | 'marketing' | 'upgrade';
+
+export interface Suggestion {
+  kind: SuggestionKind;
+  text: string;
+}
+
+/** End-of-day summary shown on the Daily Report screen. */
+export interface DailyReport {
+  day: number;
+  revenue: number;
+  ingredientCost: number;
+  wages: number;
+  marketingCost: number;
+  /** revenue − ingredientCost − wages − marketingCost. */
+  profit: number;
+  money: number;
+  customersArrived: number;
+  customersServed: number;
+  customersLost: number;
+  /** Best sellers, most sold first. */
+  topSellers: { id: MenuItemId; qty: number }[];
+  /** Items that ran out today or cannot be made with the stock left. */
+  outOfStock: MenuItemId[];
+  ratingStart: number;
+  ratingEnd: number;
+  /** Today's reviews, newest last. */
+  reviews: Review[];
+  suggestions: Suggestion[];
 }
 
 export interface ActiveCampaign {
@@ -311,6 +350,8 @@ export interface GameState {
   today: DayStats;
   history: DayStats[];
   reviews: Review[];
+  /** Report of the last finished day; absent before the first day ends. */
+  lastReport?: DailyReport | null;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -323,6 +364,7 @@ export type Command =
   | { type: 'set_menu_item'; itemId: MenuItemId; enabled: boolean }
   | { type: 'set_price'; itemId: MenuItemId; price: number }
   | { type: 'buy_ingredient'; ingredientId: IngredientId; packs: number }
+  | { type: 'apply_restock' }
   | { type: 'hire_staff'; candidateId: number; role: StaffRole }
   | { type: 'fire_staff'; staffId: number }
   | { type: 'assign_role'; staffId: number; role: StaffRole }
@@ -348,4 +390,6 @@ export type GameEvent =
   | { type: 'cleaned'; tableId: number }
   | { type: 'phase'; phase: Phase }
   | { type: 'review'; review: Review }
-  | { type: 'low_stock'; ingredientId: IngredientId };
+  | { type: 'low_stock'; ingredientId: IngredientId }
+  /** The daily report is in `state.lastReport`; the UI autosaves on this. */
+  | { type: 'dayEnded'; day: number };

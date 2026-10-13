@@ -1,6 +1,9 @@
 import { advanceClock, closeUp, endOfDay, isOpen, openShop, startNextDay } from './clock';
 import { spawnArrivals, updateCustomers } from './customers';
+import { getIngredient } from './data/ingredients';
+import { applyRestockSuggestion, buyIngredient, toggleMenuItem } from './inventory';
 import { brew, cleanTable, collectCash, deliver, takeOrder, updatePlayerTasks } from './orders';
+import { recordExperiencesSince } from './reviews';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -10,8 +13,10 @@ export const MAX_TICKS_PER_STEP = 240;
 function tick(state: GameState): void {
   advanceClock(state);
   if (state.phase !== 'closing') spawnArrivals(state);
+  const eventsBefore = state.events.length;
   updatePlayerTasks(state);
   updateCustomers(state);
+  recordExperiencesSince(state, eventsBefore);
   if (state.phase === 'closing' && state.customers.length === 0) {
     closeUp(state);
     endOfDay(state);
@@ -67,12 +72,33 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       return collectCash(state, cmd.tableId);
     case 'clean_table':
       return cleanTable(state, cmd.tableId);
+    case 'buy_ingredient':
+      if (!Number.isInteger(cmd.packs) || cmd.packs <= 0) return false;
+      return buyIngredient(state, cmd.ingredientId, cmd.packs * getIngredient(cmd.ingredientId).packSize).ok;
+    case 'apply_restock':
+      return applyRestockSuggestion(state).bought.length > 0;
+    case 'set_menu_item': {
+      const entry = state.menu.find((m) => m.id === cmd.itemId);
+      if (!entry) return false;
+      if (entry.enabled !== cmd.enabled) toggleMenuItem(state, cmd.itemId);
+      return true;
+    }
     default:
-      // Menu, stock, staff, upgrade and marketing commands land with their features.
+      // Staff, upgrade and marketing commands land with their features.
       return false;
   }
 }
 
 export { endOfDay, openShop, startNextDay } from './clock';
 export { brew, cleanTable, collectCash, deliver, takeOrder } from './orders';
-export { canMake, consume } from './inventory';
+export {
+  applyRestockSuggestion,
+  autoRestockSuggestion,
+  buyIngredient,
+  canMake,
+  consume,
+  lowStockItems,
+  sellable,
+  toggleMenuItem,
+} from './inventory';
+export { buildDailyReport, closeDay } from './report';
