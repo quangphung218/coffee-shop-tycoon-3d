@@ -1,4 +1,5 @@
 import { rollWeather } from './customers';
+import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
 import type { GameState, Phase } from './types';
 
@@ -67,13 +68,15 @@ export function closeUp(state: GameState): void {
 }
 
 /**
- * Hook run when the shop is empty after closing. The daily report plugs in
- * here; for now it records the closing rating and moves to 'report'.
+ * Hook run when the shop is empty after closing: pays wages, updates the
+ * rating, stores the daily report in `state.lastReport`, moves to 'report'
+ * and emits 'dayEnded' (the UI autosaves on it).
  */
 export function endOfDay(state: GameState): void {
-  state.today.ratingEnd = state.rating;
+  closeDay(state);
   setPhase(state, 'report');
   state.events.push({ type: 'notify', level: 'info', text: `Kết thúc ngày ${state.day}` });
+  state.events.push({ type: 'dayEnded', day: state.day });
 }
 
 /** Leaves the report and starts the next day in preparation. Returns false outside 'report'. */
