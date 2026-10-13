@@ -24,10 +24,13 @@ export function canMake(state: GameState, itemId: MenuItemId): boolean {
 
 /**
  * Takes one serving's ingredients out of stock. Call canMake first.
- * Emits `low_stock` when an ingredient drops below its warning level.
+ * Emits `low_stock` when an ingredient drops below its warning level. Adds the
+ * serving's cost to today's ingredient use, whether or not it gets sold.
  */
 export function consume(state: GameState, itemId: MenuItemId): void {
-  for (const need of getMenuItem(itemId).ingredients) {
+  const def = getMenuItem(itemId);
+  state.today.ingredientsUsed = (state.today.ingredientsUsed ?? 0) + def.cost;
+  for (const need of def.ingredients) {
     const item = state.inventory.find((i) => i.id === need.id);
     if (!item) continue;
     const before = item.qty;

@@ -13,7 +13,7 @@ export const UPGRADE_GROUPS: readonly { title: string; ids: readonly UpgradeId[]
   { title: '🧾 Quầy', ids: ['big_counter'] },
   { title: '⛱️ Ngoài trời', ids: ['outdoor_seating'] },
   { title: '🏗️ Mở rộng', ids: ['expand_area'] },
-  { title: '🪴 Trang trí', ids: ['plants', 'paintings', 'lights'] },
+  { title: '🪴 Trang trí', ids: ['plants', 'paintings', 'lights', 'window_bar'] },
 ];
 
 const pct = (v: number): string => `${Math.round(v * 100)}%`;

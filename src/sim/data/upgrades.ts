@@ -100,6 +100,17 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.6,
     effectPerLevel: { appeal: 0.06, ratingBonus: 0.05 },
   },
+  {
+    id: 'window_bar',
+    name: 'Quầy bar cửa sổ',
+    icon: '🪟',
+    description: 'Quầy gỗ cạnh cửa sổ kèm ghế cao: đẹp hơn và thêm chỗ ngồi.',
+    category: 'decor',
+    maxLevel: 2,
+    baseCost: 700000,
+    costGrowth: 1.5,
+    effectPerLevel: { capacity: 2, appeal: 0.03, ratingBonus: 0.03 },
+  },
 ];
 
 const BY_ID = new Map<UpgradeId, UpgradeDef>(UPGRADES.map((u) => [u.id, u]));

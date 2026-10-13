@@ -67,7 +67,8 @@ export type UpgradeId =
   | 'expand_area'
   | 'plants'
   | 'paintings'
-  | 'lights';
+  | 'lights'
+  | 'window_bar';
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
 
@@ -165,7 +166,7 @@ export interface InventoryItem {
 export interface MenuEntry {
   id: MenuItemId;
   enabled: boolean;
-  /** Current sell price chosen by the player. */
+  /** Sell price, copied from the item's default price. */
   price: number;
 }
 
@@ -269,6 +270,11 @@ export interface DayStats {
   /** Customers who left angry (out of patience or out of stock). */
   customersLost: number;
   sold: Partial<Record<MenuItemId, number>>;
+  /**
+   * Base-price cost of every serving taken out of stock today, including
+   * drinks made for customers who left before getting them. Absent in old saves.
+   */
+  ingredientsUsed?: number;
   /** Orders lost because the item ran out of ingredients. */
   outOfStock: Partial<Record<MenuItemId, number>>;
   ratingStart: number;
@@ -364,7 +370,6 @@ export type Command =
   | { type: 'end_day' }
   | { type: 'next_day' }
   | { type: 'set_menu_item'; itemId: MenuItemId; enabled: boolean }
-  | { type: 'set_price'; itemId: MenuItemId; price: number }
   | { type: 'buy_ingredient'; ingredientId: IngredientId; packs: number }
   | { type: 'apply_restock' }
   | { type: 'hire_staff'; candidateId: number; role: StaffRole }

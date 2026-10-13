@@ -74,7 +74,9 @@ describe('end of day', () => {
       (sum, [id, qty]) => sum + getMenuItem(id).cost * qty,
       0,
     );
-    expect(r.ingredientCost).toBe(cogs);
+    // Drinks made for customers who left unserved cost ingredients too.
+    expect(r.ingredientCost).toBeGreaterThanOrEqual(cogs);
+    expect(r.ingredientCost).toBe(t.ingredientsUsed);
     expect(r.wages).toBe(150000);
     expect(r.profit).toBe(r.revenue - r.ingredientCost - r.wages - r.marketingCost);
     expect(s.money).toBe(startMoney + r.revenue - r.wages);

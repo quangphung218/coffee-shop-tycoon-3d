@@ -53,6 +53,20 @@ describe('buyUpgrade', () => {
     expect(s.money).toBe(money);
   });
 
+  it('adds seats indoors when buying a decor item with capacity', () => {
+    const s = createNewGame('A', 'normal', 1);
+    const def = getUpgrade('window_bar');
+    expect(def.category).toBe('decor');
+    const seats = totalSeats(s);
+    const layoutSeats = getShopLayout(s).totalSeats;
+    expect(dispatch(s, { type: 'buy_upgrade', upgradeId: 'window_bar' })).toBe(true);
+    expect(totalSeats(s)).toBe(seats + def.effectPerLevel.capacity!);
+    const layout = getShopLayout(s);
+    expect(layout.totalSeats).toBe(layoutSeats + def.effectPerLevel.capacity!);
+    const added = layout.tables[layout.tables.length - 1]!;
+    expect(added.zone).toBe('indoor');
+  });
+
   it('charges more on hard', () => {
     expect(nextUpgradeCost(createNewGame('A', 'hard', 1), 'plants')).toBeGreaterThan(
       nextUpgradeCost(createNewGame('A', 'normal', 1), 'plants')!,
@@ -98,7 +112,7 @@ describe('getShopLayout', () => {
 
   it('places every table at its own spot inside its area', () => {
     const s = rich();
-    for (const id of ['tables', 'outdoor_seating', 'expand_area', 'big_counter', 'fast_machine', 'plants', 'paintings', 'lights'] as const) {
+    for (const id of ['tables', 'outdoor_seating', 'expand_area', 'big_counter', 'fast_machine', 'plants', 'paintings', 'lights', 'window_bar'] as const) {
       buyAll(s, id);
     }
     const layout = getShopLayout(s);

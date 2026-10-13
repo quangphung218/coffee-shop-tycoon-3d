@@ -1,6 +1,5 @@
 import { DIFFICULTIES } from './data/difficulty';
-import { getMenuItem } from './data/menu';
-import type { DayStats, Difficulty, GameState, MenuItemId } from './types';
+import type { DayStats, Difficulty, GameState } from './types';
 
 /** How far below zero the money may go (from forced costs such as wages) before the shop is in trouble. */
 export const DEBT_LIMIT: Readonly<Record<Difficulty, number>> = {
@@ -27,14 +26,12 @@ export function checkDebt(state: GameState): void {
   }
 }
 
-/** Ingredient cost (giá vốn) of everything sold, at the difficulty's prices. */
-export function costOfGoodsSold(state: GameState, stats: DayStats = state.today): number {
-  const mult = DIFFICULTIES[state.difficulty].priceMult;
-  let total = 0;
-  for (const [id, qty] of Object.entries(stats.sold) as [MenuItemId, number][]) {
-    total += getMenuItem(id).cost * qty;
-  }
-  return Math.round(total * mult);
+/**
+ * Ingredient cost of everything taken out of stock, at the difficulty's prices.
+ * Includes drinks made for customers who left before being served.
+ */
+export function ingredientCostUsed(state: GameState, stats: DayStats = state.today): number {
+  return Math.round((stats.ingredientsUsed ?? 0) * DIFFICULTIES[state.difficulty].priceMult);
 }
 
 export function totalWages(state: GameState): number {
@@ -54,11 +51,11 @@ export function payMarketing(state: GameState, amount: number): boolean {
 }
 
 /**
- * Closes the books for today: records the ingredient cost of what was sold and
+ * Closes the books for today: records the ingredient cost of what was used and
  * pays the staff. Wages are paid even into debt; the debt check warns.
  */
 export function settleDay(state: GameState): void {
-  state.today.ingredientCost = costOfGoodsSold(state);
+  state.today.ingredientCost = ingredientCostUsed(state);
   const wages = totalWages(state);
   state.today.wages = wages;
   state.money -= wages;
