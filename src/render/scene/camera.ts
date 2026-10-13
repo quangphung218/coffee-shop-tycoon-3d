@@ -202,10 +202,29 @@ interface Pose {
   zoom: number;
 }
 
-function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+/** Text fields and widgets that use arrow keys themselves (menu sổ, tabs). */
+const UI_KEY_OWNERS =
+  'input, select, textarea, [contenteditable]:not([contenteditable="false"]), [role="listbox"], [role="menu"], [role="tablist"], [role="option"], [role="tab"]';
+
+export interface CameraKeyEvent {
+  defaultPrevented: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  target: EventTarget | null;
+}
+
+/**
+ * False when a key-down belongs to the UI: already handled (preventDefault),
+ * a modifier shortcut, or typed into a field or a widget listed in
+ * UI_KEY_OWNERS. Keys reach the camera from window, so without this the
+ * arrows that move a dropdown or switch a report tab would also pan.
+ */
+export function shouldCameraHandleKey(e: CameraKeyEvent): boolean {
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const t = e.target as (Partial<Element> & { isContentEditable?: boolean }) | null;
+  if (!t || typeof t.closest !== 'function') return true;
+  return !t.isContentEditable && t.closest(UI_KEY_OWNERS) === null;
 }
 
 /** Orbit camera with drag-rotate, wheel zoom, key/edge pan and damping. */
@@ -412,7 +431,7 @@ export class CameraController {
   };
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
-    if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
+    if (!shouldCameraHandleKey(e)) return;
     const action = keyAction(e.code, this.cameraKeys);
     if (action) this.held[action] = true;
   };
