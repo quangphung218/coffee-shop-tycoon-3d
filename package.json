@@ -1,4 +1,15 @@
 {
+  "name": "coffee-shop-tycoon-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run && vite build"
+  },
   "dependencies": {
     "three": "^0.180.0"
   },
