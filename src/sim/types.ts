@@ -345,6 +345,8 @@ export interface GameState {
   playerTasks: StaffTask[];
   upgrades: Partial<Record<UpgradeId, number>>;
   campaigns: ActiveCampaign[];
+  /** Roles are set every morning from yesterday's bottleneck; manual role changes are off. */
+  autoAssign?: boolean;
   /** Fractional customers accumulated toward the next arrival. */
   spawnAccumulator: number;
   today: DayStats;
@@ -368,6 +370,7 @@ export type Command =
   | { type: 'hire_staff'; candidateId: number; role: StaffRole }
   | { type: 'fire_staff'; staffId: number }
   | { type: 'assign_role'; staffId: number; role: StaffRole }
+  | { type: 'set_auto_assign'; enabled: boolean }
   | { type: 'buy_upgrade'; upgradeId: UpgradeId }
   | { type: 'start_campaign'; campaignId: MarketingId }
   | { type: 'set_speed'; speed: number }

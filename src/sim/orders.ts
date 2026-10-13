@@ -5,10 +5,15 @@ import { totalUpgradeEffect } from './data/upgrades';
 import { canMake, consume } from './inventory';
 import type { GameState, MenuItemId, Order, StaffTask, StaffTaskKind } from './types';
 
-/** Game minutes the player spends on each kind of task (brewing depends on the item). */
+/**
+ * Game minutes each kind of task takes at speed 1 (brewing depends on the item).
+ * Taking an order and walking a drink to the table take 2 minutes, so someone
+ * serving alone keeps about two tables going and the line backs up at peak
+ * once the rating climbs.
+ */
 export const TASK_MINUTES = {
-  take_order: 1,
-  serve: 1,
+  take_order: 2,
+  serve: 2,
   collect: 1,
   clean: 2,
 } as const;
@@ -16,6 +21,23 @@ export const TASK_MINUTES = {
 export function brewMinutes(state: GameState, itemId: MenuItemId): number {
   const speed = 1 + totalUpgradeEffect(state.upgrades).brewSpeed;
   return Math.max(1, Math.round(getMenuItem(itemId).prepMinutes / speed));
+}
+
+/** Who works on a task: the player (null) or a staff member's id. */
+export type WorkerId = number | null;
+
+/**
+ * True when someone other than `worker` is on this job already: a staff
+ * member, or the player at the head of their queue. Player and staff share one
+ * pool of work; tasks further down the player's queue are not claimed and are
+ * dropped when someone else gets to them first.
+ */
+export function isClaimed(state: GameState, kind: StaffTaskKind, targetId: number | null, worker: WorkerId): boolean {
+  if (worker !== null) {
+    const head = state.playerTasks[0];
+    if (head && head.kind === kind && head.targetId === targetId) return true;
+  }
+  return state.staff.some((s) => s.id !== worker && s.task?.kind === kind && s.task.targetId === targetId);
 }
 
 function hasTask(state: GameState, kind: StaffTaskKind, targetId: number): boolean {
@@ -67,8 +89,9 @@ export function cleanTable(state: GameState, tableId: number): boolean {
   return enqueue(state, 'clean', tableId, TASK_MINUTES.clean);
 }
 
-/** Checks the task can still be done and applies its start effects. False drops the task. */
-function beginTask(state: GameState, task: StaffTask): boolean {
+/** Checks the task can still be done by `worker` and applies its start effects. False drops the task. */
+function beginTask(state: GameState, task: StaffTask, worker: WorkerId): boolean {
+  if (isClaimed(state, task.kind, task.targetId, worker)) return false;
   switch (task.kind) {
     case 'take_order': {
       const customer = state.customers.find((c) => c.id === task.targetId);
@@ -81,7 +104,10 @@ function beginTask(state: GameState, task: StaffTask): boolean {
       if (!order || (order.status !== 'pending' && order.status !== 'brewing')) return false;
       if (order.status === 'pending') {
         order.status = 'brewing';
-        state.events.push({ type: 'brew', staffId: null, itemId: order.itemId });
+        order.staffId = worker;
+        // Pick up where an earlier brewer stopped.
+        task.remaining = order.remaining;
+        state.events.push({ type: 'brew', staffId: worker, itemId: order.itemId });
       }
       return true;
     }
@@ -103,7 +129,7 @@ function beginTask(state: GameState, task: StaffTask): boolean {
   }
 }
 
-function finishTask(state: GameState, task: StaffTask): void {
+export function finishTask(state: GameState, task: StaffTask): void {
   switch (task.kind) {
     case 'take_order': {
       const customer = state.customers.find((c) => c.id === task.targetId);
@@ -163,18 +189,28 @@ function finishTask(state: GameState, task: StaffTask): void {
   }
 }
 
+/**
+ * Does `amount` minutes of work on a task (staff work at their speed).
+ * Returns false when the task can no longer be done and should be dropped.
+ * Once `task.remaining` reaches 0 the caller removes the task and calls finishTask.
+ */
+export function advanceTask(state: GameState, task: StaffTask, worker: WorkerId, amount: number): boolean {
+  if (!beginTask(state, task, worker)) return false;
+  task.remaining -= amount;
+  if (task.kind === 'brew') {
+    const order = findOrder(state, task.targetId);
+    if (order) order.remaining = Math.max(0, task.remaining);
+  }
+  return true;
+}
+
 /** One game minute of player work on the head of the task queue. Invalid tasks are skipped. */
 export function updatePlayerTasks(state: GameState): void {
   while (state.playerTasks.length > 0) {
     const task = state.playerTasks[0]!;
-    if (!beginTask(state, task)) {
+    if (!advanceTask(state, task, null, 1)) {
       state.playerTasks.shift();
       continue;
-    }
-    task.remaining -= 1;
-    if (task.kind === 'brew') {
-      const order = findOrder(state, task.targetId);
-      if (order) order.remaining = Math.max(0, task.remaining);
     }
     if (task.remaining <= 0) {
       state.playerTasks.shift();

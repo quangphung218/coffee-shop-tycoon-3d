@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENTER_MINUTES, findSeat, pickOrder, spawnCustomer, updateCustomers } from '../../src/sim/customers';
 import { getMenuItem } from '../../src/sim/data/menu';
 import { dispatch } from '../../src/sim/index';
-import { updatePlayerTasks } from '../../src/sim/orders';
+import { TASK_MINUTES, updatePlayerTasks } from '../../src/sim/orders';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, GameState, MenuItemId } from '../../src/sim/types';
 
@@ -39,12 +39,12 @@ function arrive(s: GameState): Customer {
 /** Takes the order, brews and delivers it. */
 function serve(s: GameState, c: Customer): void {
   expect(dispatch(s, { type: 'take_order', customerId: c.id })).toBe(true);
-  advance(s, 1);
+  advance(s, TASK_MINUTES.take_order);
   expect(c.state).toBe('waiting');
   const order = s.orders.find((o) => o.customerId === c.id)!;
   expect(dispatch(s, { type: 'brew', orderId: order.id })).toBe(true);
   expect(dispatch(s, { type: 'deliver', orderId: order.id })).toBe(true);
-  advance(s, getMenuItem(order.itemId).prepMinutes + 1);
+  advance(s, getMenuItem(order.itemId).prepMinutes + TASK_MINUTES.serve);
 }
 
 describe('customer orders', () => {
@@ -64,7 +64,7 @@ describe('customer orders', () => {
     expect(c.order).toBe('latte');
     setStock(s, 'milk', 0);
     expect(dispatch(s, { type: 'take_order', customerId: c.id })).toBe(true);
-    advance(s, 1);
+    advance(s, TASK_MINUTES.take_order);
     expect(c.state).toBe('angry_leave');
     expect(s.orders).toEqual([]);
     expect(s.today.outOfStock.latte).toBe(1);
@@ -78,7 +78,7 @@ describe('customer orders', () => {
     const before = s.inventory.find((i) => i.id === 'coffee_beans')!.qty;
     const c = arrive(s);
     dispatch(s, { type: 'take_order', customerId: c.id });
-    advance(s, 1);
+    advance(s, TASK_MINUTES.take_order);
     expect(s.inventory.find((i) => i.id === 'coffee_beans')!.qty).toBe(before - 18);
     expect(s.orders[0]).toMatchObject({ customerId: c.id, itemId: 'espresso', status: 'pending' });
   });
@@ -103,7 +103,7 @@ describe('customer patience', () => {
     const s = openShopWith('espresso');
     const c = arrive(s);
     dispatch(s, { type: 'take_order', customerId: c.id });
-    advance(s, 1);
+    advance(s, TASK_MINUTES.take_order);
     const order = s.orders[0]!;
     // Something else blocks the player, so the brew never starts.
     s.tables[0]!.trash = 1;
