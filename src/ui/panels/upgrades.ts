@@ -4,7 +4,7 @@ import type { GameState, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { inlineConfirm, reasonLine, sender, setReason, shortOfMoney } from './widgets';
+import { inlineConfirm, keepFocus, reasonLine, sender, setReason, shortOfMoney } from './widgets';
 
 /** Groups from the spec, in display order. */
 export const UPGRADE_GROUPS: readonly { title: string; ids: readonly UpgradeId[] }[] = [
@@ -64,7 +64,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
           'btn-primary',
           () => {
             actions.hidden = false;
-            send({ type: 'buy_upgrade', upgradeId: id });
+            keepFocus(li, body, () => send({ type: 'buy_upgrade', upgradeId: id }));
           },
           () => {
             actions.hidden = false;

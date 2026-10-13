@@ -3,7 +3,7 @@ import type { GameState, Staff, StaffRole, StaffTaskKind } from '../../sim/types
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { dropdown, inlineConfirm, reasonLine, sender, setReason, toggle, type DropdownOption } from './widgets';
+import { dropdown, inlineConfirm, keepFocus, reasonLine, sender, setReason, toggle, type DropdownOption } from './widgets';
 
 const ROLE_ICONS: Record<StaffRole, string> = { barista: '☕', server: '🍽️', cleaner: '🧹', marketer: '📣', none: '💤' };
 export const ROLE_ORDER: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'marketer', 'none'];
@@ -88,7 +88,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
           `Cho ${member.name} nghỉ? Hôm nay không trả lương, không tuyển lại được.`,
           'Cho nghỉ',
           'btn-danger',
-          () => send({ type: 'fire_staff', staffId: member.id }),
+          () => keepFocus(li, body, () => send({ type: 'fire_staff', staffId: member.id })),
           () => {
             fireBtn.hidden = false;
             fireBtn.focus();
@@ -131,7 +131,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     hire.addEventListener('click', () => {
       const s = ctx.getState();
       if (!s || isAriaDisabled(hire)) return;
-      send({ type: 'hire_staff', candidateId: c.id, role: roleForHire(s) });
+      keepFocus(li, body, () => send({ type: 'hire_staff', candidateId: c.id, role: roleForHire(s) }));
     });
     rowsW.watch(
       (s) => s.staff.length >= MAX_STAFF,
@@ -140,13 +140,14 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         setReason(why, hire, full ? `🔒 Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
       },
     );
-    return h(
+    const li = h(
       'li',
       { class: 'staff', attrs: { 'data-candidate': c.id } },
       h('span', { class: 'staff-av', attrs: { 'aria-hidden': 'true' }, text: AVATARS[c.look % AVATARS.length]! }),
       h('div', {}, h('p', { class: 'staff-name', text: c.name }), h('p', { class: 'item-meta', text: `Lương ${formatMoney(c.wagePerDay)}/ngày` }), speedMeter(c.speed)),
       h('div', { class: 'staff-row' }, hire, why),
     );
+    return li;
   }
 
   // Rows are rebuilt only when someone joins or leaves, so an open dropdown survives frame updates.
