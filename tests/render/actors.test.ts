@@ -19,6 +19,7 @@ import {
   workerAnim,
   workerGoal,
 } from '../../src/render/actors/sync';
+import { dispatch, step } from '../../src/sim';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, CustomerState, GameState, StaffTaskKind } from '../../src/sim/types';
 import { getShopLayout } from '../../src/sim/upgrades';
@@ -374,6 +375,31 @@ describe('createActors', () => {
     }
     expect(actors.inspect(`c${c.id}`)).toBeNull();
     expect(actors.stats().free).toBe(1);
+    actors.dispose();
+  });
+
+  it('follows a whole simulated day with staff without errors or leaks', () => {
+    const state = createNewGame('Test', 'normal', 7);
+    const roles = ['barista', 'server', 'cleaner'] as const;
+    state.candidates.slice(0, 3).forEach((c, i) => dispatch(state, { type: 'hire_staff', candidateId: c.id, role: roles[i]! }));
+    state.rating = 4.5;
+    dispatch(state, { type: 'start_day' });
+    const actors = createActors(new Scene());
+    const seen = new Set<AnimName>();
+    for (let f = 0; f < 840 * 4 && state.phase !== 'report'; f++) {
+      step(state, 0.25);
+      actors.update(state, state.tickAccumulator);
+      for (const c of state.customers) {
+        const info = actors.inspect(`c${c.id}`);
+        if (info) seen.add(info.anim);
+      }
+      for (const s of state.staff) seen.add(actors.inspect(`s${s.id}`)!.anim);
+      state.events.length = 0;
+    }
+    expect(state.phase).toBe('report');
+    for (const anim of ['walk', 'queue', 'drink', 'carry_tray', 'clean'] as const) expect(seen).toContain(anim);
+    // Characters are reused: far fewer made than customers who came in.
+    expect(actors.stats().created).toBeLessThan(state.today.customersArrived);
     actors.dispose();
   });
 
