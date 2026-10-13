@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_QUEUE, totalSeats } from '../../src/sim/customers';
+import { totalUpgradeEffect } from '../../src/sim/data/upgrades';
 import { buildDailyReport, dispatch } from '../../src/sim/index';
+import { MAX_RATING, MIN_RATING } from '../../src/sim/rating';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, GameEvent, GameState } from '../../src/sim/types';
 import { playDay } from './helpers';
@@ -98,6 +100,52 @@ describe('edge cases', () => {
     }
     expect(events.some((e) => e.type === 'doorbell')).toBe(false);
     expect(events.filter((e) => e.type === 'dayEnded')).toEqual([{ type: 'dayEnded', day: 1 }]);
+    expect(dispatch(state, { type: 'next_day' })).toBe(true);
+    expect(state.phase).toBe('preparation');
+  });
+
+  it('an open, stocked shop that nobody visits still ends with a valid report', () => {
+    const state = createNewGame('Quán Vắng', 'hard', 31);
+    stock(state, 100000);
+    expect(state.menu.some((m) => m.enabled)).toBe(true);
+    // Worst pull the state allows: 1 star, rain, no decor, no campaigns…
+    state.rating = MIN_RATING;
+    state.weather = 'rainy';
+    expect(totalUpgradeEffect(state.upgrades).appeal).toBe(0);
+    expect(state.campaigns).toEqual([]);
+    // …and since arrivalRate never reaches 0, start the day deep in arrival
+    // debt so the leftover trickle cannot add up to a single customer.
+    state.spawnAccumulator = -1e6;
+    const moneyBefore = state.money;
+    const events = playDay(state);
+
+    const report = state.lastReport!;
+    expect(report).toEqual(buildDailyReport(state));
+    expect(report.day).toBe(1);
+    expect(report.customersArrived).toBe(0);
+    expect(report.customersServed).toBe(0);
+    expect(report.customersLost).toBe(0);
+    expect(report.revenue).toBe(0);
+    expect(report.topSellers).toEqual([]);
+    expect(report.money).toBe(moneyBefore - report.ingredientCost - report.wages - report.marketingCost);
+    for (const n of [
+      report.revenue,
+      report.ingredientCost,
+      report.wages,
+      report.marketingCost,
+      report.profit,
+      report.money,
+      report.ratingStart,
+      report.ratingEnd,
+    ]) {
+      expect(Number.isFinite(n)).toBe(true);
+    }
+    for (const value of [report.ratingStart, report.ratingEnd, state.rating]) {
+      expect(value).toBeGreaterThanOrEqual(MIN_RATING);
+      expect(value).toBeLessThanOrEqual(MAX_RATING);
+    }
+    expect(report.suggestions.some((s) => s.kind === 'marketing')).toBe(true);
+    expect(events.some((e) => e.type === 'doorbell')).toBe(false);
     expect(dispatch(state, { type: 'next_day' })).toBe(true);
     expect(state.phase).toBe('preparation');
   });
