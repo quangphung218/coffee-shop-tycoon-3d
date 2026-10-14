@@ -7,8 +7,10 @@
 // boxes must not scroll sideways (scrollWidth <= clientWidth) and no element
 // may stick out of the left or right edge of the panel or report card. In the
 // Kho panel a layout-shift observer runs while the stepper, Auto-restock and
-// an over-budget pack count change the order: the summed shift must be 0 and
-// the foot must keep its height. Prints PASS/FAIL tables; exits 1 on any FAIL.
+// an over-budget pack count change the order: CLS (shifts without recent
+// input, as web-vitals counts it) must be 0, and the foot and its rows (totals,
+// buy button, hint) must keep their place and size. Shifts that follow a click
+// are listed per step as notes. Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -108,13 +110,13 @@ function measure({ frame, scrollers, eps }) {
   for (const el of root.querySelectorAll('*')) {
     if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') continue;
     const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    // Hidden, display: contents and the 1px .sr-only labels (they clip their text on purpose).
+    if (r.width <= 1 || r.height <= 1 || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
     if (cs.overflowX !== 'visible') {
       checkScroll(el);
       scrollChecked++;
     }
-    const r = el.getBoundingClientRect();
-    // Hidden, display: contents and the 1px .sr-only labels.
-    if (r.width <= 1 || r.height <= 1 || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
     checked++;
     if (r.left < left - eps || r.right > right + eps) {
       outside.push(`${describe(el)} ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside ${left.toFixed(1)}..${right.toFixed(1)}`);
@@ -152,7 +154,7 @@ function watchShifts(page) {
     window.__shifts = [];
     const describe = (n) => (n instanceof Element ? `${n.tagName.toLowerCase()}${[...n.classList].slice(0, 2).map((c) => `.${c}`).join('')}` : String(n?.nodeName ?? 'removed'));
     window.__keepShifts = (entries) => {
-      for (const e of entries) window.__shifts.push({ value: e.value, sources: e.sources.map((s) => describe(s.node)) });
+      for (const e of entries) window.__shifts.push({ value: e.value, input: e.hadRecentInput, sources: e.sources.map((s) => describe(s.node)) });
     };
     window.__shiftObserver = new PerformanceObserver((list) => window.__keepShifts(list.getEntries()));
     window.__shiftObserver.observe({ type: 'layout-shift' });
@@ -168,14 +170,32 @@ async function takeShifts(page) {
   });
 }
 
-function footHeight(page) {
-  return page.evaluate(() => document.querySelector('#ui > .panel:not([hidden]) .prep > .panel-foot')?.getBoundingClientRect().height ?? null);
+/** Boxes of the Kho foot and its direct rows, rounded to 0.1 px; null without a foot. */
+function footBoxes(page) {
+  return page.evaluate(() => {
+    const foot = document.querySelector('#ui > .panel:not([hidden]) .prep > .panel-foot');
+    if (!foot) return null;
+    const box = (el) => {
+      const r = el.getBoundingClientRect();
+      return [r.top, r.height, r.left, r.width].map((v) => Math.round(v * 10) / 10);
+    };
+    return { foot: box(foot), rows: [...foot.children].map(box) };
+  });
+}
+
+/** Largest difference between two footBoxes() readings, px. */
+function footMoved(a, b) {
+  const flat = (x) => [...x.foot, ...x.rows.flat()];
+  const fa = flat(a);
+  const fb = flat(b);
+  if (fa.length !== fb.length) return Infinity;
+  return Math.max(...fa.map((v, i) => Math.abs(v - fb[i])));
 }
 
 /**
  * Kho: + then − on the first stepper, Auto-restock, then a pack count past
- * the money. Every layout shift counts (input or not); the foot height is read
- * before and after each step.
+ * the money. Fails on CLS (shifts with no recent input) and on any move or
+ * resize of the foot or its rows; shifts that follow the click are notes.
  */
 async function checkKhoShift(page, results, viewport) {
   const stepper = page.locator('#ui > .panel:not([hidden]) .item .stepper').first();
@@ -187,36 +207,42 @@ async function checkKhoShift(page, results, viewport) {
       'Số gói vượt tiền',
       async () => {
         await stepper.locator('.step-input').fill('99');
-        await stepper.locator('.step-input').dispatchEvent('change');
+        // Leaving the field commits the value (change event), as a player would.
+        await stepper.locator('.step-input').press('Tab');
       },
     ],
   ];
   await settle(page);
   await watchShifts(page);
-  const heights = [await footHeight(page)];
-  let total = 0;
+  const start = await footBoxes(page);
+  let cls = 0;
+  let afterInput = 0;
+  let moved = 0;
   const notes = [];
   for (const [name, act] of steps) {
     await act();
     const shifts = await takeShifts(page);
-    const sum = shifts.reduce((a, s) => a + s.value, 0);
-    total += sum;
-    heights.push(await footHeight(page));
-    notes.push(`${name}: CLS ${sum.toFixed(4)}${shifts.length ? ` (${[...new Set(shifts.flatMap((s) => s.sources))].join(', ')})` : ''}, foot ${heights.at(-1)?.toFixed(1)} px`);
+    const own = shifts.filter((s) => !s.input).reduce((a, s) => a + s.value, 0);
+    const input = shifts.filter((s) => s.input).reduce((a, s) => a + s.value, 0);
+    cls += own;
+    afterInput += input;
+    const now = await footBoxes(page);
+    const d = start && now ? footMoved(start, now) : Infinity;
+    moved = Math.max(moved, d);
+    const sources = [...new Set(shifts.flatMap((s) => s.sources))].join(', ');
+    notes.push(`${name}: CLS ${own.toFixed(4)}, sau thao tác ${input.toFixed(4)}${sources ? ` (${sources})` : ''}; foot lệch ${d.toFixed(1)} px`);
   }
   const short = await page.locator('#ui > .panel:not([hidden]) .foot-hint.reason-danger').count();
-  const known = heights.every((x) => typeof x === 'number');
-  const steady = known && Math.max(...heights) - Math.min(...heights) <= EPS;
   const fails = [];
-  if (total > 0) fails.push(`CLS ${total.toFixed(4)} > 0`);
-  if (!known) fails.push('.panel-foot not found');
-  else if (!steady) fails.push(`foot height ${heights.map((x) => x.toFixed(1)).join(' → ')} px`);
+  if (cls > 0) fails.push(`CLS ${cls.toFixed(4)} > 0`);
+  if (!start) fails.push('.panel-foot not found');
+  else if (moved > EPS) fails.push(`foot or one of its rows moved or resized by ${moved.toFixed(1)} px`);
   if (short === 0) fails.push('the over-budget step did not show the short-of-money hint');
   results.push({
     viewport,
     screen: 'Kho: đổi số gói',
     pass: fails.length === 0,
-    detail: `CLS ${total.toFixed(4)}, foot ${known ? `${Math.min(...heights).toFixed(1)}–${Math.max(...heights).toFixed(1)}` : '?'} px`,
+    detail: `CLS ${cls.toFixed(4)}; foot cao ${start ? start.foot[1].toFixed(1) : '?'} px, lệch tối đa ${moved.toFixed(1)} px; shift ngay sau thao tác ${afterInput.toFixed(4)}`,
     fails,
     notes,
   });
