@@ -221,7 +221,10 @@ async function checkKhoShift(page, results, viewport) {
     [
       'Số gói vượt tiền',
       async () => {
-        await stepper.locator('.step-input').fill('99');
+        // Typed key by key: fill() inserts text with no key events, so the
+        // centred digits moving inside the field counted as a shift without input.
+        await stepper.locator('.step-input').selectText();
+        await stepper.locator('.step-input').pressSequentially('99');
         // Clicking away commits the value (change event), as a player would.
         // A click always counts as recent input for layout shift; a Tab key press did not here.
         await page.locator('#ui > .panel:not([hidden]) .kho-note').click();
