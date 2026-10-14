@@ -80,6 +80,39 @@ describe('ui.css focus (P17 inset ring)', () => {
   });
 });
 
+describe('ui.css icons (3D atlas)', () => {
+  const all = rules(uiCss);
+  const body = (selector: string): string => all.find((r) => r.selector === selector)?.body ?? '';
+
+  it('gives every size class a fixed box, so nothing moves while the atlas loads', () => {
+    const ic = body('.ic');
+    expect(ic).toMatch(/width:\s*var\(--size-icon-md\)/);
+    expect(ic).toMatch(/height:\s*var\(--size-icon-md\)/);
+    expect(ic).toMatch(/display:\s*inline-block/);
+    for (const [cls, size] of [['.ic-sm', 'sm'], ['.ic-lg', 'lg'], ['.ic-xl', 'xl']] as const) {
+      expect(body(cls), cls).toMatch(new RegExp(`width:\\s*var\\(--size-icon-${size}\\)`));
+      expect(body(cls), cls).toMatch(new RegExp(`height:\\s*var\\(--size-icon-${size}\\)`));
+    }
+  });
+
+  it('draws the cell from the @1x/@2x atlas in public/icons3d', () => {
+    const ic = body('.ic');
+    expect(ic).toContain("image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x)");
+    expect(ic).toMatch(/background-size:\s*var\(--ic-size/);
+    expect(ic).toMatch(/background-position:\s*var\(--ic-pos/);
+  });
+
+  it('hops on hover and squashes on press, and holds still for reduced motion', () => {
+    const moving = all.filter((r) => /:(hover|active) \.ic\b/.test(r.selector));
+    expect(moving.some((r) => r.selector.includes(':hover'))).toBe(true);
+    expect(moving.some((r) => r.selector.includes(':active'))).toBe(true);
+    for (const r of moving) expect(r.body, r.selector).toMatch(/transform:/);
+    const reduced = uiCss.slice(uiCss.indexOf('@media (prefers-reduced-motion: reduce)'));
+    const still = rules(reduced).find((r) => r.body.includes('transform: none !important'));
+    expect(still?.selector.split(',').map((s) => s.trim())).toContain('.ic');
+  });
+});
+
 describe('tokens.css', () => {
   it('uses the warm cinnamon focus colour, not the old blue', () => {
     expect(token('--color-cinnamon-700')).toBe('#7a3000');

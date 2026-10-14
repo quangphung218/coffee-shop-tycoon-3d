@@ -168,7 +168,7 @@ describe('Main Menu', () => {
     expect(load.getAttribute('aria-disabled')).toBe('true');
     const reason = document.getElementById(load.getAttribute('aria-describedby')!);
     expect(reason?.hidden).toBe(false);
-    expect(reason?.querySelector('use')?.getAttribute('href')).toBe('#i-lock');
+    expect(reason?.querySelector<HTMLElement>('.ic')?.dataset.icon).toBe('i-lock');
 
     // ↑ ↓ skip the hidden Continue button.
     newGame.focus();
@@ -188,8 +188,8 @@ describe('Main Menu', () => {
     expect(logo.getAttribute('aria-hidden')).toBe('true');
     expect(logo.querySelector('.m-cup')).toBeTruthy();
     expect(menu.initialFocus?.()).toBe(button(menu.el, 'Tiếp tục'));
-    const hrefs = [...menu.el.querySelectorAll('.menu-list button')].map((b) => b.querySelector('use')?.getAttribute('href'));
-    expect(hrefs).toEqual(['#i-speed-1', '#i-sparkle', '#i-load', '#i-settings']);
+    const hrefs = [...menu.el.querySelectorAll('.menu-list button')].map((b) => b.querySelector<HTMLElement>('.ic')?.dataset.icon);
+    expect(hrefs).toEqual(['i-speed-1', 'i-sparkle', 'i-load', 'i-settings']);
   });
 
   it('enables Load Game and offers Continue once a save exists', () => {
@@ -358,9 +358,9 @@ describe('HUD', () => {
     const peak = q(hud.el, '[aria-current="step"]');
     expect(peak.dataset.phase).toBe('peak');
     expect(peak.classList.contains('is-peak')).toBe(true);
-    expect(q(peak, 'use').getAttribute('href')).toBe('#i-flame');
-    expect(q(hud.el, '[data-phase="opening"] use').getAttribute('href')).toBe('#i-check');
-    expect(q(hud.el, '[data-phase="closing"] use').getAttribute('href')).toBe('#i-phase-close');
+    expect(q(peak, '.ic').dataset.icon).toBe('i-flame');
+    expect(q(hud.el, '[data-phase="opening"] .ic').dataset.icon).toBe('i-check');
+    expect(q(hud.el, '[data-phase="closing"] .ic').dataset.icon).toBe('i-phase-close');
     expect(q(hud.el, '.speed').hidden).toBe(false);
     expect(button(hud.el, 'Mở cửa').hidden).toBe(true);
     expect(q(hud.el, '[data-speed="2"]').getAttribute('aria-pressed')).toBe('true');
@@ -398,18 +398,18 @@ describe('HUD', () => {
       expect(hud.panelEl.textContent).not.toMatch(emoji);
     };
     check();
-    expect(q(hud.el, '[data-action="open"] use').getAttribute('href')).toBe('#i-open');
-    expect(q(hud.el, '[data-stat="money"]').parentElement?.querySelector('use')?.getAttribute('href')).toBe('#i-coin');
+    expect(q(hud.el, '[data-action="open"] .ic').dataset.icon).toBe('i-open');
+    expect(q(hud.el, '[data-stat="money"]').parentElement?.querySelector<HTMLElement>('.ic')?.dataset.icon).toBe('i-coin');
     state.phase = 'peak';
     hud.update(state);
     check();
-    expect([...hud.el.querySelectorAll('[data-speed] use')].map((u) => u.getAttribute('href'))).toEqual(['#i-speed-1', '#i-speed-2', '#i-speed-4']);
+    expect([...hud.el.querySelectorAll<HTMLElement>('[data-speed] .ic')].map((u) => u.dataset.icon)).toEqual(['i-speed-1', 'i-speed-2', 'i-speed-4']);
     expect(hud.el.querySelector('[data-action="pause"]')).toBeTruthy();
     expect(hud.el.querySelectorAll('.hud .hud-stat b')[1]?.textContent).toBe('07:00');
     state.phase = 'report';
     hud.update(state);
     check();
-    expect(q(hud.el, '[data-action="next-day"] use').getAttribute('href')).toBe('#i-next-day');
+    expect(q(hud.el, '[data-action="next-day"] .ic').dataset.icon).toBe('i-next-day');
   });
 
   it('counts money up when it rises and jumps when it falls', () => {
@@ -465,7 +465,7 @@ describe('HUD', () => {
       for (const b of buttons) {
         expect(b.getAttribute('aria-controls')).toBe('ui-panel');
         expect(b.getAttribute('aria-pressed')).toBe('false');
-        expect(b.querySelector('svg.ic-lg use')).toBeTruthy();
+        expect(b.querySelector('.ic.ic-lg[aria-hidden="true"][data-icon]')).toBeTruthy();
       }
 
       const kho = q<HTMLButtonElement>(dock, '[data-panel="inventory"]');
@@ -520,11 +520,11 @@ describe('HUD', () => {
 
       // Head after the Kho mockup: icon tile, title, a level-4 close button.
       const head = q(hud.panelEl, '.panel-head');
-      expect(q(head, '.panel-head-icon use').getAttribute('href')).toBe('#i-inventory');
+      expect(q(head, '.panel-head-icon .ic').dataset.icon).toBe('i-inventory');
       expect(q(head, 'h2').textContent).toBe('Kho');
       const close = q<HTMLButtonElement>(head, 'button[aria-label="Đóng bảng (Esc)"]');
       expect(close.className).toBe('icon-btn');
-      expect(q(close, 'use').getAttribute('href')).toBe('#i-close');
+      expect(q(close, '.ic').dataset.icon).toBe('i-close');
 
       // ui.css: top and bottom come from the measured edges at every width;
       // no rule pins the panel to the top or caps it as a bottom sheet.
@@ -695,12 +695,12 @@ describe('HUD', () => {
     reset.click();
     expect(live.textContent).toBe('Đã đặt lại camera.');
     expect(reset.textContent).toContain('Đã đặt lại');
-    expect(q(reset, 'use').getAttribute('href')).toBe('#i-check');
+    expect(q(reset, '.ic').dataset.icon).toBe('i-check');
 
     vi.advanceTimersByTime(1500);
     expect(live.textContent).toBe('');
     expect(reset.textContent).not.toContain('Đã đặt lại');
-    expect(q(reset, 'use').getAttribute('href')).toBe('#i-camera');
+    expect(q(reset, '.ic').dataset.icon).toBe('i-camera');
     hud.dispose();
   });
 });
@@ -758,19 +758,19 @@ describe('Toasts', () => {
     before.focus();
     const levels = ['info', 'success', 'warning', 'error'] as const;
     for (const level of levels) t.show({ level, title: level });
-    expect([...t.el.querySelectorAll('.toast-icon use')].map((u) => u.getAttribute('href'))).toEqual(['#i-ok', '#i-warning', '#i-error']);
+    expect([...t.el.querySelectorAll<HTMLElement>('.toast-icon .ic')].map((u) => u.dataset.icon)).toEqual(['i-ok', 'i-warning', 'i-error']);
     expect(document.activeElement).toBe(before);
     t.clear();
     t.show({ level: 'info', title: 'Mở cửa' });
-    expect(q(t.el, '.toast-icon use').getAttribute('href')).toBe('#i-info');
-    expect(q(t.el, '.toast-icon svg').getAttribute('aria-hidden')).toBe('true');
+    expect(q(t.el, '.toast-icon .ic').dataset.icon).toBe('i-info');
+    expect(q(t.el, '.toast-icon .ic').getAttribute('aria-hidden')).toBe('true');
 
     const state = game();
     const angry = toastForEvent({ type: 'angry', customerId: 1 }, state);
     expect(angry).toMatchObject({ level: 'error', icon: 'i-face-angry' });
     expect(toastForEvent({ type: 'low_stock', ingredientId: 'milk' }, state)?.icon).toBe('i-milk');
     t.show(angry!);
-    expect(t.el.querySelector('.toast-error .toast-icon use')?.getAttribute('href')).toBe('#i-face-angry');
+    expect(t.el.querySelector<HTMLElement>('.toast-error .toast-icon .ic')?.dataset.icon).toBe('i-face-angry');
     expect(t.el.textContent).not.toMatch(EMOJI);
   });
 });
@@ -825,7 +825,7 @@ describe('no emoji on the screens', () => {
       expect(pause.textContent).toContain('Đã lưu vào Slot 2');
       expect(pause.textContent).not.toMatch(EMOJI);
       shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
-      expect(q(root, '.toasts .toast-icon use').getAttribute('href')).toBe('#i-save');
+      expect(q(root, '.toasts .toast-icon .ic').dataset.icon).toBe('i-save');
       expect(q(root, '.toasts').textContent).not.toMatch(EMOJI);
     } finally {
       shell.dispose();

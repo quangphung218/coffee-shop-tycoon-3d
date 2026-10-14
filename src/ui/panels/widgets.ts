@@ -10,7 +10,7 @@ import { icon, type IconId } from '../core/icons';
 import type { PanelContext } from '../hud/panels';
 
 /** Small icon + text, e.g. a badge or button label. */
-export function withIcon(id: IconId, text: string, size: 16 | 24 = 16): (SVGSVGElement | string)[] {
+export function withIcon(id: IconId, text: string, size: 16 | 24 = 16): (HTMLElement | string)[] {
   return [icon(id, { size }), text];
 }
 

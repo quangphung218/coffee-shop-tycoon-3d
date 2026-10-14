@@ -1,7 +1,7 @@
 import { CanvasTexture, Group, SRGBColorSpace, Sprite, SpriteMaterial, type Texture } from 'three';
 import type { Command, Customer, GameState } from '../../sim/types';
 import { MENU_ICONS } from '../../ui/core/iconMap';
-import { iconSvgMarkup, type IconId } from '../../ui/core/icons';
+import { drawIcon, loadIconAtlas, type IconId } from '../../ui/core/icons';
 
 /**
  * Floating tags above customers: a sticker bubble with the ordered item, a
@@ -126,7 +126,7 @@ export class LabelAssets {
     return mat;
   }
 
-  /** Draws the empty bubble now and the icon once its SVG image has loaded. */
+  /** Draws the empty bubble now and the icon once the shared icon atlas has loaded. */
   private texture(id: IconId, bubble: boolean): CanvasTexture | null {
     if (typeof document === 'undefined') return null;
     const canvas = document.createElement('canvas');
@@ -138,15 +138,16 @@ export class LabelAssets {
     const tex = new CanvasTexture(canvas);
     tex.colorSpace = SRGBColorSpace;
     if (typeof Image === 'undefined') return tex;
-    const img = new Image();
-    img.onload = () => {
-      if (this.disposed) return;
-      const size = bubble ? ICON_PX * 0.5 : ICON_PX * 0.84;
-      const top = bubble ? ICON_PX * 0.16 : (ICON_PX - size) / 2;
-      ctx.drawImage(img, (ICON_PX - size) / 2, top, size, size);
-      tex.needsUpdate = true;
-    };
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvgMarkup(id, { size: ICON_PX }))}`;
+    loadIconAtlas().then(
+      (atlas) => {
+        if (this.disposed) return;
+        const size = bubble ? ICON_PX * 0.5 : ICON_PX * 0.84;
+        const top = bubble ? ICON_PX * 0.16 : (ICON_PX - size) / 2;
+        if (drawIcon(ctx, atlas, id, (ICON_PX - size) / 2, top, size)) tex.needsUpdate = true;
+      },
+      // No atlas: the bubble stays empty rather than breaking the frame loop.
+      () => {},
+    );
     return tex;
   }
 

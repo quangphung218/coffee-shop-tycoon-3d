@@ -48,9 +48,9 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
   return el;
 }
 
-/** href of the first icon inside `el`. */
+/** Id of the first icon inside `el`. */
 function useOf(el: Element): string | null {
-  return el.querySelector('svg.ic use')?.getAttribute('href') ?? null;
+  return el.querySelector<HTMLElement>('.ic[aria-hidden="true"]')?.dataset.icon ?? null;
 }
 
 afterEach(() => {
@@ -95,8 +95,8 @@ describe('menu panel', () => {
     expect(sw.getAttribute('aria-disabled')).toBe('true');
     const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
     expect(why.textContent).toContain(getIngredient('cacao').name);
-    expect(useOf(why)).toBe('#i-lock');
-    expect(useOf(q(mocha, '.item-icon'))).toBe('#i-mocha');
+    expect(useOf(why)).toBe('i-lock');
+    expect(useOf(q(mocha, '.item-icon'))).toBe('i-mocha');
 
     sw.click();
     expect(sent).toHaveLength(0);
@@ -160,15 +160,15 @@ describe('inventory panel', () => {
     expect(q(body, 'li[data-ingredient="cacao"] .badge').textContent).toBe('Hết');
     expect(q(body, 'li[data-ingredient="coffee_beans"] .badge').textContent).toBe('Đủ');
     // Icon + word, not colour alone.
-    expect(useOf(q(body, 'li[data-ingredient="milk"] .badge'))).toBe('#i-warning');
-    expect(useOf(q(body, 'li[data-ingredient="cacao"] .badge'))).toBe('#i-error');
-    expect(useOf(q(body, 'li[data-ingredient="coffee_beans"] .badge'))).toBe('#i-ok');
+    expect(useOf(q(body, 'li[data-ingredient="milk"] .badge'))).toBe('i-warning');
+    expect(useOf(q(body, 'li[data-ingredient="cacao"] .badge'))).toBe('i-error');
+    expect(useOf(q(body, 'li[data-ingredient="coffee_beans"] .badge'))).toBe('i-ok');
   });
 
   it('draws the ingredient icon by id and names the ingredient on − and +', () => {
     const state = game();
     const { body } = mount(renderInventoryPanel, state);
-    expect(useOf(q(body, 'li[data-ingredient="milk"] .item-icon'))).toBe('#i-milk');
+    expect(useOf(q(body, 'li[data-ingredient="milk"] .item-icon'))).toBe('i-milk');
     const name = getIngredient('milk').name;
     const buttons = [...body.querySelectorAll('.stepper[data-ingredient="milk"] .step-btn')].map((b) => b.getAttribute('aria-label'));
     expect(buttons).toEqual([`Bớt 1 gói ${name}`, `Thêm 1 gói ${name}`]);
@@ -235,8 +235,8 @@ describe('staff panel', () => {
     const btn = q<HTMLButtonElement>(body, '.dd-btn');
     expect(btn.getAttribute('aria-disabled')).toBe('true');
     expect(btn.textContent).toContain('Tự động');
-    expect([...btn.querySelectorAll('use')].map((u) => u.getAttribute('href'))).toEqual(['#i-auto', '#i-chevron-down']);
-    expect(useOf(q(document, `#${btn.getAttribute('aria-describedby')}`))).toBe('#i-lock');
+    expect([...btn.querySelectorAll<HTMLElement>('.ic')].map((u) => u.dataset.icon)).toEqual(['i-auto', 'i-chevron-down']);
+    expect(useOf(q(document, `#${btn.getAttribute('aria-describedby')}`))).toBe('i-lock');
     btn.click();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
   });
@@ -402,7 +402,7 @@ describe('no emoji', () => {
     const state = busyState();
     const { body, handle } = mount(render, state);
     expect(body.textContent).not.toMatch(EMOJI);
-    expect(body.querySelectorAll('svg.ic').length).toBeGreaterThan(0);
+    expect(body.querySelectorAll('.ic').length).toBeGreaterThan(0);
 
     // Later states: suggestion filled, auto-assign on, money gone, shop open.
     body.querySelector<HTMLButtonElement>('[data-action="suggest"]')?.click();
@@ -415,7 +415,7 @@ describe('no emoji', () => {
 
   it('shows an icon, not an emoji, when nobody is hired', () => {
     const { body } = mount(renderStaffPanel, game());
-    expect(useOf(q(body, '.empty'))).toBe('#i-chef');
+    expect(useOf(q(body, '.empty'))).toBe('i-chef');
     expect(body.textContent).not.toMatch(EMOJI);
   });
 
