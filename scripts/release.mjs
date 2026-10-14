@@ -114,7 +114,7 @@ function main(argv) {
     tag = git(['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*'], root);
   } catch {
     console.log('release: none (no v* tag yet). Tag the current release once, e.g.:');
-    console.log('  git tag v0.1.0 <commit of the 0.1.0 deploy> && git push origin v0.1.0');
+    console.log('  git tag -a v0.1.0 <commit of the 0.1.0 deploy> -m v0.1.0 && git push origin v0.1.0');
     return;
   }
   const raw = git(['log', '--format=%H%x1f%B%x1e', `${tag}..HEAD`], root);
