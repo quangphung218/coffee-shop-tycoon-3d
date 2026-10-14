@@ -12,6 +12,7 @@
     "media": "npm run build && node scripts/capture-media.mjs"
   },
   "dependencies": {
+    "@fontsource/nunito": "^5.3.0",
     "three": "^0.180.0"
   },
   "devDependencies": {
