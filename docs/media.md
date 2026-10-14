@@ -78,7 +78,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 
 `npm run icons` dựng từng icon thành mô hình low-poly Three.js và đóng gói thành atlas WebP. Atlas có mọi id trong `src/ui/core/icons.ts` cộng một ô avatar cho mỗi mục `AVATAR_LOOKS` (`src/ui/core/iconMap.ts`): `i-avatar-0` là `AVATAR_LOOKS[0]`. Mô hình nằm trong `src/icon-studio/models/`; camera, đèn, bảng màu, viền mực và bóng chung nằm trong `src/icon-studio/style.ts`, cách vẽ ô 48 px và ô 24 px trong `LOOKS` của file đó.
 
-Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiểm), tính cả ô 24 px: `atlas@1x.webp` ≤ 120 kB, `atlas@2x.webp` ≤ 300 kB. Lệnh nén WebP ở chất lượng 0,85 và hạ dần tới 0,6 cho tới khi vừa; vẫn vượt thì lệnh báo lỗi.
+Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiểm), tính cả ô 24 px: `atlas@1x.webp` ≤ 120 kB, `atlas@2x.webp` ≤ 300 kB. Lệnh thử lần lượt các cách nén trong `ENCODINGS` (`src/icon-studio/main.ts`): chất lượng WebP 0,85, rồi giảm số mức alpha và chất lượng dần tới 8 mức alpha và 0,6, lấy cách đầu tiên vừa ngân sách và in ra cách đã chọn. Không cách nào vừa thì lệnh báo lỗi kèm dung lượng từng lần thử.
 
 ### Yêu cầu
 

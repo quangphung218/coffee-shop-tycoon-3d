@@ -15,8 +15,23 @@ import { createStage, type Look, LOOKS } from './style';
 
 /** Each icon is drawn this many times larger than its @2x cell, then halved step by step. */
 const SUPERSAMPLE = 4;
-/** Lossy WebP qualities, tried in order until the image fits its budget (BUDGET in atlas.ts). */
-const WEBP_QUALITIES = [0.85, 0.8, 0.75, 0.7, 0.65, 0.6] as const;
+/**
+ * Encodings tried in order until the image fits its budget (BUDGET in
+ * atlas.ts): lossy WebP quality for colour, and how many alpha levels are
+ * kept. Chromium stores alpha losslessly whatever the quality, so fewer
+ * alpha levels (edges and soft shadows) save more than a lower quality.
+ */
+const ENCODINGS = [
+  { quality: 0.85, alphaLevels: 256 },
+  { quality: 0.8, alphaLevels: 256 },
+  { quality: 0.85, alphaLevels: 64 },
+  { quality: 0.85, alphaLevels: 32 },
+  { quality: 0.8, alphaLevels: 32 },
+  { quality: 0.8, alphaLevels: 16 },
+  { quality: 0.7, alphaLevels: 16 },
+  { quality: 0.7, alphaLevels: 8 },
+  { quality: 0.6, alphaLevels: 8 },
+] as const;
 /** Sizes compared on the report sheet, CSS px: 16 and 24 show the small cell, 48 the large one. */
 const SHEET_SIZES = [16, 24, 48] as const;
 
@@ -86,13 +101,38 @@ function dataUrlBytes(url: string): number {
   return (b64.length * 3) / 4 - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
 }
 
-/** The atlas as WebP at the highest quality in WEBP_QUALITIES that fits `budget` bytes. */
-function encode(atlas: HTMLCanvasElement, budget: number): string {
-  for (const q of WEBP_QUALITIES) {
-    const url = atlas.toDataURL('image/webp', q);
-    if (dataUrlBytes(url) <= budget) return url;
+/** A copy of `src` with alpha rounded to `levels` evenly spaced values (0 and 255 kept). */
+function quantizeAlpha(src: HTMLCanvasElement, levels: number): HTMLCanvasElement {
+  if (levels >= 256) return src;
+  const out = document.createElement('canvas');
+  out.width = src.width;
+  out.height = src.height;
+  const ctx = out.getContext('2d')!;
+  const img = src.getContext('2d')!.getImageData(0, 0, src.width, src.height);
+  const step = 255 / (levels - 1);
+  const d = img.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = Math.round(Math.round(d[i]! / step) * step);
+  ctx.putImageData(img, 0, 0);
+  return out;
+}
+
+export interface Encoded {
+  url: string;
+  quality: number;
+  alphaLevels: number;
+  bytes: number;
+}
+
+/** The atlas as WebP with the first of ENCODINGS that fits `budget` bytes; throws with every size tried when none does. */
+function encode(atlas: HTMLCanvasElement, budget: number): Encoded {
+  const tried: string[] = [];
+  for (const { quality, alphaLevels } of ENCODINGS) {
+    const url = quantizeAlpha(atlas, alphaLevels).toDataURL('image/webp', quality);
+    const bytes = dataUrlBytes(url);
+    if (bytes <= budget) return { url, quality, alphaLevels, bytes };
+    tried.push(`q${quality}/a${alphaLevels}: ${bytes}`);
   }
-  throw new Error(`Atlas ${atlas.width}x${atlas.height} is over ${budget} bytes even at WebP quality ${WEBP_QUALITIES.at(-1)}`);
+  throw new Error(`Atlas ${atlas.width}x${atlas.height} is over ${budget} bytes with every encoding (${tried.join(', ')})`);
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -113,6 +153,8 @@ export interface BuildOutput {
   manifest: AtlasManifest;
   /** WebP data URLs. */
   images: { 1: string; 2: string };
+  /** Encoding each image ended up with, for the build log. */
+  encodings: { 1: Omit<Encoded, 'url'>; 2: Omit<Encoded, 'url'> };
 }
 
 async function build(input: BuildInput): Promise<BuildOutput> {
@@ -126,6 +168,7 @@ async function build(input: BuildInput): Promise<BuildOutput> {
   const manifest = packAtlas(ids);
   const rendered = new Map(orderIds(input.render, ATLAS_IDS).map((id) => [id, renderIcon(id)]));
   const images = { 1: '', 2: '' };
+  const encodings = {} as BuildOutput['encodings'];
   for (const scale of [1, 2] as const) {
     const atlas = document.createElement('canvas');
     atlas.width = manifest.width * scale;
@@ -142,9 +185,11 @@ async function build(input: BuildInput): Promise<BuildOutput> {
       put(manifest.icons[id]!, fresh?.large[scale], prev?.manifest.icons[id]);
       put(manifest.smallIcons[id]!, fresh?.small[scale], prev?.manifest.smallIcons[id]);
     }
-    images[scale] = encode(atlas, BUDGET[scale]);
+    const { url, ...used } = encode(atlas, BUDGET[scale]);
+    images[scale] = url;
+    encodings[scale] = used;
   }
-  return { manifest, images };
+  return { manifest, images, encodings };
 }
 
 /** One 3D icon from the atlas as a CSS sprite, `size` px square: the small cell up to its size, else the large one. */

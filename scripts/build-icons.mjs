@@ -82,6 +82,10 @@ async function main() {
     }
 
     console.log(`${Object.keys(out.manifest.icons).length} icons (${render.length} rendered), atlas ${out.manifest.width}x${out.manifest.height} @1x`);
+    for (const scale of [1, 2]) {
+      const e = out.encodings[scale];
+      console.log(`@${scale}x: WebP quality ${e.quality}, ${e.alphaLevels} alpha levels, ${e.bytes} bytes`);
+    }
     const written = [join(OUT, 'atlas@1x.webp'), join(OUT, 'atlas@2x.webp'), join(OUT, 'atlas.json'), join(OUT, 'svg.json'), ...(sheet ? [SHEET] : [])];
     for (const path of written) {
       console.log(`${(statSync(path).size / 1024).toFixed(1)} KB ${path.slice(ROOT.length + 1)}`);
