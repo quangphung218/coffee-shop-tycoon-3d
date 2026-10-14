@@ -41,7 +41,7 @@ UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D lo
 | Ô | Dùng cho cỡ | Cách vẽ |
 | --- | --- | --- |
 | 48 px (lưới trên, bảng `icons`) | 32, 48 px; nhãn trong cảnh 3D | Viền mực ~1,7 px, bóng tiếp đất, đủ chi tiết. |
-| 24 px (lưới dưới, bảng `smallIcons`) | 16, 24 px | Viền mực dày hơn (~1,6 px ở 24 px), không bóng, bỏ chi tiết nhỏ hơn ~1,4 px, tăng tương phản. |
+| 24 px (lưới dưới, bảng `smallIcons`) | 16, 24 px | Dải mực phẳng ~1,8 px quanh hình, không bóng, bỏ chi tiết nhỏ hơn ~1,4 px, tăng tương phản; nút chỉ có icon và `i-coin` dùng mô hình đơn giản riêng (`SMALL_MODELS`). |
 
 | Module | Nội dung |
 | --- | --- |
