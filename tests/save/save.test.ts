@@ -235,7 +235,7 @@ describe('settings', () => {
 
   it('round-trips under its own key', () => {
     const storage = createMemoryStorage();
-    const s = { musicVolume: 0.2, sfxVolume: 1, quality: 'high', gameSpeed: 4, cameraKeys: 'qa-arrows' } as const;
+    const s = { musicVolume: 0.2, sfxVolume: 1, quality: 'high', gameSpeed: 4, cameraKeys: 'qa-arrows', cameraRotateSpeed: 'fast' } as const;
     expect(saveSettings(s, storage)).toBe(true);
     expect(storage.getItem(SETTINGS_KEY)).not.toBeNull();
     expect(loadSettings(storage)).toEqual(s);
@@ -247,5 +247,14 @@ describe('settings', () => {
     expect(loadSettings(storage)).toEqual(DEFAULT_SETTINGS);
     storage.setItem(SETTINGS_KEY, JSON.stringify({ musicVolume: 3, quality: 'ultra', gameSpeed: 3 }));
     expect(loadSettings(storage)).toEqual({ ...DEFAULT_SETTINGS, musicVolume: 1 });
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ cameraRotateSpeed: 'turbo' }));
+    expect(loadSettings(storage).cameraRotateSpeed).toBe('normal');
+  });
+
+  it('gives settings saved before the rotate speed existed the normal speed', () => {
+    const storage = createMemoryStorage();
+    const old = { musicVolume: 0.3, sfxVolume: 0.6, quality: 'low', gameSpeed: 2, cameraKeys: 'qa-arrows' };
+    storage.setItem(SETTINGS_KEY, JSON.stringify(old));
+    expect(loadSettings(storage)).toEqual({ ...old, cameraRotateSpeed: 'normal' });
   });
 });
