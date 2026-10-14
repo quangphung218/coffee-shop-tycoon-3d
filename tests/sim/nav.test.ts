@@ -178,6 +178,29 @@ describe('findPath', () => {
     }
   });
 
+  it('keeps a straight main aisle from the door to the counter and cross aisles between the table rows', () => {
+    for (const levels of [{}, FULL]) {
+      const layout = layoutWith(levels);
+      const grid = buildNavGrid(layout);
+      const front = layout.counter.pos.z + 1;
+      // Three free cells across, all the way from inside the door to where customers order.
+      for (let z = front; z <= layout.indoor.maxZ - 0.25; z += NAV_CELL) {
+        for (const x of [-1, 0, 1]) expect(isWalkable(grid, { x: layout.door.x + x * NAV_CELL, z }), `${x * NAV_CELL},${z}`).toBe(true);
+      }
+      const path = expectClearPath(layout, grid, { x: layout.door.x, z: layout.indoor.maxZ - 0.25 }, { x: layout.counter.pos.x, z: front });
+      for (const p of path) expect(Math.abs(p.x - layout.door.x)).toBeLessThanOrEqual(0.5);
+
+      const rows = [...new Set(layout.tables.filter((t) => t.zone === 'indoor').map((t) => t.pos.z))].sort((a, b) => a - b);
+      for (let r = 1; r < rows.length; r++) {
+        const z = (rows[r - 1]! + rows[r]!) / 2;
+        // Three free cells deep, wall to wall.
+        for (let x = layout.indoor.minX + 0.25; x <= layout.indoor.maxX - 0.25; x += NAV_CELL) {
+          for (const dz of [-1, 0, 1]) expect(isWalkable(grid, { x, z: z + dz * NAV_CELL }), `${x},${z + dz * NAV_CELL}`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('goes around the counter to get behind it', () => {
     const layout = layoutWith(FULL);
     const grid = buildNavGrid(layout);

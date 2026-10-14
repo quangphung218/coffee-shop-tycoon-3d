@@ -47,9 +47,18 @@ export function createDayStats(day: number, rating: number): DayStats {
   };
 }
 
+/** Centre-to-centre distance of two neighbouring tables in a block. Table spots sit on the nav grid. */
+export const TABLE_PITCH = 2;
+/** Indoor table columns in fill order: inner then outer, left then right of the main aisle (x = 0) from the door to the counter. */
+const TABLE_COLUMN_X: readonly number[] = [-1.5, 1.5, -1.5 - TABLE_PITCH, 1.5 + TABLE_PITCH];
+/** Table rows from the counter toward the door, with a cross aisle between two rows. */
+export const TABLE_ROW_Z = 0.75;
+export const TABLE_ROW_PITCH = 2;
+
 export function tablePosition(index: number): { x: number; z: number } {
-  // Two rows of tables in front of the counter.
-  return { x: -3 + (index % 4) * 2, z: 1 + Math.floor(index / 4) * 2 };
+  // Two blocks of two columns on either side of the main aisle, filled row by row.
+  const columns = TABLE_COLUMN_X.length;
+  return { x: TABLE_COLUMN_X[index % columns]!, z: TABLE_ROW_Z + Math.floor(index / columns) * TABLE_ROW_PITCH };
 }
 
 /** Hire candidates with random names, speed and matching wage. Advances the RNG. */

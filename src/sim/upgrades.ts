@@ -1,7 +1,8 @@
 import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { getUpgrade, upgradeCost } from './data/upgrades';
-import { SEATS_PER_TABLE, tablePosition } from './state';
+import { CHAIR_OFFSET } from './nav/footprints';
+import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
 import type { GameState, Table, UpgradeId, Vec2 } from './types';
 
 /** Axis-aligned floor area in world units. */
@@ -57,23 +58,28 @@ const COUNTER_POS: Vec2 = { x: 0, z: -2 };
 const COUNTER_WIDTH = 3;
 const COUNTER_WIDTH_PER_LEVEL = 1.5;
 const MACHINE_POS: Vec2 = { x: -1, z: -3.3 };
-const OUTDOOR_TABLE_X: readonly number[] = [-2.5, 2.5, -4.5, 4.5];
+const OUTDOOR_TABLE_X: readonly number[] = [-2.5, 2.5, -2.5 - TABLE_PITCH, 2.5 + TABLE_PITCH];
 const OUTDOOR_TABLE_Z = 7.8;
+/** First expansion column; each expand_area level adds a column of three tables on the indoor rows. */
+const EXPANSION_TABLE_X = 6.25;
+const EXPANSION_ROWS = 3;
 const DECOR_SLOTS: Readonly<Record<DecorKind, readonly Vec2[]>> = {
   plant: [
     { x: -4, z: -4 },
-    { x: 4, z: 5.4 },
-    // Between the left ends of the last two table rows: the front-left corner is taken by a chair once all tables are bought.
-    { x: -4, z: 4 },
+    // The front corners, between the last table row and the front wall.
+    { x: 4, z: 5.55 },
+    { x: -4, z: 5.55 },
   ],
   painting: [
     { x: -3, z: -4.4 },
     { x: 3, z: -4.4 },
-    { x: -4.4, z: 2 },
+    // Left wall, at the cross aisle between the first two rows.
+    { x: -4.4, z: TABLE_ROW_Z + TABLE_ROW_PITCH / 2 },
   ],
+  // Pendants over the two inner tables of the middle row.
   light: [
-    { x: -1, z: 2 },
-    { x: 1, z: 4 },
+    { x: -1.5, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
+    { x: 1.5, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
   ],
 };
 const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = { plant: 'plants', painting: 'paintings', light: 'lights' };
@@ -99,8 +105,11 @@ export function zoneTablePosition(zone: TableZone, index: number): Vec2 {
     case 'indoor':
       return tablePosition(index);
     case 'expansion':
-      // One column of three tables per expansion level.
-      return { x: 6 + Math.floor(index / 3) * 2, z: -1 + (index % 3) * 2.2 };
+      // One column of three tables per expansion level, on the indoor rows so the cross aisles run through.
+      return {
+        x: EXPANSION_TABLE_X + Math.floor(index / EXPANSION_ROWS) * TABLE_PITCH,
+        z: TABLE_ROW_Z + (index % EXPANSION_ROWS) * TABLE_ROW_PITCH,
+      };
     case 'outdoor':
       return { x: OUTDOOR_TABLE_X[index % OUTDOOR_TABLE_X.length]!, z: OUTDOOR_TABLE_Z + Math.floor(index / OUTDOOR_TABLE_X.length) };
   }
@@ -127,6 +136,29 @@ function addTables(state: GameState, id: UpgradeId): void {
       occupants: [],
     };
     state.tables.push(table);
+  }
+}
+
+/**
+ * Puts every table on the spot of the current floor plan: the n-th table of
+ * a zone, by id, takes the zone's n-th spot. Customers who sit at or head
+ * for a moved table take the same chair side at its new spot. Used on load,
+ * so saves from an older floor plan get the current one.
+ */
+export function relayoutTables(state: GameState): void {
+  const counts: Record<TableZone, number> = { indoor: 0, expansion: 0, outdoor: 0 };
+  for (const t of [...state.tables].sort((a, b) => a.id - b.id)) {
+    const zone = tableZone(t.pos);
+    const pos = zoneTablePosition(zone, counts[zone]++);
+    if (pos.x === t.pos.x && pos.z === t.pos.z) continue;
+    for (const c of state.customers) {
+      if (c.tableId !== t.id || !c.target) continue;
+      const chair = { x: pos.x + (c.target.x < t.pos.x ? -CHAIR_OFFSET : CHAIR_OFFSET), z: pos.z };
+      const seated = c.pos.x === c.target.x && c.pos.z === c.target.z;
+      c.target = chair;
+      if (seated) c.pos = { ...chair };
+    }
+    t.pos = pos;
   }
 }
 

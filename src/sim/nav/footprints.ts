@@ -37,9 +37,9 @@ export const MACHINE_SIZE = {
   fast: { width: 0.64, depth: 0.54 },
 } as const;
 
-export const TABLE_RADIUS = 0.5;
-/** Chairs stand this far from the table centre on the x axis. */
-export const CHAIR_OFFSET = 0.75;
+export const TABLE_RADIUS = 0.4;
+/** Chairs stand this far from the table centre on the x axis, their seat edge under the table top. */
+export const CHAIR_OFFSET = 0.62;
 export const CHAIR_SIZE = 0.44;
 export const PARASOL_POLE_RADIUS = 0.03;
 export const PLANT_RADIUS = 0.42;

@@ -216,7 +216,7 @@ describe('sync: customers', () => {
     const table = state.tables[0]!;
     const goal = customerGoal(state, c, layout);
     expect(goal.seated).toBe(true);
-    expect(goal.pos.x).toBeCloseTo(table.pos.x - 0.75);
+    expect(goal.pos.x).toBeCloseTo(table.pos.x - CHAIR_OFFSET);
     expect(goal.face).toBeCloseTo(Math.PI / 2);
   });
 
@@ -956,7 +956,7 @@ describe('createActors', () => {
   it('picks a queueing customer as take_order', () => {
     const state = newState();
     const actors = createActors(new Scene());
-    // On free floor between the rows of tables (z = 1 runs through the chairs).
+    // On free floor in the main aisle between the two blocks of tables.
     const c = addCustomer(state, { pos: { x: 0, z: 2 }, target: { x: 0, z: 2 } });
     actors.update(state, 0);
     const ray = new Raycaster(new Vector3(0, 10, 2), new Vector3(0, -1, 0));

@@ -4,8 +4,9 @@ import { getUpgrade } from '../../src/sim/data/upgrades';
 import { dispatch } from '../../src/sim/index';
 import { brewMinutes } from '../../src/sim/orders';
 import { createNewGame } from '../../src/sim/state';
-import { INDOOR_AREA, buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
-import type { GameState, UpgradeId } from '../../src/sim/types';
+import { CHAIR_OFFSET, CHAIR_SIZE } from '../../src/sim/nav';
+import { INDOOR_AREA, buyUpgrade, getShopLayout, nextUpgradeCost, relayoutTables } from '../../src/sim/upgrades';
+import type { Customer, GameState, UpgradeId, Vec2 } from '../../src/sim/types';
 
 function rich(): GameState {
   const s = createNewGame('A', 'normal', 1);
@@ -134,6 +135,63 @@ describe('getShopLayout', () => {
     expect(layout.decor.filter((d) => d.kind === 'plant')).toHaveLength(getUpgrade('plants').maxLevel);
     expect(layout.decor.filter((d) => d.kind === 'light')).toHaveLength(getUpgrade('lights').maxLevel);
     expect(layout.totalSeats).toBe(totalSeats(s));
+  });
+
+  it('splits the indoor tables into two blocks on a grid, and keeps chairs of different tables apart', () => {
+    const s = rich();
+    for (const id of ['tables', 'window_bar', 'outdoor_seating', 'expand_area'] as const) buyAll(s, id);
+    const layout = getShopLayout(s);
+    const indoor = layout.tables.filter((t) => t.zone === 'indoor');
+    expect(indoor).toHaveLength(3 + getUpgrade('tables').maxLevel + getUpgrade('window_bar').maxLevel);
+    // Every chair stays clear of the main aisle down x = 0, on both sides of it.
+    for (const t of indoor) expect(Math.abs(t.pos.x) - CHAIR_OFFSET - CHAIR_SIZE / 2).toBeGreaterThanOrEqual(0.6);
+    expect(indoor.some((t) => t.pos.x < 0) && indoor.some((t) => t.pos.x > 0)).toBe(true);
+    // Columns and rows: few distinct x and z values, evenly spaced.
+    const xs = [...new Set(indoor.map((t) => Math.abs(t.pos.x)))].sort((a, b) => a - b);
+    const zs = [...new Set(indoor.map((t) => t.pos.z))].sort((a, b) => a - b);
+    expect(xs).toHaveLength(2);
+    expect(zs).toHaveLength(3);
+    expect(zs[1]! - zs[0]!).toBeCloseTo(zs[2]! - zs[1]!);
+
+    const chairs = layout.tables.flatMap((t) => [-1, 1].map((side) => ({ id: t.id, x: t.pos.x + side * CHAIR_OFFSET, z: t.pos.z })));
+    let closest = Infinity;
+    for (const a of chairs) {
+      for (const b of chairs) if (a.id !== b.id) closest = Math.min(closest, Math.hypot(a.x - b.x, a.z - b.z));
+    }
+    // P18 put chairs of neighbouring tables 0.5 apart.
+    expect(closest).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('moves tables saved on an older floor plan to the current spots, customers with them', () => {
+    const s = rich();
+    buyAll(s, 'tables');
+    buyAll(s, 'expand_area');
+    const spots = s.tables.map((t) => ({ ...t.pos }));
+    const table = s.tables[1]!;
+    const old = { x: -1, z: 1 };
+    table.pos = { ...old };
+    s.tables[s.tables.length - 1]!.pos = { x: 6, z: -1 };
+    const customer = (id: number, pos: Vec2, target: Vec2): Customer => ({
+      id,
+      state: 'drinking',
+      pos,
+      target,
+      patience: 30,
+      maxPatience: 40,
+      order: 'latte',
+      tableId: table.id,
+      timer: 5,
+      look: 0,
+    });
+    // P18 chairs stood 0.75 from the table centre.
+    s.customers.push(customer(900, { x: old.x + 0.75, z: old.z }, { x: old.x + 0.75, z: old.z }), customer(901, { x: 0, z: 5 }, { x: old.x - 0.75, z: old.z }));
+    relayoutTables(s);
+    expect(s.tables.map((t) => t.pos)).toEqual(spots);
+    const [a, b] = s.customers.slice(-2);
+    expect(a!.target).toEqual({ x: table.pos.x + CHAIR_OFFSET, z: table.pos.z });
+    expect(a!.pos).toEqual(a!.target);
+    expect(b!.target).toEqual({ x: table.pos.x - CHAIR_OFFSET, z: table.pos.z });
+    expect(b!.pos).toEqual({ x: 0, z: 5 });
   });
 
   it('survives a save round trip', () => {
