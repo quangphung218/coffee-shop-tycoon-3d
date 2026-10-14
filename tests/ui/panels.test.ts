@@ -140,6 +140,26 @@ describe('inventory panel', () => {
     expect(state.money).toBe(1000);
   });
 
+  it('shows the intro, then each result, in the same note above the list', () => {
+    const state = game();
+    state.money = autoRestockSuggestion(state).totalCost + 1000;
+    const { body } = mount(renderInventoryPanel, state);
+    const notes = body.querySelectorAll<HTMLElement>('.kho-note');
+    expect(notes).toHaveLength(1);
+    const note = notes[0]!;
+    expect(note.hidden).toBe(false);
+    expect(note.classList.contains('is-idle')).toBe(true);
+    expect(note.textContent).toContain('20% dự phòng');
+
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    expect(body.querySelector('.kho-note')).toBe(note);
+    expect(note.classList.contains('is-idle')).toBe(false);
+    expect(note.textContent).toContain('Đã điền gợi ý');
+
+    q<HTMLButtonElement>(body, '[data-action="buy"]').click();
+    expect(note.textContent).toContain('Đã nhập');
+  });
+
   it('dims the buy button with the shortfall when money is short', () => {
     const state = game();
     state.money = 1000;

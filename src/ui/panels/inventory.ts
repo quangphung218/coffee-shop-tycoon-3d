@@ -14,6 +14,9 @@ export const MAX_PACKS = 99;
 /** Shown in the foot hint while no pack is picked. */
 export const PICK_HINT = 'Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.';
 
+/** Shown under "Gợi ý nhập tự động" until the player uses it or buys. */
+const INTRO = 'Gợi ý tính theo lượng bán của ngày gần nhất và menu hôm nay, cộng thêm 20% dự phòng.';
+
 /** Icon + word, so the level never rests on colour alone. */
 const BADGES: Record<StockLevel, { cls: string; icon: IconId; text: string }> = {
   ok: { cls: 'badge badge-ok', icon: 'i-ok', text: 'Đủ' },
@@ -36,11 +39,19 @@ interface Row {
  * steppers from autoRestockSuggestion first so the player sees the amounts
  * before paying. The buy button is dimmed while nothing is picked or money is
  * short; the hint under it always shows, so the foot never changes height.
+ * The note under "Gợi ý" holds the intro, then the last result, in a slot
+ * three lines tall, so the stock list does not jump when it changes.
  */
 export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
 
-  const status = h('div', { class: 'status-ok', hidden: true, attrs: { role: 'status' } });
+  // One slot for the intro and the result of Gợi ý / Nhập hàng, so the list below never moves.
+  const status = h('div', { class: 'status-ok kho-note is-idle', attrs: { role: 'status' } });
+  setIconText(status, 'i-info', INTRO, 24);
+  const report = (id: IconId, text: string): void => {
+    status.classList.remove('is-idle');
+    setIconText(status, id, text, 24);
+  };
   const suggestBtn = h(
     'button',
     { class: 'btn btn-secondary btn-block', attrs: { type: 'button', 'data-action': 'suggest' } },
@@ -142,14 +153,11 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       r.li.classList.toggle('is-suggested', !!line);
       r.sug.hidden = !line;
     }
-    status.hidden = false;
-    setIconText(
-      status,
+    report(
       'i-sparkle',
       sug.items.length > 0
         ? `Đã điền gợi ý cho ${sug.items.length} mặt hàng (${formatMoney(sug.totalCost)}). Có thể sửa từng dòng trước khi nhập.`
         : 'Kho đã đủ cho ngày tới, không cần nhập thêm.',
-      24,
     );
     refreshFoot(s);
   });
@@ -171,8 +179,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
         row.sug.hidden = true;
       }
     }
-    status.hidden = bought.length === 0;
-    setIconText(status, 'i-ok', `Đã nhập ${bought.join(', ')}. −${formatMoney(spent)}. Còn ${formatMoney(s.money)}.`, 24);
+    if (bought.length > 0) report('i-ok', `Đã nhập ${bought.join(', ')}. −${formatMoney(spent)}. Còn ${formatMoney(s.money)}.`);
     w.run(s);
     refreshFoot(s);
   });
@@ -182,7 +189,6 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       'div',
       { class: 'prep' },
       suggestBtn,
-      h('p', { class: 'intro', text: 'Gợi ý tính theo lượng bán của ngày gần nhất và menu hôm nay, cộng thêm 20% dự phòng.' }),
       status,
       h('ul', { class: 'stack' }, ...rows.map((r) => r.li)),
       h(

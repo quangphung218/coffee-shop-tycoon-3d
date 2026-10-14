@@ -573,6 +573,21 @@
 .foot-hint .ic {
   flex: none;
 }
+/* Kho note under "Gợi ý": the intro first (muted, plain), then the result of
+   Gợi ý / Nhập hàng (info fill) in the same box. Three lines tall either way,
+   so the stock list under it never moves. */
+.kho-note {
+  min-height: calc(3lh + 2 * var(--space-2) + 2 * var(--size-outline-sm));
+}
+.kho-note .ic {
+  flex: none;
+}
+.kho-note.is-idle {
+  font-weight: var(--font-weight-regular);
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+}
 /* Kho badge: a short pop when the level changes (Đủ → Sắp hết → Hết). */
 .badge.is-level-changed {
   animation: badge-pop var(--duration-pop) var(--easing-bounce);
