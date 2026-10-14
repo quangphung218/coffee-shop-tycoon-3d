@@ -5,7 +5,7 @@ import { applyRestockSuggestion, buyIngredient, toggleMenuItem } from './invento
 import { advanceCampaigns, runCampaign } from './marketing';
 import { brew, cleanTable, collectCash, deliver, takeOrder, updatePlayerTasks } from './orders';
 import { recordExperiencesSince } from './reviews';
-import { assignRole, clearStaffTasks, fireStaff, hireStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
+import { assignRole, clearStaffTasks, fireStaff, hireStaff, placeStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
 import { buildNavGrid, nearestFree } from './nav';
 import { buyUpgrade, getShopLayout } from './upgrades';
 import type { Command, GameState } from './types';
@@ -21,6 +21,8 @@ function tick(state: GameState): void {
   updatePlayerTasks(state);
   updateStaff(state);
   updateCustomers(state);
+  // Customers who just started waiting got their takeaway spot after staff were placed; keep staff off it.
+  placeStaff(state);
   recordExperiencesSince(state, eventsBefore);
   if (state.phase === 'closing' && state.customers.length === 0) {
     closeUp(state);
