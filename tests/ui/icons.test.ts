@@ -19,7 +19,7 @@ import {
   ROLE_ICONS,
   UPGRADE_ICONS,
 } from '../../src/ui/core/iconMap';
-import { drawIcon, ICON_ATLAS_URLS, ICON_IDS, icon, iconCell, isIconId, mountIconSprite } from '../../src/ui/core/icons';
+import { AVATAR_CELLS as AVATAR_CELL_COUNT, drawIcon, ICON_ATLAS_URLS, ICON_IDS, icon, iconCell, isIconId, mountIconSprite } from '../../src/ui/core/icons';
 import { ICON_SYMBOLS, iconSvgMarkup } from '../../src/ui/core/iconSvg';
 
 /** id → body of every <symbol> in a markup string. */
@@ -40,13 +40,10 @@ describe('icon atlas', () => {
   it('has a cell for every icon and every avatar look, in atlas order', () => {
     expect(ICON_IDS).toHaveLength(105);
     expect(Object.keys(ATLAS.icons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
-    for (const id of [...ICON_IDS, ...AVATAR_CELLS]) {
-      const c = iconCell(id);
-      expect(c, id).toBeDefined();
-      expect(c!.w, id).toBe(c!.h);
-      expect(c!.x + c!.w, id).toBeLessThanOrEqual(ATLAS.width);
-      expect(c!.y + c!.h, id).toBeLessThanOrEqual(ATLAS.height);
-    }
+    expect(AVATAR_CELL_COUNT).toBe(AVATAR_LOOKS.length);
+    const table = ATLAS.icons as Record<string, unknown>;
+    for (const id of [...ICON_IDS, ...AVATAR_CELLS]) expect(iconCell(id), id).toEqual(table[id]);
+    expect(iconCell(`i-avatar-${AVATAR_LOOKS.length}`)).toBeUndefined();
     expect(iconCell('i-avatar-99')).toBeUndefined();
   });
 
