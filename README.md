@@ -86,7 +86,10 @@ npm run check      # tsc --noEmit, toàn bộ test, rồi vite build
 npm run build      # kiểm tra kiểu và build ra dist/
 npm run preview    # mở bản build
 npm run media      # build rồi chụp lại ảnh, GIF, mp4 vào docs/media/
+npm run layout     # build rồi kiểm tràn ngang và CLS bảng Kho ở 390/768/1440 px
 ```
+
+`npm run media` và `npm run layout` cần Chromium của Playwright: `npx playwright install chromium`.
 
 Chạy `npm run check` trước khi commit. Xem nhân vật và animation riêng: `npm run dev` rồi mở `/?preview=actors`.
 
