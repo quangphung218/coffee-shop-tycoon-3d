@@ -53,7 +53,9 @@ describe('Main Menu "Tiếp tục"', () => {
     const menu = q(root, '.ui-screen:not([hidden])');
     expect(button(menu, 'Tiếp tục').hidden).toBe(true);
     expect(document.activeElement).toBe(button(menu, 'Ván mới'));
-    expect(menu.textContent).toContain('Chưa có bản lưu nào');
+    const reason = q(menu, '.reason');
+    expect(reason.hidden).toBe(false);
+    expect(reason.textContent).toContain('Chưa có bản lưu nào');
   });
 
   it('shows the shop name and day after a played day autosaves, and continues that game', () => {
@@ -72,7 +74,8 @@ describe('Main Menu "Tiếp tục"', () => {
     const cont = button(menu, 'Tiếp tục');
     expect(cont.hidden).toBe(false);
     expect(cont.textContent).toContain(`Quán Luồng · Ngày ${savedDay}`);
-    expect(menu.textContent).not.toContain('Chưa có bản lưu nào');
+    // textContent still counts hidden nodes; the reason line itself must be hidden.
+    expect(q(menu, '.reason').hidden).toBe(true);
     expect(document.activeElement).toBe(cont);
 
     cont.click();
