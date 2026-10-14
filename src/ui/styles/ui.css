@@ -1113,9 +1113,6 @@ legend {
   font-weight: var(--font-weight-heavy);
   line-height: 1;
 }
-.dock-badge[hidden] {
-  display: none;
-}
 @media (max-width: 1023px) {
   .dock-btn {
     min-width: 64px;
