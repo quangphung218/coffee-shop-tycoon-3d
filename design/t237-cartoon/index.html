@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Phong cách hoạt hình ấm (T237)</title>
+<style>
+:root {
+  /* Palette (design/tokens.json → color.*) */
+  --color-neutral-0: #ffffff;
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-coffee-300: #d9a877;
+  --color-coffee-500: #a0673f;
+  --color-coffee-700: #6b3f24;
+  --color-coffee-900: #3a2216;
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
+  --color-mint-100: #d9f6ea;
+  --color-mint-400: #5fd3a8;
+  --color-mint-500: #3dbd8f;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-sky-700: #1a5fd0;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-ok-700: #17663a;
+  --color-warning-700: #7a4a00;
+  --color-danger-700: #b3261e;
+  --color-focus-300: #ffd166;
+  --color-skin-1: #ffdcbf;
+  --color-skin-2: #f0b98d;
+  --color-skin-3: #c98a5e;
+  --color-skin-4: #8d5a3b;
+  --color-hair-1: #3a2216;
+  --color-hair-2: #6b3f24;
+  --color-hair-3: #d9822b;
+  --color-hair-4: #f2cf63;
+  --color-scene-sky: #bfe6f5;
+  --color-scene-sky-dawn: #ffe3c2;
+  --color-scene-sky-dusk: #f5b08c;
+  --color-scene-ground: #b9de9a;
+  --color-scene-road: #8e9aa6;
+  --color-scene-floor: #e9cfa8;
+  --color-scene-wall: #f6e3c6;
+  --color-scene-wall-shade: #e2c59d;
+  --color-scene-wood: #a0704c;
+
+  /* Semantic (same names as src/ui/styles/tokens.css) */
+  --text-primary: var(--color-neutral-900);
+  --text-muted: var(--color-neutral-700);
+  --text-inverse: var(--color-cream-50);
+  --text-inverse-muted: var(--color-coffee-300);
+  --text-on-accent: var(--color-neutral-900);
+  --text-on-bright: var(--color-neutral-900);
+  --text-ok: var(--color-ok-700);
+  --text-warning: var(--color-warning-700);
+  --text-danger: var(--color-danger-700);
+  --surface-app: var(--color-cream-100);
+  --surface-panel-solid: var(--color-cream-50);
+  --surface-sunken: var(--color-cream-100);
+  --surface-hud-solid: var(--color-cream-50);
+  --surface-ink: var(--color-neutral-900);
+  --surface-ok: var(--color-mint-100);
+  --surface-warning: var(--color-honey-100);
+  --surface-danger: var(--color-berry-100);
+  --surface-info: var(--color-sky-100);
+  --surface-disabled: var(--color-cream-200);
+  --surface-selected: var(--color-honey-100);
+  --surface-scrim: rgba(58, 34, 22, 0.5);
+  --border-subtle: var(--color-cream-200);
+  --border-strong: var(--color-neutral-900);
+  --border-outline: var(--color-neutral-900);
+  --border-disabled: var(--color-neutral-700);
+  --accent-primary: var(--color-honey-400);
+  --accent-primary-hover: var(--color-honey-500);
+  --accent-mint: var(--color-mint-400);
+  --accent-mint-hover: var(--color-mint-500);
+  --accent-danger: var(--color-berry-400);
+  --accent-danger-hover: var(--color-berry-500);
+  --accent-info: var(--color-sky-400);
+  --data-bar: var(--color-honey-400);
+  --data-track: var(--color-cream-200);
+  --patience-high: var(--color-mint-400);
+  --patience-mid: var(--color-honey-400);
+  --patience-low: var(--color-berry-400);
+  --patience-track: var(--color-neutral-900);
+  --rating-star: var(--color-honey-400);
+  --rating-empty: var(--color-cream-200);
+  --focus-ring: var(--color-sky-700);
+  --focus-ring-inverse: var(--color-focus-300);
+  --icon-ink: var(--color-neutral-900);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-coffee: var(--color-coffee-700);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-orange: var(--color-tangerine-400);
+  --icon-fill-empty: var(--color-cream-200);
+
+  --font-family-base: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --font-size-3xl: 40px;
+  --font-size-4xl: 48px;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+  --shadow-soft: 0 12px 24px 0 rgba(58, 34, 22, 0.18);
+  --shadow-card: 0 6px 0 0 var(--color-neutral-900), 0 12px 24px 0 rgba(58, 34, 22, 0.18);
+
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-pop: 360ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --size-target: 44px;
+  --size-target-lg: 56px;
+  --size-hud-pill: 48px;
+  --size-panel: 380px;
+  --size-dialog: 760px;
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-focus-width: 3px;
+  --size-focus-offset: 3px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 32px;
+  --size-icon-xl: 48px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface-app);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+h1, h2, h3, h4, p, dl, dd, figure { margin: 0; }
+code { font-size: var(--font-size-xs); color: var(--text-muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Icons */
+.ic {
+  width: var(--size-icon-md); height: var(--size-icon-md);
+  fill: none; stroke: var(--icon-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  flex: none; overflow: visible; vertical-align: middle;
+  --av-skin: var(--color-skin-1); --av-hair: var(--color-hair-2);
+}
+.ic-sm { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+.ic-lg { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.ic-xl { width: var(--size-icon-xl); height: var(--size-icon-xl); }
+.fh { fill: var(--icon-fill-honey); } .fm { fill: var(--icon-fill-mint); } .fb { fill: var(--icon-fill-berry); }
+.fs { fill: var(--icon-fill-sky); } .fk { fill: var(--icon-fill-cream); } .fc { fill: var(--icon-fill-latte); }
+.fd { fill: var(--icon-fill-coffee); } .fl { fill: var(--icon-fill-leaf); } .fo { fill: var(--icon-fill-orange); }
+.fe { fill: var(--icon-fill-empty); } .fi { fill: var(--icon-ink); } .ns { stroke: none; }
+.av-skin { fill: var(--av-skin); } .av-hair { fill: var(--av-hair); }
+
+/* Scene illustration (placeholder for the 3D view) */
+.sc-sky { fill: var(--color-scene-sky); } .sc-cloud { fill: var(--color-cream-50); }
+.sc-ground { fill: var(--color-scene-ground); } .sc-road { fill: var(--color-scene-road); }
+.sc-wall { fill: var(--color-scene-wall); } .sc-wall2 { fill: var(--color-scene-wall-shade); }
+.sc-floor { fill: var(--color-scene-floor); } .sc-wood { fill: var(--color-scene-wood); }
+.sc-wood-top { fill: var(--color-coffee-300); } .sc-wood-dark { fill: var(--color-coffee-700); }
+.sc-window { fill: var(--color-sky-100); } .sc-awning { fill: var(--color-berry-400); }
+.sc-board { fill: var(--color-coffee-700); } .sc-lamp { fill: var(--color-honey-400); }
+.sc-machine { fill: var(--color-sky-400); } .sc-plant { fill: var(--color-leaf-400); }
+.sc-pot { fill: var(--color-tangerine-400); } .sc-cream { fill: var(--color-cream-50); }
+.sc-ink { fill: var(--color-neutral-900); } .sc-shadow { fill: var(--color-neutral-900); opacity: 0.15; }
+.sc-o { stroke: var(--border-outline); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.sc-ln { fill: none; stroke: var(--border-outline); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sc-chalk { fill: none; stroke: var(--color-cream-50); stroke-width: 3; stroke-linecap: round; }
+.sc-steam-o { fill: none; stroke: var(--border-outline); stroke-width: 11; stroke-linecap: round; }
+.sc-steam { fill: none; stroke: var(--color-cream-50); stroke-width: 6; stroke-linecap: round; }
+.sc-dash { fill: none; stroke: var(--border-outline); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 12; opacity: 0.5; }
+.sc-track { fill: var(--patience-track); } .sc-hi { fill: var(--patience-high); } .sc-mid { fill: var(--patience-mid); } .sc-low { fill: var(--patience-low); }
+.sc-text { font-family: var(--font-family-base); font-weight: var(--font-weight-heavy); font-size: 22px; fill: var(--text-primary); }
+.sc-ic { fill: none; stroke: var(--icon-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ch-body { fill: var(--ch-body); } .ch-skin { fill: var(--ch-skin); } .ch-hair { fill: var(--ch-hair); }
+.ch-feet { fill: var(--color-coffee-700); } .ch-cheek { fill: var(--color-berry-400); opacity: 0.6; }
+
+/* Document */
+.page { max-width: 1360px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+.doc-head h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.doc-head p { color: var(--text-muted); margin-top: var(--space-2); max-width: 820px; }
+.toc { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-4) 0 0; padding: 0; list-style: none; }
+.toc a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-target); padding: 0 var(--space-4); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); color: var(--text-primary); font-weight: var(--font-weight-bold); text-decoration: none; box-shadow: var(--shadow-sm); }
+.toc a:focus-visible { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.sec-title { display: flex; align-items: center; gap: var(--space-3); font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.sec-lead { color: var(--text-muted); margin: var(--space-2) 0 var(--space-6); max-width: 820px; }
+.state-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); margin: var(--space-8) 0 var(--space-3); display: flex; gap: var(--space-2); align-items: center; }
+.sheet { background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: var(--space-6); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
+.muted { color: var(--text-muted); }
+.small { font-size: var(--font-size-sm); }
+
+/* Foundation samples */
+.swatch-group h3 { font-size: var(--font-size-md); font-weight: var(--font-weight-heavy); margin-bottom: var(--space-2); }
+.swatch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.swatch-list li { display: grid; grid-template-columns: 40px 1fr; gap: var(--space-3); align-items: center; font-size: var(--font-size-sm); }
+.sw { width: 40px; height: 40px; border-radius: var(--radius-md); border: var(--size-outline-sm) solid var(--border-outline); }
+.type-row { display: grid; grid-template-columns: 120px 1fr; gap: var(--space-4); align-items: baseline; padding: var(--space-3) 0; border-bottom: var(--size-outline-sm) dotted var(--border-subtle); }
+.type-row:last-child { border-bottom: none; }
+.t-display { font-size: var(--font-size-4xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.t-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.t-heading { font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.t-sub { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); }
+.t-body { font-size: var(--font-size-md); }
+.t-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.t-caption { font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.shape-row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
+.shape { display: grid; place-items: center; width: 96px; height: 72px; background: var(--surface-selected); border: var(--size-outline) solid var(--border-outline); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); text-align: center; }
+.shape-sm { border-radius: var(--radius-sm); } .shape-md { border-radius: var(--radius-md); } .shape-lg { border-radius: var(--radius-lg); } .shape-xl { border-radius: var(--radius-xl); } .shape-pill { border-radius: var(--radius-pill); width: 128px; }
+.sh-sm { box-shadow: var(--shadow-sm); } .sh-md { box-shadow: var(--shadow-md); } .sh-lg { box-shadow: var(--shadow-lg); } .sh-card { box-shadow: var(--shadow-card); background: var(--surface-panel-solid); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--size-target); padding: 0 var(--space-4);
+  font: inherit; font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); color: var(--text-primary);
+  background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md); cursor: pointer; text-align: left;
+  transition: transform var(--duration-fast) var(--easing-bounce), box-shadow var(--duration-fast) var(--easing-standard), background-color var(--duration-fast) var(--easing-standard);
+}
+.btn:hover, .btn.is-hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); background: var(--surface-sunken); }
+.btn:focus-visible, .btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.btn:active, .btn.is-active { transform: translateY(2px); box-shadow: var(--shadow-sm); transition-duration: var(--duration-instant); }
+.btn-primary { background: var(--accent-primary); }
+.btn-primary:hover, .btn-primary.is-hover, .btn-primary.is-active { background: var(--accent-primary-hover); }
+.btn-accent { background: var(--accent-mint); }
+.btn-accent:hover, .btn-accent.is-hover, .btn-accent.is-active { background: var(--accent-mint-hover); }
+.btn-danger { background: var(--accent-danger); }
+.btn-danger:hover, .btn-danger.is-hover, .btn-danger.is-active { background: var(--accent-danger-hover); }
+.btn[aria-disabled="true"] { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; transform: none; cursor: not-allowed; }
+.btn-lg { min-height: var(--size-target-lg); padding: 0 var(--space-6); font-size: var(--font-size-lg); border-radius: var(--radius-lg); }
+.btn-block { width: 100%; justify-content: flex-start; }
+.btn-text { display: flex; flex-direction: column; }
+.btn-detail { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.link-btn { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--size-target); padding: 0 var(--space-2); font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); color: var(--text-primary); background: none; border: none; text-decoration: underline; text-decoration-thickness: var(--size-outline-sm); text-underline-offset: var(--space-1); cursor: pointer; }
+.btn-matrix { display: grid; grid-template-columns: 120px repeat(5, minmax(0, 1fr)); gap: var(--space-3); align-items: center; }
+.btn-matrix .hd { font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-muted); }
+.btn-matrix .row-hd { font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); }
+.reason { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--space-2); }
+.reason-danger { color: var(--text-danger); font-weight: var(--font-weight-bold); }
+.kbd { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 var(--space-1); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-primary); }
+
+/* Frames (one per screen) */
+.frame {
+  position: relative; overflow: hidden; isolation: isolate;
+  min-height: 680px; padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  background: var(--color-scene-sky);
+  border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-card);
+}
+.frame > .scene { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.frame > .scrim { position: absolute; inset: 0; background: var(--surface-scrim); z-index: 1; }
+.frame > .layer { position: relative; z-index: 2; }
+.frame-label { position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 3; font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); padding: var(--space-1) var(--space-2); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); }
+
+/* HUD */
+.hud { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.hud-left { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; max-width: 520px; }
+.hud-right { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: flex-end; margin-left: auto; }
+.pill {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  min-height: var(--size-hud-pill); padding: var(--space-1) var(--space-4);
+  background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md); font-weight: var(--font-weight-heavy);
+}
+.pill-cap { font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.pill-val { font-size: var(--font-size-lg); font-variant-numeric: tabular-nums; }
+.phases { list-style: none; margin: 0; padding: var(--space-1); gap: var(--space-1); }
+.phases li { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius-pill); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--text-muted); border: var(--size-outline-sm) solid transparent; }
+.phases li.is-done { color: var(--text-primary); }
+.phases li[aria-current="step"] { background: var(--accent-primary); border-color: var(--border-outline); color: var(--text-primary); font-weight: var(--font-weight-heavy); box-shadow: var(--shadow-sm); }
+.ph-count { font-size: var(--font-size-xs); }
+.seg { display: inline-flex; gap: var(--space-1); padding: var(--space-1); background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
+.seg button { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--size-target); min-width: var(--size-target); padding: 0 var(--space-3); font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: transparent; border: var(--size-outline-sm) solid transparent; border-radius: var(--radius-pill); cursor: pointer; }
+.seg button:hover, .seg button.is-hover { background: var(--surface-sunken); border-color: var(--border-outline); }
+.seg button[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+.seg button:focus-visible, .seg button.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.hud-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--size-hud-pill); min-width: var(--size-hud-pill); padding: 0 var(--space-3);
+  font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary);
+  background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md); cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce), box-shadow var(--duration-fast) var(--easing-standard);
+}
+.hud-btn:hover, .hud-btn.is-hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.hud-btn:focus-visible, .hud-btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.hud-btn:active, .hud-btn.is-active { transform: translateY(2px); box-shadow: var(--shadow-sm); }
+.hud-btn[aria-pressed="true"] { background: var(--accent-primary); }
+.hud-btn[aria-disabled="true"] { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; }
+.hud-note { align-self: flex-start; display: inline-flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-4); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-sm); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+
+/* Dock of panel buttons */
+.dock { align-self: center; margin-top: auto; display: flex; gap: var(--space-1); padding: var(--space-2); background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
+.dock-btn {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1);
+  min-width: 76px; min-height: 64px; padding: var(--space-1) var(--space-2);
+  font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); color: var(--text-primary);
+  background: transparent; border: var(--size-outline) solid transparent; border-radius: var(--radius-lg); cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+.dock-btn .ic { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.dock-btn:hover, .dock-btn.is-hover { background: var(--surface-sunken); border-color: var(--border-outline); transform: translateY(-3px); }
+.dock-btn:focus-visible, .dock-btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.dock-btn:active, .dock-btn.is-active { transform: translateY(1px) scale(0.96); }
+.dock-btn[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+.dock-badge { position: absolute; top: var(--space-1); right: var(--space-2); display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 var(--space-1); background: var(--accent-danger); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); }
+
+/* Toast */
+.toasts { display: flex; flex-direction: column; gap: var(--space-2); align-self: flex-start; width: min(100%, 400px); }
+.toast { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: center; padding: var(--space-3); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.toast-chip { display: grid; place-items: center; width: 44px; height: 44px; border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); background: var(--surface-info); }
+.toast-chip.is-ok { background: var(--surface-ok); } .toast-chip.is-warn { background: var(--surface-warning); } .toast-chip.is-error { background: var(--surface-danger); }
+.toast-title { font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.toast-text { font-size: var(--font-size-sm); color: var(--text-muted); }
+.icon-btn { display: grid; place-items: center; width: var(--size-target); height: var(--size-target); padding: 0; background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); cursor: pointer; }
+.icon-btn:hover, .icon-btn.is-hover { background: var(--surface-sunken); }
+.icon-btn:focus-visible, .icon-btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+
+/* Customer bubbles (HTML version for the state sheet) */
+.bubbles { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-4); align-items: flex-end; padding-bottom: var(--space-4); }
+.cb-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.cb { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); min-width: 112px; padding: var(--space-3); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.cb-tail { position: absolute; bottom: -10px; left: calc(50% - 8px); width: 16px; height: 16px; background: var(--surface-panel-solid); border-right: var(--size-outline) solid var(--border-outline); border-bottom: var(--size-outline) solid var(--border-outline); transform: rotate(45deg); }
+.cb-face { position: absolute; top: -14px; right: -14px; }
+.pbar { width: 88px; height: 14px; padding: 3px; background: var(--patience-track); border-radius: var(--radius-pill); }
+.pfill { display: block; height: 8px; border-radius: var(--radius-pill); background: var(--patience-high); }
+.pfill.is-mid { background: var(--patience-mid); } .pfill.is-low { background: var(--patience-low); }
+.cb-cap { font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); text-align: center; }
+
+/* Badges and status */
+.badge { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 28px; padding: var(--space-1) var(--space-2); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); line-height: 1; white-space: nowrap; }
+.badge-ok { background: var(--surface-ok); color: var(--text-ok); }
+.badge-warn { background: var(--surface-warning); color: var(--text-warning); }
+.badge-danger { background: var(--surface-danger); color: var(--text-danger); }
+.badge-plain { background: var(--surface-panel-solid); color: var(--text-primary); }
+.status { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-ok); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.status-info { background: var(--surface-info); } .status-warn { background: var(--surface-warning); } .status-danger { background: var(--surface-danger); }
+
+/* Side panel */
+.stage { flex: 1; display: flex; gap: var(--space-4); align-items: flex-start; justify-content: flex-end; }
+.panel { width: min(100%, var(--size-panel)); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); overflow: hidden; }
+.panel-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-selected); border-bottom: var(--size-outline) solid var(--border-outline); }
+.head-icon { display: grid; place-items: center; width: 48px; height: 48px; background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+.panel-head h3 { flex: 1; font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.panel-head .sub { display: block; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.panel-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.panel-body .intro { font-size: var(--font-size-sm); color: var(--text-muted); }
+.panel-foot { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface-sunken); border-top: var(--size-outline) solid var(--border-outline); }
+.foot-sum { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--font-size-sm); }
+.foot-sum b { font-size: var(--font-size-md); font-weight: var(--font-weight-heavy); font-variant-numeric: tabular-nums; }
+.stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.item { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: var(--space-2) var(--space-3); align-items: center; padding: var(--space-3); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.item.is-suggested { background: var(--surface-selected); }
+.item-icon { display: grid; place-items: center; width: 48px; height: 48px; background: var(--surface-sunken); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); }
+.item-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.item-meta { font-size: var(--font-size-sm); color: var(--text-muted); }
+.sug { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-warning); }
+.item-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.stepper-label { flex: 1 1 100%; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.stepper { display: inline-flex; align-items: center; gap: var(--space-1); }
+.step-btn { display: grid; place-items: center; width: var(--size-target); height: var(--size-target); padding: 0; font: inherit; font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); color: var(--text-primary); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; }
+.step-btn:hover, .step-btn.is-hover { background: var(--surface-sunken); }
+.step-btn:focus-visible, .step-btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.step-btn:active, .step-btn.is-active { transform: translateY(2px); box-shadow: none; }
+.step-btn[aria-disabled="true"] { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; }
+.step-input { width: 56px; height: var(--size-target); text-align: center; font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); }
+.step-input:focus-visible, .step-input.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.item-cost { margin-left: auto; font-weight: var(--font-weight-heavy); font-variant-numeric: tabular-nums; }
+
+/* Main menu */
+.frame-menu { justify-content: center; padding-left: max(var(--space-4), 6%); }
+.menu-card { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+.logo { display: flex; align-items: center; gap: var(--space-4); }
+.logo-mark { flex: none; width: 88px; height: 88px; }
+.logo-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.menu-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.menu-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); align-items: center; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.keys { display: inline-flex; align-items: center; gap: var(--space-1); }
+
+/* Daily report */
+.frame-report { align-items: center; justify-content: center; padding: var(--space-6) var(--space-4); }
+.rpt { width: 100%; max-width: var(--size-dialog); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); overflow: hidden; }
+.rpt-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-6); background: var(--surface-selected); border-bottom: var(--size-outline) solid var(--border-outline); }
+.rpt-head h3 { font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.rpt-sub { font-size: var(--font-size-sm); color: var(--text-muted); }
+.tabs { display: flex; gap: var(--space-2); margin-left: auto; }
+.tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-target); padding: 0 var(--space-4); font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: transparent; border: var(--size-outline) solid transparent; border-radius: var(--radius-pill); cursor: pointer; }
+.tab:hover, .tab.is-hover { border-color: var(--border-outline); background: var(--surface-panel-solid); }
+.tab[aria-selected="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+.tab:focus-visible, .tab.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: var(--size-focus-offset); }
+.rpt-body { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); }
+.result { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--space-4); align-items: center; padding: var(--space-4) var(--space-6); background: var(--surface-ok); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.result > .ic { grid-row: span 3; width: var(--size-icon-xl); height: var(--size-icon-xl); }
+.result-label { font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); color: var(--text-ok); line-height: var(--line-height-tight); }
+.result-value { font-size: var(--font-size-3xl); font-weight: var(--font-weight-heavy); color: var(--text-ok); line-height: var(--line-height-tight); font-variant-numeric: tabular-nums; }
+.result-note { font-size: var(--font-size-sm); color: var(--text-muted); }
+.result.is-loss { background: var(--surface-danger); }
+.result.is-loss .result-label, .result.is-loss .result-value { color: var(--text-danger); }
+.result.is-none { background: var(--surface-sunken); }
+.result.is-none .result-label, .result.is-none .result-value { color: var(--text-primary); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.col { display: flex; flex-direction: column; gap: var(--space-4); }
+.box { padding: var(--space-4); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.box h4 { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); margin-bottom: var(--space-3); }
+.stats { display: flex; flex-direction: column; }
+.stat { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) 0; border-bottom: var(--size-outline-sm) dotted var(--border-subtle); }
+.stat dd { font-weight: var(--font-weight-heavy); font-variant-numeric: tabular-nums; }
+.stat .pos { color: var(--text-ok); } .stat .neg { color: var(--text-danger); }
+.stat.is-total { margin-top: var(--space-1); padding-top: var(--space-2); border-top: var(--size-outline) solid var(--border-outline); border-bottom: none; font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); }
+.rating-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.stars { display: inline-flex; align-items: center; }
+.stars b { margin-left: var(--space-1); font-weight: var(--font-weight-heavy); font-variant-numeric: tabular-nums; }
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.bar { display: grid; grid-template-columns: minmax(0, 10rem) 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.bar-name { display: flex; align-items: center; gap: var(--space-2); }
+.bar-track { height: 16px; background: var(--data-track); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--data-bar); border-right: var(--size-outline-sm) solid var(--border-outline); }
+.bar-num { font-variant-numeric: tabular-nums; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.out { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); }
+.review { display: grid; grid-template-columns: 40px 1fr; gap: var(--space-1) var(--space-3); padding: var(--space-3); background: var(--surface-sunken); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); }
+.review > .ic { grid-row: span 3; width: 40px; height: 40px; }
+.review-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--text-muted); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); background: var(--surface-ok); }
+.chip.is-bad { background: var(--surface-danger); }
+.tip { display: grid; grid-template-columns: 44px 1fr; gap: var(--space-1) var(--space-3); align-items: start; }
+.tip-icon { display: grid; place-items: center; width: 44px; height: 44px; background: var(--surface-selected); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); }
+.rpt-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-6); background: var(--surface-sunken); border-top: var(--size-outline) solid var(--border-outline); }
+.save-ok { display: flex; align-items: center; gap: var(--space-2); flex: 1 1 240px; font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--text-ok); }
+.foot-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-left: auto; }
+.skel { display: block; height: 16px; background: var(--surface-disabled); border-radius: var(--radius-pill); }
+.skel-lg { height: 48px; border-radius: var(--radius-lg); }
+.empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6); text-align: center; }
+
+/* Motion */
+.story { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); }
+.kf { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3); background: var(--surface-sunken); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); text-align: center; }
+.kf svg { width: 100%; max-width: 120px; height: auto; }
+.kf b { font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); }
+.fx-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-4); }
+.fx { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.fx h3 { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.fx dl { display: grid; grid-template-columns: 112px 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-size-sm); }
+.fx dt { font-weight: var(--font-weight-heavy); }
+.sky-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.sky { display: flex; align-items: flex-end; min-height: 72px; padding: var(--space-2); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); }
+.sky span { padding: var(--space-1) var(--space-2); background: var(--surface-panel-solid); border-radius: var(--radius-pill); border: var(--size-outline-sm) solid var(--border-outline); }
+
+@media (max-width: 1023px) {
+  .btn-matrix { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .btn-matrix .hd { display: none; }
+  .btn-matrix .row-hd { grid-column: 1 / -1; margin-top: var(--space-2); }
+  .dock-btn { min-width: 64px; }
+}
+@media (max-width: 640px) {
+  .page { padding: var(--space-6) var(--space-3) var(--space-12); gap: var(--space-8); }
+  .sheet { padding: var(--space-4); }
+  .frame { padding: var(--space-3); min-height: 760px; }
+  .frame-menu { padding-left: var(--space-3); }
+  .phases li:not([aria-current="step"]) .ph-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .phases li { padding: 0 var(--space-2); }
+  .lbl-long { display: none; }
+  .pill { padding: var(--space-1) var(--space-3); }
+  .pill-cap { display: none; }
+  .dock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-lg); }
+  .dock-btn { min-width: 0; font-size: var(--font-size-xs); }
+  .stage { justify-content: stretch; }
+  .panel { width: 100%; }
+  .item { grid-template-columns: 48px minmax(0, 1fr); }
+  .item > .badge { grid-column: 2; justify-self: start; }
+  .grid2 { grid-template-columns: 1fr; }
+  .rpt-body { padding: var(--space-4); }
+  .rpt-head, .rpt-foot { padding: var(--space-3) var(--space-4); }
+  .tabs { margin-left: 0; width: 100%; }
+  .bar { grid-template-columns: minmax(0, 7.5rem) 1fr auto; }
+  .result { padding: var(--space-3) var(--space-4); }
+  .result-value { font-size: var(--font-size-2xl); }
+  .type-row { grid-template-columns: 1fr; gap: var(--space-1); }
+  .t-display { font-size: var(--font-size-3xl); }
+  .fx dl { grid-template-columns: 1fr; }
+  .foot-actions { margin-left: 0; width: 100%; }
+  .foot-actions .btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .hud-btn, .dock-btn { transition: none; }
+  .btn:hover, .btn:active, .hud-btn:hover, .hud-btn:active, .dock-btn:hover, .dock-btn:active { transform: none; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<symbol id="i-tasks" viewBox="0 0 24 24"><rect class="fk" x="4.5" y="4" width="15" height="17.5" rx="2.5"/><rect class="fh" x="8.5" y="2.5" width="7" height="4" rx="1.5"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="5.2"/><circle class="fk" cx="12" cy="12" r="2.6"/><path d="M3.5 3.5v5a1.5 1.5 0 0 0 3 0v-5M5 10v10.5M20.5 20.5V3.5c-1.6.8-2.5 2.8-2.5 6V12h2.5"/></symbol>
+<symbol id="i-inventory" viewBox="0 0 24 24"><path class="fc" d="M3.5 7.5 12 3.5l8.5 4V17L12 21l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5V21M7.8 5.5l8.4 4"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle class="fs" cx="16.5" cy="7.5" r="3"/><path class="fs" d="M12.5 18.5a4.5 4.5 0 0 1 9 0z"/><circle class="fh" cx="9" cy="8.5" r="3.5"/><path class="fh" d="M3 20.5a6 6 0 0 1 12 0z"/></symbol>
+<symbol id="i-marketing" viewBox="0 0 24 24"><path class="fb" d="M3.5 10.5A1.5 1.5 0 0 1 5 9h2.5L16 4.5v15L7.5 15H5a1.5 1.5 0 0 1-1.5-1.5z"/><path class="fk" d="M7.5 15 9 19.5h2.5L10.5 15z"/><path d="M19 9c1.3 1.6 1.3 4.4 0 6"/></symbol>
+<symbol id="i-upgrades" viewBox="0 0 24 24"><rect class="fc" x="10.5" y="9.5" width="3" height="12" rx="1.5"/><path class="fs" d="M4.5 5.5A1.5 1.5 0 0 1 6 4h10l3.5 3v2a1 1 0 0 1-1 1H6a1.5 1.5 0 0 1-1.5-1.5z"/></symbol>
+<symbol id="i-reviews" viewBox="0 0 24 24"><path class="fs" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/><circle class="fi ns" cx="8.5" cy="10" r="1.3"/><circle class="fi ns" cx="12" cy="10" r="1.3"/><circle class="fi ns" cx="15.5" cy="10" r="1.3"/></symbol>
+<symbol id="i-open" viewBox="0 0 24 24"><path class="fh" d="M5.5 17v-6a6.5 6.5 0 0 1 13 0v6l1.5 1.5H4z"/><path d="M10 21h4M12 2.5v2"/></symbol>
+<symbol id="i-next-day" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="4.5"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><rect class="fs" x="2.5" y="7" width="13" height="10" rx="2.5"/><path class="fs" d="M15.5 10.5 21 7.5v9l-5.5-3z"/><circle class="fk" cx="7.5" cy="12" r="2"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path class="fs" d="M18.49 9.38 21.29 10.02 21.29 13.98 18.49 14.62A7 7 0 0 1 17.52 16.31L18.36 19.06 14.94 21.03 12.97 18.93A7 7 0 0 1 11.03 18.93L9.06 21.03 5.64 19.06 6.48 16.31A7 7 0 0 1 5.51 14.62L2.71 13.98 2.71 10.02 5.51 9.38A7 7 0 0 1 6.48 7.69L5.64 4.94 9.06 2.97 11.03 5.07A7 7 0 0 1 12.97 5.07L14.94 2.97 18.36 4.94 17.52 7.69A7 7 0 0 1 18.49 9.38Z"/><circle class="fk" cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect class="fh" x="6" y="4.5" width="4" height="15" rx="1.5"/><rect class="fh" x="14" y="4.5" width="4" height="15" rx="1.5"/></symbol>
+<symbol id="i-speed-1" viewBox="0 0 24 24"><path class="fm" d="M7 5.5v13a1 1 0 0 0 1.5.9L19 12.9a1 1 0 0 0 0-1.8L8.5 4.6A1 1 0 0 0 7 5.5z"/></symbol>
+<symbol id="i-speed-2" viewBox="0 0 24 24"><path class="fm" d="M3 6.5v11L11 12z"/><path class="fm" d="M12.5 6.5v11l8-5.5z"/></symbol>
+<symbol id="i-speed-4" viewBox="0 0 24 24"><path class="fm" d="M1.5 7v10L8 12z"/><path class="fm" d="M8.5 7v10L15 12z"/><path class="fm" d="M15.5 7v10l6.5-5z"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path class="fh" d="M4 11 12 4l8 7v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5z"/><rect class="fc" x="9.5" y="14" width="5" height="7" rx="1"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+<symbol id="i-forward" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-phase-prep" viewBox="0 0 24 24"><path class="fc" d="M3 10.5h18l-2.2 8.6a2 2 0 0 1-1.9 1.4H7.1a2 2 0 0 1-1.9-1.4z"/><path d="M7.5 10.5 10 4.5M16.5 10.5 14 4.5M9 14v3M12 14v3M15 14v3"/></symbol>
+<symbol id="i-phase-open" viewBox="0 0 24 24"><rect class="fc" x="5.5" y="3" width="13" height="17.5" rx="2"/><rect class="fk" x="8.5" y="6" width="7" height="3.5" rx="1"/><path d="M3 20.5h18"/><circle class="fi ns" cx="15" cy="13" r="1.3"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path class="fb" d="M12 21.5c-4 0-6.5-2.8-6.5-6.3 0-3.7 3-5.6 3.8-9.7 2.7 1.6 3.3 3.8 3.4 5.4 1-.8 1.6-2 1.8-3.4 2.3 1.9 4 4.4 4 7.7 0 3.5-2.5 6.3-6.5 6.3z"/><path class="fh" d="M12 21.5c-1.7 0-2.8-1.2-2.8-2.8 0-1.7 1.4-2.7 2.8-4.2 1.4 1.5 2.8 2.5 2.8 4.2 0 1.6-1.1 2.8-2.8 2.8z"/></symbol>
+<symbol id="i-phase-close" viewBox="0 0 24 24"><path class="fh" d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle class="fk" cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<symbol id="i-ok" viewBox="0 0 24 24"><circle class="fm" cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8 5.2-5.8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-warning" viewBox="0 0 24 24"><path class="fh" d="M10.3 4.3a2 2 0 0 1 3.4 0l7.5 13a2 2 0 0 1-1.7 3H4.5a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><circle class="fi ns" cx="12" cy="17" r="1.3"/></symbol>
+<symbol id="i-error" viewBox="0 0 24 24"><circle class="fb" cx="12" cy="12" r="9"/><path d="M7.5 12h9"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle class="fs" cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle class="fi ns" cx="12" cy="7.7" r="1.3"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect class="fh" x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path class="fh" d="M11 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path class="fh" d="M18.5 15c.3 1.7 1 2.4 2.5 2.7-1.5.3-2.2 1-2.5 2.7-.3-1.7-1-2.4-2.5-2.7 1.5-.3 2.2-1 2.5-2.7z"/></symbol>
+<symbol id="i-tip" viewBox="0 0 24 24"><path class="fh" d="M8.5 15.5a6.5 6.5 0 1 1 7 0V17h-7z"/><path d="M9 20.5h6M10.5 12l1.5 1.5 1.5-1.5"/></symbol>
+<symbol id="i-busy" viewBox="0 0 24 24"><path class="fh" d="M7 3.5h10c0 4-2.2 6.3-5 8.5 2.8 2.2 5 4.5 5 8.5H7c0-4 2.2-6.3 5-8.5C9.2 9.8 7 7.5 7 3.5z"/><path d="M5.5 3.5h13M5.5 20.5h13"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M19 12A7 7 0 0 1 6.64 16.5M5 12A7 7 0 0 1 17.36 7.5M17.4 3.5v4h-4M6.6 20.5v-4h4"/></symbol>
+<symbol id="i-trend-up" viewBox="0 0 24 24"><path class="fm" d="M12 5l8 13H4z"/></symbol>
+<symbol id="i-trend-down" viewBox="0 0 24 24"><path class="fb" d="M12 19 4 6h16z"/></symbol>
+<symbol id="i-equal" viewBox="0 0 24 24"><path d="M5.5 9.5h13M5.5 14.5h13"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><path d="M12 9.5v5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path class="fh" d="M12 3.1 14.7 8.88 21.03 9.66 16.37 14.02 17.58 20.29 12 17.2 6.42 20.29 7.63 14.02 2.97 9.66 9.3 8.88Z"/></symbol>
+<symbol id="i-star-empty" viewBox="0 0 24 24"><path class="fe" d="M12 3.1 14.7 8.88 21.03 9.66 16.37 14.02 17.58 20.29 12 17.2 6.42 20.29 7.63 14.02 2.97 9.66 9.3 8.88Z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><rect class="fk" x="3" y="3.5" width="18" height="17" rx="2.5"/><rect class="fm" x="6.5" y="12" width="3" height="5" rx="1"/><rect class="fh" x="10.5" y="7.5" width="3" height="9.5" rx="1"/><rect class="fb" x="14.5" y="10" width="3" height="7" rx="1"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 6H4.5v1.5a3 3 0 0 0 3 3M17 6h2.5v1.5a3 3 0 0 1-3 3M12 14v3.5"/><path class="fh" d="M7 4h10v5a5 5 0 0 1-10 0z"/><rect class="fc" x="7.5" y="17.5" width="9" height="3" rx="1"/></symbol>
+<symbol id="i-thumb-up" viewBox="0 0 24 24"><path class="fm" d="M7.5 10.5 11 4a2 2 0 0 1 2.5 1.8v3.7h4.6a2 2 0 0 1 2 2.4l-1.3 6.5a2 2 0 0 1-2 1.6H7.5z"/><rect class="fk" x="3" y="10" width="4.5" height="10.5" rx="1.5"/></symbol>
+<symbol id="i-thumb-down" viewBox="0 0 24 24"><g transform="rotate(180 12 12)"><path class="fb" d="M7.5 10.5 11 4a2 2 0 0 1 2.5 1.8v3.7h4.6a2 2 0 0 1 2 2.4l-1.3 6.5a2 2 0 0 1-2 1.6H7.5z"/><rect class="fk" x="3" y="10" width="4.5" height="10.5" rx="1.5"/></g></symbol>
+<symbol id="i-load" viewBox="0 0 24 24"><path class="fh" d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10.5h18"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path class="fs" d="M4 6a2 2 0 0 1 2-2h10.5L20 7.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><rect class="fk" x="7.5" y="13" width="9" height="7" rx="1"/><path d="M8 4v4h7V4"/></symbol>
+<symbol id="i-avatar" viewBox="0 0 24 24"><circle class="av-skin" cx="12" cy="13" r="8"/><path class="av-hair" d="M4 12.5a8 8 0 0 1 16 0c-3.2 0-6-1.4-8-3.8-2 2.4-4.8 3.8-8 3.8z"/><circle class="fi ns" cx="9.3" cy="14.2" r="1.1"/><circle class="fi ns" cx="14.7" cy="14.2" r="1.1"/><path d="M10.3 17.2a2.2 2.2 0 0 0 3.4 0"/></symbol>
+<symbol id="i-face-happy" viewBox="0 0 24 24"><circle class="fm" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="10" r="1.3"/><circle class="fi ns" cx="15" cy="10" r="1.3"/><path d="M8.5 13.5a3.5 3.5 0 0 0 7 0"/></symbol>
+<symbol id="i-face-ok" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="10" r="1.3"/><circle class="fi ns" cx="15" cy="10" r="1.3"/><path d="M9 15h6"/></symbol>
+<symbol id="i-face-worried" viewBox="0 0 24 24"><circle class="fo" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="11" r="1.3"/><circle class="fi ns" cx="15" cy="11" r="1.3"/><path d="M7.5 7.5 10 8.5M16.5 7.5 14 8.5M9 16.5c1.8-1.3 4.2-1.3 6 0"/><path class="fs" d="M19.5 3c1 1.4 1.5 2.3 1.5 3a1.5 1.5 0 0 1-3 0c0-.7.5-1.6 1.5-3z"/></symbol>
+<symbol id="i-face-angry" viewBox="0 0 24 24"><circle class="fb" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="11.5" r="1.3"/><circle class="fi ns" cx="15" cy="11.5" r="1.3"/><path d="M7 8l3 1.5M17 8l-3 1.5M8.5 17c2-1.8 5-1.8 7 0"/></symbol>
+<symbol id="i-espresso" viewBox="0 0 24 24"><path d="M9.5 3.5c-.8 1 .8 2 0 3.5M12.5 3.5c-.8 1 .8 2 0 3.5"/><ellipse class="fk" cx="11" cy="19.5" rx="8" ry="1.8"/><path class="fk" d="M5.5 9.5h11V13a5.5 5.5 0 0 1-11 0z"/><path d="M16.5 10.5h1a2.3 2.3 0 0 1 0 4.6h-1.8"/><ellipse class="fd" cx="11" cy="9.5" rx="5.5" ry="1.4"/></symbol>
+<symbol id="i-americano" viewBox="0 0 24 24"><path class="fd" d="M6.5 7h11l-1.3 12.6a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4z"/><rect class="fs" x="8.5" y="9.5" width="3.5" height="3.5" rx="1"/><rect class="fs" x="12.5" y="12.5" width="3.5" height="3.5" rx="1"/><path d="M5.5 7h13M14 7l1.5-4.5"/></symbol>
+<symbol id="i-latte" viewBox="0 0 24 24"><path class="fk" d="M7 3.5h10l-1.2 16a1.5 1.5 0 0 1-1.5 1.5H9.7a1.5 1.5 0 0 1-1.5-1.5z"/><path class="fc" d="M7.65 12h8.7l-.55 7.5a1.5 1.5 0 0 1-1.5 1.5H9.7a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M9.5 7h5"/></symbol>
+<symbol id="i-cappuccino" viewBox="0 0 24 24"><ellipse class="fk" cx="11" cy="19.5" rx="8" ry="1.8"/><path class="fc" d="M4.5 10h13v2.5a6.5 6.5 0 0 1-13 0z"/><path class="fk" d="M4.5 10c0-2.2 2.9-3.8 6.5-3.8s6.5 1.6 6.5 3.8z"/><path d="M17.5 11h1a2.3 2.3 0 0 1 0 4.6h-1.9"/><circle class="fc ns" cx="11" cy="8.4" r="1"/></symbol>
+<symbol id="i-mocha" viewBox="0 0 24 24"><path class="fd" d="M5.5 10h11v6a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5.5 16z"/><path d="M16.5 11.5H18a2.5 2.5 0 0 1 0 5h-1.5"/><path class="fk" d="M5 10C5 7.7 6.8 6.6 8.4 6.6 8.9 4.9 10.3 4 11 4s2.1.9 2.6 2.6c1.6 0 3.4 1.1 3.4 3.4z"/><path d="M8 8.6c1 .8 2 .8 3 0s2-.8 3 0"/></symbol>
+<symbol id="i-bubble-tea" viewBox="0 0 24 24"><path class="fc" d="M6.5 9h11l-1.4 10.6a1.5 1.5 0 0 1-1.5 1.3H9.4a1.5 1.5 0 0 1-1.5-1.3z"/><path class="fk" d="M5.5 9a6.5 3.5 0 0 1 13 0z"/><path d="M13.5 6.5l2-4"/><circle class="fd" cx="10" cy="17.3" r="1.2"/><circle class="fd" cx="13.8" cy="17.3" r="1.2"/><circle class="fd" cx="12" cy="14.6" r="1.2"/></symbol>
+<symbol id="i-lemon-tea" viewBox="0 0 24 24"><path class="fc" d="M6.5 8h11l-1.3 11.6a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4z"/><rect class="fs" x="9" y="11" width="3.5" height="3.5" rx="1"/><path d="M5.5 8h8"/><circle class="fh" cx="17.5" cy="7" r="3.5"/><path d="M17.5 4.8v4.4M15.3 7h4.4"/></symbol>
+<symbol id="i-croissant" viewBox="0 0 24 24"><path class="fc" d="M2.5 15.5C4 10.5 7.8 7.5 12 7.5s8 3 9.5 8c-1.5.9-3.2.8-4.3-.3-.9 1.6-2.7 2.3-5.2 2.3s-4.3-.7-5.2-2.3c-1.1 1.1-2.8 1.2-4.3.3z"/><path d="M9.3 8.2l1 8.8M14.7 8.2l-1 8.8"/></symbol>
+<symbol id="i-beans" viewBox="0 0 24 24"><ellipse class="fc" cx="8.5" cy="13.5" rx="4.2" ry="6" transform="rotate(-25 8.5 13.5)"/><path d="M6.6 8.4c2.4 2.4 0 6.2 3.8 10.2"/><ellipse class="fc" cx="16" cy="10.5" rx="3.6" ry="5.4" transform="rotate(25 16 10.5)"/><path d="M17.6 5.8c-2 2.3.2 5.6-3.2 9.4"/></symbol>
+<symbol id="i-milk" viewBox="0 0 24 24"><path class="fk" d="M7 9l2-4.5h6L17 9v10.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19.5z"/><path class="fs" d="M7 12.5h10V17H7z"/><path d="M7 9h10M10 4.5V3h4v1.5"/></symbol>
+<symbol id="i-sugar" viewBox="0 0 24 24"><rect class="fk" x="3.5" y="12" width="8" height="8" rx="1.5"/><rect class="fk" x="12.5" y="12" width="8" height="8" rx="1.5"/><rect class="fk" x="8" y="4" width="8" height="8" rx="1.5"/></symbol>
+<symbol id="i-cacao" viewBox="0 0 24 24"><rect class="fc" x="5" y="3.5" width="14" height="17" rx="2"/><path d="M5 8h14M12 3.5V12"/><path class="fb" d="M5 12h14v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z"/></symbol>
+<symbol id="i-tea" viewBox="0 0 24 24"><path class="fl" d="M5 19c0-8 5-14 15-14 0 10-6 15-15 14z"/><path d="M5 19l8.5-8.5"/></symbol>
+<symbol id="i-pearls" viewBox="0 0 24 24"><circle class="fd" cx="8" cy="15.5" r="3.5"/><circle class="fd" cx="15.5" cy="16" r="3.5"/><circle class="fd" cx="12" cy="9" r="3.5"/><circle class="fk ns" cx="7" cy="14.3" r="1"/><circle class="fk ns" cx="14.5" cy="14.8" r="1"/><circle class="fk ns" cx="11" cy="7.8" r="1"/></symbol>
+<symbol id="i-lemon" viewBox="0 0 24 24"><ellipse class="fh" cx="12" cy="12" rx="7.5" ry="5.5" transform="rotate(-35 12 12)"/><path d="M18 7.8l1.6-1.4M6 16.2l-1.6 1.4M9 11c.6-1.2 1.7-2.1 3-2.6"/></symbol>
+<symbol id="i-orange" viewBox="0 0 24 24"><circle class="fo" cx="12" cy="13.5" r="7.5"/><path d="M12 6V4.5M8.5 12c.4-1.3 1.3-2.2 2.5-2.7"/><path class="fl" d="M12 5.5c1-2 3-2.8 5-2.5-.5 2-2.5 3-5 2.5z"/></symbol>
+<symbol id="i-flour" viewBox="0 0 24 24"><path class="fk" d="M7.5 8h9c2.2 3 3.5 6.5 3.5 9.5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3c0-3 1.3-6.5 3.5-9.5z"/><path d="M7.5 8 6.5 4h11l-1 4M12 11.5V18M12 14l-2-1.5M12 14l2-1.5M12 16.5 10 15M12 16.5l2-1.5"/></symbol>
+<symbol id="i-butter" viewBox="0 0 24 24"><path class="fh" d="M3 12.5 8.5 8H21v6.5L15.5 19H3z"/><path d="M3 12.5h12.5V19M15.5 12.5 21 8"/></symbol>
+<symbol id="i-ice" viewBox="0 0 24 24"><rect class="fs" x="4.5" y="4.5" width="15" height="15" rx="4"/><path d="M8 9c.7-.9 1.7-1.4 2.8-1.5"/></symbol>
+<symbol id="i-cup" viewBox="0 0 24 24"><path class="fk" d="M6.5 8h11l-1.4 11.6a1.5 1.5 0 0 1-1.5 1.4H9.4a1.5 1.5 0 0 1-1.5-1.4z"/><path class="fh" d="M7.4 11.5h9.2l-.5 4.5H7.9z"/><rect class="fb" x="5.5" y="5" width="13" height="3" rx="1.2"/></symbol>
+<symbol id="i-flyer" viewBox="0 0 24 24"><path class="fk" d="M6 3.5h8.5l4 4v12A1.5 1.5 0 0 1 17 21H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M14.5 3.5v4h4M7.5 18h6"/><rect class="fb" x="7.5" y="10.5" width="8" height="4.5" rx="1"/></symbol>
+<symbol id="i-cup-hot" viewBox="0 0 24 24"><path class="fc" d="M5 10h11v5.5a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5 15.5z"/><path d="M16 11.5h1.5a2.5 2.5 0 0 1 0 5H16M8.5 3.5c-.8 1 .8 2 0 3.5M12.5 3.5c-.8 1 .8 2 0 3.5"/></symbol>
+
+<!-- Characters, mascot, scene -->
+<symbol id="char" viewBox="0 0 100 160">
+  <ellipse class="sc-shadow" cx="50" cy="154" rx="34" ry="6"/>
+  <ellipse class="ch-feet sc-o" cx="36" cy="146" rx="12" ry="7"/>
+  <ellipse class="ch-feet sc-o" cx="64" cy="146" rx="12" ry="7"/>
+  <rect class="ch-body sc-o" x="20" y="72" width="60" height="74" rx="30"/>
+  <circle class="ch-skin sc-o" cx="50" cy="48" r="34"/>
+  <path class="ch-hair sc-o" d="M16 46A34 34 0 0 1 84 46C72 40 58 30 52 18 46 30 30 40 16 46Z"/>
+  <circle class="sc-ink" cx="38" cy="54" r="4.5"/>
+  <circle class="sc-ink" cx="62" cy="54" r="4.5"/>
+  <circle class="ch-cheek" cx="29" cy="63" r="5"/>
+  <circle class="ch-cheek" cx="71" cy="63" r="5"/>
+  <path class="sc-ln" d="M43 64Q50 71 57 64"/>
+</symbol>
+<symbol id="mascot" viewBox="0 0 96 96">
+  <path class="sc-ln" d="M34 24c-5-5 5-8 0-14M48 22c-5-5 5-8 0-14M62 24c-5-5 5-8 0-14"/>
+  <ellipse class="sc-lamp sc-o" cx="46" cy="84" rx="38" ry="8"/>
+  <path class="sc-ln" d="M72 44h6a10 10 0 0 1 0 20h-8"/>
+  <path class="sc-cream sc-o" d="M18 36h56v20a28 28 0 0 1-56 0z"/>
+  <ellipse class="sc-board sc-o" cx="46" cy="36" rx="28" ry="7"/>
+  <circle class="sc-ink" cx="36" cy="55" r="4"/>
+  <circle class="sc-ink" cx="56" cy="55" r="4"/>
+  <circle class="ch-cheek" cx="28" cy="63" r="4.5"/>
+  <circle class="ch-cheek" cx="64" cy="63" r="4.5"/>
+  <path class="sc-ln" d="M40 63q6 7 12 0"/>
+</symbol>
+<symbol id="scene-shop" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
+  <rect class="sc-sky" width="1200" height="700"/>
+  <circle class="sc-cloud" cx="180" cy="120" r="38"/><circle class="sc-cloud" cx="225" cy="104" r="46"/><circle class="sc-cloud" cx="270" cy="124" r="34"/>
+  <circle class="sc-cloud" cx="960" cy="92" r="30"/><circle class="sc-cloud" cx="1000" cy="80" r="38"/><circle class="sc-cloud" cx="1040" cy="96" r="28"/>
+  <rect class="sc-ground" y="430" width="1200" height="270"/>
+  <rect class="sc-road" y="650" width="1200" height="50"/>
+  <path class="sc-wall sc-o" d="M150 430 600 260 600 80 150 250Z"/>
+  <path class="sc-wall2 sc-o" d="M600 260 1050 430 1050 250 600 80Z"/>
+  <path class="sc-floor sc-o" d="M600 260 1050 430 600 610 150 430Z"/>
+  <path class="sc-ln" style="stroke: var(--color-scene-wall-shade)" d="M375 345 825 520M825 345 375 520M262 388 712 565M488 302 938 475"/>
+  <path class="sc-window sc-o" d="M230 330 380 273 380 175 230 232Z"/>
+  <path class="sc-ln" d="M305 302 305 204M230 281 380 224"/>
+  <path class="sc-awning sc-o" d="M222 226 392 162 398 186C388 200 376 198 368 194 360 208 346 206 338 202 330 216 316 214 308 210 300 224 286 222 278 218 270 232 256 230 248 226 240 240 228 240 222 226Z"/>
+  <path class="sc-board sc-o" d="M700 168 880 236 880 330 700 262Z"/>
+  <path class="sc-chalk" d="M724 206 856 256M724 230 820 266M724 254 840 298"/>
+  <path class="sc-ln" d="M640 80V130M760 124V170"/>
+  <path class="sc-lamp sc-o" d="M616 150A24 24 0 0 1 664 150Z"/>
+  <path class="sc-lamp sc-o" d="M736 194A24 24 0 0 1 784 194Z"/>
+  <use href="#char" x="408" y="196" width="100" height="160" style="--ch-body: var(--color-mint-400); --ch-skin: var(--color-skin-2); --ch-hair: var(--color-hair-1)"/>
+  <path class="sc-wood-top sc-o" d="M300 400 520 318 590 344 370 426Z"/>
+  <path class="sc-wood sc-o" d="M370 426 590 344 590 410 370 492Z"/>
+  <path class="sc-wood-dark sc-o" d="M300 400 370 426 370 492 300 466Z"/>
+  <rect class="sc-machine sc-o" x="384" y="300" width="64" height="58" rx="12"/>
+  <rect class="sc-cream sc-o" x="398" y="314" width="36" height="14" rx="6"/>
+  <g class="sc-ic"><use href="#i-latte" x="486" y="300" width="40" height="40"/></g>
+  <path class="sc-steam-o" d="M498 292c-8-10 8-16 0-28M514 292c-8-10 8-16 0-28"/>
+  <path class="sc-steam" d="M498 292c-8-10 8-16 0-28M514 292c-8-10 8-16 0-28"/>
+  <path class="sc-pot sc-o" d="M176 452h44l-6 34h-32Z"/>
+  <path class="sc-plant sc-o" d="M198 452C170 446 166 420 176 404 190 414 196 430 198 452 200 424 210 404 230 398 236 420 224 444 198 452Z"/>
+  <path class="sc-pot sc-o" d="M990 452h44l-6 34h-32Z"/>
+  <path class="sc-plant sc-o" d="M1012 452C984 446 980 420 990 404 1004 414 1010 430 1012 452 1014 424 1024 404 1044 398 1050 420 1038 444 1012 452Z"/>
+  <use href="#char" x="590" y="300" width="86" height="138" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/>
+  <use href="#char" x="690" y="345" width="86" height="138" style="--ch-body: var(--color-sky-400); --ch-skin: var(--color-skin-3); --ch-hair: var(--color-hair-1)"/>
+  <use href="#char" x="850" y="352" width="80" height="128" style="--ch-body: var(--color-honey-400); --ch-skin: var(--color-skin-2); --ch-hair: var(--color-hair-4)"/>
+  <ellipse class="sc-wood-top sc-o" cx="890" cy="478" rx="72" ry="26"/>
+  <rect class="sc-wood sc-o" x="880" y="490" width="20" height="46" rx="6"/>
+  <g class="sc-ic"><use href="#i-cappuccino" x="900" y="440" width="40" height="40"/></g>
+  <path class="sc-steam-o" d="M916 432c-8-10 8-16 0-28"/>
+  <path class="sc-steam" d="M916 432c-8-10 8-16 0-28"/>
+  <use href="#char" x="1000" y="420" width="72" height="115" style="--ch-body: var(--color-coffee-300); --ch-skin: var(--color-skin-4); --ch-hair: var(--color-hair-2)"/>
+  <!-- Order bubble: latte, patience 80% -->
+  <g transform="translate(633 280)">
+    <rect class="sc-cream sc-o" x="-48" y="-90" width="96" height="84" rx="22"/>
+    <path class="sc-cream" d="M-12-8 0 10 12-8Z"/>
+    <path class="sc-ln" d="M-12-6 0 10 12-6"/>
+    <g class="sc-ic"><use href="#i-latte" x="-22" y="-84" width="44" height="44"/></g>
+    <rect class="sc-track" x="-36" y="-32" width="72" height="14" rx="7"/>
+    <rect class="sc-hi" x="-33" y="-29" width="53" height="8" rx="4"/>
+    <g class="sc-ic"><use href="#i-face-happy" x="30" y="-106" width="32" height="32"/></g>
+  </g>
+  <!-- Order bubble: bubble tea, patience 45% -->
+  <g transform="translate(733 325)">
+    <rect class="sc-cream sc-o" x="-48" y="-90" width="96" height="84" rx="22"/>
+    <path class="sc-cream" d="M-12-8 0 10 12-8Z"/>
+    <path class="sc-ln" d="M-12-6 0 10 12-6"/>
+    <g class="sc-ic"><use href="#i-bubble-tea" x="-22" y="-84" width="44" height="44"/></g>
+    <rect class="sc-track" x="-36" y="-32" width="72" height="14" rx="7"/>
+    <rect class="sc-mid" x="-33" y="-29" width="30" height="8" rx="4"/>
+    <g class="sc-ic"><use href="#i-face-ok" x="30" y="-106" width="32" height="32"/></g>
+  </g>
+  <!-- Emotion bubble: served, happy -->
+  <g transform="translate(890 342)">
+    <rect class="sc-cream sc-o" x="-38" y="-78" width="76" height="68" rx="22"/>
+    <path class="sc-cream" d="M-10-12 0 4 10-12Z"/>
+    <path class="sc-ln" d="M-10-10 0 4 10-10"/>
+    <g class="sc-ic"><use href="#i-face-happy" x="-22" y="-72" width="44" height="44"/></g>
+    <g class="sc-ic"><use href="#i-sparkle" x="26" y="-100" width="30" height="30"/></g>
+  </g>
+  <!-- Emotion bubble: leaving angry -->
+  <g transform="translate(1036 412)">
+    <rect class="sc-cream sc-o" x="-34" y="-74" width="68" height="64" rx="20"/>
+    <path class="sc-cream" d="M-10-12 0 4 10-12Z"/>
+    <path class="sc-ln" d="M-10-10 0 4 10-10"/>
+    <g class="sc-ic"><use href="#i-face-angry" x="-22" y="-68" width="44" height="44"/></g>
+    <path class="sc-ln" d="M-50-60-42-52M50-60 42-52M-54-36h-10M54-36h10"/>
+  </g>
+  <!-- Coin flying from the counter to the money pill -->
+  <path class="sc-dash" d="M560 236C640 120 900 40 1150 18"/>
+  <g class="sc-ic"><use href="#i-coin" x="760" y="104" width="30" height="30"/></g>
+  <g class="sc-ic"><use href="#i-coin" x="940" y="54" width="26" height="26"/></g>
+  <g transform="translate(560 246)">
+    <rect class="sc-cream sc-o" x="-74" y="-22" width="148" height="44" rx="22"/>
+    <g class="sc-ic"><use href="#i-coin" x="-66" y="-16" width="32" height="32"/></g>
+    <text class="sc-text" x="-28" y="8">+40.000đ</text>
+  </g>
+</symbol>
+</defs>
+</svg>
+
+<main class="page">
+  <header class="doc-head">
+    <h1>Phong cách hoạt hình ấm · Coffee Shop Tycoon 3D</h1>
+    <p>Bản đề xuất T237: viền mực dày, bóng đổ cứng kiểu sticker, màu mật ong, bạc hà, dâu, trời trên nền kem. Toàn bộ emoji được thay bằng bộ icon SVG tự vẽ (xem <code>design/t237-cartoon/icons/index.html</code>). Mockup tĩnh: mỗi trạng thái là một khu riêng; lớp <code>is-hover</code>, <code>is-focus</code>, <code>is-active</code> chỉ để minh họa. Cảnh quán là hình vẽ thay cho canvas 3D.</p>
+    <ul class="toc" aria-label="Mục lục">
+      <li><a href="#style"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Nền tảng</a></li>
+      <li><a href="#components"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>Thành phần</a></li>
+      <li><a href="#main-menu"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Main Menu</a></li>
+      <li><a href="#hud"><svg class="ic" aria-hidden="true"><use href="#i-flame"/></svg>HUD mở cửa</a></li>
+      <li><a href="#kho"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Bảng Kho</a></li>
+      <li><a href="#report"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Daily Report</a></li>
+      <li><a href="#motion"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>Chuyển động</a></li>
+    </ul>
+  </header>
+
+  <!-- ============ 1. Foundation ============ -->
+  <section id="style" aria-labelledby="h-style">
+    <h2 class="sec-title" id="h-style"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-sparkle"/></svg>Nền tảng phong cách</h2>
+    <p class="sec-lead">Mọi màu, cỡ chữ, khoảng cách dưới đây là biến CSS lấy từ <code>design/tokens.json</code>. Tên biến ngữ nghĩa giữ nguyên như <code>src/ui/styles/tokens.css</code> (vd <code>--text-primary</code>, <code>--accent-primary</code>), nên FE chỉ cần thay giá trị và thêm biến mới.</p>
+    <div class="sheet">
+      <div class="cols">
+        <div class="swatch-group">
+          <h3>Mực và kem (khung)</h3>
+          <ul class="swatch-list">
+            <li><span class="sw" style="background: var(--color-neutral-900)"></span><span><b>ink 900</b> #3a2216 · chữ chính, viền, bóng cứng</span></li>
+            <li><span class="sw" style="background: var(--color-neutral-700)"></span><span><b>ink 700</b> #6e4f3c · chữ phụ</span></li>
+            <li><span class="sw" style="background: var(--color-cream-50)"></span><span><b>cream 50</b> #fffaf2 · thẻ, panel, HUD</span></li>
+            <li><span class="sw" style="background: var(--color-cream-100)"></span><span><b>cream 100</b> #f6e7d2 · nền app</span></li>
+            <li><span class="sw" style="background: var(--color-cream-200)"></span><span><b>cream 200</b> #ecd3b2 · vô hiệu, rãnh thanh</span></li>
+          </ul>
+        </div>
+        <div class="swatch-group">
+          <h3>Màu vui (nút, icon)</h3>
+          <ul class="swatch-list">
+            <li><span class="sw" style="background: var(--color-honey-400)"></span><span><b>honey 400</b> #ffc145 · nút chính, đang chọn, sao</span></li>
+            <li><span class="sw" style="background: var(--color-mint-400)"></span><span><b>mint 400</b> #5fd3a8 · Mở cửa, kiên nhẫn cao</span></li>
+            <li><span class="sw" style="background: var(--color-berry-400)"></span><span><b>berry 400</b> #ff8a7a · nguy hiểm, kiên nhẫn thấp</span></li>
+            <li><span class="sw" style="background: var(--color-sky-400)"></span><span><b>sky 400</b> #8fd3f4 · thông tin, máy móc</span></li>
+            <li><span class="sw" style="background: var(--color-sky-700)"></span><span><b>sky 700</b> #1a5fd0 · vòng focus</span></li>
+          </ul>
+        </div>
+        <div class="swatch-group">
+          <h3>Chữ trạng thái và nền nhạt</h3>
+          <ul class="swatch-list">
+            <li><span class="sw" style="background: var(--color-mint-100)"></span><span><b>ok</b> chữ #17663a trên #d9f6ea</span></li>
+            <li><span class="sw" style="background: var(--color-honey-100)"></span><span><b>warning</b> chữ #7a4a00 trên #fff0c7</span></li>
+            <li><span class="sw" style="background: var(--color-berry-100)"></span><span><b>danger</b> chữ #b3261e trên #ffe3de</span></li>
+            <li><span class="sw" style="background: var(--color-sky-100)"></span><span><b>info</b> chữ mực trên #e2f4fc</span></li>
+            <li><span class="sw" style="background: var(--color-coffee-300)"></span><span><b>latte</b> #d9a877 · gỗ, đồ uống</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="state-title">Chữ (font hệ thống bo tròn, đậm 800 cho tiêu đề)</h3>
+      <div>
+        <div class="type-row"><span class="t-caption">display 48/800</span><span class="t-display">Gió Chiều mở cửa rồi!</span></div>
+        <div class="type-row"><span class="t-caption">title 32/800</span><span class="t-title">Hết ngày 3 · Lãi rồi nhé</span></div>
+        <div class="type-row"><span class="t-caption">heading 24/800</span><span class="t-heading">Kho nguyên liệu · Nhập hàng</span></div>
+        <div class="type-row"><span class="t-caption">sub 20/700</span><span class="t-sub">Đánh giá quán 4,2 trên 5 sao</span></div>
+        <div class="type-row"><span class="t-caption">body 16/400</span><span class="t-body">Khách chờ quá lâu sẽ bỏ đi. Nhập thêm sữa tươi trước khi món bị khóa.</span></div>
+        <div class="type-row"><span class="t-caption">label 14/700</span><span class="t-label">Nhập thêm (gói 1000 ml) · 40.000đ/gói</span></div>
+        <div class="type-row"><span class="t-caption">caption 12/700</span><span class="t-caption">Kiểm dấu chồng: Ễ Ộ Ữ Ặ Ỷ · ễ ộ ữ ặ ỷ</span></div>
+      </div>
+
+      <h3 class="state-title">Viền dày, bo góc, bóng sticker</h3>
+      <div class="shape-row">
+        <span class="shape shape-sm sh-sm">radius sm 8<br>bóng sm 2</span>
+        <span class="shape shape-md sh-md">radius md 12<br>bóng md 4</span>
+        <span class="shape shape-lg sh-lg">radius lg 20<br>bóng lg 6</span>
+        <span class="shape shape-xl sh-card">radius xl 28<br>bóng card</span>
+        <span class="shape shape-pill sh-md">pill · viền 3</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. Components ============ -->
+  <section id="components" aria-labelledby="h-comp">
+    <h2 class="sec-title" id="h-comp"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-settings"/></svg>Thành phần và trạng thái</h2>
+    <p class="sec-lead">Nút “nổi” 4 px trên bóng cứng; rê chuột nhấc lên 2 px, bấm thì lún xuống. Vô hiệu: nền xám kem, viền gạch, không bóng, vẫn focus được (<code>aria-disabled</code>) để đọc lý do.</p>
+    <div class="sheet">
+      <div class="btn-matrix">
+        <span class="hd"></span><span class="hd">Mặc định</span><span class="hd">Hover</span><span class="hd">Focus (bàn phím)</span><span class="hd">Nhấn</span><span class="hd">Vô hiệu</span>
+        <span class="row-hd">Chính (honey)</span>
+        <button class="btn btn-primary" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+        <button class="btn btn-primary is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+        <button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+        <button class="btn btn-primary is-active" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+        <button class="btn btn-primary" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Nhập hàng</button>
+        <span class="row-hd">Hành động pha (mint)</span>
+        <button class="btn btn-accent" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button>
+        <button class="btn btn-accent is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button>
+        <button class="btn btn-accent is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button>
+        <button class="btn btn-accent is-active" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button>
+        <button class="btn btn-accent" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Mở cửa</button>
+        <span class="row-hd">Phụ (kem)</span>
+        <button class="btn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button>
+        <button class="btn is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button>
+        <button class="btn is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button>
+        <button class="btn is-active" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button>
+        <button class="btn" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-load"/></svg>Tải game</button>
+        <span class="row-hd">Nguy hiểm (berry)</span>
+        <button class="btn btn-danger" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button>
+        <button class="btn btn-danger is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button>
+        <button class="btn btn-danger is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button>
+        <button class="btn btn-danger is-active" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button>
+        <button class="btn btn-danger" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Cho nghỉ việc</button>
+      </div>
+      <p class="reason"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lock"/></svg>Dòng lý do đi kèm nút vô hiệu, nối bằng <code>aria-describedby</code>: “Chưa có bản lưu nào. Chơi hết ngày 1 để game tự lưu.”</p>
+
+      <h3 class="state-title">Nút HUD và nhóm tốc độ</h3>
+      <div class="hud">
+        <button class="hud-btn" type="button" aria-label="Tạm dừng (Space)"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Dừng</button>
+        <button class="hud-btn is-hover" type="button" aria-label="Tạm dừng (Space), hover"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Hover</button>
+        <button class="hud-btn is-focus" type="button" aria-label="Tạm dừng (Space), focus"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Focus</button>
+        <button class="hud-btn is-active" type="button" aria-label="Tạm dừng (Space), nhấn"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Nhấn</button>
+        <button class="hud-btn" type="button" aria-disabled="true" aria-label="Đặt lại camera, vô hiệu khi đang tạm dừng"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>Vô hiệu</button>
+        <div class="seg" role="group" aria-label="Tốc độ game">
+          <button type="button" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button>
+          <button type="button" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button>
+          <button type="button" class="is-focus" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button>
+        </div>
+      </div>
+      <p class="reason">Đang chọn = nền honey + viền + bóng + <code>aria-pressed="true"</code>; icon cũng khác nhau theo tốc độ (1, 2, 3 tam giác), không chỉ dựa vào màu.</p>
+
+      <h3 class="state-title">Dock bảng quản lý</h3>
+      <nav class="dock" aria-label="Bảng quản lý (mẫu trạng thái)" style="margin-top: 0; align-self: flex-start">
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Mặc định</button>
+        <button class="dock-btn is-hover" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Hover</button>
+        <button class="dock-btn is-focus" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Focus</button>
+        <button class="dock-btn is-active" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Nhấn</button>
+        <button class="dock-btn" type="button" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Đang mở</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-label="Việc, 2 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Có việc<span class="dock-badge" aria-hidden="true">2</span></button>
+      </nav>
+
+      <h3 class="state-title">Badge, stepper, thông báo trong panel</h3>
+      <div class="cols">
+        <div class="hud">
+          <span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+          <span class="badge badge-warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-warning"/></svg>Sắp hết</span>
+          <span class="badge badge-danger"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-error"/></svg>Hết</span>
+          <span class="badge badge-danger"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lock"/></svg>Khóa</span>
+          <span class="badge badge-plain"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flame"/></svg>Nóng</span>
+          <span class="badge badge-plain"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-busy"/></svg>Bận</span>
+        </div>
+        <div class="hud">
+          <div class="stepper" role="group" aria-label="Stepper: mặc định, focus nút cộng, chạm min">
+            <button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói (đã ở 0)">−</button>
+            <label class="sr-only" for="st-demo">Số gói Đường</label>
+            <input class="step-input" id="st-demo" type="text" inputmode="numeric" value="0">
+            <button class="step-btn is-focus" type="button" aria-label="Thêm 1 gói Đường">+</button>
+          </div>
+          <div class="stepper" role="group" aria-label="Stepper đang gõ">
+            <button class="step-btn" type="button" aria-label="Bớt 1 gói Sữa tươi">−</button>
+            <label class="sr-only" for="st-demo2">Số gói Sữa tươi</label>
+            <input class="step-input is-focus" id="st-demo2" type="text" inputmode="numeric" value="12">
+            <button class="step-btn is-hover" type="button" aria-label="Thêm 1 gói Sữa tươi">+</button>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="state-title">Toast (góc dưới trái, trên dock)</h3>
+      <div class="cols">
+        <div class="toast" role="status"><span class="toast-chip"><svg class="ic" aria-hidden="true"><use href="#i-flyer"/></svg></span><div><p class="toast-title">Đã chạy Phát tờ rơi</p><p class="toast-text">Khách đến tăng trong 2 ngày tới.</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+        <div class="toast" role="status"><span class="toast-chip is-ok"><svg class="ic" aria-hidden="true"><use href="#i-save"/></svg></span><div><p class="toast-title">Đã tự lưu ngày 3</p><p class="toast-text">21:00, 14/10/2026</p></div><button class="icon-btn is-hover" type="button" aria-label="Đóng thông báo"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+        <div class="toast" role="status"><span class="toast-chip is-warn"><svg class="ic" aria-hidden="true"><use href="#i-milk"/></svg></span><div><p class="toast-title">Sắp hết Sữa tươi</p><p class="toast-text">Còn 240 ml. Nhập thêm trước khi món bị khóa.</p></div><button class="icon-btn is-focus" type="button" aria-label="Đóng thông báo"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+        <div class="toast" role="alert"><span class="toast-chip is-error"><svg class="ic" aria-hidden="true"><use href="#i-face-angry"/></svg></span><div><p class="toast-title">Khách bỏ đi</p><p class="toast-text">Chờ quá lâu hoặc món đã hết. Đánh giá sẽ giảm.</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+      </div>
+
+      <h3 class="state-title">Bong bóng trên đầu khách (thay emoji trong nhãn 3D)</h3>
+      <div class="bubbles">
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-latte"/></svg><span class="pbar" role="img" aria-label="Kiên nhẫn 100%"><span class="pfill" style="width: 100%"></span></span><svg class="ic ic-lg cb-face" aria-hidden="true"><use href="#i-face-happy"/></svg><span class="cb-tail"></span></div><span class="cb-cap">Vừa gọi · 100%</span></div>
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-bubble-tea"/></svg><span class="pbar" role="img" aria-label="Kiên nhẫn 45%"><span class="pfill is-mid" style="width: 45%"></span></span><svg class="ic ic-lg cb-face" aria-hidden="true"><use href="#i-face-ok"/></svg><span class="cb-tail"></span></div><span class="cb-cap">Chờ lâu · 45%</span></div>
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-espresso"/></svg><span class="pbar" role="img" aria-label="Kiên nhẫn 18%"><span class="pfill is-low" style="width: 18%"></span></span><svg class="ic ic-lg cb-face" aria-hidden="true"><use href="#i-face-worried"/></svg><span class="cb-tail"></span></div><span class="cb-cap">Sắp bỏ · 18% (lắc nhẹ)</span></div>
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-americano"/></svg><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg>Có món</span><span class="cb-tail"></span></div><span class="cb-cap">Món xong · nảy nhịp</span></div>
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-happy"/></svg><svg class="ic ic-lg cb-face" aria-hidden="true"><use href="#i-sparkle"/></svg><span class="cb-tail"></span></div><span class="cb-cap">Đã phục vụ · vui</span></div>
+        <div class="cb-wrap"><div class="cb"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-angry"/></svg><span class="cb-tail"></span></div><span class="cb-cap">Bỏ đi · nhảy giận</span></div>
+      </div>
+      <p class="reason">Kiên nhẫn đọc được không cần màu: độ dài thanh + mặt (miệng, lông mày) + % trong tooltip/trình đọc. Ngưỡng đề xuất: ≥ 60% vui, 30–59% bình thường, dưới 30% sốt ruột.</p>
+    </div>
+  </section>
+
+  <!-- ============ 3. Main menu ============ -->
+  <section id="main-menu" aria-labelledby="h-menu">
+    <h2 class="sec-title" id="h-menu"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-home"/></svg>Main Menu</h2>
+    <p class="sec-lead">Quán chạy nhẹ phía sau (camera chậm quay vòng). Thẻ menu bên trái có linh vật ly cà phê; nút chính là “Tiếp tục” khi có bản lưu.</p>
+
+    <h3 class="state-title">Có bản lưu</h3>
+    <div class="frame frame-menu">
+      <svg class="scene" aria-hidden="true"><use href="#scene-shop" width="100%" height="100%"/></svg>
+      <nav class="menu-card layer" aria-label="Menu chính">
+        <div class="logo">
+          <svg class="logo-mark" viewBox="0 0 96 96" aria-hidden="true"><use href="#mascot"/></svg>
+          <div><p class="logo-title">Coffee Shop Tycoon 3D</p><p class="muted small">Mở quán cà phê từ con số 0</p></div>
+        </div>
+        <div class="menu-list">
+          <button class="btn btn-primary btn-lg btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg><span class="btn-text">Tiếp tục<span class="btn-detail">Gió Chiều · Ngày 3</span></span></button>
+          <button class="btn btn-lg btn-block is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Ván mới</button>
+          <button class="btn btn-lg btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-load"/></svg>Tải game</button>
+          <button class="btn btn-lg btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>Cài đặt</button>
+        </div>
+        <div class="menu-foot"><span>Lưu trên trình duyệt này</span><span class="keys"><span class="kbd">↑</span><span class="kbd">↓</span> di chuyển · <span class="kbd">Enter</span> chọn</span></div>
+      </nav>
+      <span class="frame-label">Main Menu · có bản lưu, “Ván mới” đang hover</span>
+    </div>
+
+    <h3 class="state-title">Chưa có bản lưu (lần đầu chơi)</h3>
+    <div class="frame frame-menu" style="min-height: 560px">
+      <svg class="scene" aria-hidden="true"><use href="#scene-shop" width="100%" height="100%"/></svg>
+      <nav class="menu-card layer" aria-label="Menu chính, chưa có bản lưu">
+        <div class="logo">
+          <svg class="logo-mark" viewBox="0 0 96 96" aria-hidden="true"><use href="#mascot"/></svg>
+          <div><p class="logo-title">Coffee Shop Tycoon 3D</p><p class="muted small">Mở quán cà phê từ con số 0</p></div>
+        </div>
+        <div class="menu-list">
+          <button class="btn btn-primary btn-lg btn-block is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Ván mới</button>
+          <div>
+            <button class="btn btn-lg btn-block" type="button" aria-disabled="true" aria-describedby="why-load"><svg class="ic" aria-hidden="true"><use href="#i-load"/></svg>Tải game</button>
+            <p class="reason" id="why-load"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lock"/></svg>Chưa có bản lưu nào. Chơi hết ngày 1 để game tự lưu.</p>
+          </div>
+          <button class="btn btn-lg btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>Cài đặt</button>
+        </div>
+      </nav>
+      <span class="frame-label">Focus bàn phím ở “Ván mới”</span>
+    </div>
+  </section>
+
+  <!-- ============ 4. HUD opening ============ -->
+  <section id="hud" aria-labelledby="h-hud">
+    <h2 class="sec-title" id="h-hud"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-flame"/></svg>HUD lúc mở cửa (Cao điểm)</h2>
+    <p class="sec-lead">HUD là các “viên kẹo” kem viền mực nổi trên cảnh, không còn thanh nâu tối che trời. Trên trái: ngày, giờ, pha. Trên phải: tiền, sao, tốc độ, dừng, camera, cài đặt. Bảng quản lý chuyển xuống dock dưới giữa (đích bấm to, gần tay chuột, giữa màn luôn là quán).</p>
+    <div class="frame">
+      <svg class="scene" aria-hidden="true"><use href="#scene-shop" width="100%" height="100%"/></svg>
+      <header class="hud layer" aria-label="Thanh trạng thái">
+        <div class="hud-left">
+        <div class="pill"><span class="pill-cap">Ngày</span><span class="pill-val">3</span></div>
+        <div class="pill"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span class="pill-cap">Giờ</span><span class="pill-val">11:42</span></div>
+        <ol class="pill phases" aria-label="Pha trong ngày">
+          <li class="is-done"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span class="ph-label">Chuẩn bị</span></li>
+          <li class="is-done"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span class="ph-label">Mở cửa</span></li>
+          <li aria-current="step"><svg class="ic" aria-hidden="true"><use href="#i-flame"/></svg><span class="ph-label">Cao điểm</span><span class="ph-count">3/4</span></li>
+          <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-close"/></svg><span class="ph-label">Đóng cửa</span></li>
+        </ol>
+        </div>
+        <div class="hud-right">
+        <div class="pill" data-stat="money"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg><span class="pill-cap">Tiền</span><span class="pill-val">1.245.000đ</span></div>
+        <div class="pill" role="img" aria-label="Đánh giá 4,2 trên 5 sao"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="pill-val">4,2</span></div>
+        <div class="seg" role="group" aria-label="Tốc độ game">
+          <button type="button" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg><span class="lbl-long">1x</span></button>
+          <button type="button" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button>
+          <button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg><span class="lbl-long">4x</span></button>
+        </div>
+        <button class="hud-btn" type="button" aria-label="Tạm dừng (Space)"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg><span class="lbl-long">Dừng</span></button>
+        <button class="hud-btn" type="button" aria-label="Đặt lại camera (Home)"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></button>
+        <button class="hud-btn" type="button" aria-label="Cài đặt"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg></button>
+        </div>
+      </header>
+      <div class="toasts layer" style="margin-top: auto">
+        <div class="toast" role="status"><span class="toast-chip is-warn"><svg class="ic" aria-hidden="true"><use href="#i-milk"/></svg></span><div><p class="toast-title">Sắp hết Sữa tươi</p><p class="toast-text">Còn 240 ml. Nhập thêm trước khi món bị khóa.</p></div><button class="icon-btn" type="button" aria-label="Đóng thông báo"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+      </div>
+      <nav class="dock layer" aria-label="Bảng quản lý" style="margin-top: 0">
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Việc</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Menu</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel" aria-label="Kho, 1 mặt hàng sắp hết"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Kho<span class="dock-badge" aria-hidden="true">1</span></button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Nhân viên</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Marketing</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg>Nâng cấp</button>
+        <button class="dock-btn" type="button" aria-pressed="false" aria-controls="ui-panel"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+      </nav>
+      <span class="frame-label">Cao điểm 11:42 · tốc độ 2x</span>
+    </div>
+
+    <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-phase-close"/></svg>Biến thể: Đóng cửa (không nhận khách mới)</h3>
+    <div class="sheet">
+      <div class="hud">
+        <div class="pill"><span class="pill-cap">Ngày</span><span class="pill-val">3</span></div>
+        <div class="pill"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span class="pill-cap">Giờ</span><span class="pill-val">20:10</span></div>
+        <ol class="pill phases" aria-label="Pha trong ngày">
+          <li class="is-done"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span class="ph-label">Chuẩn bị</span></li>
+          <li class="is-done"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span class="ph-label">Mở cửa</span></li>
+          <li class="is-done"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span class="ph-label">Cao điểm</span></li>
+          <li aria-current="step"><svg class="ic" aria-hidden="true"><use href="#i-phase-close"/></svg><span class="ph-label">Đóng cửa</span><span class="ph-count">4/4</span></li>
+        </ol>
+      </div>
+      <p class="hud-note" aria-live="polite" style="margin-top: var(--space-3)"><svg class="ic" aria-hidden="true"><use href="#i-error"/></svg>Không nhận khách mới. Còn 3 khách trong quán; ngày kết thúc khi khách cuối rời đi.</p>
+    </div>
+  </section>
+
+  <!-- ============ 5. Inventory panel ============ -->
+  <section id="kho" aria-labelledby="h-kho">
+    <h2 class="sec-title" id="h-kho"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-inventory"/></svg>Bảng Kho (pha Chuẩn bị)</h2>
+    <p class="sec-lead">Panel trượt từ phải, nảy nhẹ khi dừng. Đã bấm “Gợi ý nhập tự động”: 4 dòng được tô honey nhạt và gắn chữ “gợi ý”. Số lượng sửa tại chỗ bằng stepper; không có hộp thoại.</p>
+    <div class="frame" style="min-height: 1180px">
+      <svg class="scene" aria-hidden="true"><use href="#scene-shop" width="100%" height="100%"/></svg>
+      <header class="hud layer" aria-label="Thanh trạng thái">
+        <div class="hud-left">
+        <div class="pill"><span class="pill-cap">Ngày</span><span class="pill-val">4</span></div>
+        <div class="pill"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span class="pill-cap">Giờ</span><span class="pill-val">07:00</span></div>
+        <ol class="pill phases" aria-label="Pha trong ngày">
+          <li aria-current="step"><svg class="ic" aria-hidden="true"><use href="#i-phase-prep"/></svg><span class="ph-label">Chuẩn bị</span><span class="ph-count">1/4</span></li>
+          <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-open"/></svg><span class="ph-label">Mở cửa</span></li>
+          <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flame"/></svg><span class="ph-label">Cao điểm</span></li>
+          <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-close"/></svg><span class="ph-label">Đóng cửa</span></li>
+        </ol>
+        </div>
+        <div class="hud-right">
+        <div class="pill"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg><span class="pill-cap">Tiền</span><span class="pill-val">1.245.000đ</span></div>
+        <div class="pill" role="img" aria-label="Đánh giá 4,2 trên 5 sao"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="pill-val">4,2</span></div>
+        <button class="btn btn-accent btn-lg" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button>
+        <button class="hud-btn" type="button" aria-label="Tạm dừng (Space)"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+        <button class="hud-btn" type="button" aria-label="Cài đặt"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg></button>
+        </div>
+      </header>
+      <p class="hud-note layer"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>Đồng hồ dừng ở 07:00 cho tới khi bấm “Mở cửa”.</p>
+      <div class="stage layer">
+        <aside class="panel" id="ui-panel" aria-labelledby="kho-title">
+          <div class="panel-head">
+            <span class="head-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-inventory"/></svg></span>
+            <h3 id="kho-title">Kho<span class="sub">Có 1.245.000đ</span></h3>
+            <button class="btn" type="button" aria-label="Đóng bảng (Esc)"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Đóng</button>
+          </div>
+          <div class="panel-body">
+            <button class="btn btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập tự động (Auto-restock)</button>
+            <p class="intro">Gợi ý tính theo lượng bán của ngày gần nhất và menu hôm nay, cộng thêm 20% dự phòng.</p>
+            <div class="status status-info" role="status"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg><span>Đã điền gợi ý cho 4 mặt hàng (300.000đ). Có thể sửa từng dòng trước khi nhập.</span></div>
+            <ul class="stack">
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-beans"/></svg></span><div><p class="item-title">Cà phê hạt</p><p class="item-meta">Còn 1.850 g · 150.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-beans">Nhập thêm (gói 500 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Cà phê hạt">−</button><input class="step-input" id="q-beans" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Cà phê hạt">+</button></div></div></li>
+              <li class="item is-suggested"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-milk"/></svg></span><div><p class="item-title">Sữa tươi <span class="sug"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sparkle"/></svg>gợi ý</span></p><p class="item-meta">Còn 240 ml · 40.000đ/gói</p></div><span class="badge badge-warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-warning"/></svg>Sắp hết</span>
+                <div class="item-actions"><label class="stepper-label" for="q-milk">Nhập thêm (gói 1000 ml)</label><div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Sữa tươi">−</button><input class="step-input" id="q-milk" type="text" inputmode="numeric" value="2"><button class="step-btn is-focus" type="button" aria-label="Thêm 1 gói Sữa tươi">+</button></div><span class="item-cost">80.000đ</span></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-sugar"/></svg></span><div><p class="item-title">Đường</p><p class="item-meta">Còn 820 g · 25.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-sugar">Nhập thêm (gói 1000 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Đường">−</button><input class="step-input" id="q-sugar" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Đường">+</button></div></div></li>
+              <li class="item is-suggested"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-cacao"/></svg></span><div><p class="item-title">Bột cacao <span class="sug"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sparkle"/></svg>gợi ý</span></p><p class="item-meta">Còn 0 g · 80.000đ/gói</p></div><span class="badge badge-danger"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-error"/></svg>Hết</span>
+                <div class="item-actions"><label class="stepper-label" for="q-cacao">Nhập thêm (gói 200 g)</label><div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Bột cacao">−</button><input class="step-input" id="q-cacao" type="text" inputmode="numeric" value="1"><button class="step-btn" type="button" aria-label="Thêm 1 gói Bột cacao">+</button></div><span class="item-cost">80.000đ</span></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-tea"/></svg></span><div><p class="item-title">Trà</p><p class="item-meta">Còn 60 g · 50.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-tea">Nhập thêm (gói 100 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Trà">−</button><input class="step-input" id="q-tea" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Trà">+</button></div></div></li>
+              <li class="item is-suggested"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-pearls"/></svg></span><div><p class="item-title">Trân châu <span class="sug"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sparkle"/></svg>gợi ý</span></p><p class="item-meta">Còn 120 g · 80.000đ/gói</p></div><span class="badge badge-warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-warning"/></svg>Sắp hết</span>
+                <div class="item-actions"><label class="stepper-label" for="q-pearls">Nhập thêm (gói 1000 g)</label><div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Trân châu">−</button><input class="step-input" id="q-pearls" type="text" inputmode="numeric" value="1"><button class="step-btn" type="button" aria-label="Thêm 1 gói Trân châu">+</button></div><span class="item-cost">80.000đ</span></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-lemon"/></svg></span><div><p class="item-title">Chanh</p><p class="item-meta">Còn 7 quả · 30.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-lemon">Nhập thêm (gói 10 quả)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Chanh">−</button><input class="step-input" id="q-lemon" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Chanh">+</button></div></div></li>
+              <li class="item is-suggested"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-orange"/></svg></span><div><p class="item-title">Cam <span class="sug"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sparkle"/></svg>gợi ý</span></p><p class="item-meta">Còn 4 quả · 60.000đ/gói</p></div><span class="badge badge-warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-warning"/></svg>Sắp hết</span>
+                <div class="item-actions"><label class="stepper-label" for="q-orange">Nhập thêm (gói 12 quả)</label><div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Cam">−</button><input class="step-input" id="q-orange" type="text" inputmode="numeric" value="1"><button class="step-btn" type="button" aria-label="Thêm 1 gói Cam">+</button></div><span class="item-cost">60.000đ</span></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-flour"/></svg></span><div><p class="item-title">Bột bánh</p><p class="item-meta">Còn 1.200 g · 30.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-flour">Nhập thêm (gói 1000 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Bột bánh">−</button><input class="step-input" id="q-flour" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Bột bánh">+</button></div></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-butter"/></svg></span><div><p class="item-title">Bơ</p><p class="item-meta">Còn 180 g · 62.500đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-butter">Nhập thêm (gói 250 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Bơ">−</button><input class="step-input" id="q-butter" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Bơ">+</button></div></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-ice"/></svg></span><div><p class="item-title">Đá viên</p><p class="item-meta">Còn 3.400 g · 5.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-ice">Nhập thêm (gói 5000 g)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Đá viên">−</button><input class="step-input" id="q-ice" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Đá viên">+</button></div></div></li>
+              <li class="item"><span class="item-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-cup"/></svg></span><div><p class="item-title">Ly</p><p class="item-meta">Còn 38 cái · 75.000đ/gói</p></div><span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Đủ</span>
+                <div class="item-actions"><label class="stepper-label" for="q-cup">Nhập thêm (gói 50 cái)</label><div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Ly">−</button><input class="step-input" id="q-cup" type="text" inputmode="numeric" value="0"><button class="step-btn" type="button" aria-label="Thêm 1 gói Ly">+</button></div></div></li>
+            </ul>
+          </div>
+          <div class="panel-foot">
+            <div class="foot-sum"><span>Tổng nhập</span><b>300.000đ</b></div>
+            <div class="foot-sum"><span>Còn lại sau khi nhập</span><b>945.000đ</b></div>
+            <button class="btn btn-primary btn-lg btn-block" type="button"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Nhập hàng · 300.000đ</button>
+          </div>
+        </aside>
+      </div>
+      <nav class="dock layer" aria-label="Bảng quản lý" style="margin-top: 0">
+        <button class="dock-btn" type="button" aria-pressed="false" aria-label="Việc, 2 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Việc<span class="dock-badge" aria-hidden="true">2</span></button>
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Menu</button>
+        <button class="dock-btn" type="button" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Kho</button>
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Nhân viên</button>
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Marketing</button>
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg>Nâng cấp</button>
+        <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+      </nav>
+    </div>
+
+    <div class="cols" style="margin-top: var(--space-6)">
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-error"/></svg>Lỗi: thiếu tiền</h3>
+        <div class="panel">
+          <div class="panel-foot" style="border-top: none">
+            <div class="foot-sum"><span>Tổng nhập</span><b>300.000đ</b></div>
+            <div class="foot-sum"><span>Còn lại sau khi nhập</span><b class="num" style="color: var(--text-danger)">−110.000đ</b></div>
+            <button class="btn btn-primary btn-lg btn-block" type="button" aria-disabled="true" aria-describedby="why-buy"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Nhập hàng · 300.000đ</button>
+            <p class="reason reason-danger" id="why-buy"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lock"/></svg>Thiếu 110.000đ (cần 300.000đ, có 190.000đ). Bớt số gói để vừa tiền.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-ok"/></svg>Thành công: đã nhập</h3>
+        <div class="panel">
+          <div class="panel-body">
+            <div class="status" role="status"><svg class="ic" aria-hidden="true"><use href="#i-ok"/></svg><span>Đã nhập Sữa tươi, Bột cacao, Trân châu, Cam. −300.000đ. Còn 945.000đ.</span></div>
+            <p class="item-meta">Các stepper về 0; huy hiệu đổi sang “Đủ”; số tiền trên HUD đếm lùi trong 400 ms.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>Trống: kho đã đủ</h3>
+        <div class="panel">
+          <div class="panel-body">
+            <div class="status status-info" role="status"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg><span>Kho đã đủ cho ngày tới, không cần nhập thêm.</span></div>
+            <p class="reason"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-info"/></svg>Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6. Daily report ============ -->
+  <section id="report" aria-labelledby="h-report">
+    <h2 class="sec-title" id="h-report"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-chart"/></svg>Daily Report</h2>
+    <p class="sec-lead">Thẻ rơi xuống giữa màn với nảy nhẹ; dải kết quả “đóng dấu” sau 200 ms; số tiền đếm lên. Đọc theo câu hỏi: kết quả → thu chi → khách, sao → món → đánh giá → gợi ý ngày mai.</p>
+    <div class="frame frame-report">
+      <svg class="scene" aria-hidden="true"><use href="#scene-shop" width="100%" height="100%"/></svg>
+      <div class="scrim"></div>
+      <section class="rpt layer" role="dialog" aria-modal="true" aria-labelledby="rpt-title">
+        <div class="rpt-head">
+          <span class="head-icon"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-phase-close"/></svg></span>
+          <div><h3 id="rpt-title">Hết ngày 3 · Gió Chiều</h3><p class="rpt-sub">Thứ ba, 07:00–21:00</p></div>
+          <div class="tabs" role="tablist" aria-label="Báo cáo ngày">
+            <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="rpt-sum" id="tab-sum"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+            <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" id="tab-rev"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá (12)</button>
+          </div>
+        </div>
+        <div class="rpt-body" role="tabpanel" id="rpt-sum" aria-labelledby="tab-sum">
+          <div class="result">
+            <svg class="ic" aria-hidden="true"><use href="#i-trend-up"/></svg>
+            <span class="result-label">Lãi</span>
+            <span class="result-value">+414.000đ</span>
+            <span class="result-note">Phục vụ 42/46 khách. Tiền hiện có: 1.659.000đ.</span>
+          </div>
+          <div class="grid2">
+            <section class="box" aria-labelledby="b-money">
+              <h4 id="b-money"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg>Thu chi</h4>
+              <dl class="stats">
+                <div class="stat"><dt>Doanh thu</dt><dd class="pos">+1.180.000đ</dd></div>
+                <div class="stat"><dt>Nguyên liệu đã dùng</dt><dd class="neg">−386.000đ</dd></div>
+                <div class="stat"><dt>Lương nhân viên</dt><dd class="neg">−300.000đ</dd></div>
+                <div class="stat"><dt>Marketing</dt><dd class="neg">−80.000đ</dd></div>
+                <div class="stat is-total"><dt>Lợi nhuận</dt><dd class="pos">+414.000đ</dd></div>
+              </dl>
+            </section>
+            <div class="col">
+              <section class="box" aria-labelledby="b-cust">
+                <h4 id="b-cust"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Khách</h4>
+                <dl class="stats">
+                  <div class="stat"><dt>Khách đến</dt><dd>46 khách</dd></div>
+                  <div class="stat"><dt>Được phục vụ</dt><dd>42 khách</dd></div>
+                  <div class="stat"><dt>Bỏ đi</dt><dd class="neg">4 khách</dd></div>
+                </dl>
+              </section>
+              <section class="box" aria-labelledby="b-rate">
+                <h4 id="b-rate"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Đánh giá quán</h4>
+                <div class="rating-row">
+                  <span class="stars" role="img" aria-label="Đầu ngày 4,1 trên 5 sao"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><b>4,1</b></span>
+                  <svg class="ic" aria-hidden="true"><use href="#i-forward"/></svg>
+                  <span class="stars" role="img" aria-label="Cuối ngày 4,2 trên 5 sao"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><b>4,2</b></span>
+                  <span class="badge badge-ok"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-trend-up"/></svg>+0,1</span>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div class="grid2">
+            <section class="box" aria-labelledby="b-top">
+              <h4 id="b-top"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>Món bán chạy</h4>
+              <ol class="bars">
+                <li class="bar"><span class="bar-name"><svg class="ic" aria-hidden="true"><use href="#i-latte"/></svg>Latte</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: 100%"></span></span><span class="bar-num">14 ly</span></li>
+                <li class="bar"><span class="bar-name"><svg class="ic" aria-hidden="true"><use href="#i-bubble-tea"/></svg>Trà sữa</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: 79%"></span></span><span class="bar-num">11 ly</span></li>
+                <li class="bar"><span class="bar-name"><svg class="ic" aria-hidden="true"><use href="#i-cappuccino"/></svg>Cappuccino</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: 57%"></span></span><span class="bar-num">8 ly</span></li>
+                <li class="bar"><span class="bar-name"><svg class="ic" aria-hidden="true"><use href="#i-croissant"/></svg>Bánh croissant</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: 43%"></span></span><span class="bar-num">6 cái</span></li>
+                <li class="bar"><span class="bar-name"><svg class="ic" aria-hidden="true"><use href="#i-lemon-tea"/></svg>Trà chanh</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: 36%"></span></span><span class="bar-num">5 ly</span></li>
+              </ol>
+            </section>
+            <div class="col">
+              <section class="box" aria-labelledby="b-out">
+                <h4 id="b-out"><svg class="ic" aria-hidden="true"><use href="#i-error"/></svg>Món hết nguyên liệu</h4>
+                <ul class="list"><li class="out"><svg class="ic" aria-hidden="true"><use href="#i-mocha"/></svg><b>Mocha</b> · thiếu nguyên liệu</li></ul>
+              </section>
+              <section class="box" aria-labelledby="b-rev">
+                <h4 id="b-rev"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá gần nhất</h4>
+                <ul class="list">
+                  <li class="review"><svg class="ic" style="--av-skin: var(--color-skin-1); --av-hair: var(--color-hair-3)" aria-hidden="true"><use href="#i-avatar"/></svg>
+                    <span class="review-meta"><span class="stars" role="img" aria-label="5 trên 5 sao"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg></span>18:20</span>
+                    <p class="small">Latte ngon, quán xinh, sẽ quay lại.</p>
+                    <span class="chips"><span class="chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-thumb-up"/></svg>Đồ uống ngon</span><span class="chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-thumb-up"/></svg>Quán đẹp</span></span></li>
+                  <li class="review"><svg class="ic" style="--av-skin: var(--color-skin-3); --av-hair: var(--color-hair-1)" aria-hidden="true"><use href="#i-avatar"/></svg>
+                    <span class="review-meta"><span class="stars" role="img" aria-label="3 trên 5 sao"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star-empty"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star-empty"/></svg></span>12:05</span>
+                    <p class="small">Đợi hơi lâu lúc trưa.</p>
+                    <span class="chips"><span class="chip is-bad"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-thumb-down"/></svg>Chờ lâu</span></span></li>
+                </ul>
+              </section>
+            </div>
+          </div>
+          <section class="box" aria-labelledby="b-tip">
+            <h4 id="b-tip"><svg class="ic" aria-hidden="true"><use href="#i-tip"/></svg>Gợi ý cho ngày 4</h4>
+            <ol class="list">
+              <li class="tip"><span class="tip-icon"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg></span><div><p class="small">Mocha hết nguyên liệu từ 14:20. Nhập thêm Bột cacao trước khi mở cửa.</p><button class="link-btn" type="button">Mở Kho<svg class="ic ic-sm" aria-hidden="true"><use href="#i-forward"/></svg></button></div></li>
+              <li class="tip"><span class="tip-icon"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg></span><div><p class="small">Khách chờ lâu lúc cao điểm. Tuyển thêm 1 pha chế.</p><button class="link-btn" type="button">Mở Nhân viên<svg class="ic ic-sm" aria-hidden="true"><use href="#i-forward"/></svg></button></div></li>
+            </ol>
+          </section>
+        </div>
+        <div class="rpt-foot">
+          <p class="save-ok"><svg class="ic" aria-hidden="true"><use href="#i-ok"/></svg>Đã tự lưu ngày 3 · 21:00, 14/10/2026</p>
+          <div class="foot-actions">
+            <button class="btn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Xem đánh giá</button>
+            <button class="btn btn-primary btn-lg is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="cols" style="margin-top: var(--space-6)">
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-trend-down"/></svg>Lỗ</h3>
+        <div class="result is-loss">
+          <svg class="ic" aria-hidden="true"><use href="#i-trend-down"/></svg>
+          <span class="result-label">Lỗ</span>
+          <span class="result-value">−120.000đ</span>
+          <span class="result-note">Phục vụ 9/17 khách. Tiền hiện có: 880.000đ.</span>
+        </div>
+      </div>
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-equal"/></svg>Trống: không có khách</h3>
+        <div class="result is-none">
+          <svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>
+          <span class="result-label">Không có khách</span>
+          <span class="result-value">−300.000đ</span>
+          <span class="result-note">Chỉ có chi phí cố định trong ngày. Tiền hiện có: 700.000đ.</span>
+        </div>
+      </div>
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-busy"/></svg>Đang tổng kết</h3>
+        <div class="box" role="status" aria-label="Đang tổng kết ngày 3">
+          <p class="small" style="display: flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3)"><svg class="ic" aria-hidden="true"><use href="#i-busy"/></svg><b>Đang tổng kết ngày 3…</b></p>
+          <span class="skel skel-lg"></span>
+          <span class="skel" style="margin-top: var(--space-3); width: 80%"></span>
+          <span class="skel" style="margin-top: var(--space-2); width: 60%"></span>
+        </div>
+      </div>
+      <div>
+        <h3 class="state-title"><svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg>Lỗi: không tự lưu được</h3>
+        <div class="status status-warn" role="alert" style="flex-direction: column">
+          <span style="display: flex; gap: var(--space-2)"><svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg><span>Chưa tự lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn. Tiến độ ngày 3 sẽ mất nếu đóng tab.</span></span>
+          <button class="btn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg>Thử lưu lại</button>
+        </div>
+        <p class="reason">Không khóa nút “Ngày tiếp theo”.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. Motion ============ -->
+  <section id="motion" aria-labelledby="h-motion">
+    <h2 class="sec-title" id="h-motion"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-speed-2"/></svg>Chuyển động và hướng cảnh 3D</h2>
+    <p class="sec-lead">Ghi chú tham khảo. Lead và FE tự quyết kỹ thuật (tween, shader, instancing) và cắt bớt nếu tốn khung hình. Thời lượng và easing dùng token <code>duration.*</code>, <code>easing.*</code>.</p>
+    <div class="sheet">
+      <h3 class="state-title" style="margin-top: 0">Squash và stretch khi nhân vật nhảy bước / đặt món</h3>
+      <div class="story">
+        <figure class="kf"><svg viewBox="0 0 120 180" aria-hidden="true"><use href="#char" x="10" y="16" width="100" height="160" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/></svg><b>1 · Đứng</b>scale 1 / 1</figure>
+        <figure class="kf"><svg viewBox="0 0 120 180" aria-hidden="true"><g transform="translate(60 176) scale(1.12 0.88) translate(-60 -176)"><use href="#char" x="10" y="16" width="100" height="160" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/></g></svg><b>2 · Lấy đà</b>1,12 / 0,88 · 80 ms</figure>
+        <figure class="kf"><svg viewBox="0 0 120 180" aria-hidden="true"><g transform="translate(60 160) scale(0.9 1.1) translate(-60 -176)"><use href="#char" x="10" y="16" width="100" height="160" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/></g></svg><b>3 · Bật lên</b>0,9 / 1,1 · 120 ms</figure>
+        <figure class="kf"><svg viewBox="0 0 120 180" aria-hidden="true"><g transform="translate(60 176) scale(1.06 0.94) translate(-60 -176)"><use href="#char" x="10" y="16" width="100" height="160" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/></g></svg><b>4 · Tiếp đất</b>1,06 / 0,94 · 80 ms</figure>
+        <figure class="kf"><svg viewBox="0 0 120 180" aria-hidden="true"><use href="#char" x="10" y="16" width="100" height="160" style="--ch-body: var(--color-berry-400); --ch-skin: var(--color-skin-1); --ch-hair: var(--color-hair-3)"/></svg><b>5 · Về dáng</b>bounce 200 ms</figure>
+      </div>
+
+      <h3 class="state-title">Bong bóng order bật ra</h3>
+      <div class="story">
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="translate(60 60) scale(0.3)"><rect class="sc-cream sc-o" x="-48" y="-48" width="96" height="84" rx="22"/><g class="sc-ic"><use href="#i-latte" x="-22" y="-42" width="44" height="44"/></g></g></svg><b>0 ms</b>scale 0,3 · mờ 0</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="translate(60 60) scale(1.15)"><rect class="sc-cream sc-o" x="-48" y="-48" width="96" height="84" rx="22"/><g class="sc-ic"><use href="#i-latte" x="-22" y="-42" width="44" height="44"/></g></g></svg><b>220 ms</b>scale 1,15</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="translate(60 60) rotate(-6)"><rect class="sc-cream sc-o" x="-48" y="-48" width="96" height="84" rx="22"/><g class="sc-ic"><use href="#i-latte" x="-22" y="-42" width="44" height="44"/></g></g></svg><b>360 ms</b>scale 1 · lắc icon ±6°</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="translate(60 60)"><rect class="sc-cream sc-o" x="-48" y="-48" width="96" height="84" rx="22"/><g class="sc-ic"><use href="#i-face-worried" x="-22" y="-42" width="44" height="44"/></g></g></svg><b>Dưới 30%</b>đổi mặt, rung ±2° mỗi 1,5 s</figure>
+      </div>
+
+      <h3 class="state-title">Hơi nước và tiền bay</h3>
+      <div class="story">
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="sc-steam-o" d="M52 56c-6-8 6-12 0-20M68 56c-6-8 6-12 0-20"/><path class="sc-steam" d="M52 56c-6-8 6-12 0-20M68 56c-6-8 6-12 0-20"/><g class="sc-ic"><use href="#i-cup-hot" x="34" y="56" width="52" height="52"/></g></svg><b>Hơi nước</b>2–3 sợi, bay lên 1,6 s, chỉ món nóng</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g class="sc-ic"><use href="#i-coin" x="40" y="70" width="40" height="40"/></g><path class="sc-dash" d="M60 66V20"/></svg><b>0–300 ms</b>xu bật lên từ quầy + “+40.000đ”</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="sc-dash" d="M10 110C30 50 70 20 110 12"/><g class="sc-ic"><use href="#i-coin" x="70" y="12" width="32" height="32"/></g></svg><b>300–800 ms</b>bay cong về viên Tiền trên HUD</figure>
+        <figure class="kf"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="translate(60 60) scale(1.08)"><rect class="sc-cream sc-o" x="-52" y="-20" width="104" height="40" rx="20"/><g class="sc-ic"><use href="#i-coin" x="-46" y="-14" width="28" height="28"/></g></g></svg><b>800 ms</b>viên Tiền nảy 1,08, số đếm lên 400 ms</figure>
+      </div>
+
+      <h3 class="state-title">Danh sách hiệu ứng</h3>
+      <ul class="fx-list">
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Nhún nảy khi đứng</h3><dl><dt>Khi</dt><dd>Mọi nhân vật đứng yên (xếp hàng, chờ, pha chế)</dd><dt>Nhịp</dt><dd>scaleY 1 → 0,96 → 1, nhấc 2 cm; chu kỳ 1,2 s; lệch pha ngẫu nhiên mỗi người</dd><dt>Giảm động</dt><dd>Tắt</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-forward"/></svg>Đi kiểu nhảy bước</h3><dl><dt>Khi</dt><dd>Khách vào, ra, nhân viên mang món</dd><dt>Nhịp</dt><dd>Mỗi bước nảy |sin| cao 6 cm, nghiêng thân ±4°, squash 0,94 lúc chạm đất; giữ thể tích sx × sy ≈ 1</dd><dt>Giảm động</dt><dd>Trượt phẳng, không nảy</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Bong bóng order</h3><dl><dt>Khi</dt><dd>Khách gọi món; mặt đổi theo kiên nhẫn; món xong thì icon nảy 2 lần</dd><dt>Nhịp</dt><dd>pop 360 ms <code>easing.bounce</code>; thanh rút mượt; dưới 30% rung ±2°</dd><dt>Giảm động</dt><dd>Hiện ngay, không rung</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-face-angry"/></svg>Cảm xúc sau phục vụ</h3><dl><dt>Khi</dt><dd>Được phục vụ: mặt vui + 3–5 tia lấp lánh; bỏ đi: mặt giận, nhảy 1 cái, 2 cụm khói nhỏ</dd><dt>Nhịp</dt><dd>600 ms rồi mờ dần 400 ms</dd><dt>Giảm động</dt><dd>Chỉ đổi icon, không hạt</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-cup-hot"/></svg>Hơi nước từ ly</h3><dl><dt>Khi</dt><dd>Ly món nóng (<code>temperature: hot</code>) trên quầy và trên bàn, 4 s đầu</dd><dt>Nhịp</dt><dd>2–3 sprite kem, bay 0,6 đơn vị trong 1,6 s, to dần 0,6 → 1,2, mờ 0 → 0,8 → 0, lượn ngang theo sin</dd><dt>Giảm động</dt><dd>Bay chậm 2 lần, ít sợi</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg>Tiền bay lên khi thu</h3><dl><dt>Khi</dt><dd>Thu tiền ở quầy</dd><dt>Nhịp</dt><dd>Xu + chip “+40.000đ” bật lên 300 ms, bay cong về viên Tiền 500 ms; viên Tiền nảy 1,08 và đếm số 400 ms. Gộp các lần thu trong 300 ms thành một</dd><dt>Giảm động</dt><dd>Chỉ đổi số, viền viên Tiền sáng 1 lần</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Nút nảy khi bấm</h3><dl><dt>Khi</dt><dd>Mọi nút, dock, nút HUD</dd><dt>Nhịp</dt><dd>hover nhấc 2 px 120 ms; nhấn lún 2 px 80 ms; thả nảy về 200 ms <code>easing.bounce</code>. “Mở cửa” lắc chuông 1 lần khi bấm</dd><dt>Giảm động</dt><dd>Chỉ đổi màu nền</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Bảng trượt vào</h3><dl><dt>Khi</dt><dd>Mở panel từ dock; mở Daily Report</dd><dt>Nhịp</dt><dd>Panel: từ phải 24 px + mờ, 320 ms bounce (vượt 4 px rồi về). Đóng 200 ms standard. Report: rơi từ −24 px, scale 0,96 → 1, 360 ms; dải kết quả đóng dấu 1,2 → 1 sau 200 ms</dd><dt>Giảm động</dt><dd>Chỉ mờ vào 120 ms</dd></dl></li>
+        <li class="fx"><h3><svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg>Toast</h3><dl><dt>Khi</dt><dd>Sự kiện sim (sắp hết hàng, khách bỏ đi, đã lưu)</dd><dt>Nhịp</dt><dd>Trượt lên 16 px, 240 ms bounce; cảnh báo lắc ngang 1 lần</dd><dt>Giảm động</dt><dd>Mờ vào</dd></dl></li>
+      </ul>
+
+      <h3 class="state-title">Hướng cảnh 3D</h3>
+      <div class="cols">
+        <ul class="list small">
+          <li><b>Toon shading 2–3 bậc</b> (vd vật liệu toon với gradient map 3 nấc) thay cho shading mượt; màu vật thể lấy đúng bảng honey, mint, berry, sky, latte, kem.</li>
+          <li><b>Viền mực</b> quanh nhân vật và đồ nội thất chính (vỏ ngược hoặc hậu kỳ), màu <code>color.neutral.900</code>, dày tương đương 3 px ở khung 1440; tắt ở chất lượng Thấp.</li>
+          <li><b>Bóng tròn mềm</b> dưới chân thay bóng đổ thật ở chất lượng Thấp/Vừa.</li>
+          <li><b>Nhân vật dáng hạt đậu</b> như hình minh họa: đầu to, thân viên nang, chân tròn; màu áo theo bảng màu vui, da và tóc theo <code>color.skin.*</code>, <code>color.hair.*</code>.</li>
+          <li><b>Đồ vật sống động nhẹ</b>: cây đung đưa, mái hiên phập phồng theo gió, đèn treo lắc khi cửa mở, chuông cửa rung khi khách vào.</li>
+          <li><b>Nhãn trên đầu khách</b> vẽ từ SVG trong bộ icon (thay emoji vẽ lên canvas trong <code>labels.ts</code>), nên giống hệt icon trong UI.</li>
+        </ul>
+        <div>
+          <p class="small" style="margin-bottom: var(--space-2)"><b>Bầu trời theo pha</b> (đổi chậm 2–3 s khi sang pha)</p>
+          <div class="sky-strip">
+            <span class="sky" style="background: var(--color-scene-sky-dawn)"><span>Chuẩn bị · sáng sớm</span></span>
+            <span class="sky" style="background: var(--color-scene-sky)"><span>Mở cửa, Cao điểm</span></span>
+            <span class="sky" style="background: var(--color-scene-sky-dusk)"><span>Đóng cửa · chiều tà</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
