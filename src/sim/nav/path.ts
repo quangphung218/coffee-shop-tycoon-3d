@@ -330,6 +330,18 @@ function distanceField(grid: NavGrid, goal: number): Float32Array {
   return field;
 }
 
+/** Spacing of the points checked along a segment: well under AGENT_RADIUS, so no footprint fits between two. */
+const SEGMENT_STEP = NAV_CELL / 5;
+
+/** True when every point along a → b, both ends included, stands on a free cell. */
+function segmentClear(grid: NavGrid, a: Vec2, b: Vec2): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / SEGMENT_STEP));
+  for (let k = 0; k <= n; k++) {
+    if (!isWalkable(grid, { x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n })) return false;
+  }
+  return true;
+}
+
 /** The neighbour of cell i one step closer to the goal (ties: first in DIRS), or -1 at the goal. */
 function downhill(grid: NavGrid, field: Float32Array, i: number): number {
   const c = i % grid.cols;
@@ -353,8 +365,9 @@ function downhill(grid: NavGrid, field: Float32Array, i: number): number {
 /**
  * Where someone at `from` gets to after walking `distance` toward `to`
  * around everything on the floor, along the cached distance field of the
- * goal cell. They first step to the centre of their cell (out of an obstacle
- * onto the nearest free cell), then follow the field cell by cell, cutting
+ * goal cell. Someone inside an obstacle first steps out onto the nearest free
+ * cell; someone on free floor heads for the farthest of the next corners
+ * they can walk straight to. Then they follow the field cell by cell, cutting
  * corners only where the line of sight is clear, and finish on `to` itself
  * (or the nearest free point to it). Only the stretch they can cover this
  * step is looked at. Null when no free cell can be reached at all.
@@ -380,6 +393,11 @@ export function walkToward(grid: NavGrid, from: Vec2, to: Vec2, distance: number
   }
   const waypoints: Vec2[] = smooth(grid, cells).map((i) => cellCenter(grid, i));
   if (cells[cells.length - 1] === goal) waypoints.push(goalFree);
+  // Someone between two cell centres heads straight on when the way is clear,
+  // instead of stepping back to their cell's centre (short steps would stall).
+  if (startFree.x === from.x && startFree.z === from.z) {
+    while (waypoints.length > 1 && segmentClear(grid, from, waypoints[1]!)) waypoints.shift();
+  }
 
   let pos = from;
   let left = distance;
