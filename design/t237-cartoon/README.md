@@ -17,7 +17,7 @@ Anh muốn game “sinh động, hoạt họa hơn, đẹp hơn, icon đồng nh
 
 - Người chơi trên trình duyệt máy tính, chuột + bàn phím; màn hẹp 390 px vẫn dùng được.
 - Chữ tiếng Việt có dấu chồng, tiền `25.000đ`, số thập phân `4,2`.
-- Ràng buộc: thao tác nhỏ sửa tại chỗ hoặc menu sổ, không modal; không thêm ảnh bitmap. Font: anh đã chốt Nunito subset latin + tiếng Việt (~30 KB, `font-display: swap`, tải không chặn menu; giữ chunk split và màn chờ CSS của T236). Font hệ thống bo tròn chỉ còn là dự phòng lúc Nunito đang tải.
+- Ràng buộc: thao tác nhỏ sửa tại chỗ hoặc menu sổ, không modal; không thêm ảnh bitmap. Font: anh đã chốt Nunito subset latin + tiếng Việt (weight 400 và 700, 4 file woff2 tổng 44,6 kB, `font-display: swap`, tải không chặn menu; giữ chunk split và màn chờ CSS của T236). Font hệ thống bo tròn chỉ còn là dự phòng lúc Nunito đang tải.
 
 ## Luồng (không đổi so với P14)
 
@@ -51,7 +51,7 @@ Tên biến ngữ nghĩa giữ nguyên `src/ui/styles/tokens.css` (`--text-*`, `
 - Bảng màu gốc mới: `ink` dùng `neutral.900`; thêm `honey`, `berry`, `sky`, `leaf`, `tangerine`, `skin`, `hair`. Bỏ `mint.700/800`, `neutral.500`, `text.danger-inverse` (không còn nền tối cho chữ đỏ). `ok/warning/danger.100` giờ trỏ vào mint/honey/berry.100.
 - Mới: `border.outline`, `border.disabled`, `surface.ink`, `surface.info`, `accent.danger*`, `accent.info`, `color.icon.*` (`--icon-ink`, `--icon-fill-*`), `color.cinnamon.700` (P17), `font.weight.heavy`, `font.size.4xl`, `size.outline(-sm)`, `size.icon-*`, `size.hud-pill`, `size.focus-clearance`, `size.group-gap`, `size.group-padding` (P17), `shadow.soft`, `shadow.card`, `duration.instant/pop/float/count/idle-bob`, `easing.bounce/out`, `color.scene.sky-dawn/dusk`.
 - `surface.hud*` giờ là kem; chữ trên HUD đổi sang `text.primary`. `size.panel` 360 → 380, `size.dialog` 720 → 760, `radius` 6/10/16 → 8/12/20 (+ `xl` 28). Focus (P17): `color.focus.500` sky-700 → cinnamon-700, `size.focus-offset` → 0 (bỏ dùng).
-- Font: `font.family.base` bắt đầu bằng `"Nunito"` (gói subset latin + vietnamese, weight 400/700/800), sau đó mới tới `ui-rounded` và font hệ thống.
+- Font: `font.family.base` bắt đầu bằng `"Nunito"` (`@fontsource/nunito`, subset latin + vietnamese, chỉ tải weight 400 và 700; chữ `font.weight.heavy` 800 không có mặt font riêng nên trình duyệt hiển thị bằng mặt 700 gần nhất), sau đó mới tới `ui-rounded` và font hệ thống.
 - Icon: đưa sprite trong `icons/index.html` vào một module (vd `src/ui/core/icons.ts` trả `<svg><use>`); đổi trường `icon` trong `src/sim/data/*` từ emoji sang id icon (`'i-latte'`). Nhãn khách trong `src/render/actors/labels.ts` vẽ SVG đó lên canvas thay emoji (cùng sprite nên UI và cảnh 3D giống nhau).
 
 ## Bảng thay emoji
@@ -141,7 +141,7 @@ Nút 4 loại × mặc định / hover / focus / nhấn / vô hiệu; nút HUD, 
 
 ## Giả định
 
-- (Đã thay) Giả định “chỉ font hệ thống” của T237 không còn đúng: anh đã chốt Nunito subset tiếng Việt (~30 KB, tải không chặn menu). Mockup không nhúng font (file tĩnh không tải tài nguyên ngoài) nên ảnh chụp hiện font dự phòng `ui-rounded`/system-ui.
+- (Đã thay) Giả định “chỉ font hệ thống” của T237 không còn đúng: anh đã chốt Nunito subset tiếng Việt (400 và 700, 44,6 kB, tải không chặn menu). Mockup không nhúng font (file tĩnh không tải tài nguyên ngoài) nên ảnh chụp hiện font dự phòng `ui-rounded`/system-ui.
 - Tên quán “Gió Chiều”, số tiền, review là dữ liệu minh họa; giá nhập/gói lấy đúng `ingredients.ts` (vd sữa 40.000đ/gói 1000 ml).
 - Ngưỡng mặt khách ≥ 60% / 30–59% / dưới 30% là đề xuất; sim quyết số thật.
 
