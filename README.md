@@ -85,7 +85,7 @@ npm test           # chạy test Vitest một lần
 npm run check      # tsc --noEmit, toàn bộ test, rồi vite build
 npm run build      # kiểm tra kiểu và build ra dist/
 npm run preview    # mở bản build
-npm run media      # build rồi chụp lại ảnh, GIF, mp4 vào docs/media/
+npm run media      # build rồi chụp lại ảnh, GIF, mp4 và ảnh trước/sau P18–P19 vào docs/media/
 npm run layout     # build rồi kiểm tràn ngang và CLS bảng Kho ở 390/768/1440 px
 ```
 
@@ -98,3 +98,4 @@ Chạy `npm run check` trước khi commit. Xem nhân vật và animation riêng
 - [docs/architecture.md](docs/architecture.md): ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, FSM khách, định dạng save, mẹo hiệu năng.
 - [docs/deploy.md](docs/deploy.md): build và deploy lên GitHub Pages.
 - [docs/media.md](docs/media.md): tạo lại ảnh chụp và GIF/mp4 demo.
+- [docs/reports/p19-polish.md](docs/reports/p19-polish.md): các chỉnh sửa P19 với ảnh trước/sau có khoanh.
