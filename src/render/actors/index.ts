@@ -4,7 +4,18 @@ import { buildNavGrid, type NavGrid } from '../../sim/nav';
 import type { Command, GameState, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
 import { layoutKey } from '../scene/shop';
-import { ANIM_PERIOD, IDLE_BOUNCE_PERIOD, MOVING_ANIMS, bounceFor, poseFor, type AnimName } from './animations';
+import {
+  ANIM_PERIOD,
+  IDLE_BOUNCE_PERIOD,
+  MOVING_ANIMS,
+  blendBounce,
+  blendPose,
+  bounceFor,
+  poseFor,
+  restPose,
+  strideCycles,
+  type AnimName,
+} from './animations';
 import { CoinFx, Steam, puffTexture, steamFor } from './fx';
 import { Label, LabelAssets, commandForCustomer, labelFor } from './labels';
 import { Pool } from './pool';
@@ -15,11 +26,12 @@ import {
   STAFF_SPEED,
   WALK_SPEED,
   advance,
-  angleDelta,
   createMotion,
   customerAnim,
   customerGoal,
+  easedStep,
   headingOf,
+  lookAhead,
   playerHome,
   playerSpot,
   separate,
@@ -27,7 +39,7 @@ import {
   shownX,
   shownZ,
   snap,
-  stepDistance,
+  turnToward,
   workerAnim,
   workerGoal,
   type Goal,
@@ -68,14 +80,15 @@ export interface ActorInfo {
   squash: number;
 }
 
-/** World units walked per animation loop of a moving animation. */
-const STRIDE = 0.9;
-/** Most stride loops per real second, so 4× speed does not turn legs into a blur. */
-const MAX_STRIDES_PER_SECOND = 3;
 /** A jump in the game clock bigger than this (new day, loaded save) snaps everyone into place. */
 const MAX_GAME_STEP = 30;
 const MAX_FRAME_DT = 0.1;
-const TURN_RATE = 10;
+/** Real seconds per game minute at 1× (src/main.ts runs 2 game minutes a second). */
+const SECONDS_PER_GAME_MINUTE = 0.5;
+/** Walkers face the point this far ahead on their path. */
+const LOOK_AHEAD = 0.3;
+/** Seconds to blend between the stride and the standing pose when starting or stopping. */
+const BLEND_SECONDS = 0.18;
 
 interface Body {
   char: Character;
@@ -91,7 +104,14 @@ interface Actor {
   motion: Motion;
   goal: Goal;
   heading: number;
+  /** Seconds into the standing animations. */
   phase: number;
+  /** Stride loops walked so far (drives the moving animations). */
+  stride: number;
+  /** 0 = standing pose, 1 = stride pose; eases between them. */
+  walkBlend: number;
+  /** Moving animation last played, blended out after stopping. */
+  lastMove: AnimName;
   anim: AnimName;
   angry: boolean;
   /** Left the sim while still walking out; released once through the door. */
@@ -130,6 +150,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   const actors = new Map<string, Actor>();
   const byHitbox = new Map<Object3D, Actor>();
   const dir = { x: 0, z: 1 };
+  // Scratch poses and bounces, reused every frame.
+  const standPose = restPose();
+  const movePose = restPose();
+  const standBounce = { sx: 1, sy: 1, lift: 0 };
+  const moveBounce = { sx: 1, sy: 1, lift: 0 };
   let layout: ShopLayout | null = null;
   let grid: NavGrid | null = null;
   let layoutSig = -1;
@@ -158,6 +183,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       goal: { pos, face: null, seated: false },
       heading: Math.PI,
       phase: (id * 0.37) % 3,
+      stride: 0,
+      walkBlend: 0,
+      lastMove: 'walk',
       anim: 'idle',
       angry: false,
       ghost: false,
@@ -214,29 +242,49 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     if (snapNow) snap(m);
     walking[walkingCount] = m;
     walkingRoots[walkingCount++] = actor.body.char.root;
-    const moved = advance(m, stepDistance(m, speed, dtGame), dir);
+    const moved = advance(m, easedStep(m, speed, dtGame), dir);
     // Still on the way (also while paused mid-walk, which freezes the stride).
     const moving = m.path.length > 0;
     const seated = actor.goal.seated && !moving;
     const next = anim(moving, seated);
     actor.anim = next;
 
-    const target = moved > 1e-4 ? headingOf(dir.x, dir.z) : (actor.goal.face ?? actor.heading);
-    const k = snapNow ? 1 : 1 - Math.exp(-TURN_RATE * dtReal);
-    actor.heading += angleDelta(actor.heading, target) * k;
+    // Face along the path a little ahead, so corners turn the body early and smoothly.
+    let target = actor.goal.face ?? actor.heading;
+    if (moving && lookAhead(m, LOOK_AHEAD, dir)) target = headingOf(dir.x, dir.z);
+    else if (moved > 1e-4) target = headingOf(dir.x, dir.z);
+    // Turns keep up with the walk at higher game speeds.
+    actor.heading = snapNow ? target : turnToward(actor.heading, target, Math.max(dtReal, dtGame * SECONDS_PER_GAME_MINUTE));
 
-    if (MOVING_ANIMS.has(next)) {
-      const cycles = Math.min(moved / STRIDE, dtReal * MAX_STRIDES_PER_SECOND);
-      actor.phase += cycles * ANIM_PERIOD[next];
-    } else {
-      actor.phase += dtReal;
+    const striding = MOVING_ANIMS.has(next);
+    if (striding) {
+      actor.lastMove = next;
+      actor.stride += strideCycles(moved, dtReal);
     }
-    // Keep the phase small so float precision holds over a long session.
+    actor.phase += dtReal;
+    // Keep the clocks small so float precision holds over a long session.
     if (actor.phase > 1e4) actor.phase %= 120;
+    if (actor.stride > 1e4) actor.stride %= 1;
+    const w = striding ? 1 : 0;
+    const blendStep = dtReal / BLEND_SECONDS;
+    if (snapNow) actor.walkBlend = w;
+    else if (w > actor.walkBlend) actor.walkBlend = Math.min(w, actor.walkBlend + blendStep);
+    else actor.walkBlend = Math.max(w, actor.walkBlend - blendStep);
+    const blend = actor.walkBlend * actor.walkBlend * (3 - 2 * actor.walkBlend);
+    // Stopping eases the legs from the stride into the standing pose (and back when starting).
+    const stand = striding ? anim(false, seated) : next;
+    const standTime = MOVING_ANIMS.has(stand) ? actor.stride * ANIM_PERIOD[stand] : actor.phase;
+    const moveTime = actor.stride * ANIM_PERIOD[actor.lastMove];
+    const bob = now + actor.bobOffset;
+    const quiet = calm();
+    poseFor(stand, standTime, standPose);
+    poseFor(actor.lastMove, moveTime, movePose);
+    bounceFor(stand, standTime, bob, quiet, standBounce);
+    bounceFor(actor.lastMove, moveTime, bob, quiet, moveBounce);
 
     const char = actor.body.char;
-    char.applyPose(poseFor(next, actor.phase));
-    char.applyBounce(bounceFor(next, actor.phase, now + actor.bobOffset, calm()));
+    char.applyPose(blendPose(standPose, movePose, blend, standPose));
+    char.applyBounce(blendBounce(standBounce, moveBounce, blend, standBounce));
     char.showProps(next);
     char.setAngry(actor.angry);
     char.root.position.set(m.pos.x, 0, m.pos.z);
