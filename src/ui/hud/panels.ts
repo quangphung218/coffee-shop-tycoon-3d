@@ -1,4 +1,5 @@
 import type { Command, GameState } from '../../sim/types';
+import type { IconId } from '../core/icons';
 
 /** What a panel gets from the HUD. */
 export interface PanelContext {
@@ -21,8 +22,10 @@ export type PanelRender = (body: HTMLElement, ctx: PanelContext) => PanelHandle 
 
 export interface PanelDef {
   id: string;
-  /** Button text, icon first, e.g. "📦 Kho". */
+  /** Plain button text, e.g. "Kho". */
   label: string;
+  /** Dock icon drawn above the label. */
+  icon: IconId;
   render: PanelRender;
 }
 
@@ -30,11 +33,11 @@ const panels: PanelDef[] = [];
 const listeners = new Set<() => void>();
 
 /**
- * Adds a button to the HUD that opens a side panel (Kho, Menu, Nhân viên…).
+ * Adds a dock button that opens a side panel (Kho, Menu, Nhân viên…).
  * Registering an id again replaces the earlier panel. Returns an unregister function.
  */
-export function registerPanel(id: string, label: string, render: PanelRender): () => void {
-  const def: PanelDef = { id, label, render };
+export function registerPanel(id: string, label: string, icon: IconId, render: PanelRender): () => void {
+  const def: PanelDef = { id, label, icon, render };
   const i = panels.findIndex((p) => p.id === id);
   if (i >= 0) panels[i] = def;
   else panels.push(def);

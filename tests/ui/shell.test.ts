@@ -270,6 +270,8 @@ describe('HUD', () => {
   }
 
   it('follows the state and only touches the DOM when a value changes', () => {
+    // Money counts up over frames; fake timers let the test skip to the end.
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
     const state = game();
     const { hud } = makeHud(state);
     const text = () => hud.el.textContent ?? '';
@@ -285,14 +287,16 @@ describe('HUD', () => {
     state.rating = 3.84;
     state.speed = 2;
     hud.update(state);
+    vi.advanceTimersByTime(1000);
     expect(text()).toContain('11:42');
     expect(text()).toContain('2.465.000đ');
     expect(q(hud.el, '[role="img"]').getAttribute('aria-label')).toBe('3,8 trên 5 sao');
     const peak = q(hud.el, '[aria-current="step"]');
     expect(peak.dataset.phase).toBe('peak');
     expect(peak.classList.contains('is-peak')).toBe(true);
-    expect(peak.textContent).toContain('🔥');
-    expect(q(hud.el, '[data-phase="opening"]').textContent).toContain('✓');
+    expect(q(peak, 'use').getAttribute('href')).toBe('#i-flame');
+    expect(q(hud.el, '[data-phase="opening"] use').getAttribute('href')).toBe('#i-check');
+    expect(q(hud.el, '[data-phase="closing"] use').getAttribute('href')).toBe('#i-phase-close');
     expect(q(hud.el, '.speed').hidden).toBe(false);
     expect(button(hud.el, 'Mở cửa').hidden).toBe(true);
     expect(q(hud.el, '[data-speed="2"]').getAttribute('aria-pressed')).toBe('true');
@@ -305,6 +309,7 @@ describe('HUD', () => {
     expect(money.textContent).toBe('sentinel');
     state.money += 1000;
     hud.update(state);
+    vi.advanceTimersByTime(1000);
     expect(money.textContent).toContain('2.466.000đ');
   });
 
@@ -320,11 +325,134 @@ describe('HUD', () => {
     }
   });
 
+  it('draws icons instead of emoji and keeps the media-script selectors', () => {
+    const state = game();
+    const { hud } = makeHud(state);
+    const emoji = /\p{Extended_Pictographic}|[▶▲▼✓✕★]/u;
+    const check = () => {
+      expect(hud.el.textContent).not.toMatch(emoji);
+      expect(hud.panelEl.textContent).not.toMatch(emoji);
+    };
+    check();
+    expect(q(hud.el, '[data-action="open"] use').getAttribute('href')).toBe('#i-open');
+    expect(q(hud.el, '[data-stat="money"]').parentElement?.querySelector('use')?.getAttribute('href')).toBe('#i-coin');
+    state.phase = 'peak';
+    hud.update(state);
+    check();
+    expect([...hud.el.querySelectorAll('[data-speed] use')].map((u) => u.getAttribute('href'))).toEqual(['#i-speed-1', '#i-speed-2', '#i-speed-4']);
+    expect(hud.el.querySelector('[data-action="pause"]')).toBeTruthy();
+    expect(hud.el.querySelectorAll('.hud .hud-stat b')[1]?.textContent).toBe('07:00');
+    state.phase = 'report';
+    hud.update(state);
+    check();
+    expect(q(hud.el, '[data-action="next-day"] use').getAttribute('href')).toBe('#i-next-day');
+  });
+
+  it('counts money up when it rises and jumps when it falls', () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout', 'performance'] });
+    const state = game();
+    const { hud } = makeHud(state);
+    const money = q(hud.el, '[data-stat="money"]');
+    state.money += 40000;
+    hud.update(state);
+    expect(money.textContent).toBe('2.000.000đ');
+    vi.advanceTimersByTime(200);
+    expect(money.textContent).not.toBe('2.000.000đ');
+    expect(money.textContent).not.toBe('2.040.000đ');
+    vi.advanceTimersByTime(400);
+    expect(money.textContent).toBe('2.040.000đ');
+    state.money = 1000;
+    hud.update(state);
+    expect(money.textContent).toBe('1.000đ');
+    hud.dispose();
+  });
+
+  it('jumps straight to the new money under reduced motion', () => {
+    const matchMedia = vi.fn((query: string) => ({ matches: query.includes('reduce') }) as MediaQueryList);
+    vi.stubGlobal('matchMedia', matchMedia);
+    try {
+      const state = game();
+      const { hud } = makeHud(state);
+      state.money += 40000;
+      hud.update(state);
+      expect(q(hud.el, '[data-stat="money"]').textContent).toBe('2.040.000đ');
+      expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('puts the seven panels in a bottom dock that tracks the open panel', () => {
+    const state = game();
+    const { hud } = makeHud(state);
+    const offs = [
+      ...['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades', 'reviews'].map((id) =>
+        registerPanel(id, id, 'i-tasks', (body) => {
+          body.append(Object.assign(document.createElement('button'), { textContent: `in ${id}` }));
+        }),
+      ),
+    ];
+    try {
+      const dock = q(hud.el, 'nav.dock');
+      expect(dock.getAttribute('aria-label')).toBe('Bảng quản lý');
+      expect(dock.closest('header')).toBeNull();
+      const buttons = [...dock.querySelectorAll<HTMLButtonElement>('button[data-panel]')];
+      expect(buttons).toHaveLength(7);
+      for (const b of buttons) {
+        expect(b.getAttribute('aria-controls')).toBe('ui-panel');
+        expect(b.getAttribute('aria-pressed')).toBe('false');
+        expect(b.querySelector('svg.ic-lg use')).toBeTruthy();
+      }
+
+      const kho = q<HTMLButtonElement>(dock, '[data-panel="inventory"]');
+      kho.focus();
+      kho.click();
+      expect(kho.getAttribute('aria-pressed')).toBe('true');
+      expect(buttons.filter((b) => b.getAttribute('aria-pressed') === 'true')).toEqual([kho]);
+      expect(hud.panelEl.contains(document.activeElement)).toBe(true);
+
+      // Switching panels moves the pressed state; the buttons are not rebuilt.
+      q<HTMLButtonElement>(dock, '[data-panel="staff"]').click();
+      expect(kho.isConnected).toBe(true);
+      expect(kho.getAttribute('aria-pressed')).toBe('false');
+      expect(q(dock, '[data-panel="staff"]').getAttribute('aria-pressed')).toBe('true');
+
+      // Clicking the open panel's button closes it.
+      q<HTMLButtonElement>(dock, '[data-panel="staff"]').click();
+      expect(hud.panelEl.hidden).toBe(true);
+      expect(buttons.every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true);
+    } finally {
+      offs.forEach((off) => off());
+    }
+  });
+
+  it('closes the panel on Esc and returns focus to its dock button', () => {
+    const state = game();
+    const { hud } = makeHud(state);
+    const off = registerPanel('menu', 'Menu', 'i-menu', (body) => {
+      body.append(Object.assign(document.createElement('button'), { textContent: 'Bật món' }));
+    });
+    try {
+      const open = q<HTMLButtonElement>(hud.el, '.dock [data-panel="menu"]');
+      open.focus();
+      open.click();
+      const inside = document.activeElement as HTMLElement;
+      expect(inside.textContent).toBe('Bật món');
+      inside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(hud.panelEl.hidden).toBe(true);
+      expect(hud.openPanelId).toBeNull();
+      expect(open.getAttribute('aria-pressed')).toBe('false');
+      expect(document.activeElement).toBe(open);
+    } finally {
+      off();
+    }
+  });
+
   it('shows registered panels and opens them in the side panel', () => {
     const state = game();
     const { hud } = makeHud(state);
     const update = vi.fn();
-    const off = registerPanel('stock', '📦 Kho', (body) => {
+    const off = registerPanel('stock', 'Kho', 'i-inventory', (body) => {
       body.append(Object.assign(document.createElement('button'), { textContent: 'Nhập hàng' }));
       return { update };
     });
@@ -435,7 +563,7 @@ describe('Shell', () => {
   it('applies settings opened from the HUD and returns to pause', () => {
     const { root, shell, storage, onSettingsChange } = boot();
     shell.startGame(game());
-    button(shell.hud.el, 'Cài đặt').click();
+    q<HTMLButtonElement>(shell.hud.el, 'button[aria-label="Cài đặt"]').click();
     expect(shell.screen).toBe('settings');
     expect(shell.state?.paused).toBe(true);
     const fast = q<HTMLInputElement>(root, 'input[data-setting="speed"][value="4"]');

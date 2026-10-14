@@ -15,6 +15,7 @@ import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
+import { mountIconSprite } from './ui/core/icons';
 import { registerPrepPanels } from './ui/panels';
 import { registerReviewsPanel } from './ui/report';
 import { createShell } from './ui/screens/shell';
@@ -59,6 +60,8 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   audio.setMusic(true);
   let world: World | null = null;
 
+  // <svg><use href="#i-…"> in the UI needs the sprite in the page.
+  mountIconSprite();
   registerPrepPanels();
   registerReviewsPanel();
   const shell = createShell({

@@ -27,12 +27,12 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **New Game**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng trên HUD (📋 Việc, 🍽️ Menu, 📦 Kho, 👥 Nhân viên, 📣 Marketing, 🛠️ Nâng cấp) để bật/tắt món, nhập hàng, tuyển và phân vai nhân viên. Bấm **🔔 Mở cửa**.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng ở dock giữa đáy màn hình (Việc, Menu, Kho, Nhân viên, Marketing, Nâng cấp) để bật/tắt món, nhập hàng, tuyển và phân vai nhân viên. Bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món. Bấm khách, quầy hay bàn trong cảnh để tự nhận order, pha, mang đồ, thu tiền, dọn bàn khi chưa đủ nhân viên.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report**: lãi/lỗ, thu chi, khách, món bán chạy, món hết nguyên liệu, rating, review và gợi ý cho ngày mai. Game tự lưu trước khi báo cáo hiện ra. Bấm **☀️ Ngày tiếp theo** để sang ngày mới.
 
-Bảng **💬 Đánh giá** trên HUD liệt kê các review gần nhất bất cứ lúc nào.
+Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ lúc nào.
 
 | | |
 | --- | --- |

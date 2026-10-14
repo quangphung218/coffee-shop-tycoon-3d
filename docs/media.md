@@ -23,8 +23,8 @@ npm run media
 Lệnh build bản tĩnh, mở `vite preview` ở `127.0.0.1:4173`, rồi Chromium headless chơi ngày 1:
 
 1. Chụp Main Menu (quán chạy nền phía sau).
-2. **Ván mới** độ khó Dễ, tuyển cả 3 ứng viên. Ở bảng 📦 Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
-3. Zoom camera gần hơn, bấm **🔔 Mở cửa**, chọn tốc độ 4x, chụp lúc 12:00 trong giờ cao điểm.
+2. **Ván mới** độ khó Dễ, tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
+3. Zoom camera gần hơn, bấm **Mở cửa**, chọn tốc độ 4x, chụp lúc 12:00 trong giờ cao điểm.
 4. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
 
 Ảnh chụp ẩn toast; đoạn quay vẫn giữ.
