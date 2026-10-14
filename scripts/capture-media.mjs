@@ -33,6 +33,22 @@ const EXTRA_PACKS = [
 ];
 /** Wheel delta for a ~1.25x zoom (camera zoom = exp(-deltaY * 0.0015)). */
 const ZOOM_WHEEL = -150;
+/** ~1.6x: the counter and the line fill the frame. */
+const QUEUE_WHEEL = -320;
+/** ~1.8x on the shop front. */
+const FACADE_WHEEL = -400;
+/**
+ * Holding A+S pans straight toward the street (+z) at 12 / zoom units per
+ * second; this long moves the view from the middle of the floor to the door.
+ */
+const FACADE_PAN_MS = 800;
+/**
+ * Game clock (HUD text) when the camera starts moving for the day and evening
+ * shots of the shop front. Framing takes ~3 s, about 25 game minutes at 4x:
+ * the evening shot lands near 19:25, lamps almost full, before the 20:00 close.
+ */
+const FACADE_DAY_AT = '10:00';
+const FACADE_EVENING_AT = '19:00';
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
 const DAY_TIMEOUT_MS = 8 * 60_000;
 /** GIF tries, largest first, until one fits under MAX_BYTES. */
@@ -71,7 +87,39 @@ async function startPreview() {
   throw new Error('vite preview did not start');
 }
 
-/** Plays day 1 on Easy with three hires, taking the five screenshots. Returns clip timestamps in seconds. */
+/** Waits until the HUD clock reads `hhmm` or later. */
+function clockAt(page, hhmm) {
+  return page.waitForFunction(
+    (t) => {
+      const clock = document.querySelectorAll('.hud .hud-stat b')[1]?.textContent ?? '';
+      return clock >= t;
+    },
+    hhmm,
+    { timeout: DAY_TIMEOUT_MS },
+  );
+}
+
+/** Home resets the camera (smoothly); then zoom in by `wheel` around the middle of the view. */
+async function cameraHome(page, wheel) {
+  await page.keyboard.press('Home');
+  await sleep(700);
+  await page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height / 2 + 40);
+  await page.mouse.wheel(0, wheel);
+  await sleep(700);
+}
+
+/** Close-up of the door, awning and sign from the default angle. */
+async function cameraFacade(page) {
+  await cameraHome(page, FACADE_WHEEL);
+  await page.keyboard.down('KeyA');
+  await page.keyboard.down('KeyS');
+  await sleep(FACADE_PAN_MS);
+  await page.keyboard.up('KeyS');
+  await page.keyboard.up('KeyA');
+  await sleep(1000);
+}
+
+/** Plays day 1 on Easy with three hires, taking the screenshots. Returns clip timestamps in seconds. */
 async function playDay(page, videoStart) {
   const at = () => (Date.now() - videoStart) / 1000;
   // Toasts would cover the shop in still images; the clip keeps them.
@@ -92,7 +140,11 @@ async function playDay(page, videoStart) {
   await page.getByRole('button', { name: 'Bắt đầu ngày 1', exact: true }).click();
   await page.locator('[data-action="open"]').waitFor();
 
-  // Panels open and close from the dock at the bottom centre.
+  // Panels open and close from the dock at the bottom centre. The Menu panel
+  // shows a 3D atlas icon on every drink.
+  await page.locator('.dock [data-panel="menu"]').click();
+  await sleep(800);
+  await shot('menu-icons.png');
   await page.locator('.dock [data-panel="staff"]').click();
   for (let i = 0; i < 3; i++) {
     await page.locator('[data-action="hire"]').first().click();
@@ -117,19 +169,28 @@ async function playDay(page, videoStart) {
   await page.locator('[data-action="open"]').click();
   await page.locator('[data-speed="4"]').click();
 
+  // Mid-morning sun on the awning, sign and door.
+  await clockAt(page, FACADE_DAY_AT);
+  await cameraFacade(page);
+  await shot('facade-day.png');
+  await cameraHome(page, ZOOM_WHEEL);
+
   await page.waitForFunction(() => document.querySelector('.phases li[data-phase="peak"]')?.getAttribute('aria-current') === 'step', null, {
     timeout: DAY_TIMEOUT_MS,
   });
   // About an hour of game time into the lunch peak, when the queue is longest.
-  await page.waitForFunction(
-    () => {
-      const clock = document.querySelectorAll('.hud .hud-stat b')[1]?.textContent ?? '';
-      return clock >= '12:00';
-    },
-    null,
-    { timeout: DAY_TIMEOUT_MS },
-  );
+  await clockAt(page, '12:00');
   await shot('peak.png');
+  // Closer on the counter: the line follows the free aisle between the tables.
+  await cameraHome(page, QUEUE_WHEEL);
+  await shot('queue.png');
+  await cameraHome(page, ZOOM_WHEEL);
+
+  // Warm lamps and glowing windows.
+  await clockAt(page, FACADE_EVENING_AT);
+  await cameraFacade(page);
+  await shot('facade-evening.png');
+  await cameraHome(page, ZOOM_WHEEL);
 
   const report = page.locator('.rpt-layer:not([hidden])');
   await report.waitFor({ timeout: DAY_TIMEOUT_MS });
@@ -214,7 +275,18 @@ async function main() {
     rmSync(tmp, { recursive: true, force: true });
   }
 
-  const files = ['main-menu.png', 'prep-inventory.png', 'peak.png', 'daily-report.png', 'reviews.png', ...(withVideo ? ['demo.gif', 'demo.mp4'] : [])];
+  const files = [
+    'main-menu.png',
+    'menu-icons.png',
+    'prep-inventory.png',
+    'facade-day.png',
+    'peak.png',
+    'queue.png',
+    'facade-evening.png',
+    'daily-report.png',
+    'reviews.png',
+    ...(withVideo ? ['demo.gif', 'demo.mp4'] : []),
+  ];
   let over = false;
   for (const f of files) {
     const mb = sizeMb(join(OUT, f));

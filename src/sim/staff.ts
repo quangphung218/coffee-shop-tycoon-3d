@@ -259,7 +259,7 @@ export function staffSpots(state: GameState, layout: ShopLayout = getShopLayout(
 }
 
 /** Moves every staff member to their spot from staffSpots. */
-function placeStaff(state: GameState): void {
+export function placeStaff(state: GameState): void {
   const spots = staffSpots(state);
   for (const member of state.staff) member.pos = spots.get(member.id) ?? member.pos;
 }
