@@ -1,5 +1,6 @@
 import type { SaveSlot } from '../../save/save';
-import { h, uid } from '../core/dom';
+import { h, setChildren, uid } from '../core/dom';
+import { icon } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
 
 export interface PauseActions {
@@ -22,14 +23,15 @@ export function createPause(actions: PauseActions): Screen {
   const resume = h(
     'button',
     { class: 'btn btn-primary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onResume() } },
-    '▶️ Tiếp tục',
+    icon('i-speed-1'),
+    'Tiếp tục',
     h('kbd', { text: 'Space' }),
   );
   const saveLabelId = uid('save-l');
   const saveRow = h(
     'div',
     { class: 'save-row', attrs: { role: 'group', 'aria-labelledby': saveLabelId } },
-    h('span', { class: 'label', id: saveLabelId, text: '💾 Lưu ngay vào' }),
+    h('span', { class: 'label', id: saveLabelId }, icon('i-save'), 'Lưu ngay vào'),
     ...MANUAL_SLOTS.map((slot) =>
       h(
         'button',
@@ -40,7 +42,7 @@ export function createPause(actions: PauseActions): Screen {
             click: () => {
               const error = actions.onSave(slot);
               status.classList.toggle('is-error', error !== null);
-              status.textContent = error ? `⚠️ ${error}` : `✓ Đã lưu vào Slot ${slot}`;
+              setChildren(status, icon(error ? 'i-warning' : 'i-ok', { size: 16 }), error ?? `Đã lưu vào Slot ${slot}`);
             },
           },
         },
@@ -51,15 +53,15 @@ export function createPause(actions: PauseActions): Screen {
   const card = h(
     'div',
     { class: 'card w-pause' },
-    h('h2', { id: titleId, text: '⏸ Đang tạm dừng' }),
+    h('h2', { id: titleId }, icon('i-pause', { size: 32 }), 'Đang tạm dừng'),
     sub,
     h(
       'div',
       { class: 'stack', attrs: { style: 'margin-top:var(--space-6)' } },
       resume,
       saveRow,
-      h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onSettings() } }, '⚙️ Cài đặt'),
-      h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onMenu() } }, '🏠 Về Main Menu'),
+      h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onSettings() } }, icon('i-settings'), 'Cài đặt'),
+      h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onMenu() } }, icon('i-home'), 'Về Main Menu'),
     ),
     status,
   );

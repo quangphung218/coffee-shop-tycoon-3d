@@ -1,17 +1,19 @@
 import type { NotifyLevel } from '../../sim/types';
 import { h } from './dom';
+import { icon, type IconId } from './icons';
 
 /** design/tokens.json duration.toast-visible. */
 export const TOAST_VISIBLE_MS = 4000;
 export const MAX_TOASTS = 3;
 
-const ICONS: Record<NotifyLevel, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔' };
+const ICONS: Record<NotifyLevel, IconId> = { info: 'i-info', success: 'i-ok', warning: 'i-warning', error: 'i-error' };
 
 export interface ToastInput {
   level: NotifyLevel;
   title: string;
   text?: string;
-  icon?: string;
+  /** Replaces the level's icon (e.g. the angry face, an ingredient). */
+  icon?: IconId;
   /** Toasts with the same key merge into one with a "×n" counter. */
   key?: string;
 }
@@ -28,7 +30,8 @@ interface Live {
 }
 
 /**
- * Toast stack in the bottom-left corner. Info and success hide after 4 s
+ * Toast stack in the bottom-left corner, above the dock; toasts never take
+ * focus, so they cannot move it off what the player is doing. Info and success hide after 4 s
  * (the countdown stops while hovered or focused); warning and error stay
  * until closed. At most 3 are shown; the oldest goes first.
  */
@@ -56,11 +59,11 @@ export class Toasts {
     while (this.live.length >= MAX_TOASTS) this.close(this.live[0]!);
 
     const title = h('p', { class: 'toast-title', text: input.title });
-    const close = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng thông báo' }, text: '✕ Đóng' });
+    const close = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng thông báo' } }, icon('i-close', { size: 16 }), 'Đóng');
     const el = h(
       'div',
       { class: `toast toast-${input.level}`, attrs: { role: input.level === 'error' ? 'alert' : 'status' } },
-      h('span', { class: 'toast-icon', attrs: { 'aria-hidden': 'true' }, text: input.icon ?? ICONS[input.level] }),
+      h('span', { class: 'toast-icon' }, icon(input.icon ?? ICONS[input.level])),
       h('div', { class: 'toast-body' }, title, input.text ? h('p', { class: 'toast-text', text: input.text }) : null),
       close,
     );

@@ -33,7 +33,9 @@
       #ui > * {
         pointer-events: auto;
       }
-      /* Loading screen: plain CSS, painted before any JS arrives; main.ts fades it out. */
+      /* Loading screen: plain CSS + inline SVG, painted before any JS or font
+         arrives; main.ts fades it out. Colours are the hex values of
+         src/ui/styles/tokens.css (cream 100/50, ink, honey 400, coffee 700, berry 400). */
       #boot {
         position: fixed;
         inset: 0;
@@ -41,7 +43,7 @@
         display: grid;
         place-items: center;
         background: #f6e7d2;
-        color: #3b2418;
+        color: #3a2216;
         transition: opacity 0.3s ease;
       }
       #boot.is-done {
@@ -53,38 +55,64 @@
         text-align: center;
       }
       .boot-mark {
-        font-size: 56px;
-        line-height: 1;
-        animation: boot-bob 1.6s ease-in-out infinite;
+        display: block;
+        width: 104px;
+        height: 104px;
+        margin: 0 auto;
+        overflow: visible;
+        transform-origin: 50% 90%;
+        animation: boot-bob 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+      }
+      .boot-mark .ln {
+        fill: none;
+        stroke: #3a2216;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .boot-mark .o {
+        stroke: #3a2216;
+        stroke-width: 3;
+        stroke-linejoin: round;
+      }
+      .boot-steam {
+        animation: boot-steam 1.6s ease-in-out infinite;
       }
       .boot-title {
         margin: 16px 0 20px;
         font-size: 24px;
-        font-weight: 700;
+        font-weight: 800;
+        line-height: 1.25;
       }
+      /* Ink-outlined track with a hard sticker shadow, honey fill. */
       .boot-bar {
-        height: 10px;
+        height: 16px;
+        border: 3px solid #3a2216;
         border-radius: 999px;
-        background: #f3dfc2;
+        background: #fffaf2;
+        box-shadow: 0 4px 0 0 #3a2216;
         overflow: hidden;
       }
       .boot-bar > span {
         display: block;
         height: 100%;
         width: 90%;
+        border-right: 3px solid #3a2216;
         border-radius: inherit;
-        background: #8a5a3b;
+        background: #ffc145;
         transform-origin: left;
         animation: boot-fill 8s cubic-bezier(0.1, 0.7, 0.2, 1) both;
       }
       #boot.is-done .boot-bar > span {
         animation: none;
         width: 100%;
+        border-right: 0;
       }
       .boot-text {
         margin: 12px 0 0;
         font-size: 14px;
-        color: #6b5e55;
+        font-weight: 700;
+        color: #6e4f3c;
       }
       @keyframes boot-fill {
         from {
@@ -94,13 +122,33 @@
           transform: scaleX(1);
         }
       }
+      /* Small hop with a squash on landing. */
       @keyframes boot-bob {
+        0%,
+        100% {
+          transform: translateY(0) scale(1, 1);
+        }
+        40% {
+          transform: translateY(-8px) scale(0.97, 1.03);
+        }
+        80% {
+          transform: translateY(0) scale(1.04, 0.96);
+        }
+      }
+      @keyframes boot-steam {
+        0%,
+        100% {
+          opacity: 0.35;
+          transform: translateY(2px);
+        }
         50% {
-          transform: translateY(-6px);
+          opacity: 1;
+          transform: translateY(-2px);
         }
       }
       @media (prefers-reduced-motion: reduce) {
         .boot-mark,
+        .boot-steam,
         .boot-bar > span {
           animation: none;
         }
@@ -110,7 +158,19 @@
   <body>
     <div id="boot" role="status">
       <div class="boot-card">
-        <div class="boot-mark" aria-hidden="true">☕</div>
+        <!-- Cup mascot, same drawing as the Main Menu logo (design/t237-cartoon #mascot). -->
+        <svg class="boot-mark" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+          <path class="ln boot-steam" d="M34 24c-5-5 5-8 0-14M48 22c-5-5 5-8 0-14M62 24c-5-5 5-8 0-14" />
+          <ellipse class="o" fill="#ffc145" cx="46" cy="84" rx="38" ry="8" />
+          <path class="ln" d="M72 44h6a10 10 0 0 1 0 20h-8" />
+          <path class="o" fill="#fffaf2" d="M18 36h56v20a28 28 0 0 1-56 0z" />
+          <ellipse class="o" fill="#6b3f24" cx="46" cy="36" rx="28" ry="7" />
+          <circle fill="#3a2216" cx="36" cy="55" r="4" />
+          <circle fill="#3a2216" cx="56" cy="55" r="4" />
+          <circle fill="#ff8a7a" opacity="0.6" cx="28" cy="63" r="4.5" />
+          <circle fill="#ff8a7a" opacity="0.6" cx="64" cy="63" r="4.5" />
+          <path class="ln" d="M40 63q6 7 12 0" />
+        </svg>
         <p class="boot-title">Coffee Shop Tycoon 3D</p>
         <div class="boot-bar" aria-hidden="true"><span></span></div>
         <p class="boot-text">Đang mở quán…</p>

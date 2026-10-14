@@ -3,6 +3,7 @@ import type { StorageLike } from '../../save/storage';
 import type { GameState } from '../../sim/types';
 import { h, setChildren, uid } from '../core/dom';
 import { formatMoney, formatSavedAt } from '../core/format';
+import { icon } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
 
 export interface LoadGameActions {
@@ -30,11 +31,11 @@ const BROKEN_TEXT: Record<SaveErrorKind, string> = {
 export function createLoadGame(storage: StorageLike, actions: LoadGameActions): Screen {
   const titleId = uid('load-title');
   const list = h('ul', { class: 'slots stack' });
-  const back = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, '← Quay lại');
+  const back = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, icon('i-back'), 'Quay lại');
   const card = h(
     'div',
     { class: 'card w-wide', attrs: { role: 'region', 'aria-labelledby': titleId } },
-    h('h2', { id: titleId, text: '📂 Tải game' }),
+    h('h2', { id: titleId }, icon('i-load', { size: 32 }), 'Tải game'),
     h('p', { class: 'card-sub', text: 'Dữ liệu lưu trong trình duyệt này (localStorage). Xóa dữ liệu trình duyệt sẽ mất bản lưu.' }),
     list,
     h('div', { class: 'foot' }, back),
@@ -48,18 +49,18 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions): 
     }
     // Loading failed after the list was built: say so in the slot, keep the data.
     item.className = 'slot slot-broken';
-    const msg = h('div', { attrs: { role: 'alert' }, text: `Không mở được bản lưu. ${BROKEN_TEXT[r.error.kind]}` });
+    const msg = h('div', { class: 'reason reason-danger', attrs: { role: 'alert' } }, icon('i-error', { size: 16 }), `Không mở được bản lưu. ${BROKEN_TEXT[r.error.kind]}`);
     item.querySelector('.slot-detail')?.replaceWith(msg);
   }
 
   function confirmDelete(info: SlotInfo, actionsRow: HTMLElement): void {
     const label = slotLabel(info.slot);
     const cancel = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' } }, 'Hủy');
-    const confirm = h('button', { class: 'btn btn-danger', attrs: { type: 'button' } }, 'Xóa vĩnh viễn');
+    const confirm = h('button', { class: 'btn btn-danger', attrs: { type: 'button' } }, icon('i-delete'), 'Xóa vĩnh viễn');
     const box = h(
       'div',
       { class: 'confirm', attrs: { role: 'group', 'aria-label': `Xác nhận xóa ${label}` } },
-      h('p', { text: `🗑️ Xóa ${label}? Không hoàn tác được.` }),
+      h('p', {}, icon('i-delete'), `Xóa ${label}? Không hoàn tác được.`),
       cancel,
       confirm,
     );
@@ -83,47 +84,52 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions): 
     if (info.empty) {
       item.classList.add('slot-empty');
       item.append(
-        h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' }, text: '＋' }),
+        h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' } }, icon('i-dot-empty', { size: 32 })),
         h('div', {}, h('div', { class: 'slot-title' }, label, h('span', { class: 'badge badge-neutral', text: 'Trống' })), h('div', { class: 'slot-meta', text: 'Chưa có ván nào ở đây.' })),
       );
       return item;
     }
-    const del = h('button', { class: 'btn btn-danger', attrs: { type: 'button' }, on: { click: () => confirmDelete(info, actionsRow) } }, `🗑️ Xóa ${label}`);
+    const del = h('button', { class: 'btn btn-danger', attrs: { type: 'button' }, on: { click: () => confirmDelete(info, actionsRow) } }, icon('i-delete'), `Xóa ${label}`);
     if (info.error) {
       const reasonId = uid('r-broken');
       item.classList.add('slot-broken');
       item.append(
-        h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' }, text: '⚠️' }),
+        h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' } }, icon('i-warning', { size: 32 })),
         h(
           'div',
           {},
-          h('div', { class: 'slot-title' }, label, h('span', { class: 'badge badge-danger', text: '⛔ Hỏng' })),
+          h('div', { class: 'slot-title' }, label, h('span', { class: 'badge badge-danger' }, icon('i-error', { size: 16 }), 'Hỏng')),
           h('div', { text: `Không đọc được dữ liệu của slot này. ${BROKEN_TEXT[info.error]}` }),
           h('div', { class: 'slot-meta', text: 'Dữ liệu vẫn được giữ nguyên; slot khác vẫn dùng được.' }),
         ),
       );
       actionsRow.append(
-        h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'aria-disabled': 'true', 'aria-describedby': reasonId } }, `▶️ Tải ${label.toLowerCase()}`),
+        h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'aria-disabled': 'true', 'aria-describedby': reasonId } }, icon('i-lock'), `Tải ${label.toLowerCase()}`),
         del,
       );
-      item.append(actionsRow, h('p', { class: 'reason reason-danger', id: reasonId, attrs: { style: 'grid-column:1/-1' }, text: '🔒 Không tải được vì dữ liệu hỏng.' }));
+      item.append(
+        actionsRow,
+        h('p', { class: 'reason reason-danger', id: reasonId, attrs: { style: 'grid-column:1/-1' } }, icon('i-lock', { size: 16 }), 'Không tải được vì dữ liệu hỏng.'),
+      );
       return item;
     }
     item.append(
-      h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' }, text: '☕' }),
+      h('div', { class: 'slot-thumb', attrs: { 'aria-hidden': 'true' } }, icon('i-cup-hot', { size: 32 })),
       h(
         'div',
         { class: 'slot-detail' },
-        h('div', { class: 'slot-title' }, label, newest ? h('span', { class: 'badge badge-ok', text: '✅ Mới nhất' }) : null),
+        h('div', { class: 'slot-title' }, label, newest ? h('span', { class: 'badge badge-ok' }, icon('i-ok', { size: 16 }), 'Mới nhất') : null),
         h('div', { text: `${info.shopName ?? ''} · Ngày ${info.day ?? 1}` }),
-        h('div', {
-          class: 'slot-meta',
-          text: `💰 ${formatMoney(info.money ?? 0)}${info.savedAt ? ` · Lưu ${formatSavedAt(info.savedAt)}` : ''}`,
-        }),
+        h(
+          'div',
+          { class: 'slot-meta' },
+          icon('i-coin', { size: 16 }),
+          `${formatMoney(info.money ?? 0)}${info.savedAt ? ` · Lưu ${formatSavedAt(info.savedAt)}` : ''}`,
+        ),
       ),
     );
     actionsRow.append(
-      h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => load(info, item) } }, `▶️ Tải ${label.toLowerCase()}`),
+      h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => load(info, item) } }, icon('i-speed-1'), `Tải ${label.toLowerCase()}`),
     );
     if (info.slot !== 'auto') actionsRow.append(del);
     item.append(actionsRow);

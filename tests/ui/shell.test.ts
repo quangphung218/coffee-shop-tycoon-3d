@@ -9,6 +9,7 @@ import type { GameState } from '../../src/sim/types';
 import { Watcher } from '../../src/ui/core/dom';
 import { formatClock, formatMoney, formatRating } from '../../src/ui/core/format';
 import { MAX_TOASTS, TOAST_VISIBLE_MS, Toasts } from '../../src/ui/core/toast';
+import { toastForEvent } from '../../src/ui/hud/events';
 import { createHud } from '../../src/ui/hud/hud';
 import { registerPanel } from '../../src/ui/hud/panels';
 import { createLoadGame } from '../../src/ui/screens/loadGame';
@@ -16,6 +17,10 @@ import { createMainMenu } from '../../src/ui/screens/mainMenu';
 import { createNewGame, validateShopName } from '../../src/ui/screens/newGame';
 import { createSettings } from '../../src/ui/screens/settings';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
+import INDEX_HTML from '../../index.html?raw';
+
+/** Emoji plus the text symbols the old screens used as icons. */
+const EMOJI = /\p{Extended_Pictographic}|[▶▲▼✓✕★↺＋←→]/u;
 
 function game(name = 'Quán Thử'): GameState {
   return createGameState(name, 'normal', 42);
@@ -126,6 +131,46 @@ describe('Main Menu', () => {
     expect(onLoad).not.toHaveBeenCalled();
     expect(button(menu.el, 'Tiếp tục').hidden).toBe(true);
     expect(button(menu.el, 'Ván mới').classList.contains('btn-primary')).toBe(true);
+  });
+
+  it('hides Continue for real and focuses New Game when storage is empty', () => {
+    const menu = createMainMenu(createMemoryStorage(), { onContinue: vi.fn(), onNewGame: vi.fn(), onLoad: vi.fn(), onSettings: vi.fn() });
+    mount(menu.el);
+    menu.onShow?.();
+
+    const cont = button(menu.el, 'Tiếp tục');
+    expect(cont.hidden).toBe(true);
+    const newGame = button(menu.el, 'Ván mới');
+    expect(menu.initialFocus?.()).toBe(newGame);
+    expect(newGame.classList.contains('btn-primary')).toBe(true);
+    expect([...menu.el.querySelectorAll('.btn-primary')].filter((b) => !(b as HTMLElement).hidden)).toEqual([newGame]);
+
+    const load = q<HTMLButtonElement>(menu.el, '[data-action="load"]');
+    expect(load.getAttribute('aria-disabled')).toBe('true');
+    const reason = document.getElementById(load.getAttribute('aria-describedby')!);
+    expect(reason?.hidden).toBe(false);
+    expect(reason?.querySelector('use')?.getAttribute('href')).toBe('#i-lock');
+
+    // ↑ ↓ skip the hidden Continue button.
+    newGame.focus();
+    newGame.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(document.activeElement?.textContent).toContain('Cài đặt');
+    (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(newGame);
+  });
+
+  it('draws the cup mascot as the logo and icons on every button', () => {
+    const storage = createMemoryStorage();
+    saveGame(game(), '1', storage, 1000);
+    const menu = createMainMenu(storage, { onContinue: vi.fn(), onNewGame: vi.fn(), onLoad: vi.fn(), onSettings: vi.fn() });
+    mount(menu.el);
+    menu.onShow?.();
+    const logo = q(menu.el, '.logo svg.logo-mark');
+    expect(logo.getAttribute('aria-hidden')).toBe('true');
+    expect(logo.querySelector('.m-cup')).toBeTruthy();
+    expect(menu.initialFocus?.()).toBe(button(menu.el, 'Tiếp tục'));
+    const hrefs = [...menu.el.querySelectorAll('.menu-list button')].map((b) => b.querySelector('use')?.getAttribute('href'));
+    expect(hrefs).toEqual(['#i-speed-1', '#i-sparkle', '#i-load', '#i-settings']);
   });
 
   it('enables Load Game and offers Continue once a save exists', () => {
@@ -513,6 +558,101 @@ describe('Toasts', () => {
     expect(t.el.querySelector('[role="alert"]')).not.toBeNull();
     for (let i = 0; i < 5; i++) t.show({ level: 'warning', title: `W${i}` });
     expect(t.count).toBe(MAX_TOASTS);
+  });
+
+  it('shows an svg icon per level, never takes focus, and lets events pick theirs', () => {
+    const t = new Toasts();
+    mount(t.el);
+    const before = document.createElement('button');
+    document.body.append(before);
+    before.focus();
+    const levels = ['info', 'success', 'warning', 'error'] as const;
+    for (const level of levels) t.show({ level, title: level });
+    expect([...t.el.querySelectorAll('.toast-icon use')].map((u) => u.getAttribute('href'))).toEqual(['#i-ok', '#i-warning', '#i-error']);
+    expect(document.activeElement).toBe(before);
+    t.clear();
+    t.show({ level: 'info', title: 'Mở cửa' });
+    expect(q(t.el, '.toast-icon use').getAttribute('href')).toBe('#i-info');
+    expect(q(t.el, '.toast-icon svg').getAttribute('aria-hidden')).toBe('true');
+
+    const state = game();
+    const angry = toastForEvent({ type: 'angry', customerId: 1 }, state);
+    expect(angry).toMatchObject({ level: 'error', icon: 'i-face-angry' });
+    expect(toastForEvent({ type: 'low_stock', ingredientId: 'milk' }, state)?.icon).toBe('i-milk');
+    t.show(angry!);
+    expect(t.el.querySelector('.toast-error .toast-icon use')?.getAttribute('href')).toBe('#i-face-angry');
+    expect(t.el.textContent).not.toMatch(EMOJI);
+  });
+});
+
+describe('no emoji on the screens', () => {
+  it('main menu, new game, load, settings and pause draw icons, not emoji', () => {
+    const empty = createMainMenu(createMemoryStorage(), { onContinue: vi.fn(), onNewGame: vi.fn(), onLoad: vi.fn(), onSettings: vi.fn() });
+    mount(empty.el);
+    empty.onShow?.();
+    expect(empty.el.textContent).not.toMatch(EMOJI);
+
+    const storage = createMemoryStorage();
+    saveGame(game(), '1', storage, 1000);
+    saveGame(game(), 'auto', storage, 2000);
+    storage.setItem(saveKey('3'), '{not json');
+    const menu = createMainMenu(storage, { onContinue: vi.fn(), onNewGame: vi.fn(), onLoad: vi.fn(), onSettings: vi.fn() });
+    mount(menu.el);
+    menu.onShow?.();
+    expect(menu.el.textContent).not.toMatch(EMOJI);
+
+    const ng = createNewGame({ onStart: vi.fn(), onBack: vi.fn() });
+    mount(ng.el);
+    ng.onShow?.();
+    q<HTMLInputElement>(ng.el, 'input[type="text"]').value = '';
+    submit(q<HTMLFormElement>(ng.el, 'form'));
+    expect(q(ng.el, '.error-summary').hidden).toBe(false);
+    expect(ng.el.textContent).not.toMatch(EMOJI);
+    // capture-media picks the difficulty with this selector.
+    expect(ng.el.querySelector('label.choice input[value=easy]')).toBeTruthy();
+
+    const load = createLoadGame(storage, { onLoaded: vi.fn(), onBack: vi.fn() });
+    mount(load.el);
+    load.onShow?.();
+    button(load.el, 'Xóa Slot 1').click();
+    expect(load.el.textContent).not.toMatch(EMOJI);
+
+    const settings = createSettings(createMemoryStorage(), { ...DEFAULT_SETTINGS }, { onChange: vi.fn(), onBack: vi.fn() });
+    mount(settings.el);
+    settings.onShow?.();
+    button(settings.el, 'Về mặc định').click();
+    expect(q(settings.el, '[role="status"]').textContent).toContain('Đã lưu');
+    expect(settings.el.textContent).not.toMatch(EMOJI);
+
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = createShell({ root, storage, settings: { ...DEFAULT_SETTINGS }, seed: () => 7 });
+    try {
+      shell.startGame(game());
+      shell.openPause();
+      const pause = q(root, '.ui-screen:not([hidden]) .w-pause');
+      q<HTMLButtonElement>(pause, '[data-save-slot="2"]').click();
+      expect(pause.textContent).toContain('Đã lưu vào Slot 2');
+      expect(pause.textContent).not.toMatch(EMOJI);
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(q(root, '.toasts .toast-icon use').getAttribute('href')).toBe('#i-save');
+      expect(q(root, '.toasts').textContent).not.toMatch(EMOJI);
+    } finally {
+      shell.dispose();
+    }
+  });
+
+  it('keeps the CSS boot screen emoji-free with its ids and classes', () => {
+    expect(INDEX_HTML).not.toMatch(EMOJI);
+    const doc = new DOMParser().parseFromString(INDEX_HTML, 'text/html');
+    const boot = doc.getElementById('boot');
+    expect(boot?.getAttribute('role')).toBe('status');
+    expect(boot?.querySelector('svg.boot-mark[aria-hidden="true"]')).toBeTruthy();
+    expect(boot?.querySelector('.boot-bar > span')).toBeTruthy();
+    expect(doc.querySelector('canvas#scene')).toBeTruthy();
+    expect(INDEX_HTML).toContain('#boot.is-done');
+    expect(INDEX_HTML).toContain('#scene.is-ready');
+    expect(INDEX_HTML).toMatch(/@media \(prefers-reduced-motion: reduce\)[^}]*\.boot-mark/);
   });
 });
 

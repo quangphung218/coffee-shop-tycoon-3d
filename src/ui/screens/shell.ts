@@ -282,8 +282,8 @@ export function createShell(options: ShellOptions): Shell {
           report.setSaveStatus(r);
           toasts.show(
             r.ok
-              ? { level: 'success', icon: '💾', title: `Đã tự lưu ngày ${event.day}` }
-              : { level: 'error', icon: '💾', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
+              ? { level: 'success', icon: 'i-save', title: `Đã tự lưu ngày ${event.day}` }
+              : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
           );
         }
       }

@@ -60,6 +60,9 @@
   margin: auto 0;
 }
 .card h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
 }
@@ -208,19 +211,58 @@ kbd {
   gap: var(--space-3);
   margin-bottom: var(--space-6);
 }
+/* Cup mascot (design/t237-cartoon #mascot), same drawing as #boot in index.html. */
 .logo-mark {
-  width: var(--space-16);
-  height: var(--space-16);
+  width: 88px;
+  height: 88px;
   flex: none;
-  border-radius: var(--radius-lg);
-  background: #e07a5f;
-  display: grid;
-  place-items: center;
-  font-size: var(--font-size-2xl);
+  overflow: visible;
+}
+.logo-mark .m-o {
+  stroke: var(--border-outline);
+  stroke-width: var(--size-outline);
+  stroke-linejoin: round;
+}
+.logo-mark .m-ln {
+  fill: none;
+  stroke: var(--border-outline);
+  stroke-width: var(--size-outline);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.logo-mark .m-saucer {
+  fill: var(--color-honey-400);
+}
+.logo-mark .m-cup {
+  fill: var(--color-cream-50);
+}
+.logo-mark .m-coffee {
+  fill: var(--color-coffee-700);
+}
+.logo-mark .m-ink {
+  fill: var(--color-neutral-900);
+}
+.logo-mark .m-cheek {
+  fill: var(--color-berry-400);
+  opacity: 0.6;
+}
+.logo-mark .m-steam {
+  animation: logo-steam 1.6s ease-in-out infinite;
+}
+@keyframes logo-steam {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(2px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }
 .logo-title {
   font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
 .menu-list {
@@ -277,6 +319,9 @@ kbd {
   border-color: var(--text-danger);
 }
 .error-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--text-danger);
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-sm);
@@ -288,6 +333,9 @@ kbd {
   background: var(--surface-panel-solid);
 }
 .error-summary h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-lg);
 }
 .error-summary ul {
@@ -368,6 +416,9 @@ legend {
   cursor: not-allowed;
 }
 .choice-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-lg);
 }
@@ -382,7 +433,9 @@ legend {
   display: none;
 }
 .choice:has(input:checked) .choice-check {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /* Segmented radios */
@@ -465,6 +518,12 @@ legend {
 }
 .set-row .field {
   flex: 1 1 220px;
+}
+.set-row .label,
+.save-row .label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .range-wrap {
   display: flex;
@@ -682,7 +741,6 @@ legend {
   background: var(--surface-sunken);
   display: grid;
   place-items: center;
-  font-size: var(--font-size-2xl);
 }
 .slot-title {
   font-weight: var(--font-weight-bold);
@@ -693,6 +751,9 @@ legend {
   align-items: center;
 }
 .slot-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-sm);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -722,6 +783,9 @@ legend {
 }
 .confirm p {
   flex: 1 1 200px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: var(--font-weight-semibold);
 }
 .badge {
@@ -1090,6 +1154,15 @@ legend {
   width: min(360px, calc(100% - var(--space-6)));
   pointer-events: none;
 }
+/* Phone, panel open (its dock button is pressed) across the width (bottom sheet, up to 60% tall): the
+   stack moves above the sheet's tallest extent so it never covers the panel. */
+@media (max-width: 640px) {
+  #ui:has(.dock-btn[aria-pressed='true']) > .toasts {
+    bottom: calc(var(--dock-space) + 60%);
+  }
+}
+/* Cream sticker card; the level shows in the icon chip colour, the icon
+   itself and the title colour (not colour alone). */
 .toast {
   pointer-events: auto;
   display: flex;
@@ -1097,34 +1170,36 @@ legend {
   align-items: flex-start;
   background: var(--surface-panel-solid);
   color: var(--text-primary);
+  border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border-left: var(--size-border-thick) solid var(--border-strong);
-  animation: toast-in var(--duration-base) var(--easing-standard);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
+  animation: toast-in var(--duration-pop) var(--easing-bounce);
 }
 @keyframes toast-in {
   from {
-    transform: translateY(8px);
+    transform: translateY(8px) scale(0.96);
     opacity: 0;
   }
 }
-.toast-info {
-  border-left-color: var(--accent-mint);
-}
-.toast-success {
-  border-left-color: var(--text-ok);
-}
-.toast-warning {
-  border-left-color: var(--text-warning);
-}
-.toast-error {
-  border-left-color: var(--text-danger);
-}
 .toast-icon {
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-tight);
-  padding-top: var(--space-2);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-info);
+}
+.toast-success .toast-icon {
+  background: var(--surface-ok);
+}
+.toast-warning .toast-icon {
+  background: var(--surface-warning);
+}
+.toast-error .toast-icon {
+  background: var(--surface-danger);
 }
 .toast-body {
   flex: 1;

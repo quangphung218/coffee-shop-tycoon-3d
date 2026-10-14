@@ -2,6 +2,7 @@ import { DIFFICULTIES } from '../../sim/data/difficulty';
 import type { Difficulty } from '../../sim/types';
 import { h, uid } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
 
 export const SHOP_NAME_MIN = 1;
@@ -15,10 +16,10 @@ export function validateShopName(name: string): string | null {
   return length < SHOP_NAME_MIN || length > SHOP_NAME_MAX ? NAME_ERROR : null;
 }
 
-const DIFFICULTY_TEXT: Record<Difficulty, { icon: string; note: string }> = {
-  easy: { icon: '🌱', note: 'Khách đông và kiên nhẫn hơn, giá nhập rẻ' },
-  normal: { icon: '☕', note: 'Cân bằng, nên chọn lần đầu' },
-  hard: { icon: '🔥', note: 'Khách khó tính, giá nhập cao hơn' },
+const DIFFICULTY_TEXT: Record<Difficulty, { icon: IconId; note: string }> = {
+  easy: { icon: 'i-easy', note: 'Khách đông và kiên nhẫn hơn, giá nhập rẻ' },
+  normal: { icon: 'i-cup-hot', note: 'Cân bằng, nên chọn lần đầu' },
+  hard: { icon: 'i-flame', note: 'Khách khó tính, giá nhập cao hơn' },
 };
 
 export interface NewGameActions {
@@ -41,7 +42,7 @@ export function createNewGame(actions: NewGameActions): Screen {
     props: { value: 'Cà Phê Gió Mùa' },
   });
   const count = h('span', { class: 'hint', id: countId });
-  const errMsg = h('span', { class: 'error-msg', id: errId, hidden: true, text: `⛔ Lỗi: ${NAME_ERROR}` });
+  const errMsg = h('span', { class: 'error-msg', id: errId, hidden: true }, icon('i-error', { size: 16 }), `Lỗi: ${NAME_ERROR}`);
   const field = h(
     'div',
     { class: 'field' },
@@ -64,7 +65,7 @@ export function createNewGame(actions: NewGameActions): Screen {
   const summary = h(
     'div',
     { class: 'error-summary', hidden: true, attrs: { role: 'alert', tabindex: -1 } },
-    h('h3', { text: '⚠️ Cần sửa 1 mục trước khi bắt đầu' }),
+    h('h3', {}, icon('i-warning'), 'Cần sửa 1 mục trước khi bắt đầu'),
     h('ul', {}, h('li', {}, summaryLink)),
   );
 
@@ -77,10 +78,10 @@ export function createNewGame(actions: NewGameActions): Screen {
       'label',
       { class: 'choice' },
       radio,
-      h('span', { class: 'choice-title', text: `${DIFFICULTY_TEXT[id].icon} ${def.name}` }),
+      h('span', { class: 'choice-title' }, icon(DIFFICULTY_TEXT[id].icon), def.name),
       h('span', { class: 'choice-meta', attrs: { 'data-start-money': def.startMoney }, text: `Vốn ${formatMoney(def.startMoney)}` }),
       h('span', { class: 'choice-meta', text: DIFFICULTY_TEXT[id].note }),
-      h('span', { class: 'choice-check', text: '✓ Đang chọn' }),
+      h('span', { class: 'choice-check' }, icon('i-check', { size: 16 }), 'Đang chọn'),
     );
   });
 
@@ -115,7 +116,7 @@ export function createNewGame(actions: NewGameActions): Screen {
   const form = h(
     'form',
     { class: 'card w-form', attrs: { 'aria-labelledby': titleId, novalidate: true } },
-    h('h2', { id: titleId, text: '✨ Ván mới' }),
+    h('h2', { id: titleId }, icon('i-sparkle', { size: 32 }), 'Ván mới'),
     h('p', { class: 'card-sub', text: 'Đặt tên quán và chọn độ khó. Âm lượng, đồ họa đổi sau trong Cài đặt.' }),
     h(
       'div',
@@ -127,8 +128,8 @@ export function createNewGame(actions: NewGameActions): Screen {
     h(
       'div',
       { class: 'foot' },
-      h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, '← Quay lại'),
-      h('button', { class: 'btn btn-primary', attrs: { type: 'submit' } }, 'Bắt đầu ngày 1 →'),
+      h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, icon('i-back'), 'Quay lại'),
+      h('button', { class: 'btn btn-primary', attrs: { type: 'submit' } }, 'Bắt đầu ngày 1', icon('i-forward')),
     ),
   );
   form.addEventListener('submit', (e) => {
