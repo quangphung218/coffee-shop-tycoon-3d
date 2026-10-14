@@ -36,14 +36,17 @@ Kết quả `npm run layout` (`scripts/check-layout.mjs`) và `scripts/measure-s
 
 | Khổ | Chiều cao foot | Foot và danh sách lệch | Shift ngay sau thao tác | CLS |
 | --- | --- | --- | --- | --- |
-| 390×844 | 202 px | 0 px | 0,0015 | 0,000017 |
-| 768×1024 | 202 px | 0 px | 0,0060 | 0,000006 |
-| 1440×900 | 202 px | 0 px | 0,0002 | 0,000003 |
+| 390×844 | 202 px | 0 px | 0,0015 | 0 |
+| 768×1024 | 202 px | 0 px | 0,0060 | 0 |
+| 1440×900 | 202 px | 0 px | 0,0002 | 0 |
+
+3/3 PASS.
 
 - Khung tổng giữ 202 px ở mọi bước và mọi khổ; dòng hướng dẫn, tổng tiền và nút Nhập hàng không xê dịch.
 - Dòng giới thiệu và kết quả Gợi ý / Nhập hàng dùng chung ô `.kho-note` cao 3 dòng, nên bấm Gợi ý không đẩy danh sách hàng.
-- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`). Nhãn "gợi ý" (`.sug`) giữ chỗ khi tắt (class `is-off`, `visibility: hidden`), nên dòng hàng không đổi chiều cao khi bấm Gợi ý.
-- CLS khác 0 ở bước vượt tiền là phần chữ căn giữa trong ô số gói (46×22 px, trong shadow DOM của `<input>`) dịch khi giá trị đổi từ 1 sang 2 chữ số. Script cũ nhập bằng `fill()`, không phát phím, nên Chrome không gắn shift này với thao tác. Script hiện gõ từng phím như người chơi.
+- Nhãn "gợi ý" (`.sug`) giữ chỗ khi tắt (class `is-off`, `visibility: hidden`), nên dòng hàng không đổi chiều cao khi bấm Gợi ý.
+- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`) và chữ căn giữa trong ô số gói (46×22 px, trong shadow DOM của `<input>`) khi giá trị đổi từ 1 sang 2 chữ số.
+- Script gõ số gói từng phím như người chơi. `fill()` của Playwright chèn chữ không phát phím, nên shift trong ô số gói bị tính vào CLS.
 
 ## Thời gian tới Main Menu
 
