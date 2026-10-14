@@ -1,10 +1,10 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, type BufferGeometry } from 'three';
 import type { StaffRole } from '../../sim/types';
-import { propsFor, type AnimName, type Pose } from './animations';
+import { propsFor, type AnimName, type Bounce, type Pose } from './animations';
 
 /**
  * Low-poly people built from boxes in nested Groups:
- * root → hips → (legs, torso → (arms, head)). Every character shares the same
+ * root → bounce → hips → (legs, torso → (arms, head)). Every character shares the same
  * geometries and one cached Lambert material per colour, so a character costs
  * a handful of draw calls and no new GPU buffers.
  */
@@ -106,6 +106,8 @@ function pick<T>(list: readonly T[], i: number): T {
 
 export class Character {
   readonly root = new Group();
+  /** Squash-and-stretch pivot at the feet; labels and hitbox sit outside it. */
+  readonly bounce = new Group();
   readonly hips = new Group();
   readonly torso = new Group();
   readonly head = new Group();
@@ -117,6 +119,8 @@ export class Character {
   readonly hitbox: Mesh;
   /** Group above the head that labels attach to. */
   readonly labelAnchor = new Group();
+  /** Just above the hands in front of the chest, where steam rises from a drink. */
+  readonly steamAnchor = new Group();
   role: CharacterRole = 'customer';
   look = 0;
 
@@ -136,7 +140,8 @@ export class Character {
 
   constructor(opts: CharacterOptions) {
     const g = sharedGeometry();
-    this.root.add(this.hips);
+    this.root.add(this.bounce);
+    this.bounce.add(this.hips);
     this.hips.position.y = HIPS_Y;
 
     this.legs = [mesh(g.leg!, 0), mesh(g.leg!, 0)];
@@ -178,6 +183,8 @@ export class Character {
     trayCup.position.set(0.04, 0.01, 0.02);
     this.tray.add(mesh(g.tray!, TRAY_COLOR), trayCup);
     this.torso.add(this.tray);
+    this.steamAnchor.position.set(0, 0.46, 0.42);
+    this.torso.add(this.steamAnchor);
 
     this.cup = new Group();
     this.cup.add(mesh(g.cup!, CUP_COLOR), mesh(g.coffee!, COFFEE_COLOR));
@@ -247,6 +254,12 @@ export class Character {
     this.armR.rotation.set(pose.armRX, 0, pose.armRZ);
     this.legL.rotation.x = pose.legL;
     this.legR.rotation.x = pose.legR;
+  }
+
+  /** Scales the body around the feet and lifts it off the floor. */
+  applyBounce(b: Bounce): void {
+    this.bounce.scale.set(b.sx, b.sy, b.sx);
+    this.bounce.position.y = b.lift;
   }
 
   /** Detaches from the scene; shared geometry and materials stay alive. */
