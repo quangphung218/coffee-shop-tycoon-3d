@@ -763,6 +763,9 @@ legend {
   font-size: var(--font-size-sm);
   margin-top: var(--space-2);
 }
+#ui p.app-version {
+  margin-top: var(--space-4);
+}
 
 /* Save slots */
 .slots {

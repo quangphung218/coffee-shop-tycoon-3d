@@ -1,5 +1,6 @@
 import { listSlots, type SaveSlot, type SlotInfo } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
+import { VERSION_LABEL } from '../../version';
 import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
 import { icon } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
@@ -97,7 +98,13 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions): 
       h('div', {}, h('h1', { class: 'logo-title', text: 'Coffee Shop Tycoon 3D' }), h('p', { class: 'card-sub', text: 'Mở quán cà phê từ con số 0' })),
     ),
     list,
-    h('div', { class: 'menu-foot' }, h('span', { text: 'Lưu trên trình duyệt này' }), h('span', {}, h('kbd', { text: '↑' }), ' ', h('kbd', { text: '↓' }), ' di chuyển · ', h('kbd', { text: 'Enter' }), ' chọn')),
+    h(
+      'div',
+      { class: 'menu-foot' },
+      h('span', { text: 'Lưu trên trình duyệt này' }),
+      h('span', {}, h('kbd', { text: '↑' }), ' ', h('kbd', { text: '↓' }), ' di chuyển · ', h('kbd', { text: 'Enter' }), ' chọn'),
+      h('span', { class: 'app-version', text: VERSION_LABEL }),
+    ),
   );
   const el = screenLayer(card, { variant: 'menu', label: 'Menu chính' });
 

@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, saveSettings, type GameSpeed, type Quality, type Settings } from '../../save/settings';
 import type { StorageLike } from '../../save/storage';
+import { VERSION_LABEL } from '../../version';
 import { h, setChildren, uid } from '../core/dom';
 import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
@@ -182,6 +183,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     ),
     h('p', { class: 'section-title', text: 'Phím tắt' }),
     keysList,
+    h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
     h(
       'div',
       { class: 'foot' },

@@ -1,8 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import pkg from './package.json';
 
 export default defineConfig({
   // Relative base so the build works under any GitHub Pages sub-path.
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   build: {
     outDir: 'dist',
     target: 'es2022',
