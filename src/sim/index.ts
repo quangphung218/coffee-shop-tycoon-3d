@@ -6,7 +6,8 @@ import { advanceCampaigns, runCampaign } from './marketing';
 import { brew, cleanTable, collectCash, deliver, takeOrder, updatePlayerTasks } from './orders';
 import { recordExperiencesSince } from './reviews';
 import { assignRole, clearStaffTasks, fireStaff, hireStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
-import { buyUpgrade } from './upgrades';
+import { buildNavGrid, nearestFree } from './nav';
+import { buyUpgrade, getShopLayout } from './upgrades';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -47,6 +48,19 @@ export function step(state: GameState, dtMinutes: number): void {
     }
   }
   if (!isOpen(state)) state.tickAccumulator = 0;
+}
+
+/**
+ * Moves customers and staff that stand inside furniture or walls to the
+ * nearest free spot. Saves from before the nav grid can hold such spots
+ * (the old line ran across the chairs); people on free floor stay put.
+ */
+export function settleActors(state: GameState): void {
+  const grid = buildNavGrid(getShopLayout(state));
+  for (const actor of [...state.customers, ...state.staff]) {
+    const p = nearestFree(grid, actor.pos);
+    if (p) actor.pos = p;
+  }
 }
 
 /**

@@ -1,3 +1,4 @@
+import { settleActors } from '../sim/index';
 import { createDayStats } from '../sim/state';
 import type { GameState } from '../sim/types';
 import { defaultStorage, type StorageLike } from './storage';
@@ -91,6 +92,11 @@ export function migrate(raw: unknown): Result<SaveFile> {
     version = file.version as number;
   }
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
+  try {
+    settleActors(file.state);
+  } catch {
+    // Positions are only where people stand; a layout that cannot be read leaves them as saved.
+  }
   return { ok: true, value: { version, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state: file.state } };
 }
 
