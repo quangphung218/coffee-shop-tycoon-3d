@@ -3,6 +3,8 @@ import { getMenuItem } from '../../sim/data/menu';
 import type { Command, DailyReport, GameState, Review, SuggestionKind } from '../../sim/types';
 import { h, setChildren, trapFocus, Watcher } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
+import { MENU_ICONS } from '../core/iconMap';
+import { icon, type IconId } from '../core/icons';
 import { fillReviews, newestFirst, reviewItem, starsEl } from './reviews';
 
 /** Reviews shown on the summary tab. */
@@ -36,21 +38,24 @@ export type ResultKind = 'profit' | 'loss' | 'even' | 'none';
 /** Headline of the report: profit, loss, break-even, or no customers at all. */
 export function reportResult(r: DailyReport): { kind: ResultKind; label: string; value: string } {
   const value = r.profit > 0 ? `+${formatMoney(r.profit)}` : formatMoney(r.profit);
-  if (r.customersArrived === 0) return { kind: 'none', label: '○ Không có khách', value };
-  if (r.profit > 0) return { kind: 'profit', label: '▲ Lãi', value };
-  if (r.profit < 0) return { kind: 'loss', label: '▼ Lỗ', value };
-  return { kind: 'even', label: '= Hòa vốn', value };
+  if (r.customersArrived === 0) return { kind: 'none', label: 'Không có khách', value };
+  if (r.profit > 0) return { kind: 'profit', label: 'Lãi', value };
+  if (r.profit < 0) return { kind: 'loss', label: 'Lỗ', value };
+  return { kind: 'even', label: 'Hòa vốn', value };
 }
 
 const RESULT_CLASS: Record<ResultKind, string> = { profit: '', loss: ' is-loss', even: ' is-none', none: ' is-none' };
 
-const TIP_ICON: Record<SuggestionKind, string> = {
-  restock: '📦',
-  hire_barista: '👥',
-  hire_server: '👥',
-  hire_cleaner: '🧹',
-  marketing: '📣',
-  upgrade: '🛠️',
+/** Shape as well as colour: triangle up/down, equals, or people for an empty day. */
+const RESULT_ICON: Record<ResultKind, IconId> = { profit: 'i-trend-up', loss: 'i-trend-down', even: 'i-equal', none: 'i-people' };
+
+const TIP_ICON: Record<SuggestionKind, IconId> = {
+  restock: 'i-inventory',
+  hire_barista: 'i-people',
+  hire_server: 'i-people',
+  hire_cleaner: 'i-role-cleaner',
+  marketing: 'i-marketing',
+  upgrade: 'i-upgrades',
 };
 
 function statRow(label: string, value: string, tone: 'pos' | 'neg' | '' = '', total = false): HTMLElement {
@@ -61,17 +66,23 @@ function cost(amount: number): string {
   return amount > 0 ? formatMoney(-amount) : formatMoney(0);
 }
 
-function section(title: string, ...children: (HTMLElement | null)[]): HTMLElement {
-  return h('section', { class: 'rpt-section' }, h('h4', { class: 'rpt-h4', text: title }), ...children);
+function section(iconId: IconId, title: string, ...children: (HTMLElement | null)[]): HTMLElement {
+  return h('section', { class: 'rpt-section' }, h('h4', { class: 'rpt-h4' }, icon(iconId), title), ...children);
 }
 
 function muted(text: string): HTMLElement {
   return h('p', { class: 'rpt-muted', text });
 }
 
+/** Label with a leading icon, for buttons and tabs. */
+function labelled(iconId: IconId, text: string): (Node | string)[] {
+  return [icon(iconId), text];
+}
+
 function money(r: DailyReport): HTMLElement {
   return section(
-    '💵 Thu chi',
+    'i-coin',
+    'Thu chi',
     h(
       'dl',
       { class: 'rpt-stats', attrs: { 'data-block': 'money' } },
@@ -86,7 +97,8 @@ function money(r: DailyReport): HTMLElement {
 
 function customers(r: DailyReport): HTMLElement {
   return section(
-    '👥 Khách',
+    'i-people',
+    'Khách',
     h(
       'dl',
       { class: 'rpt-stats', attrs: { 'data-block': 'customers' } },
@@ -102,17 +114,18 @@ function rating(r: DailyReport): HTMLElement {
   const step = Math.round(delta * 10);
   const badge =
     step > 0
-      ? h('span', { class: 'rpt-delta is-up', text: `▲ +${formatRating(delta)}` })
+      ? h('span', { class: 'badge badge-ok rpt-delta is-up' }, icon('i-trend-up', { size: 16 }), `+${formatRating(delta)}`)
       : step < 0
-        ? h('span', { class: 'rpt-delta is-down', text: `▼ −${formatRating(-delta)}` })
-        : h('span', { class: 'rpt-delta', text: '= Không đổi' });
+        ? h('span', { class: 'badge badge-danger rpt-delta is-down' }, icon('i-trend-down', { size: 16 }), `−${formatRating(-delta)}`)
+        : h('span', { class: 'badge badge-neutral rpt-delta' }, icon('i-equal', { size: 16 }), 'Không đổi');
   return section(
-    '⭐ Đánh giá quán',
+    'i-star',
+    'Đánh giá quán',
     h(
       'div',
       { class: 'rpt-rating', attrs: { 'data-block': 'rating' } },
-      starsEl(r.ratingStart, true, 'Đầu ngày '),
-      h('span', { class: 'rpt-arrow', attrs: { 'aria-hidden': 'true' }, text: '→' }),
+      starsEl(r.ratingStart, false, 'Đầu ngày '),
+      icon('i-forward', { class: 'rpt-arrow' }),
       starsEl(r.ratingEnd, false, 'Cuối ngày '),
       badge,
     ),
@@ -122,7 +135,8 @@ function rating(r: DailyReport): HTMLElement {
 function topSellers(r: DailyReport): HTMLElement {
   const max = Math.max(1, ...r.topSellers.map((t) => t.qty));
   return section(
-    '🏆 Món bán chạy',
+    'i-trophy',
+    'Món bán chạy',
     r.topSellers.length === 0
       ? muted('Chưa bán được món nào.')
       : h(
@@ -135,7 +149,7 @@ function topSellers(r: DailyReport): HTMLElement {
             return h(
               'li',
               { class: 'rpt-bar', attrs: { 'data-item': t.id } },
-              h('span', { text: `${item.icon} ${item.name}` }),
+              h('span', { class: 'rpt-bar-name' }, icon(MENU_ICONS[t.id]), item.name),
               h('span', { class: 'rpt-bar-track', attrs: { 'aria-hidden': 'true' } }, fill),
               h('span', { class: 'rpt-bar-num', text: `${t.qty} ${item.category === 'food' ? 'cái' : 'ly'}` }),
             );
@@ -146,16 +160,14 @@ function topSellers(r: DailyReport): HTMLElement {
 
 function outOfStock(r: DailyReport): HTMLElement {
   return section(
-    '⛔ Món hết nguyên liệu',
+    'i-error',
+    'Món hết nguyên liệu',
     r.outOfStock.length === 0
       ? muted('Không món nào hết nguyên liệu.')
       : h(
           'ul',
           { class: 'rpt-list', attrs: { 'data-block': 'out' } },
-          ...r.outOfStock.map((id) => {
-            const item = getMenuItem(id);
-            return h('li', { class: 'rpt-out', attrs: { 'data-item': id } }, `${item.icon} `, h('b', { text: item.name }), ' · thiếu nguyên liệu');
-          }),
+          ...r.outOfStock.map((id) => h('li', { class: 'rpt-out', attrs: { 'data-item': id } }, icon(MENU_ICONS[id]), h('b', { text: getMenuItem(id).name }), ' · thiếu nguyên liệu')),
         ),
   );
 }
@@ -163,22 +175,22 @@ function outOfStock(r: DailyReport): HTMLElement {
 function recentReviews(reviews: readonly Review[]): HTMLElement {
   const recent = newestFirst(reviews, REPORT_RECENT_REVIEWS);
   return section(
-    '💬 Đánh giá gần nhất',
+    'i-reviews',
+    'Đánh giá gần nhất',
     recent.length === 0 ? muted('Hôm nay chưa có khách nào viết đánh giá.') : h('ul', { class: 'rpt-list', attrs: { 'data-block': 'recent' } }, ...recent.map(reviewItem)),
   );
 }
 
 function suggestions(r: DailyReport): HTMLElement {
   return section(
-    `💡 Gợi ý cho ngày ${r.day + 1}`,
+    'i-tip',
+    `Gợi ý cho ngày ${r.day + 1}`,
     r.suggestions.length === 0
       ? muted('Hôm nay mọi thứ ổn, cứ giữ nhịp này.')
       : h(
           'ol',
           { class: 'rpt-list', attrs: { 'data-block': 'tips' } },
-          ...r.suggestions.map((s) =>
-            h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind } }, h('span', { class: 'rpt-tip-icon', attrs: { 'aria-hidden': 'true' }, text: TIP_ICON[s.kind] }), h('p', { text: s.text })),
-          ),
+          ...r.suggestions.map((s) => h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind } }, h('span', { class: 'rpt-tip-icon' }, icon(TIP_ICON[s.kind])), h('p', { text: s.text }))),
         ),
   );
 }
@@ -196,20 +208,33 @@ export function renderSummary(r: DailyReport): HTMLElement[] {
     h(
       'div',
       { class: `rpt-result${RESULT_CLASS[result.kind]}`, attrs: { 'data-result': result.kind } },
+      icon(RESULT_ICON[result.kind], { size: 48, class: 'rpt-result-icon' }),
       h('span', { class: 'rpt-result-label', text: result.label }),
       h('span', { class: 'rpt-result-value', text: result.value }),
       h('span', { class: 'rpt-result-note', text: resultNote(r, result.kind) }),
     ),
     h('div', { class: 'rpt-grid' }, money(r), h('div', { class: 'rpt-col' }, customers(r), rating(r))),
-    h('div', { class: 'rpt-grid' }, topSellers(r), outOfStock(r)),
-    recentReviews(r.reviews),
+    h('div', { class: 'rpt-grid' }, topSellers(r), h('div', { class: 'rpt-col' }, outOfStock(r), recentReviews(r.reviews))),
     suggestions(r),
   ];
 }
 
+/** Placeholder while the day's numbers are not in yet. */
+function renderBusy(day: number): HTMLElement {
+  return h(
+    'div',
+    { class: 'rpt-section rpt-busy', attrs: { role: 'status', 'data-block': 'busy' } },
+    h('p', { class: 'rpt-busy-title' }, icon('i-busy'), h('b', { text: `Đang tổng kết ngày ${day}…` })),
+    h('span', { class: 'rpt-skel is-lg', attrs: { 'aria-hidden': 'true' } }),
+    h('span', { class: 'rpt-skel', attrs: { 'aria-hidden': 'true' } }),
+    h('span', { class: 'rpt-skel is-short', attrs: { 'aria-hidden': 'true' } }),
+  );
+}
+
 /**
- * End-of-day overlay after design/report.html: tabs "Tổng kết" and "Đánh giá",
- * the autosave status, "Xem reviews" and "Ngày tiếp theo" (next_day).
+ * End-of-day overlay after the Daily Report of design/t237-cartoon: tabs
+ * "Tổng kết" and "Đánh giá", the autosave status, "Xem đánh giá" and
+ * "Ngày tiếp theo" (next_day).
  */
 export function createDailyReport(options: DailyReportOptions): DailyReportView {
   const w = new Watcher<GameState>();
@@ -220,15 +245,15 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
 
   const title = h('h3', { id: 'rpt-title' });
   const sub = h('p', { class: 'rpt-sub' });
-  const summaryTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-summary', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-summary', 'data-tab': 'summary' }, text: '📊 Tổng kết' });
+  const summaryTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-summary', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-summary', 'data-tab': 'summary' } }, ...labelled('i-chart', 'Tổng kết'));
   const reviewsTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-reviews', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-reviews', 'data-tab': 'reviews' } });
   const summary = h('div', { class: 'rpt-body', id: 'rpt-summary', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-summary' } });
   const reviews = h('div', { class: 'rpt-body', id: 'rpt-reviews', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-reviews' } });
 
   const save = h('div', { class: 'rpt-save', attrs: { 'data-save': '' } });
   const toggleBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'reviews' } });
-  const nextBtn = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-day' }, text: '☀️ Ngày tiếp theo' });
-  const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') }, text: '📊 Về Tổng kết' });
+  const nextBtn = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-day' } }, ...labelled('i-next-day', 'Ngày tiếp theo'));
+  const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') } }, ...labelled('i-chart', 'Về Tổng kết'));
 
   summaryTab.addEventListener('click', () => showTab('summary'));
   reviewsTab.addEventListener('click', () => showTab('reviews'));
@@ -245,11 +270,10 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   const dialog = h(
     'div',
     { class: 'rpt-dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rpt-title' } },
-    h('div', { class: 'rpt-head' }, title, sub),
-    tabs,
+    h('div', { class: 'rpt-head' }, h('span', { class: 'rpt-head-icon' }, icon('i-phase-close', { size: 32 })), h('div', { class: 'rpt-head-text' }, title, sub), tabs),
     summary,
     reviews,
-    h('div', { class: 'rpt-foot' }, save, toggleBtn, nextBtn),
+    h('div', { class: 'rpt-foot' }, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
   );
   dialog.addEventListener('keydown', (e) => trapFocus(dialog, e));
   const el = h('div', { class: 'ui-screen is-scrim rpt-layer', hidden: true, attrs: { 'data-screen': 'report' } }, dialog);
@@ -262,7 +286,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     reviewsTab.tabIndex = next === 'reviews' ? 0 : -1;
     summary.hidden = next !== 'summary';
     reviews.hidden = next !== 'reviews';
-    toggleBtn.textContent = next === 'summary' ? '💬 Xem reviews' : '📊 Về Tổng kết';
+    setChildren(toggleBtn, ...(next === 'summary' ? labelled('i-reviews', 'Xem đánh giá') : labelled('i-chart', 'Về Tổng kết')));
   }
 
   function renderSave(): void {
@@ -276,7 +300,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     if (saveStatus.ok) {
       save.className = 'rpt-save';
       save.setAttribute('role', 'status');
-      setChildren(save, `✓ Đã tự lưu ngày ${day} · ${formatSavedAt(saveStatus.savedAt)}`);
+      setChildren(save, icon('i-ok'), `Đã tự lưu ngày ${day} · ${formatSavedAt(saveStatus.savedAt)}`);
       return;
     }
     save.className = 'rpt-save is-error';
@@ -284,7 +308,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     const retry = options.onRetrySave;
     setChildren(
       save,
-      h('p', { text: `⚠️ Chưa tự lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn. Tiến độ ngày ${day} sẽ mất nếu đóng tab.` }),
+      h('p', {}, icon('i-warning'), `Chưa tự lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn. Tiến độ ngày ${day} sẽ mất nếu đóng tab.`),
       retry
         ? h(
             'button',
@@ -299,7 +323,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
                 },
               },
             },
-            '🔄 Thử lưu lại',
+            ...labelled('i-retry', 'Thử lưu lại'),
           )
         : null,
     );
@@ -309,9 +333,9 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     (s) => s.lastReport ?? null,
     (r, s) => {
       day = r?.day ?? s.day;
-      title.textContent = `🌙 Hết ngày ${day} · ${s.shopName}`;
+      title.textContent = `Hết ngày ${day} · ${s.shopName}`;
       sub.textContent = `${DIFFICULTIES[s.difficulty].name} · 07:00–21:00`;
-      setChildren(summary, ...(r ? renderSummary(r) : [muted('Chưa có số liệu cho ngày này.')]));
+      setChildren(summary, ...(r ? renderSummary(r) : [renderBusy(day)]));
       showTab('summary');
       renderSave();
     },
@@ -320,7 +344,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   w.watch(
     (s) => s.reviews[s.reviews.length - 1],
     (_, s) => {
-      reviewsTab.textContent = `💬 Đánh giá (${s.reviews.length})`;
+      setChildren(reviewsTab, ...labelled('i-reviews', `Đánh giá (${s.reviews.length})`));
       fillReviews(reviews, s.reviews, backBtn());
     },
   );
