@@ -90,6 +90,8 @@ const NO_WAY = 0.5;
 const AISLE = 1;
 /** Height of a table with its chairs, for the rings. */
 const TABLE_TOP = 0.9;
+/** The aisle strip stops this far inside the front wall (world units). */
+const FRONT_CLEAR = 0.3;
 /** Most board width, px; frames are cropped to their rings and enlarged to fill it. */
 const BOARD_WIDTH = 1900;
 /**
@@ -552,8 +554,10 @@ async function khoSession(browser, url, focus) {
     const margins = await frame();
     await page.evaluate((sel) => {
       const b = document.querySelector(sel);
+      // The badge sits low in the row; bring it near the top so the sticky foot does not cover it.
       const row = b.querySelector('.stack > .item');
-      b.scrollTop += row.getBoundingClientRect().top - b.getBoundingClientRect().top - 8;
+      const at = row.querySelector('.badge') ?? row;
+      b.scrollTop += at.getBoundingClientRect().top - b.getBoundingClientRect().top - 60;
       b.scrollLeft = b.scrollWidth;
     }, `${panel} .panel-body`);
     await sleep(300);
@@ -684,9 +688,20 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
     ctx.rect(p.x, top, p.w, p.h);
     ctx.clip();
     ctx.setLineDash(p.side === 'before' ? [8, 6] : []);
-    for (const r of ringRects[i]) {
+    // A mark with `polys` (e.g. a floor strip seen in perspective) is outlined and tinted as drawn, not boxed.
+    const shapes = m.polys
+      ? m.polys.map((poly) => () => poly.forEach((pt, k) => (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, p.x + sx(pt.x), top + sy(pt.y))))
+      : ringRects[i].map((r) => () => ctx.roundRect(r.x, r.y, r.w, r.h, 8));
+    for (const shape of shapes) {
       ctx.beginPath();
-      ctx.roundRect(r.x, r.y, r.w, r.h, 8);
+      shape();
+      if (m.polys) {
+        ctx.closePath();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = COLOR[p.side];
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       ctx.lineWidth = 6;
       ctx.strokeStyle = INK;
       ctx.stroke();
@@ -976,7 +991,13 @@ function tableMarks(scene, plan, frame, after) {
       const x1 = b.x - chairOffset - chairSize / 2;
       const gap = x1 - x0;
       if (gap < NO_WAY) tight.push({ gap, box: worldBox(scene, cuboid(x0 - chairSize, x1 + chairSize, 0, TABLE_TOP, a.z - chairSize / 2, a.z + chairSize / 2)) });
-      if (gap >= AISLE) aisles.push({ gap, box: worldBox(scene, cuboid(x0, x1, 0, 0.05, a.z - aisleHalf, a.z + aisleHalf)) });
+      if (gap >= AISLE) {
+        // From the counter side of the row to the front wall, where the door is.
+        const z0 = a.z - aisleHalf;
+        const z1 = plan.frontZ - FRONT_CLEAR;
+        const floor = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+        aisles.push({ gap, box: worldBox(scene, floor.map(([x, z]) => [x, 0, z]), 0), poly: floor.map(([x, z]) => project(scene, x, 0, z)) });
+      }
     }
   }
   if (!after) {
@@ -988,6 +1009,7 @@ function tableMarks(scene, plan, frame, after) {
     {
       frame,
       boxes: aisles.map((a) => a.box),
+      polys: aisles.filter((a) => a.box).map((a) => a.poly),
       label: aisles.length > 0 ? `Lối đi chính rộng ${metres(Math.min(...aisles.map((a) => a.gap)))} m giữa hai khối bàn` : 'Lối đi chính',
     },
     {
@@ -1316,6 +1338,7 @@ async function simPlan(root) {
         tableRadius: footprints.TABLE_RADIUS,
         tablePitch: state.TABLE_PITCH ?? null,
         rowPitch: state.TABLE_ROW_PITCH ?? null,
+        frontZ: layout.indoor.maxZ,
       }),
     );
   } finally {

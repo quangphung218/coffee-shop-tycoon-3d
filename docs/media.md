@@ -65,7 +65,7 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `kho-foot-p18-p19.png` | Khung tổng lúc 0 gói và 1 gói, P18 rồi P19; vạch vàng ở mép trên khung lúc 0 gói, nhãn ghi chiều cao khung và dòng hướng dẫn. |
 | `kho-open-p18-p19.png` | Bảng Kho lúc 10:00, không bấm Gợi ý; khoanh nhãn "Sắp hết"/"Hết" của P19 và cùng mặt hàng ở P18, dòng "đủ khoảng N ly hôm nay" và huy hiệu dock. |
 | `scrollbar-p18-p19.png` | Thanh cuộn bảng Kho: P18 đang cuộn, P19 đứng yên và đang cuộn; nhãn ghi độ rộng rãnh khi thanh có rãnh. |
-| `peak-p18-p19.png` | Giờ cao điểm P18 cạnh P19; khoanh ghế hai bàn sát nhau (P18), lối đi chính và bàn theo lưới (P19). |
+| `peak-p18-p19.png` | Giờ cao điểm P18 cạnh P19; khoanh ghế hai bàn sát nhau (P18), bàn theo lưới (P19) và tô dải sàn của lối đi chính từ hàng bàn tới tường trước (P19). |
 | `facade-evening.png` | Mặt tiền quán từ 19:30 tới 20:00, đèn sáng đầy. |
 | `facade-day-evening.png` | Mặt tiền cùng góc máy lúc khoảng 15:30 và sau 19:30, cạnh nhau; khoanh và ghi tên chỗ phát sáng ấm (cửa sổ, cửa kính, biển hiệu, đèn thả). Lệnh tìm chỗ phát sáng bằng cách so điểm ảnh hai ảnh tối với ảnh ngày, và trả mã lỗi 1 khi không thấy biển hiệu hay kính. |
 | `daily-report.png` | Daily Report. |
