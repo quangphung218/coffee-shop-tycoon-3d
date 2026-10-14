@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Bộ icon hoạt hình (T237)</title>
+<style>
+:root {
+  --color-neutral-0: #ffffff;
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-coffee-300: #d9a877;
+  --color-coffee-500: #a0673f;
+  --color-coffee-700: #6b3f24;
+  --color-coffee-900: #3a2216;
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
+  --color-mint-100: #d9f6ea;
+  --color-mint-400: #5fd3a8;
+  --color-mint-500: #3dbd8f;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-sky-700: #1a5fd0;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-skin-1: #ffdcbf;
+  --color-skin-2: #f0b98d;
+  --color-skin-3: #c98a5e;
+  --color-skin-4: #8d5a3b;
+  --color-hair-1: #3a2216;
+  --color-hair-2: #6b3f24;
+  --color-hair-3: #d9822b;
+  --color-hair-4: #f2cf63;
+
+  --text-primary: var(--color-neutral-900);
+  --text-muted: var(--color-neutral-700);
+  --surface-app: var(--color-cream-100);
+  --surface-panel-solid: var(--color-cream-50);
+  --surface-sunken: var(--color-cream-100);
+  --surface-ink: var(--color-neutral-900);
+  --border-outline: var(--color-neutral-900);
+  --border-subtle: var(--color-cream-200);
+  --accent-primary: var(--color-honey-400);
+  --accent-mint: var(--color-mint-400);
+  --focus-ring: var(--color-sky-700);
+
+  --icon-ink: var(--color-neutral-900);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-coffee: var(--color-coffee-700);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-orange: var(--color-tangerine-400);
+  --icon-fill-empty: var(--color-cream-200);
+
+  --font-family-base: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 32px;
+  --size-icon-xl: 48px;
+  --size-target: 44px;
+
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface-app);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+h1, h2, h3, p { margin: 0; }
+code { font-size: var(--font-size-xs); color: var(--text-muted); }
+
+.ic {
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+  fill: none;
+  stroke: var(--icon-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+  overflow: visible;
+  vertical-align: middle;
+  --av-skin: var(--color-skin-1);
+  --av-hair: var(--color-hair-2);
+}
+.ic-sm { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+.ic-lg { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.ic-xl { width: var(--size-icon-xl); height: var(--size-icon-xl); }
+.fh { fill: var(--icon-fill-honey); }
+.fm { fill: var(--icon-fill-mint); }
+.fb { fill: var(--icon-fill-berry); }
+.fs { fill: var(--icon-fill-sky); }
+.fk { fill: var(--icon-fill-cream); }
+.fc { fill: var(--icon-fill-latte); }
+.fd { fill: var(--icon-fill-coffee); }
+.fl { fill: var(--icon-fill-leaf); }
+.fo { fill: var(--icon-fill-orange); }
+.fe { fill: var(--icon-fill-empty); }
+.fi { fill: var(--icon-ink); }
+.ns { stroke: none; }
+.av-skin { fill: var(--av-skin); }
+.av-hair { fill: var(--av-hair); }
+
+.page { max-width: 1280px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-12); display: flex; flex-direction: column; gap: var(--space-8); }
+.doc-head h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.doc-head p { color: var(--text-muted); margin-top: var(--space-2); max-width: 760px; }
+.card {
+  background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+}
+.card h2 { font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); margin-bottom: var(--space-4); }
+.card h3 { font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); margin: var(--space-6) 0 var(--space-3); }
+.card h3:first-of-type { margin-top: 0; }
+.muted { color: var(--text-muted); font-size: var(--font-size-sm); }
+
+.spec { display: grid; grid-template-columns: 1fr; gap: var(--space-6); }
+.spec-grid { width: 100%; max-width: 288px; aspect-ratio: 1; background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.spec-grid .g { stroke: var(--border-subtle); stroke-width: 0.06; fill: none; }
+.spec-grid .k { stroke: var(--focus-ring); stroke-width: 0.08; fill: none; stroke-dasharray: 0.4 0.3; }
+.rules { margin: 0; padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
+.rules b { font-weight: var(--font-weight-heavy); }
+.swatches { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); padding: 0; list-style: none; }
+.swatches li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); }
+.sw { width: 28px; height: 28px; border-radius: var(--radius-sm); border: var(--size-outline-sm) solid var(--border-outline); }
+
+.ramp { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-6); }
+.ramp figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.ramp figcaption { font-size: var(--font-size-xs); color: var(--text-muted); }
+
+.surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
+.surf { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); font-weight: var(--font-weight-bold); }
+.surf-cream { background: var(--surface-panel-solid); }
+.surf-app { background: var(--surface-app); }
+.surf-honey { background: var(--accent-primary); box-shadow: var(--shadow-md); }
+.surf-mint { background: var(--accent-mint); box-shadow: var(--shadow-md); }
+
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-3); }
+.tile {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  padding: var(--space-4) var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.tile-big { display: grid; place-items: center; width: 72px; height: 72px; background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+.tile-sm { display: flex; align-items: center; gap: var(--space-2); }
+.tile b { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); }
+
+.wall { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-4); background: var(--surface-sunken); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.avatars { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+.dont { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.dont li { padding: var(--space-3) var(--space-4); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-sunken); font-size: var(--font-size-sm); }
+.dont li b { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
+
+@media (min-width: 768px) {
+  .spec { grid-template-columns: 288px 1fr; align-items: start; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<!-- HUD & điều hướng -->
+<symbol id="i-tasks" viewBox="0 0 24 24"><rect class="fk" x="4.5" y="4" width="15" height="17.5" rx="2.5"/><rect class="fh" x="8.5" y="2.5" width="7" height="4" rx="1.5"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="5.2"/><circle class="fk" cx="12" cy="12" r="2.6"/><path d="M3.5 3.5v5a1.5 1.5 0 0 0 3 0v-5M5 10v10.5M20.5 20.5V3.5c-1.6.8-2.5 2.8-2.5 6V12h2.5"/></symbol>
+<symbol id="i-inventory" viewBox="0 0 24 24"><path class="fc" d="M3.5 7.5 12 3.5l8.5 4V17L12 21l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5V21M7.8 5.5l8.4 4"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle class="fs" cx="16.5" cy="7.5" r="3"/><path class="fs" d="M12.5 18.5a4.5 4.5 0 0 1 9 0z"/><circle class="fh" cx="9" cy="8.5" r="3.5"/><path class="fh" d="M3 20.5a6 6 0 0 1 12 0z"/></symbol>
+<symbol id="i-marketing" viewBox="0 0 24 24"><path class="fb" d="M3.5 10.5A1.5 1.5 0 0 1 5 9h2.5L16 4.5v15L7.5 15H5a1.5 1.5 0 0 1-1.5-1.5z"/><path class="fk" d="M7.5 15 9 19.5h2.5L10.5 15z"/><path d="M19 9c1.3 1.6 1.3 4.4 0 6"/></symbol>
+<symbol id="i-upgrades" viewBox="0 0 24 24"><rect class="fc" x="10.5" y="9.5" width="3" height="12" rx="1.5"/><path class="fs" d="M4.5 5.5A1.5 1.5 0 0 1 6 4h10l3.5 3v2a1 1 0 0 1-1 1H6a1.5 1.5 0 0 1-1.5-1.5z"/></symbol>
+<symbol id="i-reviews" viewBox="0 0 24 24"><path class="fs" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/><circle class="fi ns" cx="8.5" cy="10" r="1.3"/><circle class="fi ns" cx="12" cy="10" r="1.3"/><circle class="fi ns" cx="15.5" cy="10" r="1.3"/></symbol>
+<symbol id="i-open" viewBox="0 0 24 24"><path class="fh" d="M5.5 17v-6a6.5 6.5 0 0 1 13 0v6l1.5 1.5H4z"/><path d="M10 21h4M12 2.5v2"/></symbol>
+<symbol id="i-next-day" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="4.5"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><rect class="fs" x="2.5" y="7" width="13" height="10" rx="2.5"/><path class="fs" d="M15.5 10.5 21 7.5v9l-5.5-3z"/><circle class="fk" cx="7.5" cy="12" r="2"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path class="fs" d="M18.49 9.38 21.29 10.02 21.29 13.98 18.49 14.62A7 7 0 0 1 17.52 16.31L18.36 19.06 14.94 21.03 12.97 18.93A7 7 0 0 1 11.03 18.93L9.06 21.03 5.64 19.06 6.48 16.31A7 7 0 0 1 5.51 14.62L2.71 13.98 2.71 10.02 5.51 9.38A7 7 0 0 1 6.48 7.69L5.64 4.94 9.06 2.97 11.03 5.07A7 7 0 0 1 12.97 5.07L14.94 2.97 18.36 4.94 17.52 7.69A7 7 0 0 1 18.49 9.38Z"/><circle class="fk" cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect class="fh" x="6" y="4.5" width="4" height="15" rx="1.5"/><rect class="fh" x="14" y="4.5" width="4" height="15" rx="1.5"/></symbol>
+<symbol id="i-speed-1" viewBox="0 0 24 24"><path class="fm" d="M7 5.5v13a1 1 0 0 0 1.5.9L19 12.9a1 1 0 0 0 0-1.8L8.5 4.6A1 1 0 0 0 7 5.5z"/></symbol>
+<symbol id="i-speed-2" viewBox="0 0 24 24"><path class="fm" d="M3 6.5v11L11 12z"/><path class="fm" d="M12.5 6.5v11l8-5.5z"/></symbol>
+<symbol id="i-speed-4" viewBox="0 0 24 24"><path class="fm" d="M1.5 7v10L8 12z"/><path class="fm" d="M8.5 7v10L15 12z"/><path class="fm" d="M15.5 7v10l6.5-5z"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path class="fh" d="M4 11 12 4l8 7v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5z"/><rect class="fc" x="9.5" y="14" width="5" height="7" rx="1"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+<symbol id="i-forward" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<!-- Pha trong ngày -->
+<symbol id="i-phase-prep" viewBox="0 0 24 24"><path class="fc" d="M3 10.5h18l-2.2 8.6a2 2 0 0 1-1.9 1.4H7.1a2 2 0 0 1-1.9-1.4z"/><path d="M7.5 10.5 10 4.5M16.5 10.5 14 4.5M9 14v3M12 14v3M15 14v3"/></symbol>
+<symbol id="i-phase-open" viewBox="0 0 24 24"><rect class="fc" x="5.5" y="3" width="13" height="17.5" rx="2"/><rect class="fk" x="8.5" y="6" width="7" height="3.5" rx="1"/><path d="M3 20.5h18"/><circle class="fi ns" cx="15" cy="13" r="1.3"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path class="fb" d="M12 21.5c-4 0-6.5-2.8-6.5-6.3 0-3.7 3-5.6 3.8-9.7 2.7 1.6 3.3 3.8 3.4 5.4 1-.8 1.6-2 1.8-3.4 2.3 1.9 4 4.4 4 7.7 0 3.5-2.5 6.3-6.5 6.3z"/><path class="fh" d="M12 21.5c-1.7 0-2.8-1.2-2.8-2.8 0-1.7 1.4-2.7 2.8-4.2 1.4 1.5 2.8 2.5 2.8 4.2 0 1.6-1.1 2.8-2.8 2.8z"/></symbol>
+<symbol id="i-phase-close" viewBox="0 0 24 24"><path class="fh" d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle class="fk" cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<!-- Trạng thái & phản hồi -->
+<symbol id="i-ok" viewBox="0 0 24 24"><circle class="fm" cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8 5.2-5.8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-warning" viewBox="0 0 24 24"><path class="fh" d="M10.3 4.3a2 2 0 0 1 3.4 0l7.5 13a2 2 0 0 1-1.7 3H4.5a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><circle class="fi ns" cx="12" cy="17" r="1.3"/></symbol>
+<symbol id="i-error" viewBox="0 0 24 24"><circle class="fb" cx="12" cy="12" r="9"/><path d="M7.5 12h9"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle class="fs" cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle class="fi ns" cx="12" cy="7.7" r="1.3"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect class="fh" x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path class="fh" d="M11 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path class="fh" d="M18.5 15c.3 1.7 1 2.4 2.5 2.7-1.5.3-2.2 1-2.5 2.7-.3-1.7-1-2.4-2.5-2.7 1.5-.3 2.2-1 2.5-2.7z"/></symbol>
+<symbol id="i-tip" viewBox="0 0 24 24"><path class="fh" d="M8.5 15.5a6.5 6.5 0 1 1 7 0V17h-7z"/><path d="M9 20.5h6M10.5 12l1.5 1.5 1.5-1.5"/></symbol>
+<symbol id="i-busy" viewBox="0 0 24 24"><path class="fh" d="M7 3.5h10c0 4-2.2 6.3-5 8.5 2.8 2.2 5 4.5 5 8.5H7c0-4 2.2-6.3 5-8.5C9.2 9.8 7 7.5 7 3.5z"/><path d="M5.5 3.5h13M5.5 20.5h13"/></symbol>
+<symbol id="i-free" viewBox="0 0 24 24"><circle class="fm" cx="12" cy="12" r="7"/><circle class="fk" cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-rest" viewBox="0 0 24 24"><path d="M3.5 9h5l-5 6h5M12.5 4.5h4l-4 5h4M15 14.5h4.5l-4.5 5.5h4.5"/></symbol>
+<symbol id="i-auto" viewBox="0 0 24 24"><rect class="fs" x="4.5" y="7.5" width="15" height="12" rx="3"/><path d="M12 7.5V5M9.5 16.5h5M2.5 12v3M21.5 12v3"/><circle class="fh" cx="12" cy="4" r="1.5"/><circle class="fi ns" cx="9.5" cy="12.5" r="1.4"/><circle class="fi ns" cx="14.5" cy="12.5" r="1.4"/></symbol>
+<symbol id="i-trend-up" viewBox="0 0 24 24"><path class="fm" d="M12 5l8 13H4z"/></symbol>
+<symbol id="i-trend-down" viewBox="0 0 24 24"><path class="fb" d="M12 19 4 6h16z"/></symbol>
+<symbol id="i-equal" viewBox="0 0 24 24"><path d="M5.5 9.5h13M5.5 14.5h13"/></symbol>
+<symbol id="i-todo" viewBox="0 0 24 24"><rect class="fk" x="4.5" y="4.5" width="15" height="15" rx="3.5"/></symbol>
+<symbol id="i-dot" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="6"/></symbol>
+<symbol id="i-dot-empty" viewBox="0 0 24 24"><circle class="fe" cx="12" cy="12" r="6"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6.5 9.5 12 15l5.5-5.5"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M19 12A7 7 0 0 1 6.64 16.5M5 12A7 7 0 0 1 17.36 7.5M17.4 3.5v4h-4M6.6 20.5v-4h4"/></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M4.95 9.43A7.5 7.5 0 1 1 4.95 14.57M4.5 4.5v5h5"/></symbol>
+<!-- Tiền & sao -->
+<symbol id="i-coin" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><path d="M12 9.5v5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path class="fh" d="M12 3.1 14.7 8.88 21.03 9.66 16.37 14.02 17.58 20.29 12 17.2 6.42 20.29 7.63 14.02 2.97 9.66 9.3 8.88Z"/></symbol>
+<symbol id="i-star-empty" viewBox="0 0 24 24"><path class="fe" d="M12 3.1 14.7 8.88 21.03 9.66 16.37 14.02 17.58 20.29 12 17.2 6.42 20.29 7.63 14.02 2.97 9.66 9.3 8.88Z"/></symbol>
+<!-- Báo cáo & đánh giá -->
+<symbol id="i-chart" viewBox="0 0 24 24"><rect class="fk" x="3" y="3.5" width="18" height="17" rx="2.5"/><rect class="fm" x="6.5" y="12" width="3" height="5" rx="1"/><rect class="fh" x="10.5" y="7.5" width="3" height="9.5" rx="1"/><rect class="fb" x="14.5" y="10" width="3" height="7" rx="1"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 6H4.5v1.5a3 3 0 0 0 3 3M17 6h2.5v1.5a3 3 0 0 1-3 3M12 14v3.5"/><path class="fh" d="M7 4h10v5a5 5 0 0 1-10 0z"/><rect class="fc" x="7.5" y="17.5" width="9" height="3" rx="1"/></symbol>
+<symbol id="i-thumb-up" viewBox="0 0 24 24"><path class="fm" d="M7.5 10.5 11 4a2 2 0 0 1 2.5 1.8v3.7h4.6a2 2 0 0 1 2 2.4l-1.3 6.5a2 2 0 0 1-2 1.6H7.5z"/><rect class="fk" x="3" y="10" width="4.5" height="10.5" rx="1.5"/></symbol>
+<symbol id="i-thumb-down" viewBox="0 0 24 24"><g transform="rotate(180 12 12)"><path class="fb" d="M7.5 10.5 11 4a2 2 0 0 1 2.5 1.8v3.7h4.6a2 2 0 0 1 2 2.4l-1.3 6.5a2 2 0 0 1-2 1.6H7.5z"/><rect class="fk" x="3" y="10" width="4.5" height="10.5" rx="1.5"/></g></symbol>
+<!-- Hệ thống & cài đặt -->
+<symbol id="i-load" viewBox="0 0 24 24"><path class="fh" d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10.5h18"/></symbol>
+<symbol id="i-delete" viewBox="0 0 24 24"><path class="fb" d="M6 7.5h12l-1 12a1.5 1.5 0 0 1-1.5 1.4h-7A1.5 1.5 0 0 1 7 19.5z"/><path d="M4 7.5h16M9.5 7.5V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2.5M10 11v6M14 11v6"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path class="fs" d="M4 6a2 2 0 0 1 2-2h10.5L20 7.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><rect class="fk" x="7.5" y="13" width="9" height="7" rx="1"/><path d="M8 4v4h7V4"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V6l10-2v11.5"/><circle class="fb" cx="6.5" cy="17.5" r="2.5"/><circle class="fb" cx="16.5" cy="15.5" r="2.5"/></symbol>
+<symbol id="i-sound" viewBox="0 0 24 24"><path class="fs" d="M4 9.5h3l5-4v13l-5-4H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></symbol>
+<symbol id="i-quality" viewBox="0 0 24 24"><rect class="fs" x="3" y="4" width="18" height="12.5" rx="2"/><path d="M12 16.5V20M8 20h8"/></symbol>
+<!-- Độ khó, nhiệt độ -->
+<symbol id="i-easy" viewBox="0 0 24 24"><path d="M12 21v-9M7.5 21h9"/><path class="fl" d="M12 13c-4.5 0-7-2.5-7-7 4.5 0 7 2.5 7 7z"/><path class="fl" d="M12 11c0-4 2.2-6.5 7-6.5 0 4-2.5 6.5-7 6.5z"/></symbol>
+<symbol id="i-cup-hot" viewBox="0 0 24 24"><path class="fc" d="M5 10h11v5.5a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5 15.5z"/><path d="M16 11.5h1.5a2.5 2.5 0 0 1 0 5H16M8.5 3.5c-.8 1 .8 2 0 3.5M12.5 3.5c-.8 1 .8 2 0 3.5"/></symbol>
+<symbol id="i-cold" viewBox="0 0 24 24"><circle class="fs" cx="12" cy="12" r="9"/><path d="M12 6.5v11M7.2 9.2l9.6 5.6M7.2 14.8l9.6-5.6"/></symbol>
+<!-- Nhân viên -->
+<symbol id="i-role-server" viewBox="0 0 24 24"><path class="fs" d="M4 17a8 8 0 0 1 16 0z"/><circle class="fs" cx="12" cy="7.5" r="1.5"/><path d="M2.5 17h19M5 20.5h14"/></symbol>
+<symbol id="i-role-cleaner" viewBox="0 0 24 24"><path d="M19.5 3 13 10.5"/><path class="fh" d="M11 9.5l4 3.2c-1 3.8-3.8 6.8-7.5 8.3L3 19.8c.8-4.3 3.5-8 8-10.3z"/><path d="M10 12.7l3.6 2.8"/></symbol>
+<symbol id="i-chef" viewBox="0 0 24 24"><path class="fk" d="M7 14.5A4 4 0 0 1 6.5 6.6 4.5 4.5 0 0 1 12 4a4.5 4.5 0 0 1 5.5 2.6A4 4 0 0 1 17 14.5V19a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19z"/><path d="M7 16.5h10"/></symbol>
+<symbol id="i-avatar" viewBox="0 0 24 24"><circle class="av-skin" cx="12" cy="13" r="8"/><path class="av-hair" d="M4 12.5a8 8 0 0 1 16 0c-3.2 0-6-1.4-8-3.8-2 2.4-4.8 3.8-8 3.8z"/><circle class="fi ns" cx="9.3" cy="14.2" r="1.1"/><circle class="fi ns" cx="14.7" cy="14.2" r="1.1"/><path d="M10.3 17.2a2.2 2.2 0 0 0 3.4 0"/></symbol>
+<!-- Cảm xúc khách -->
+<symbol id="i-face-happy" viewBox="0 0 24 24"><circle class="fm" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="10" r="1.3"/><circle class="fi ns" cx="15" cy="10" r="1.3"/><path d="M8.5 13.5a3.5 3.5 0 0 0 7 0"/></symbol>
+<symbol id="i-face-ok" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="10" r="1.3"/><circle class="fi ns" cx="15" cy="10" r="1.3"/><path d="M9 15h6"/></symbol>
+<symbol id="i-face-worried" viewBox="0 0 24 24"><circle class="fo" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="11" r="1.3"/><circle class="fi ns" cx="15" cy="11" r="1.3"/><path d="M7.5 7.5 10 8.5M16.5 7.5 14 8.5M9 16.5c1.8-1.3 4.2-1.3 6 0"/><path class="fs" d="M19.5 3c1 1.4 1.5 2.3 1.5 3a1.5 1.5 0 0 1-3 0c0-.7.5-1.6 1.5-3z"/></symbol>
+<symbol id="i-face-angry" viewBox="0 0 24 24"><circle class="fb" cx="12" cy="12" r="9"/><circle class="fi ns" cx="9" cy="11.5" r="1.3"/><circle class="fi ns" cx="15" cy="11.5" r="1.3"/><path d="M7 8l3 1.5M17 8l-3 1.5M8.5 17c2-1.8 5-1.8 7 0"/></symbol>
+<!-- Món -->
+<symbol id="i-espresso" viewBox="0 0 24 24"><path d="M9.5 3.5c-.8 1 .8 2 0 3.5M12.5 3.5c-.8 1 .8 2 0 3.5"/><ellipse class="fk" cx="11" cy="19.5" rx="8" ry="1.8"/><path class="fk" d="M5.5 9.5h11V13a5.5 5.5 0 0 1-11 0z"/><path d="M16.5 10.5h1a2.3 2.3 0 0 1 0 4.6h-1.8"/><ellipse class="fd" cx="11" cy="9.5" rx="5.5" ry="1.4"/></symbol>
+<symbol id="i-americano" viewBox="0 0 24 24"><path class="fd" d="M6.5 7h11l-1.3 12.6a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4z"/><rect class="fs" x="8.5" y="9.5" width="3.5" height="3.5" rx="1"/><rect class="fs" x="12.5" y="12.5" width="3.5" height="3.5" rx="1"/><path d="M5.5 7h13M14 7l1.5-4.5"/></symbol>
+<symbol id="i-latte" viewBox="0 0 24 24"><path class="fk" d="M7 3.5h10l-1.2 16a1.5 1.5 0 0 1-1.5 1.5H9.7a1.5 1.5 0 0 1-1.5-1.5z"/><path class="fc" d="M7.65 12h8.7l-.55 7.5a1.5 1.5 0 0 1-1.5 1.5H9.7a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M9.5 7h5"/></symbol>
+<symbol id="i-cappuccino" viewBox="0 0 24 24"><ellipse class="fk" cx="11" cy="19.5" rx="8" ry="1.8"/><path class="fc" d="M4.5 10h13v2.5a6.5 6.5 0 0 1-13 0z"/><path class="fk" d="M4.5 10c0-2.2 2.9-3.8 6.5-3.8s6.5 1.6 6.5 3.8z"/><path d="M17.5 11h1a2.3 2.3 0 0 1 0 4.6h-1.9"/><circle class="fc ns" cx="11" cy="8.4" r="1"/></symbol>
+<symbol id="i-mocha" viewBox="0 0 24 24"><path class="fd" d="M5.5 10h11v6a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5.5 16z"/><path d="M16.5 11.5H18a2.5 2.5 0 0 1 0 5h-1.5"/><path class="fk" d="M5 10C5 7.7 6.8 6.6 8.4 6.6 8.9 4.9 10.3 4 11 4s2.1.9 2.6 2.6c1.6 0 3.4 1.1 3.4 3.4z"/><path d="M8 8.6c1 .8 2 .8 3 0s2-.8 3 0"/></symbol>
+<symbol id="i-bubble-tea" viewBox="0 0 24 24"><path class="fc" d="M6.5 9h11l-1.4 10.6a1.5 1.5 0 0 1-1.5 1.3H9.4a1.5 1.5 0 0 1-1.5-1.3z"/><path class="fk" d="M5.5 9a6.5 3.5 0 0 1 13 0z"/><path d="M13.5 6.5l2-4"/><circle class="fd" cx="10" cy="17.3" r="1.2"/><circle class="fd" cx="13.8" cy="17.3" r="1.2"/><circle class="fd" cx="12" cy="14.6" r="1.2"/></symbol>
+<symbol id="i-lemon-tea" viewBox="0 0 24 24"><path class="fc" d="M6.5 8h11l-1.3 11.6a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4z"/><rect class="fs" x="9" y="11" width="3.5" height="3.5" rx="1"/><path d="M5.5 8h8"/><circle class="fh" cx="17.5" cy="7" r="3.5"/><path d="M17.5 4.8v4.4M15.3 7h4.4"/></symbol>
+<symbol id="i-orange-juice" viewBox="0 0 24 24"><path class="fo" d="M6.5 8h11l-1.3 11.6a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4z"/><path d="M5.5 8h8M10 8 8.5 2.5"/><circle class="fo" cx="17.5" cy="7.5" r="3.5"/><circle class="fk" cx="17.5" cy="7.5" r="1.5"/></symbol>
+<symbol id="i-croissant" viewBox="0 0 24 24"><path class="fc" d="M2.5 15.5C4 10.5 7.8 7.5 12 7.5s8 3 9.5 8c-1.5.9-3.2.8-4.3-.3-.9 1.6-2.7 2.3-5.2 2.3s-4.3-.7-5.2-2.3c-1.1 1.1-2.8 1.2-4.3.3z"/><path d="M9.3 8.2l1 8.8M14.7 8.2l-1 8.8"/></symbol>
+<symbol id="i-cake" viewBox="0 0 24 24"><path class="fk" d="M3.5 12.5 16.5 7l4 5.5V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path class="fb" d="M3.5 15h17v2.5h-17z"/><path d="M3.5 12.5h17"/><circle class="fb" cx="15.5" cy="5" r="2"/></symbol>
+<!-- Nguyên liệu -->
+<symbol id="i-beans" viewBox="0 0 24 24"><ellipse class="fc" cx="8.5" cy="13.5" rx="4.2" ry="6" transform="rotate(-25 8.5 13.5)"/><path d="M6.6 8.4c2.4 2.4 0 6.2 3.8 10.2"/><ellipse class="fc" cx="16" cy="10.5" rx="3.6" ry="5.4" transform="rotate(25 16 10.5)"/><path d="M17.6 5.8c-2 2.3.2 5.6-3.2 9.4"/></symbol>
+<symbol id="i-milk" viewBox="0 0 24 24"><path class="fk" d="M7 9l2-4.5h6L17 9v10.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19.5z"/><path class="fs" d="M7 12.5h10V17H7z"/><path d="M7 9h10M10 4.5V3h4v1.5"/></symbol>
+<symbol id="i-sugar" viewBox="0 0 24 24"><rect class="fk" x="3.5" y="12" width="8" height="8" rx="1.5"/><rect class="fk" x="12.5" y="12" width="8" height="8" rx="1.5"/><rect class="fk" x="8" y="4" width="8" height="8" rx="1.5"/></symbol>
+<symbol id="i-cacao" viewBox="0 0 24 24"><rect class="fc" x="5" y="3.5" width="14" height="17" rx="2"/><path d="M5 8h14M12 3.5V12"/><path class="fb" d="M5 12h14v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z"/></symbol>
+<symbol id="i-tea" viewBox="0 0 24 24"><path class="fl" d="M5 19c0-8 5-14 15-14 0 10-6 15-15 14z"/><path d="M5 19l8.5-8.5"/></symbol>
+<symbol id="i-pearls" viewBox="0 0 24 24"><circle class="fd" cx="8" cy="15.5" r="3.5"/><circle class="fd" cx="15.5" cy="16" r="3.5"/><circle class="fd" cx="12" cy="9" r="3.5"/><circle class="fk ns" cx="7" cy="14.3" r="1"/><circle class="fk ns" cx="14.5" cy="14.8" r="1"/><circle class="fk ns" cx="11" cy="7.8" r="1"/></symbol>
+<symbol id="i-lemon" viewBox="0 0 24 24"><ellipse class="fh" cx="12" cy="12" rx="7.5" ry="5.5" transform="rotate(-35 12 12)"/><path d="M18 7.8l1.6-1.4M6 16.2l-1.6 1.4M9 11c.6-1.2 1.7-2.1 3-2.6"/></symbol>
+<symbol id="i-orange" viewBox="0 0 24 24"><circle class="fo" cx="12" cy="13.5" r="7.5"/><path d="M12 6V4.5M8.5 12c.4-1.3 1.3-2.2 2.5-2.7"/><path class="fl" d="M12 5.5c1-2 3-2.8 5-2.5-.5 2-2.5 3-5 2.5z"/></symbol>
+<symbol id="i-flour" viewBox="0 0 24 24"><path class="fk" d="M7.5 8h9c2.2 3 3.5 6.5 3.5 9.5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3c0-3 1.3-6.5 3.5-9.5z"/><path d="M7.5 8 6.5 4h11l-1 4M12 11.5V18M12 14l-2-1.5M12 14l2-1.5M12 16.5 10 15M12 16.5l2-1.5"/></symbol>
+<symbol id="i-butter" viewBox="0 0 24 24"><path class="fh" d="M3 12.5 8.5 8H21v6.5L15.5 19H3z"/><path d="M3 12.5h12.5V19M15.5 12.5 21 8"/></symbol>
+<symbol id="i-ice" viewBox="0 0 24 24"><rect class="fs" x="4.5" y="4.5" width="15" height="15" rx="4"/><path d="M8 9c.7-.9 1.7-1.4 2.8-1.5"/></symbol>
+<symbol id="i-cup" viewBox="0 0 24 24"><path class="fk" d="M6.5 8h11l-1.4 11.6a1.5 1.5 0 0 1-1.5 1.4H9.4a1.5 1.5 0 0 1-1.5-1.4z"/><path class="fh" d="M7.4 11.5h9.2l-.5 4.5H7.9z"/><rect class="fb" x="5.5" y="5" width="13" height="3" rx="1.2"/></symbol>
+<!-- Marketing -->
+<symbol id="i-flyer" viewBox="0 0 24 24"><path class="fk" d="M6 3.5h8.5l4 4v12A1.5 1.5 0 0 1 17 21H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M14.5 3.5v4h4M7.5 18h6"/><rect class="fb" x="7.5" y="10.5" width="8" height="4.5" rx="1"/></symbol>
+<symbol id="i-happy-hour" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M4 5.5l2.5-2M20 5.5l-2.5-2M7 19.5l-1.5 2M17 19.5l1.5 2"/></symbol>
+<symbol id="i-social" viewBox="0 0 24 24"><rect class="fs" x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path class="fb" d="M12 14s-3-1.8-3-3.8a1.6 1.6 0 0 1 3-.8 1.6 1.6 0 0 1 3 .8c0 2-3 3.8-3 3.8z"/></symbol>
+<symbol id="i-kol" viewBox="0 0 24 24"><rect class="fb" x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8.5 21h7"/></symbol>
+<!-- Nâng cấp -->
+<symbol id="i-tables" viewBox="0 0 24 24"><rect class="fc" x="7" y="3" width="10" height="8" rx="2"/><rect class="fc" x="5.5" y="11" width="13" height="3.5" rx="1.5"/><path d="M7.5 14.5V21M16.5 14.5V21"/></symbol>
+<symbol id="i-machine" viewBox="0 0 24 24"><path class="fs" d="M5.5 9h13v10.5a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5z"/><rect class="fs" x="4" y="3" width="16" height="6" rx="2"/><path d="M10 9v2.5h4V9"/><path class="fk" d="M9.5 15h5v2.5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2z"/><circle class="fh" cx="8" cy="6" r="1"/></symbol>
+<symbol id="i-fast-machine" viewBox="0 0 24 24"><path class="fh" d="M13.5 2.5 5 13.5h6l-1.5 8 9-11.5h-6z"/></symbol>
+<symbol id="i-counter" viewBox="0 0 24 24"><path class="fk" d="M16 12V3.5h3.5V12"/><path class="fc" d="M3.5 12h17v7.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><rect class="fs" x="5.5" y="5" width="9" height="7" rx="1.5"/><path d="M7.5 16h9"/></symbol>
+<symbol id="i-outdoor" viewBox="0 0 24 24"><path d="M12 11.5V21M8.5 21h7M12 4V2.5"/><path class="fb" d="M3 11.5a9 7.5 0 0 1 18 0c-1.5-1-3-1-4.5 0-1.5-1-3-1-4.5 0-1.5-1-3-1-4.5 0-1.5-1-3-1-4.5 0z"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><rect class="fh" x="7.5" y="7.5" width="9" height="9" rx="2"/><path d="M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5"/></symbol>
+<symbol id="i-plants" viewBox="0 0 24 24"><path class="fl" d="M12 14c-4.5 0-7-2.5-7-7 4.5 0 7 2.5 7 7z"/><path class="fl" d="M12 14c0-5 2.4-8.6 7-10 .4 5.2-2.2 9-7 10z"/><path class="fo" d="M6.5 14h11l-1.4 6a1.5 1.5 0 0 1-1.5 1H9.4a1.5 1.5 0 0 1-1.5-1z"/></symbol>
+<symbol id="i-paintings" viewBox="0 0 24 24"><rect class="fc" x="3" y="4" width="18" height="16" rx="2"/><rect class="fs" x="6" y="7" width="12" height="10" rx="1"/><path class="fl" d="M6 17l4-4.5 3 3 2-2 3 3.5z"/><circle class="fh" cx="15" cy="9.8" r="1.3"/></symbol>
+<symbol id="i-lights" viewBox="0 0 24 24"><path d="M12 2.5v5M10 17.5a2 2 0 0 0 4 0M4 18l-1.5 1M20 18l1.5 1"/><path class="fh" d="M5.5 14a6.5 6.5 0 0 1 13 0z"/></symbol>
+<symbol id="i-window-bar" viewBox="0 0 24 24"><rect class="fs" x="4" y="3" width="16" height="15" rx="2"/><path d="M12 3v15M4 10.5h16"/><rect class="fc" x="2.5" y="18" width="19" height="3" rx="1"/></symbol>
+</defs>
+</svg>
+
+<main class="page">
+  <header class="doc-head">
+    <h1>Bộ icon hoạt hình · Coffee Shop Tycoon 3D</h1>
+    <p>105 icon SVG tự vẽ, thay toàn bộ emoji đang dùng trong <code>src/ui</code>, <code>src/sim/data</code> và nhãn khách 3D. Mọi icon cùng lưới 24 px, cùng nét 2 px màu mực, cùng bo góc và cùng 10 màu tô lấy từ token. Bảng ánh xạ emoji → icon nằm trong README cùng thư mục cha.</p>
+  </header>
+
+  <section class="card" aria-labelledby="h-grammar">
+    <h2 id="h-grammar">Quy tắc vẽ</h2>
+    <div class="spec">
+      <svg class="spec-grid" viewBox="0 0 24 24" role="img" aria-label="Lưới 24 ô, vùng an toàn 20 ô, ví dụ icon Kho đặt trên lưới">
+        <path class="g" d="M1 0v24M2 0v24M3 0v24M4 0v24M5 0v24M6 0v24M7 0v24M8 0v24M9 0v24M10 0v24M11 0v24M12 0v24M13 0v24M14 0v24M15 0v24M16 0v24M17 0v24M18 0v24M19 0v24M20 0v24M21 0v24M22 0v24M23 0v24M0 1h24M0 2h24M0 3h24M0 4h24M0 5h24M0 6h24M0 7h24M0 8h24M0 9h24M0 10h24M0 11h24M0 12h24M0 13h24M0 14h24M0 15h24M0 16h24M0 17h24M0 18h24M0 19h24M0 20h24M0 21h24M0 22h24M0 23h24"/>
+        <rect class="k" x="2" y="2" width="20" height="20" rx="2"/>
+        <circle class="k" cx="12" cy="12" r="10"/>
+        <rect class="k" x="4" y="4" width="16" height="16" rx="2"/>
+        <g class="ic"><use href="#i-inventory"/></g>
+      </svg>
+      <ol class="rules">
+        <li><b>Lưới 24 × 24</b>, vùng an toàn 2–22 (20 px). Hình tròn chạm vòng r = 10, hình vuông chạm khung 16–18 px để các icon nặng nhẹ bằng nhau.</li>
+        <li><b>Một độ dày nét: 2 px</b> ở cỡ 24 (tự co còn 1,33 px ở 16 và nở 4 px ở 48). Đầu nét và góc nối đều tròn (<code>round</code>).</li>
+        <li><b>Viền mực</b> <code>icon.ink</code> = <code>color.neutral.900</code> (#3a2216), cùng màu viền dày của nút và thẻ: icon và khung UI là một nét vẽ.</li>
+        <li><b>Tô phẳng, tối đa 2 màu</b> từ 10 màu tô (dưới đây). Không gradient, không bóng đổ trong icon; chi tiết nhỏ (mắt, chấm) tô mực không viền.</li>
+        <li><b>Bo góc ≥ 1 px</b> cho mọi hình chữ nhật; không có góc nhọn trừ đầu tia sét và ngôi sao (đã được nối tròn).</li>
+        <li><b>Hai họ</b>: icon tô (mặc định) và icon nét cho ký hiệu thuần (Đóng, mũi tên, dấu kiểm, bằng, nghỉ, thử lại). Họ nét dùng cùng nét 2 px.</li>
+        <li><b>Luôn kèm chữ</b> trong UI (trừ nút có <code>aria-label</code>); icon tự nó luôn <code>aria-hidden="true"</code>.</li>
+      </ol>
+    </div>
+    <ul class="swatches" aria-label="Màu tô cho icon">
+      <li><span class="sw" style="background: var(--icon-fill-honey)"></span>Mật ong · honey</li>
+      <li><span class="sw" style="background: var(--icon-fill-mint)"></span>Bạc hà · mint</li>
+      <li><span class="sw" style="background: var(--icon-fill-berry)"></span>Dâu · berry</li>
+      <li><span class="sw" style="background: var(--icon-fill-sky)"></span>Trời · sky</li>
+      <li><span class="sw" style="background: var(--icon-fill-cream)"></span>Kem · cream</li>
+      <li><span class="sw" style="background: var(--icon-fill-latte)"></span>Sữa cà phê · latte</li>
+      <li><span class="sw" style="background: var(--icon-fill-coffee)"></span>Cà phê · coffee</li>
+      <li><span class="sw" style="background: var(--icon-fill-leaf)"></span>Lá · leaf</li>
+      <li><span class="sw" style="background: var(--icon-fill-orange)"></span>Cam · orange</li>
+      <li><span class="sw" style="background: var(--icon-fill-empty)"></span>Trống · empty</li>
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="h-ramp">
+    <h2 id="h-ramp">Cỡ dùng và nền</h2>
+    <div class="ramp">
+      <figure><svg class="ic ic-sm" aria-hidden="true"><use href="#i-latte"/></svg><figcaption>16 · badge, dòng lý do</figcaption></figure>
+      <figure><svg class="ic" aria-hidden="true"><use href="#i-latte"/></svg><figcaption>24 · nút, HUD</figcaption></figure>
+      <figure><svg class="ic ic-lg" aria-hidden="true"><use href="#i-latte"/></svg><figcaption>32 · dock, ô món</figcaption></figure>
+      <figure><svg class="ic ic-xl" aria-hidden="true"><use href="#i-latte"/></svg><figcaption>48 · bong bóng order, trống</figcaption></figure>
+    </div>
+    <h3>Trên các nền thật</h3>
+    <div class="surfaces">
+      <span class="surf surf-app"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Kho trên nền app</span>
+      <span class="surf surf-cream"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá trên thẻ</span>
+      <span class="surf surf-honey"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</span>
+      <span class="surf surf-mint"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</span>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-all">
+    <h2 id="h-all">Tất cả cạnh nhau (48 px)</h2>
+    <p class="muted" style="margin-bottom: var(--space-4)">Xếp liền một khối để soát độ đậm, độ dày nét và màu có đều nhau không.</p>
+    <div class="wall" aria-hidden="true">
+      <svg class="ic ic-xl"><use href="#i-tasks"/></svg><svg class="ic ic-xl"><use href="#i-menu"/></svg><svg class="ic ic-xl"><use href="#i-inventory"/></svg><svg class="ic ic-xl"><use href="#i-people"/></svg><svg class="ic ic-xl"><use href="#i-marketing"/></svg><svg class="ic ic-xl"><use href="#i-upgrades"/></svg><svg class="ic ic-xl"><use href="#i-reviews"/></svg><svg class="ic ic-xl"><use href="#i-open"/></svg><svg class="ic ic-xl"><use href="#i-next-day"/></svg><svg class="ic ic-xl"><use href="#i-camera"/></svg><svg class="ic ic-xl"><use href="#i-settings"/></svg><svg class="ic ic-xl"><use href="#i-pause"/></svg><svg class="ic ic-xl"><use href="#i-speed-1"/></svg><svg class="ic ic-xl"><use href="#i-speed-2"/></svg><svg class="ic ic-xl"><use href="#i-speed-4"/></svg><svg class="ic ic-xl"><use href="#i-close"/></svg><svg class="ic ic-xl"><use href="#i-home"/></svg><svg class="ic ic-xl"><use href="#i-back"/></svg><svg class="ic ic-xl"><use href="#i-forward"/></svg>
+      <svg class="ic ic-xl"><use href="#i-phase-prep"/></svg><svg class="ic ic-xl"><use href="#i-phase-open"/></svg><svg class="ic ic-xl"><use href="#i-flame"/></svg><svg class="ic ic-xl"><use href="#i-phase-close"/></svg><svg class="ic ic-xl"><use href="#i-clock"/></svg>
+      <svg class="ic ic-xl"><use href="#i-ok"/></svg><svg class="ic ic-xl"><use href="#i-check"/></svg><svg class="ic ic-xl"><use href="#i-warning"/></svg><svg class="ic ic-xl"><use href="#i-error"/></svg><svg class="ic ic-xl"><use href="#i-info"/></svg><svg class="ic ic-xl"><use href="#i-lock"/></svg><svg class="ic ic-xl"><use href="#i-sparkle"/></svg><svg class="ic ic-xl"><use href="#i-tip"/></svg><svg class="ic ic-xl"><use href="#i-busy"/></svg><svg class="ic ic-xl"><use href="#i-free"/></svg><svg class="ic ic-xl"><use href="#i-rest"/></svg><svg class="ic ic-xl"><use href="#i-auto"/></svg><svg class="ic ic-xl"><use href="#i-trend-up"/></svg><svg class="ic ic-xl"><use href="#i-trend-down"/></svg><svg class="ic ic-xl"><use href="#i-equal"/></svg><svg class="ic ic-xl"><use href="#i-todo"/></svg><svg class="ic ic-xl"><use href="#i-dot"/></svg><svg class="ic ic-xl"><use href="#i-dot-empty"/></svg><svg class="ic ic-xl"><use href="#i-chevron-down"/></svg><svg class="ic ic-xl"><use href="#i-retry"/></svg><svg class="ic ic-xl"><use href="#i-reset"/></svg>
+      <svg class="ic ic-xl"><use href="#i-coin"/></svg><svg class="ic ic-xl"><use href="#i-star"/></svg><svg class="ic ic-xl"><use href="#i-star-empty"/></svg><svg class="ic ic-xl"><use href="#i-chart"/></svg><svg class="ic ic-xl"><use href="#i-trophy"/></svg><svg class="ic ic-xl"><use href="#i-thumb-up"/></svg><svg class="ic ic-xl"><use href="#i-thumb-down"/></svg>
+      <svg class="ic ic-xl"><use href="#i-load"/></svg><svg class="ic ic-xl"><use href="#i-delete"/></svg><svg class="ic ic-xl"><use href="#i-save"/></svg><svg class="ic ic-xl"><use href="#i-music"/></svg><svg class="ic ic-xl"><use href="#i-sound"/></svg><svg class="ic ic-xl"><use href="#i-quality"/></svg><svg class="ic ic-xl"><use href="#i-easy"/></svg><svg class="ic ic-xl"><use href="#i-cup-hot"/></svg><svg class="ic ic-xl"><use href="#i-cold"/></svg>
+      <svg class="ic ic-xl"><use href="#i-role-server"/></svg><svg class="ic ic-xl"><use href="#i-role-cleaner"/></svg><svg class="ic ic-xl"><use href="#i-chef"/></svg><svg class="ic ic-xl"><use href="#i-avatar"/></svg><svg class="ic ic-xl"><use href="#i-face-happy"/></svg><svg class="ic ic-xl"><use href="#i-face-ok"/></svg><svg class="ic ic-xl"><use href="#i-face-worried"/></svg><svg class="ic ic-xl"><use href="#i-face-angry"/></svg>
+      <svg class="ic ic-xl"><use href="#i-espresso"/></svg><svg class="ic ic-xl"><use href="#i-americano"/></svg><svg class="ic ic-xl"><use href="#i-latte"/></svg><svg class="ic ic-xl"><use href="#i-cappuccino"/></svg><svg class="ic ic-xl"><use href="#i-mocha"/></svg><svg class="ic ic-xl"><use href="#i-bubble-tea"/></svg><svg class="ic ic-xl"><use href="#i-lemon-tea"/></svg><svg class="ic ic-xl"><use href="#i-orange-juice"/></svg><svg class="ic ic-xl"><use href="#i-croissant"/></svg><svg class="ic ic-xl"><use href="#i-cake"/></svg>
+      <svg class="ic ic-xl"><use href="#i-beans"/></svg><svg class="ic ic-xl"><use href="#i-milk"/></svg><svg class="ic ic-xl"><use href="#i-sugar"/></svg><svg class="ic ic-xl"><use href="#i-cacao"/></svg><svg class="ic ic-xl"><use href="#i-tea"/></svg><svg class="ic ic-xl"><use href="#i-pearls"/></svg><svg class="ic ic-xl"><use href="#i-lemon"/></svg><svg class="ic ic-xl"><use href="#i-orange"/></svg><svg class="ic ic-xl"><use href="#i-flour"/></svg><svg class="ic ic-xl"><use href="#i-butter"/></svg><svg class="ic ic-xl"><use href="#i-ice"/></svg><svg class="ic ic-xl"><use href="#i-cup"/></svg>
+      <svg class="ic ic-xl"><use href="#i-flyer"/></svg><svg class="ic ic-xl"><use href="#i-happy-hour"/></svg><svg class="ic ic-xl"><use href="#i-social"/></svg><svg class="ic ic-xl"><use href="#i-kol"/></svg>
+      <svg class="ic ic-xl"><use href="#i-tables"/></svg><svg class="ic ic-xl"><use href="#i-machine"/></svg><svg class="ic ic-xl"><use href="#i-fast-machine"/></svg><svg class="ic ic-xl"><use href="#i-counter"/></svg><svg class="ic ic-xl"><use href="#i-outdoor"/></svg><svg class="ic ic-xl"><use href="#i-expand"/></svg><svg class="ic ic-xl"><use href="#i-plants"/></svg><svg class="ic ic-xl"><use href="#i-paintings"/></svg><svg class="ic ic-xl"><use href="#i-lights"/></svg><svg class="ic ic-xl"><use href="#i-window-bar"/></svg>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-groups">
+    <h2 id="h-groups">Theo nhóm, kèm tên và id</h2>
+
+    <h3>HUD và điều hướng</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-tasks"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-tasks"/></svg></span><b>Việc</b><code>i-tasks</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-menu"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-menu"/></svg></span><b>Menu</b><code>i-menu</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-inventory"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-inventory"/></svg></span><b>Kho</b><code>i-inventory</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-people"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-people"/></svg></span><b>Nhân viên · Khách</b><code>i-people</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-marketing"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-marketing"/></svg></span><b>Marketing</b><code>i-marketing</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-upgrades"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-upgrades"/></svg></span><b>Nâng cấp</b><code>i-upgrades</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-reviews"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-reviews"/></svg></span><b>Đánh giá</b><code>i-reviews</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-open"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-open"/></svg></span><b>Mở cửa · Thông báo</b><code>i-open</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-next-day"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-next-day"/></svg></span><b>Ngày tiếp theo</b><code>i-next-day</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-camera"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-camera"/></svg></span><b>Đặt lại camera</b><code>i-camera</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-settings"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-settings"/></svg></span><b>Cài đặt</b><code>i-settings</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-pause"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pause"/></svg></span><b>Dừng</b><code>i-pause</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-speed-1"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-speed-1"/></svg></span><b>Tốc độ 1x · Tiếp tục</b><code>i-speed-1</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-speed-2"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-speed-2"/></svg></span><b>Tốc độ 2x</b><code>i-speed-2</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-speed-4"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-speed-4"/></svg></span><b>Tốc độ 4x</b><code>i-speed-4</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-close"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-close"/></svg></span><b>Đóng</b><code>i-close</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-home"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-home"/></svg></span><b>Về Main Menu</b><code>i-home</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-back"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-back"/></svg></span><b>Quay lại</b><code>i-back</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-forward"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-forward"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-forward"/></svg></span><b>Mở bảng · Tiếp</b><code>i-forward</code></li>
+    </ul>
+
+    <h3>Pha trong ngày</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-phase-prep"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-phase-prep"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-prep"/></svg></span><b>Chuẩn bị</b><code>i-phase-prep</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-phase-open"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-phase-open"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-open"/></svg></span><b>Mở cửa (pha)</b><code>i-phase-open</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-flame"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-flame"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flame"/></svg></span><b>Cao điểm · Nóng · Khó</b><code>i-flame</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-phase-close"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-phase-close"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-phase-close"/></svg></span><b>Đóng cửa · Hết ngày</b><code>i-phase-close</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-clock"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg></span><b>Giờ</b><code>i-clock</code></li>
+    </ul>
+
+    <h3>Trạng thái và phản hồi</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-ok"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-ok"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg></span><b>Đủ · Thành công</b><code>i-ok</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-check"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span><b>Đã xong · Đang chọn</b><code>i-check</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-warning"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-warning"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-warning"/></svg></span><b>Sắp hết · Cảnh báo</b><code>i-warning</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-error"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-error"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-error"/></svg></span><b>Hết · Lỗi · Không nhận</b><code>i-error</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-info"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-info"/></svg></span><b>Thông tin</b><code>i-info</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-lock"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lock"/></svg></span><b>Khóa · Lý do</b><code>i-lock</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-sparkle"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sparkle"/></svg></span><b>Gợi ý · Ván mới</b><code>i-sparkle</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-tip"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-tip"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-tip"/></svg></span><b>Mẹo cho ngày mai</b><code>i-tip</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-busy"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-busy"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-busy"/></svg></span><b>Bận · Đang tải</b><code>i-busy</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-free"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-free"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-free"/></svg></span><b>Rảnh</b><code>i-free</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-rest"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-rest"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-rest"/></svg></span><b>Nghỉ hôm nay</b><code>i-rest</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-auto"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-auto"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-auto"/></svg></span><b>Tự động</b><code>i-auto</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-trend-up"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-trend-up"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-trend-up"/></svg></span><b>Lãi · Tăng</b><code>i-trend-up</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-trend-down"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-trend-down"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-trend-down"/></svg></span><b>Lỗ · Giảm</b><code>i-trend-down</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-equal"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-equal"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-equal"/></svg></span><b>Hòa vốn · Không đổi</b><code>i-equal</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-todo"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-todo"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-todo"/></svg></span><b>Việc chưa làm</b><code>i-todo</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-dot"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-dot"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-dot"/></svg></span><b>Độ ưa chuộng (đầy)</b><code>i-dot</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-dot-empty"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-dot-empty"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-dot-empty"/></svg></span><b>Độ ưa chuộng (trống)</b><code>i-dot-empty</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-chevron-down"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-chevron-down"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron-down"/></svg></span><b>Mở menu sổ</b><code>i-chevron-down</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-retry"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-retry"/></svg></span><b>Thử lại</b><code>i-retry</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-reset"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-reset"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-reset"/></svg></span><b>Về mặc định</b><code>i-reset</code></li>
+    </ul>
+
+    <h3>Tiền, sao, báo cáo</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-coin"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-coin"/></svg></span><b>Tiền · Thu chi</b><code>i-coin</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-star"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg></span><b>Sao</b><code>i-star</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-star-empty"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-star-empty"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star-empty"/></svg></span><b>Sao trống</b><code>i-star-empty</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-chart"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chart"/></svg></span><b>Tổng kết</b><code>i-chart</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-trophy"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-trophy"/></svg></span><b>Món bán chạy</b><code>i-trophy</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-thumb-up"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-thumb-up"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-thumb-up"/></svg></span><b>Khen</b><code>i-thumb-up</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-thumb-down"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-thumb-down"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-thumb-down"/></svg></span><b>Chê</b><code>i-thumb-down</code></li>
+    </ul>
+
+    <h3>Hệ thống, cài đặt, độ khó</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-load"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-load"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-load"/></svg></span><b>Tải game</b><code>i-load</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-delete"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-delete"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-delete"/></svg></span><b>Xóa</b><code>i-delete</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-save"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-save"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-save"/></svg></span><b>Lưu</b><code>i-save</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-music"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-music"/></svg></span><b>Nhạc nền</b><code>i-music</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-sound"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sound"/></svg></span><b>Hiệu ứng âm thanh</b><code>i-sound</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-quality"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-quality"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-quality"/></svg></span><b>Chất lượng</b><code>i-quality</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-easy"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-easy"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-easy"/></svg></span><b>Dễ</b><code>i-easy</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cup-hot"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cup-hot"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cup-hot"/></svg></span><b>Vừa · Pha chế · Slot</b><code>i-cup-hot</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cold"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cold"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cold"/></svg></span><b>Lạnh</b><code>i-cold</code></li>
+    </ul>
+
+    <h3>Nhân viên, khách, cảm xúc</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-role-server"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-role-server"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-role-server"/></svg></span><b>Phục vụ</b><code>i-role-server</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-role-cleaner"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-role-cleaner"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-role-cleaner"/></svg></span><b>Dọn dẹp</b><code>i-role-cleaner</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-chef"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-chef"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chef"/></svg></span><b>Chưa có nhân viên</b><code>i-chef</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-happy"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-face-happy"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-face-happy"/></svg></span><b>Vui</b><code>i-face-happy</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-ok"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-face-ok"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-face-ok"/></svg></span><b>Bình thường</b><code>i-face-ok</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-worried"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-face-worried"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-face-worried"/></svg></span><b>Sốt ruột</b><code>i-face-worried</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-face-angry"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-face-angry"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-face-angry"/></svg></span><b>Bỏ đi</b><code>i-face-angry</code></li>
+    </ul>
+    <p class="muted" style="margin: var(--space-4) 0 var(--space-2)">Avatar nhân viên: một hình, đổi màu da và tóc qua biến <code>--av-skin</code>, <code>--av-hair</code> (8 tổ hợp thay 8 emoji người).</p>
+    <div class="avatars" aria-hidden="true">
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-1); --av-hair: var(--color-hair-1)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-2); --av-hair: var(--color-hair-2)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-3); --av-hair: var(--color-hair-1)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-1); --av-hair: var(--color-hair-4)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-2); --av-hair: var(--color-hair-3)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-4); --av-hair: var(--color-hair-1)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-3); --av-hair: var(--color-hair-2)"><use href="#i-avatar"/></svg>
+      <svg class="ic ic-xl" style="--av-skin: var(--color-skin-1); --av-hair: var(--color-cream-200)"><use href="#i-avatar"/></svg>
+    </div>
+
+    <h3>Món trong menu</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-espresso"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-espresso"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-espresso"/></svg></span><b>Espresso</b><code>i-espresso</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-americano"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-americano"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-americano"/></svg></span><b>Americano</b><code>i-americano</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-latte"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-latte"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-latte"/></svg></span><b>Latte</b><code>i-latte</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cappuccino"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cappuccino"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cappuccino"/></svg></span><b>Cappuccino</b><code>i-cappuccino</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-mocha"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-mocha"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-mocha"/></svg></span><b>Mocha</b><code>i-mocha</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-bubble-tea"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-bubble-tea"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bubble-tea"/></svg></span><b>Trà sữa</b><code>i-bubble-tea</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-lemon-tea"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-lemon-tea"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lemon-tea"/></svg></span><b>Trà chanh</b><code>i-lemon-tea</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-orange-juice"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-orange-juice"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-orange-juice"/></svg></span><b>Nước cam</b><code>i-orange-juice</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-croissant"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-croissant"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-croissant"/></svg></span><b>Bánh croissant</b><code>i-croissant</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cake"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cake"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cake"/></svg></span><b>Bánh ngọt</b><code>i-cake</code></li>
+    </ul>
+
+    <h3>Nguyên liệu trong kho</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-beans"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-beans"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-beans"/></svg></span><b>Cà phê hạt</b><code>i-beans</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-milk"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-milk"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-milk"/></svg></span><b>Sữa tươi</b><code>i-milk</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-sugar"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-sugar"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-sugar"/></svg></span><b>Đường</b><code>i-sugar</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cacao"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cacao"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cacao"/></svg></span><b>Bột cacao</b><code>i-cacao</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-tea"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-tea"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-tea"/></svg></span><b>Trà</b><code>i-tea</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-pearls"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-pearls"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pearls"/></svg></span><b>Trân châu</b><code>i-pearls</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-lemon"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-lemon"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lemon"/></svg></span><b>Chanh</b><code>i-lemon</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-orange"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-orange"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-orange"/></svg></span><b>Cam</b><code>i-orange</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-flour"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-flour"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flour"/></svg></span><b>Bột bánh</b><code>i-flour</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-butter"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-butter"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-butter"/></svg></span><b>Bơ</b><code>i-butter</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-ice"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-ice"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ice"/></svg></span><b>Đá viên</b><code>i-ice</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-cup"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-cup"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cup"/></svg></span><b>Ly</b><code>i-cup</code></li>
+    </ul>
+
+    <h3>Marketing</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-flyer"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-flyer"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flyer"/></svg></span><b>Phát tờ rơi</b><code>i-flyer</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-happy-hour"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-happy-hour"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-happy-hour"/></svg></span><b>Giờ vàng giảm giá</b><code>i-happy-hour</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-social"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-social"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-social"/></svg></span><b>Quảng cáo mạng xã hội</b><code>i-social</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-kol"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-kol"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-kol"/></svg></span><b>Mời KOL review</b><code>i-kol</code></li>
+    </ul>
+
+    <h3>Nâng cấp</h3>
+    <ul class="tiles">
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-tables"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-tables"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-tables"/></svg></span><b>Thêm bàn ghế</b><code>i-tables</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-machine"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-machine"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-machine"/></svg></span><b>Máy pha tốt hơn</b><code>i-machine</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-fast-machine"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-fast-machine"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-fast-machine"/></svg></span><b>Máy pha nhanh hơn</b><code>i-fast-machine</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-counter"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-counter"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-counter"/></svg></span><b>Quầy lớn hơn</b><code>i-counter</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-outdoor"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-outdoor"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-outdoor"/></svg></span><b>Khu ngồi ngoài trời</b><code>i-outdoor</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-expand"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-expand"/></svg></span><b>Mở rộng diện tích</b><code>i-expand</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-plants"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-plants"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-plants"/></svg></span><b>Cây xanh · Trang trí</b><code>i-plants</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-paintings"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-paintings"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-paintings"/></svg></span><b>Tranh treo tường</b><code>i-paintings</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-lights"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-lights"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-lights"/></svg></span><b>Đèn trang trí</b><code>i-lights</code></li>
+      <li class="tile"><span class="tile-big"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-window-bar"/></svg></span><span class="tile-sm"><svg class="ic" aria-hidden="true"><use href="#i-window-bar"/></svg><svg class="ic ic-sm" aria-hidden="true"><use href="#i-window-bar"/></svg></span><b>Quầy bar cửa sổ</b><code>i-window-bar</code></li>
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="h-dont">
+    <h2 id="h-dont">Nên và không nên</h2>
+    <ul class="dont">
+      <li><b><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Nên</b>Thêm icon mới bằng cách vẽ trên lưới 24, nét 2 px, chọn tối đa 2 màu tô trong 10 màu ở trên.</li>
+      <li><b><svg class="ic ic-sm" aria-hidden="true"><use href="#i-ok"/></svg>Nên</b>Đổi màu cả bộ qua biến <code>--icon-fill-*</code>; không sửa màu trong từng symbol.</li>
+      <li><b><svg class="ic ic-sm" aria-hidden="true"><use href="#i-error"/></svg>Không</b>Trộn emoji hay icon từ bộ có sẵn vào cùng màn: khác nét, khác màu, mỗi máy vẽ một kiểu.</li>
+      <li><b><svg class="ic ic-sm" aria-hidden="true"><use href="#i-error"/></svg>Không</b>Dùng màu tô làm nghĩa duy nhất (vd chỉ đổi màu mặt khách): luôn đổi cả hình (miệng, lông mày) và có chữ đi kèm.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

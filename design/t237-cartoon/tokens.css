@@ -1,0 +1,246 @@
+/*
+ * Coffee Shop Tycoon 3D · cozy cartoon tokens (T237)
+ * Same values as design/tokens.json; keep both in sync.
+ * Semantic names match src/ui/styles/tokens.css, so FE mostly swaps values.
+ * Icon classes at the end are the shared drawing rules for the SVG sprite
+ * (design/t237-cartoon/icons/index.html).
+ */
+:root {
+  /* Palette */
+  --color-neutral-0: #ffffff;
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-coffee-300: #d9a877;
+  --color-coffee-500: #a0673f;
+  --color-coffee-700: #6b3f24;
+  --color-coffee-900: var(--color-neutral-900);
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
+  --color-mint-100: #d9f6ea;
+  --color-mint-400: #5fd3a8;
+  --color-mint-500: #3dbd8f;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-sky-700: #1a5fd0;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-ok-700: #17663a;
+  --color-ok-100: var(--color-mint-100);
+  --color-warning-700: #7a4a00;
+  --color-warning-500: var(--color-honey-500);
+  --color-warning-100: var(--color-honey-100);
+  --color-danger-700: #b3261e;
+  --color-danger-400: var(--color-berry-400);
+  --color-danger-100: var(--color-berry-100);
+  --color-star-500: var(--color-honey-400);
+  --color-focus-500: var(--color-sky-700);
+  --color-focus-300: #ffd166;
+  --color-skin-1: #ffdcbf;
+  --color-skin-2: #f0b98d;
+  --color-skin-3: #c98a5e;
+  --color-skin-4: #8d5a3b;
+  --color-hair-1: var(--color-neutral-900);
+  --color-hair-2: var(--color-coffee-700);
+  --color-hair-3: #d9822b;
+  --color-hair-4: #f2cf63;
+
+  /* Scene (mockup illustration, direction for 3D materials) */
+  --color-scene-sky: #bfe6f5;
+  --color-scene-sky-dawn: #ffe3c2;
+  --color-scene-sky-dusk: #f5b08c;
+  --color-scene-ground: #b9de9a;
+  --color-scene-road: #8e9aa6;
+  --color-scene-floor: #e9cfa8;
+  --color-scene-wall: #f6e3c6;
+  --color-scene-wall-shade: #e2c59d;
+  --color-scene-awning: var(--color-berry-400);
+  --color-scene-wood: #a0704c;
+  --color-scene-plant: var(--color-leaf-400);
+
+  /* Semantic colors */
+  --text-primary: var(--color-neutral-900);
+  --text-muted: var(--color-neutral-700);
+  --text-inverse: var(--color-cream-50);
+  --text-inverse-muted: var(--color-coffee-300);
+  --text-on-accent: var(--color-neutral-900);
+  --text-on-bright: var(--color-neutral-900);
+  --text-ok: var(--color-ok-700);
+  --text-warning: var(--color-warning-700);
+  --text-danger: var(--color-danger-700);
+
+  --surface-app: var(--color-cream-100);
+  --surface-panel: rgba(255, 250, 242, 0.97);
+  --surface-panel-solid: var(--color-cream-50);
+  --surface-sunken: var(--color-cream-100);
+  --surface-hud: rgba(255, 250, 242, 0.97);
+  --surface-hud-solid: var(--color-cream-50);
+  --surface-hud-raised: var(--color-cream-100);
+  --surface-ink: var(--color-neutral-900);
+  --surface-ok: var(--color-ok-100);
+  --surface-warning: var(--color-warning-100);
+  --surface-danger: var(--color-danger-100);
+  --surface-info: var(--color-sky-100);
+  --surface-disabled: var(--color-cream-200);
+  --surface-selected: var(--color-honey-100);
+  --surface-scrim: rgba(58, 34, 22, 0.5);
+
+  --border-subtle: var(--color-cream-200);
+  --border-strong: var(--color-neutral-900);
+  --border-outline: var(--color-neutral-900);
+  --border-inverse: var(--color-coffee-300);
+  --border-disabled: var(--color-neutral-700);
+
+  --accent-primary: var(--color-honey-400);
+  --accent-primary-hover: var(--color-honey-500);
+  --accent-mint: var(--color-mint-400);
+  --accent-mint-hover: var(--color-mint-500);
+  --accent-mint-bright: var(--color-mint-400);
+  --accent-danger: var(--color-berry-400);
+  --accent-danger-hover: var(--color-berry-500);
+  --accent-info: var(--color-sky-400);
+
+  --data-bar: var(--color-honey-400);
+  --data-track: var(--color-cream-200);
+  --patience-high: var(--color-mint-400);
+  --patience-mid: var(--color-honey-400);
+  --patience-low: var(--color-berry-400);
+  --patience-track: var(--color-neutral-900);
+  --rating-star: var(--color-honey-400);
+  --rating-empty: var(--color-cream-200);
+  --focus-ring: var(--color-focus-500);
+  --focus-ring-inverse: var(--color-focus-300);
+
+  --icon-ink: var(--color-neutral-900);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-coffee: var(--color-coffee-700);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-orange: var(--color-tangerine-400);
+  --icon-fill-empty: var(--color-cream-200);
+
+  /* Font */
+  --font-family-base: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --font-size-3xl: 40px;
+  --font-size-4xl: 48px;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  /* Space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Size */
+  --size-target: 44px;
+  --size-target-lg: 56px;
+  --size-hud-pill: 48px;
+  --size-panel: 380px;
+  --size-dialog: 760px;
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-border-thin: 2px;
+  --size-border-thick: 4px;
+  --size-focus-width: 3px;
+  --size-focus-offset: 3px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 32px;
+  --size-icon-xl: 48px;
+  --size-icon-stroke: 2px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+  --shadow-soft: 0 12px 24px 0 rgba(58, 34, 22, 0.18);
+  --shadow-card: var(--shadow-lg), var(--shadow-soft);
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-pop: 360ms;
+  --duration-float: 800ms;
+  --duration-count: 400ms;
+  --duration-idle-bob: 1200ms;
+  --duration-toast-visible: 4000ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-pop: 0ms;
+    --duration-float: 0ms;
+    --duration-count: 0ms;
+    --easing-bounce: var(--easing-standard);
+  }
+}
+
+/* Icon drawing rules: 24px grid, 2px round ink stroke, flat fills */
+.ic {
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+  fill: none;
+  stroke: var(--icon-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+  overflow: visible;
+  vertical-align: middle;
+  --av-skin: var(--color-skin-1);
+  --av-hair: var(--color-hair-2);
+}
+.ic-sm { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+.ic-lg { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.ic-xl { width: var(--size-icon-xl); height: var(--size-icon-xl); }
+.fh { fill: var(--icon-fill-honey); }
+.fm { fill: var(--icon-fill-mint); }
+.fb { fill: var(--icon-fill-berry); }
+.fs { fill: var(--icon-fill-sky); }
+.fk { fill: var(--icon-fill-cream); }
+.fc { fill: var(--icon-fill-latte); }
+.fd { fill: var(--icon-fill-coffee); }
+.fl { fill: var(--icon-fill-leaf); }
+.fo { fill: var(--icon-fill-orange); }
+.fe { fill: var(--icon-fill-empty); }
+.fi { fill: var(--icon-ink); }
+.ns { stroke: none; }
+.av-skin { fill: var(--av-skin); }
+.av-hair { fill: var(--av-hair); }
