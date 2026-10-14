@@ -90,6 +90,13 @@ const NO_WAY = 0.5;
 const AISLE = 1;
 /** Height of a table with its chairs, for the rings. */
 const TABLE_TOP = 0.9;
+/** Most board width, px; frames are cropped to their rings and enlarged to fill it. */
+const BOARD_WIDTH = 1900;
+/**
+ * Width of the strip ringed at the body's right edge for the scrollbar.
+ * Chromium on macOS draws overlay scrollbars with no gutter, so it is not measured.
+ */
+const SCROLL_STRIP = 14;
 /** GIF tries, largest first, until one fits under MAX_BYTES. */
 const GIF_TRIES = [
   { width: 720, fps: 12 },
@@ -467,6 +474,7 @@ function khoDom() {
   const level = (badge) => (badge?.classList.contains('badge-ok') ? 'ok' : badge?.classList.contains('badge-danger') ? 'out' : 'low');
   const dockBadge = document.querySelector('.dock [data-panel="inventory"] .dock-badge');
   return {
+    panel: rect(document.querySelector('#ui > .panel:not([hidden])')),
     body: rect(body),
     inner: { left, right: left + body.clientWidth },
     scrollWidth: body.scrollWidth,
@@ -538,9 +546,18 @@ async function khoSession(browser, url, focus) {
     const scrolling = await frame();
 
     // Margins: the body scrolled sideways as far as it goes; it only moves when content is wider than the panel.
+    // Once at the top (intro, Auto-restock), once with the first stock row at the top of the body.
     await scrollBody(0, 100_000);
     await sleep(300);
     const margins = await frame();
+    await page.evaluate((sel) => {
+      const b = document.querySelector(sel);
+      const row = b.querySelector('.stack > .item');
+      b.scrollTop += row.getBoundingClientRect().top - b.getBoundingClientRect().top - 8;
+      b.scrollLeft = b.scrollWidth;
+    }, `${panel} .panel-body`);
+    await sleep(300);
+    const marginsRow = await frame();
 
     // Foot with 0 packs, then 1 pack of the first ingredient.
     await scrollBody(0, 0);
@@ -579,23 +596,24 @@ async function khoSession(browser, url, focus) {
     } finally {
       await thaw(page);
     }
-    return { idle, scrolling, margins, foot0, foot1, open, focus: id };
+    return { idle, scrolling, margins, marginsRow, foot0, foot1, open, focus: id };
   } finally {
     await context.close();
   }
 }
 
 /**
- * Runs in the browser. Draws the frames in a row at 3/4 size with a title
- * over each, rings each mark's boxes on its frame (P18 dashed coral, P19
- * solid mint), draws the yellow `lines` across frames, puts each label next
- * to its rings and a legend with the notes below.
+ * Runs in the browser. Draws the `crop` part of each frame in a row at
+ * `scale` with a title over each, rings each mark's boxes on its frame (P18
+ * dashed coral, P19 solid mint), draws the yellow `lines` across frames,
+ * puts each label off the rings with a leader line, and a legend with the
+ * notes below.
  */
-async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
+async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop, scale }) {
   const INK = '#2b1d14';
   const COLOR = { before: '#e07a5f', after: '#2fb898' };
   const LINE = '#f2c14e';
-  const SCALE = 0.75;
+  const SCALE = scale;
   const PAD = 24;
   const TITLE = 44;
   const ROW = 28;
@@ -608,10 +626,13 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
   const panels = [];
   let px = PAD;
   for (const [i, img] of imgs.entries()) {
-    const w = Math.round(img.width * SCALE);
-    panels.push({ img, x: px, w, h: Math.round(img.height * SCALE), ...frames[i] });
+    const w = Math.round(crop.w * SCALE);
+    panels.push({ img, x: px, w, h: Math.round(crop.h * SCALE), title: frames[i].title, side: frames[i].side });
     px += w + PAD;
   }
+  // Frame CSS px (deviceScaleFactor 1) to board px, relative to a panel's left edge and the image top.
+  const sx = (x) => (x - crop.x) * SCALE;
+  const sy = (y) => (y - crop.y) * SCALE;
   const width = px;
   const ph = Math.max(...panels.map((p) => p.h));
   const wrap = (c, text, max) => {
@@ -645,20 +666,27 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
     while (size > 13 && ctx.measureText(p.title).width > p.w) ctx.font = TITLE_FONT(--size);
     ctx.fillStyle = INK;
     ctx.fillText(p.title, p.x, PAD + TITLE / 2 - 4);
-    ctx.drawImage(p.img, p.x, top, p.w, p.h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(p.img, crop.x, crop.y, crop.w, crop.h, p.x, top, p.w, p.h);
   }
 
+  // Ring rectangles on the board, per mark.
+  const ringRects = marks.map((m) => {
+    const p = panels[m.frame];
+    return m.boxes.map((b) => ({ x: p.x + sx(b.x) - 3, y: top + sy(b.y) - 3, w: b.w * SCALE + 6, h: b.h * SCALE + 6 }));
+  });
+
   // Rings, clipped to their frame.
-  for (const m of marks) {
+  for (const [i, m] of marks.entries()) {
     const p = panels[m.frame];
     ctx.save();
     ctx.beginPath();
     ctx.rect(p.x, top, p.w, p.h);
     ctx.clip();
     ctx.setLineDash(p.side === 'before' ? [8, 6] : []);
-    for (const b of m.boxes) {
+    for (const r of ringRects[i]) {
       ctx.beginPath();
-      ctx.roundRect(p.x + b.x * SCALE - 3, top + b.y * SCALE - 3, b.w * SCALE + 6, b.h * SCALE + 6, 8);
+      ctx.roundRect(r.x, r.y, r.w, r.h, 8);
       ctx.lineWidth = 6;
       ctx.strokeStyle = INK;
       ctx.stroke();
@@ -673,7 +701,7 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
   for (const l of lines) {
     const a = panels[l.from];
     const b = panels[l.to];
-    const y = top + l.y * SCALE;
+    const y = top + sy(l.y);
     for (const [w, color] of [[5, INK], [3, LINE]]) {
       ctx.beginPath();
       ctx.moveTo(a.x - 8, y);
@@ -689,25 +717,55 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
     ctx.strokeRect(p.x, top, p.w, p.h);
   }
 
-  // One label per mark, above its rings, else below, else stacked further away; never on another label.
+  // One label per mark, next to its rings and off every ring and label of
+  // the board: above, below, left or right, further out step by step; a
+  // leader line joins a label that ended up away from its rings.
   ctx.font = LABEL_FONT;
   const placed = [];
-  const clash = (a) => placed.some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h);
-  for (const m of marks) {
+  const hits = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const rings = ringRects.flat();
+  const clash = (a) => placed.some((b) => hits(a, b)) || rings.some((b) => hits(a, b));
+  for (const [i, m] of marks.entries()) {
     const p = panels[m.frame];
     const text = wrap(ctx, m.label, p.w - 26);
     const tw = Math.max(...text.map((t) => ctx.measureText(t).width)) + 18;
     const th = 8 + LABEL_LINE * text.length;
-    const x0 = Math.min(...m.boxes.map((b) => b.x)) * SCALE;
-    const x1 = Math.max(...m.boxes.map((b) => b.x + b.w)) * SCALE;
-    const y0 = Math.min(...m.boxes.map((b) => b.y)) * SCALE;
-    const y1 = Math.max(...m.boxes.map((b) => b.y + b.h)) * SCALE;
-    const lx = Math.min(p.x + p.w - tw - 4, Math.max(p.x + 4, p.x + (x0 + x1) / 2 - tw / 2));
-    const at = (y) => ({ x: lx, y: Math.min(top + p.h - th - 4, Math.max(top + 4, y)), w: tw, h: th });
+    const own = ringRects[i];
+    const x0 = Math.min(...own.map((r) => r.x));
+    const x1 = Math.max(...own.map((r) => r.x + r.w));
+    const y0 = Math.min(...own.map((r) => r.y));
+    const y1 = Math.max(...own.map((r) => r.y + r.h));
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const at = (x, y) => ({
+      x: Math.min(p.x + p.w - tw - 4, Math.max(p.x + 4, x)),
+      y: Math.min(top + p.h - th - 4, Math.max(top + 4, y)),
+      w: tw,
+      h: th,
+    });
     const tries = [];
-    for (let k = 0; k < 8; k++) tries.push(at(top + y0 - th - 8 - k * (th + 4)), at(top + y1 + 8 + k * (th + 4)));
+    for (let k = 0; k < 12; k++) {
+      const d = 6 + k * (th + 4);
+      tries.push(at(cx - tw / 2, y0 - th - d), at(cx - tw / 2, y1 + d), at(x0 - tw - 6 - k * 24, cy - th / 2), at(x1 + 6 + k * 24, cy - th / 2));
+    }
     const spot = tries.find((t) => !clash(t)) ?? tries[0];
     placed.push(spot);
+    // Leader from the label's nearest edge point to the rings' box.
+    const lx = Math.min(Math.max(cx, spot.x), spot.x + tw);
+    const ly = Math.min(Math.max(cy, spot.y), spot.y + th);
+    const rx = Math.min(Math.max(lx, x0), x1);
+    const ry = Math.min(Math.max(ly, y0), y1);
+    if (Math.hypot(rx - lx, ry - ly) > 10) {
+      ctx.setLineDash([]);
+      for (const [w, color] of [[4, INK], [2, COLOR[p.side]]]) {
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(rx, ry);
+        ctx.lineWidth = w;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      }
+    }
     ctx.beginPath();
     ctx.roundRect(spot.x, spot.y, tw, th, 12);
     ctx.fillStyle = COLOR[p.side];
@@ -753,14 +811,34 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
   return canvas.toDataURL('image/png').split(',')[1];
 }
 
+/** Width and height of a PNG, from its header. */
+function pngSize(png) {
+  return { w: png.readUInt32BE(16), h: png.readUInt32BE(20) };
+}
+
+/** The union of `boxes` grown by `pad`, inside a w × h frame; the whole frame without boxes. */
+function cropAround(boxes, pad, { w, h }) {
+  if (boxes.length === 0) return { x: 0, y: 0, w, h };
+  const x0 = Math.max(0, Math.floor(Math.min(...boxes.map((b) => b.x)) - pad));
+  const y0 = Math.max(0, Math.floor(Math.min(...boxes.map((b) => b.y)) - pad));
+  const x1 = Math.min(w, Math.ceil(Math.max(...boxes.map((b) => b.x + b.w)) + pad));
+  const y1 = Math.min(h, Math.ceil(Math.max(...boxes.map((b) => b.y + b.h)) + pad));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
 /**
  * Writes docs/media/<out>: `frames` ({ png, title, side }) side by side with
- * the marks ({ frame, boxes, label }) ringed and labelled. Prints the rings
- * per label and warns with !! for a label with nothing to ring.
+ * the marks ({ frame, boxes, label }) ringed and labelled. Every frame shows
+ * the same crop: the rings and `include` boxes grown by `pad`, enlarged up to
+ * `maxScale` so the row fits BOARD_WIDTH. Prints the rings per label and
+ * warns with !! for a label with nothing to ring.
  */
-async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [] }) {
+async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25 }) {
   const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) }));
   const ringed = kept.filter((m) => m.boxes.length > 0);
+  const crop = cropAround([...ringed.flatMap((m) => m.boxes), ...include.filter(Boolean)], pad, pngSize(frames[0].png));
+  const room = (BOARD_WIDTH - 24 * (frames.length + 1)) / frames.length;
+  const scale = Math.min(maxScale, room / crop.w);
   const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   try {
     const png = await page.evaluate(drawBoard, {
@@ -770,6 +848,8 @@ async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend =
       lineLegend,
       notes,
       names: { before: `P18 (${P18_COMMIT})`, after: 'P19' },
+      crop,
+      scale,
     });
     writeFileSync(join(OUT, out), Buffer.from(png, 'base64'));
   } finally {
@@ -804,20 +884,34 @@ function cutLabel(name, cut, fits) {
   return `${name}: ${parts.length > 0 ? parts.join(', ') : fits}`;
 }
 
-/** Board (a): intro, Auto-restock button and the first row's badge against the body's edges. */
-function marginMarks(dom, frame) {
+/**
+ * Board (a): intro and Auto-restock button against the body's edges in the
+ * `top` frame, the first row's badge against its card and the body in the
+ * `row` frame.
+ */
+function marginMarks(top, row, frame) {
   const marks = [];
-  const add = (box, name, fits, right = dom.inner.right) => {
+  const add = (dom, at, box, name, fits, right = dom.inner.right) => {
     const cut = box ? cutOf(box, dom.inner.left, right) : { left: 0, right: 0 };
-    marks.push({ frame, boxes: [box], label: box ? cutLabel(name, cut, fits) : name, cut: cut.left + cut.right });
+    marks.push({ frame: at, boxes: [box], label: box ? cutLabel(name, cut, fits) : name, cut: cut.left + cut.right });
   };
-  add(dom.intro, 'Đoạn giới thiệu', 'đủ chữ');
-  add(dom.suggest, 'Nút Auto-restock', 'nằm gọn trong khung');
-  const row = dom.items.find((i) => inView(dom, i.badge));
-  if (row) add(row.badge, `Nhãn "${row.text}"`, 'nằm trong thẻ', Math.min(dom.inner.right, row.box.x + row.box.w));
-  else add(null, 'Nhãn trạng thái của dòng đầu');
+  add(top, frame, top.intro, 'Đoạn giới thiệu', 'đủ chữ');
+  add(top, frame, top.suggest, 'Nút Auto-restock', 'nằm gọn trong khung');
+  const item = row.items.find((i) => inView(row, i.badge));
+  if (item) {
+    add(row, frame + 1, item.badge, `Nhãn "${item.text}"`, 'nằm trong thẻ', Math.min(row.inner.right, item.box.x + item.box.w));
+    add(row, frame + 1, item.box, 'Thẻ dòng đầu', 'nằm trong khung');
+  } else add(row, frame + 1, null, 'Nhãn trạng thái của dòng đầu');
   return marks;
 }
+
+/** The scrollbar: its gutter when it has one, else a SCROLL_STRIP strip at the body's right edge (overlay scrollbars). */
+function scrollbarBox(dom) {
+  return dom.bar ?? (dom.body ? { x: dom.inner.right - SCROLL_STRIP, y: dom.body.y, w: SCROLL_STRIP, h: dom.body.h } : null);
+}
+
+/** ", rãnh 15 px" for a scrollbar with a gutter; nothing for an overlay one. */
+const gutter = (dom) => (dom.barWidth > 0 ? `, rãnh ${dom.barWidth} px` : '');
 
 /** Board (b): the foot with 0 packs (frame i) and with 1 pack (frame i + 1), and the level line of the first. */
 function footMarks(k, i) {
@@ -911,13 +1005,22 @@ async function makeP19Boards(browser, kho, peak, plans) {
   const { p18, p19 } = kho;
 
   // (a) Margins at 390 px.
-  const a18 = marginMarks(p18.margins.dom, 0);
-  const a19 = marginMarks(p19.margins.dom, 1);
+  const a18 = marginMarks(p18.margins.dom, p18.marginsRow.dom, 0);
+  const a19 = marginMarks(p19.margins.dom, p19.marginsRow.dom, 2);
   const width = (k) => `${k.margins.dom.scrollWidth}/${k.margins.dom.clientWidth} px`;
   await makeBoard(browser, 'kho-390-p18-p19.png', {
-    frames: [before(p18.margins.png, 'Kho 390 px'), after(p19.margins.png, 'Kho 390 px')],
+    frames: [
+      before(p18.margins.png, 'Đầu bảng'),
+      before(p18.marginsRow.png, 'Dòng đầu'),
+      after(p19.margins.png, 'Đầu bảng'),
+      after(p19.marginsRow.png, 'Dòng đầu'),
+    ],
     marks: [...a18, ...a19],
-    notes: [`Cả hai bản cuộn ngang khung bảng hết cỡ trước khi chụp. Rộng nội dung / khung: P18 ${width(p18)}, P19 ${width(p19)}.`],
+    include: [p18.margins.dom.panel, p19.margins.dom.panel],
+    pad: 12,
+    notes: [
+      `Khổ 390×844. Cả hai bản cuộn ngang khung bảng hết cỡ trước khi chụp; "Dòng đầu" cuộn thêm xuống dòng hàng đầu. Rộng nội dung / khung: P18 ${width(p18)}, P19 ${width(p19)}.`,
+    ],
   });
   if (a19.some((m) => m.cut > 0)) console.warn('!! kho-390-p18-p19.png: P19 still has content past the panel edge');
   if (!a18.some((m) => m.cut > 0)) console.log('note: kho-390-p18-p19.png: nothing sticks out of the P18 panel in this run');
@@ -930,7 +1033,9 @@ async function makeP19Boards(browser, kho, peak, plans) {
     marks: [...b18.marks, ...b19.marks],
     lines: [...b18.lines, ...b19.lines],
     lineLegend: 'Vạch vàng: mép trên khung tổng lúc 0 gói',
-    notes: ['Bấm + một gói ở dòng đầu. Khung tổng dính đáy bảng, nên nó đổi chiều cao thì mép trên lệch khỏi vạch vàng.'],
+    include: [p18.foot0.dom.panel, p19.foot0.dom.panel],
+    pad: 12,
+    notes: ['Khổ 390×844. Bấm + một gói ở dòng đầu. Khung tổng dính đáy bảng, nên nó đổi chiều cao thì mép trên lệch khỏi vạch vàng.'],
   });
 
   // (c) Open hours, no Auto-restock.
@@ -938,24 +1043,33 @@ async function makeP19Boards(browser, kho, peak, plans) {
   await makeBoard(browser, 'kho-open-p18-p19.png', {
     frames: [before(p18.open.png, `Kho ${p18.open.clock}`), after(p19.open.png, `Kho ${p19.open.clock}`)],
     marks: [...openMarks(p18.open.dom, 0, ids, false), ...openMarks(p19.open.dom, 1, ids, true)],
+    include: [p18.open.dom.panel, p19.open.dom.panel, p18.open.dom.dock, p19.open.dom.dock],
+    pad: 16,
     notes: [`Không bấm Gợi ý. Mỗi bản: kho ban đầu, ${KHO_HIRES} nhân viên, mở cửa chạy 4x tới ${KHO_OPEN_AT}, rồi mở bảng Kho.`],
   });
 
   // (d) Scrollbar.
   await makeBoard(browser, 'scrollbar-p18-p19.png', {
-    frames: [before(p18.idle.png, 'Đứng yên'), after(p19.idle.png, 'Đứng yên'), after(p19.scrolling.png, 'Đang cuộn')],
+    frames: [before(p18.scrolling.png, 'Đang cuộn'), after(p19.idle.png, 'Đứng yên'), after(p19.scrolling.png, 'Đang cuộn')],
     marks: [
-      { frame: 0, boxes: [p18.idle.dom.bar], label: `Thanh cuộn mặc định, rãnh ${p18.idle.dom.barWidth} px` },
-      { frame: 1, boxes: [p19.idle.dom.bar], label: 'Chuột ngoài bảng: thanh ẩn' },
-      { frame: 2, boxes: [p19.scrolling.dom.bar], label: `Khi cuộn: thanh mảnh, rãnh ${p19.scrolling.dom.barWidth} px, màu viền theo token` },
+      { frame: 0, boxes: [scrollbarBox(p18.scrolling.dom)], label: `Thanh cuộn mặc định của trình duyệt${gutter(p18.scrolling.dom)}` },
+      { frame: 1, boxes: [scrollbarBox(p19.idle.dom)], label: 'Chuột ngoài bảng: thanh ẩn' },
+      { frame: 2, boxes: [scrollbarBox(p19.scrolling.dom)], label: `Khi cuộn: thanh mảnh, màu viền theo token${gutter(p19.scrolling.dom)}` },
     ],
-    notes: ['Đứng yên: chuột ngoài bảng, không ô nào được focus. Đang cuộn: lăn chuột trên bảng.'],
+    include: [p18.scrolling.dom.panel, p19.scrolling.dom.panel],
+    pad: 12,
+    notes: [
+      'Khổ 390×844. Đứng yên: chuột ngoài bảng, không ô nào được focus. Đang cuộn: lăn chuột trên bảng, chụp sau 0,3 giây.',
+      p18.scrolling.dom.barWidth === 0 ? 'Chromium trên macOS vẽ thanh cuộn nổi (không chiếm rãnh); vòng khoanh dải mép phải khung bảng.' : '',
+    ].filter(Boolean),
   });
 
   // (e) Peak: tables and aisle.
   await makeBoard(browser, 'peak-p18-p19.png', {
     frames: [before(refFrame(P18_COMMIT, 'peak.png'), 'Cao điểm'), after(readFileSync(join(OUT, 'peak.png')), 'Cao điểm')],
     marks: [...tableMarks(peak.scene, plans.p18, 0, false), ...tableMarks(peak.scene, plans.p19, 1, true)],
+    pad: 150,
+    maxScale: 2,
     notes: [`Cùng góc máy (Home, zoom 1,25x). Vòng P18: bàn ghế theo sim P18 (${P18_COMMIT}), chiếu qua camera của ảnh P19.`],
   });
 }

@@ -35,7 +35,7 @@ Lệnh build bản tĩnh, xuất commit P18 `d643d89` ra thư mục tạm (`git 
 Sau ngày chơi, cùng một kịch bản Kho chạy trên bản hiện tại rồi trên bản P18, mỗi bản một ván mới. Trình duyệt này hiện thanh cuộn (Chromium headless mặc định ẩn):
 
 1. Khổ 390×844, mở bảng Kho. Chuột ngoài bảng, bỏ focus: chụp thanh cuộn lúc đứng yên. Lăn chuột trên bảng: chụp lúc đang cuộn.
-2. Cuộn ngang khung bảng hết cỡ (chỉ dịch được khi nội dung rộng hơn khung) và chụp lề.
+2. Cuộn ngang khung bảng hết cỡ (chỉ dịch được khi nội dung rộng hơn khung) và chụp lề ở đầu bảng, rồi cuộn xuống dòng hàng đầu và chụp lại.
 3. Cuộn về đầu, chụp khung tổng lúc 0 gói; bấm + một gói ở dòng đầu, chụp lại; bấm − trả về 0.
 4. Khổ 1280×720, tuyển 2 nhân viên, không nhập hàng, không bấm Gợi ý. **Mở cửa** ở 4x tới 10:00, mở bảng Kho, cuộn tới mặt hàng đầu tiên không "Đủ" của bản hiện tại (bản P18 cuộn tới cùng mặt hàng) và chụp.
 
@@ -43,7 +43,7 @@ Sau ngày chơi, cùng một kịch bản Kho chạy trên bản hiện tại r�
 
 Mỗi ảnh được đo ngay lúc chụp: khung DOM của bảng Kho, thanh cuộn, từng dòng hàng và huy hiệu dock; ở giờ cao điểm, lệnh dừng vòng khung hình và đọc camera Three.js (qua `window.__THREE_DEVTOOLS__`). Bàn ghế P18 và P19 lấy từ sim của từng bản (`getShopLayout`, `CHAIR_OFFSET`, `CHAIR_SIZE`, `TABLE_RADIUS`), chiếu qua camera của ảnh cao điểm. Ảnh cao điểm P18 là `docs/media/peak.png` ở `d643d89` (đọc bằng `git show`), cùng góc máy.
 
-Cuối lệnh, các cặp ảnh được ghép thành bảng `*-p18-p19.png`: P18 khoanh nét đứt cam, P19 nét liền xanh, nhãn ghi số đo của lần chụp (px cắt hay lòi ra, chiều cao khung tổng, độ rộng lối đi). Lệnh in số vòng khoanh của từng nhãn, cảnh báo `!!` khi một nhãn không có gì để khoanh hoặc khi bản hiện tại còn phần tử lòi khỏi khung bảng.
+Cuối lệnh, các cặp ảnh được ghép thành bảng `*-p18-p19.png`: mọi khung trong một bảng cắt cùng một vùng quanh chỗ khoanh (bảng Kho, dock, khu bàn) và phóng to cho vừa bề rộng 1900 px; P18 khoanh nét đứt cam, P19 nét liền xanh; nhãn đặt tránh mọi vòng khoanh, có đường nối khi nằm xa, và ghi số đo của lần chụp (px cắt hay lòi ra, chiều cao khung tổng, độ rộng lối đi). Thanh cuộn nổi (Chromium trên macOS) không chiếm rãnh nên được khoanh bằng dải 14 px ở mép phải khung bảng. Lệnh in số vòng khoanh của từng nhãn, cảnh báo `!!` khi một nhãn không có gì để khoanh hoặc khi bản hiện tại còn phần tử lòi khỏi khung bảng.
 
 Cả ngày được quay lại; ffmpeg nén phần mở cửa → báo cáo còn khoảng 12 giây, giữ đoạn xoay camera ở 1x, tổng khoảng 21 giây. Cuối cùng lệnh in dung lượng từng file; file nào trên 5 MB được đánh dấu `!!` và lệnh trả mã lỗi 1.
 
@@ -61,10 +61,10 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `facade-day.png` | Mặt tiền quán lúc 10:00. |
 | `peak.png` | Quán giờ cao điểm. |
 | `queue.png` | Gần quầy giờ cao điểm: hàng chờ. |
-| `kho-390-p18-p19.png` | Bảng Kho ở 390 px, P18 cạnh P19, khung bảng cuộn ngang hết cỡ; khoanh đoạn giới thiệu, nút Auto-restock và nhãn trạng thái dòng đầu, nhãn ghi số px bị cắt hay lòi khỏi khung. |
+| `kho-390-p18-p19.png` | Bảng Kho ở 390 px, P18 rồi P19, mỗi bản ở đầu bảng và ở dòng hàng đầu, khung bảng cuộn ngang hết cỡ; khoanh đoạn giới thiệu, nút Auto-restock, nhãn trạng thái và thẻ dòng đầu, nhãn ghi số px bị cắt hay lòi khỏi khung. |
 | `kho-foot-p18-p19.png` | Khung tổng lúc 0 gói và 1 gói, P18 rồi P19; vạch vàng ở mép trên khung lúc 0 gói, nhãn ghi chiều cao khung và dòng hướng dẫn. |
 | `kho-open-p18-p19.png` | Bảng Kho lúc 10:00, không bấm Gợi ý; khoanh nhãn "Sắp hết"/"Hết" của P19 và cùng mặt hàng ở P18, dòng "đủ khoảng N ly hôm nay" và huy hiệu dock. |
-| `scrollbar-p18-p19.png` | Thanh cuộn bảng Kho: P18 đứng yên, P19 đứng yên và đang cuộn; nhãn ghi độ rộng rãnh. |
+| `scrollbar-p18-p19.png` | Thanh cuộn bảng Kho: P18 đang cuộn, P19 đứng yên và đang cuộn; nhãn ghi độ rộng rãnh khi thanh có rãnh. |
 | `peak-p18-p19.png` | Giờ cao điểm P18 cạnh P19; khoanh ghế hai bàn sát nhau (P18), lối đi chính và bàn theo lưới (P19). |
 | `facade-evening.png` | Mặt tiền quán từ 19:30 tới 20:00, đèn sáng đầy. |
 | `facade-day-evening.png` | Mặt tiền cùng góc máy lúc khoảng 15:30 và sau 19:30, cạnh nhau; khoanh và ghi tên chỗ phát sáng ấm (cửa sổ, cửa kính, biển hiệu, đèn thả). Lệnh tìm chỗ phát sáng bằng cách so điểm ảnh hai ảnh tối với ảnh ngày, và trả mã lỗi 1 khi không thấy biển hiệu hay kính. |

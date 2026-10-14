@@ -28,7 +28,7 @@ Mỗi bảng đặt ảnh P18 (khoanh nét đứt cam) cạnh ảnh P19 (nét li
 
 ### Lề bảng Kho ở 390 px
 
-Cả hai bản cuộn ngang khung bảng hết cỡ trước khi chụp. Khoanh đoạn giới thiệu, nút Auto-restock và nhãn trạng thái dòng đầu; nhãn ghi số px bị cắt ở mép trái hay lòi ra mép phải.
+Cả hai bản cuộn ngang khung bảng hết cỡ trước khi chụp, ở đầu bảng và ở dòng hàng đầu. Khoanh đoạn giới thiệu, nút Auto-restock, nhãn trạng thái và thẻ dòng đầu; nhãn ghi số px bị cắt ở mép trái hay lòi ra mép phải.
 
 ![Bảng Kho 390 px P18 và P19, khoanh đoạn giới thiệu, nút Auto-restock và nhãn trạng thái](../media/kho-390-p18-p19.png)
 
@@ -46,7 +46,7 @@ Vạch vàng ở mép trên khung tổng lúc 0 gói. Khung dính đáy bảng, 
 
 ### Thanh cuộn
 
-P18 đứng yên, P19 đứng yên (chuột ngoài bảng) và đang cuộn. Khoanh rãnh thanh cuộn, nhãn ghi độ rộng.
+P18 đang cuộn, P19 đứng yên (chuột ngoài bảng) và đang cuộn. Khoanh mép phải khung bảng, nơi thanh cuộn hiện.
 
 ![Thanh cuộn bảng Kho P18 và P19](../media/scrollbar-p18-p19.png)
 
