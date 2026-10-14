@@ -69,7 +69,9 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 
 ## Icon 3D
 
-`npm run icons` dựng từng icon thành mô hình low-poly Three.js và đóng gói thành atlas WebP. Mô hình nằm trong `src/icon-studio/models/` (theo id trong `src/ui/core/icons.ts`); camera, đèn, bảng màu, viền mực và bóng chung nằm trong `src/icon-studio/style.ts`.
+`npm run icons` dựng từng icon thành mô hình low-poly Three.js và đóng gói thành atlas WebP. Atlas có mọi id trong `src/ui/core/icons.ts` cộng một ô avatar cho mỗi mục `AVATAR_LOOKS` (`src/ui/core/iconMap.ts`): `i-avatar-0` là `AVATAR_LOOKS[0]`. Mô hình nằm trong `src/icon-studio/models/`; camera, đèn, bảng màu, viền mực và bóng chung nằm trong `src/icon-studio/style.ts`.
+
+Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiểm): `atlas@1x.webp` ≤ 120 kB, `atlas@2x.webp` ≤ 300 kB.
 
 ### Yêu cầu
 
@@ -101,6 +103,8 @@ Cuối cùng lệnh in số icon và dung lượng từng file.
 
 ### Thêm icon
 
-1. Viết hàm dựng mô hình trong `src/icon-studio/models/` bằng `part(geometry, màu)` của `style.ts`; mô hình đứng trên `y = 0`, mặt trước hướng `+Z`.
-2. Khai hàm vào `MODELS` trong `src/icon-studio/models/index.ts` với đúng id icon.
-3. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm id và kích thước atlas).
+1. Thêm symbol SVG vào `src/ui/core/icons.ts`.
+2. Viết hàm dựng mô hình trong file theo nhóm ở `src/icon-studio/models/` (`hud.ts`, `glyphs.ts`, `items.ts`, `shop.ts`, `people.ts`) bằng `part(geometry, màu)` của `style.ts` và các khối chung trong `shapes.ts` (`stroke`, `lathe`, `steam`, `iceCube`, `saucer`, `badgeBase`…); mô hình đứng trên `y = 0`, mặt trước hướng `+Z`.
+3. Chọn tư thế camera bằng `posed(tư thế, mô hình)`: `object` (mặc định, đồ vật), `glyph` (ký hiệu, nhìn thẳng, dựng trong mặt phẳng XY), `top` (vật dẹt nằm trên bàn, nhìn từ trên).
+4. Khai hàm vào `ICON_MODELS` trong `src/icon-studio/models/index.ts`; thiếu id nào thì `tsc` báo lỗi.
+5. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm đủ id, màu trong bảng màu, kích thước và dung lượng atlas).
