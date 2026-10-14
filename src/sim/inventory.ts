@@ -1,6 +1,8 @@
+import { CLOSING_MINUTE } from './clock';
 import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS, getIngredient } from './data/ingredients';
 import { getMenuItem } from './data/menu';
+import { DAY_START_MINUTE } from './state';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId } from './types';
 
 /** Safety margin added on top of the expected usage when restocking. */
@@ -161,6 +163,77 @@ export function autoRestockSuggestion(state: GameState): RestockSuggestion {
     items.push({ id: def.id, qty, cost: ingredientPrice(state, def.id, qty) });
   }
   return { items, totalCost: items.reduce((s, i) => s + i.cost, 0) };
+}
+
+export type StockLevel = 'ok' | 'low' | 'out';
+
+export interface StockOutlook {
+  qty: number;
+  /** Units today's remaining expected sales will use (whole day before opening). */
+  need: number;
+  level: StockLevel;
+  /** Rough servings of today's expected mix this stock still covers; null when the menu does not use it. */
+  cups: number | null;
+}
+
+/** Share of the open day (07:00–20:00) still ahead: 1 outside service, 0 once the doors close. */
+function dayLeft(state: GameState): number {
+  if (state.phase === 'preparation' || state.phase === 'report') return 1;
+  if (state.phase === 'closing') return 0;
+  const left = (CLOSING_MINUTE - state.minute) / (CLOSING_MINUTE - DAY_START_MINUTE);
+  return Math.min(1, Math.max(0, left));
+}
+
+/** Clock bucket of the outlook cache, in game minutes. */
+const OUTLOOK_BUCKET = 15;
+const outlookCache = new WeakMap<GameState, { key: string; value: Readonly<Record<IngredientId, StockOutlook>> }>();
+
+/**
+ * Stock level per ingredient against the demand left today: "out" at zero,
+ * "low" below that demand or below the fixed warning level, else "ok".
+ * Cached per state until stock, menu or the 15-minute clock bucket changes,
+ * so callers can ask every frame.
+ */
+export function stockOutlook(state: GameState): Readonly<Record<IngredientId, StockOutlook>> {
+  const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
+  const key = [
+    state.inventory.map((i) => `${i.id}:${i.qty}`).join(','),
+    enabled.join(','),
+    state.phase,
+    state.day,
+    state.history.length,
+    state.difficulty,
+    Math.floor(state.minute / OUTLOOK_BUCKET),
+  ].join('|');
+  const hit = outlookCache.get(state);
+  if (hit?.key === key) return hit.value;
+
+  const demand = expectedDemand(state);
+  const left = dayLeft(state);
+  let servings = 0;
+  for (const id of enabled) servings += demand[id] ?? 0;
+  // Mix of one average serving: by expected demand, or by popularity when there is none.
+  const weights = enabled.map((id) => [id, servings > 0 ? (demand[id] ?? 0) : getMenuItem(id).popularity] as const);
+  const weightSum = weights.reduce((s, [, w]) => s + w, 0);
+  const perServing = new Map<IngredientId, number>();
+  const dayUse = new Map<IngredientId, number>();
+  for (const [id, w] of weights) {
+    for (const need of getMenuItem(id).ingredients) {
+      if (weightSum > 0) perServing.set(need.id, (perServing.get(need.id) ?? 0) + (need.qty * w) / weightSum);
+      dayUse.set(need.id, (dayUse.get(need.id) ?? 0) + need.qty * (demand[id] ?? 0));
+    }
+  }
+
+  const value = {} as Record<IngredientId, StockOutlook>;
+  for (const def of INGREDIENTS) {
+    const qty = stockOf(state, def.id);
+    const need = Math.ceil((dayUse.get(def.id) ?? 0) * left);
+    const unit = perServing.get(def.id) ?? 0;
+    const level: StockLevel = qty <= 0 ? 'out' : qty < need || qty < def.lowStock ? 'low' : 'ok';
+    value[def.id] = { qty, need, level, cups: unit > 0 ? Math.floor(qty / unit) : null };
+  }
+  outlookCache.set(state, { key, value });
+  return value;
 }
 
 export interface RestockResult {
