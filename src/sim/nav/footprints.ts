@@ -43,6 +43,18 @@ export const CHAIR_OFFSET = 0.75;
 export const CHAIR_SIZE = 0.44;
 export const PARASOL_POLE_RADIUS = 0.03;
 export const PLANT_RADIUS = 0.42;
+/** Square planter with a small tree on each side of the door, outside; this is half its side. */
+export const PLANTER_HALF = 0.26;
+/** Planter centres sit this far left and right of the door centre, and this far out from the front wall's outer face. */
+export const PLANTER_X = 1.35;
+export const PLANTER_OUT = 0.36;
+/**
+ * The front step under the door: a slab this low is walked over like a
+ * doormat, so it has no footprint. Width along x, depth out from the wall.
+ */
+export const STEP_WIDTH = 2;
+export const STEP_DEPTH = 0.5;
+export const STEP_HEIGHT = 0.04;
 
 export type Shape =
   | { type: 'rect'; minX: number; maxX: number; minZ: number; maxZ: number }
@@ -50,7 +62,7 @@ export type Shape =
   /** A thin slab seen from above: segment a–b thickened by r. */
   | { type: 'segment'; ax: number; az: number; bx: number; bz: number; r: number };
 
-export type FootprintKind = 'wall' | 'door' | 'counter' | 'back_counter' | 'machine' | 'table' | 'chair' | 'parasol' | 'plant';
+export type FootprintKind = 'wall' | 'door' | 'planter' | 'counter' | 'back_counter' | 'machine' | 'table' | 'chair' | 'parasol' | 'plant';
 
 export interface Footprint {
   kind: FootprintKind;
@@ -96,13 +108,23 @@ export function backCounterSpan(layout: ShopLayout): { minX: number; maxX: numbe
   return { minX: minX - BACK_COUNTER_MARGIN_LEFT, maxX: maxX + BACK_COUNTER_MARGIN_RIGHT };
 }
 
+/** Centres of the two planters flanking the door outside, left then right. */
+export function doorPlanters(layout: ShopLayout): [{ x: number; z: number }, { x: number; z: number }] {
+  const z = buildingArea(layout).maxZ + WALL_THICKNESS + PLANTER_OUT;
+  return [
+    { x: layout.door.x - PLANTER_X, z },
+    { x: layout.door.x + PLANTER_X, z },
+  ];
+}
+
 function rect(cx: number, cz: number, sx: number, sz: number): Shape {
   return { type: 'rect', minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2 };
 }
 
 /**
- * Everything standing on the floor that people must walk around. Paintings
- * hang on walls and lamps from the ceiling, so they have no footprint.
+ * Everything standing on the floor that people must walk around. Paintings,
+ * windows, shelves and the menu board hang on walls and lamps and fans from
+ * the ceiling; the step and mats are walked over: none has a footprint.
  */
 export function layoutFootprints(layout: ShopLayout): Footprint[] {
   const out: Footprint[] = [];
@@ -125,6 +147,10 @@ export function layoutFootprints(layout: ShopLayout): Footprint[] {
     id: 'door:leaf',
     group: 'structure',
     shape: { type: 'segment', ax: lx - ux, az: lz - uz, bx: lx + ux, bz: lz + uz, r: DOOR_LEAF_THICKNESS / 2 },
+  });
+  doorPlanters(layout).forEach((p, i) => {
+    const id = `planter:${i === 0 ? 'L' : 'R'}`;
+    out.push({ kind: 'planter', id, group: id, shape: rect(p.x, p.z, PLANTER_HALF * 2, PLANTER_HALF * 2) });
   });
 
   const c = layout.counter;
