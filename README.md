@@ -91,6 +91,9 @@ Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ l
 | Chất lượng | Thấp / Vừa / Cao |
 | Tốc độ khi mở cửa | 1x / 2x / 4x |
 | Di chuyển camera bằng WASD | Bật: `Q`/`E` xoay, `WASD` và mũi tên pan. Tắt: `Q`/`A` (hoặc `E`) xoay, chỉ mũi tên pan. |
+| Tốc độ xoay camera | Chậm / Vừa / Nhanh, cho cả kéo chuột và phím xoay |
+
+Thả chuột sau khi kéo thì camera trôi thêm một chút rồi dừng (tắt khi hệ điều hành bật giảm chuyển động).
 
 Version đang chạy (vd `v0.1.0`) hiện ở chân Main Menu và cuối màn Cài đặt.
 
@@ -125,9 +128,11 @@ Chi tiết các lớp: [docs/architecture.md](docs/architecture.md).
 | `npm run check` | `tsc --noEmit`, toàn bộ test, rồi `vite build`. Chạy trước khi commit. |
 | `npm run build` | Kiểm tra kiểu và build ra `dist/`. |
 | `npm run preview` | Mở bản build. |
-| `npm run media` | Build rồi chụp lại ảnh, GIF, mp4 vào `docs/media/` ([docs/media.md](docs/media.md)). |
+| `npm run media` | Build rồi chụp lại ảnh, GIF, mp4 và ảnh trước/sau vào `docs/media/` ([docs/media.md](docs/media.md)). |
+| `npm run layout` | Build rồi kiểm tràn ngang và CLS bảng Kho ở 390/768/1440 px. |
 | `npm run icons` | Dựng lại atlas icon 3D trong `public/icons3d/`. |
 
+- `npm run media` và `npm run layout` cần Chromium của Playwright: `npx playwright install chromium`.
 - Xem nhân vật và animation riêng: `npm run dev` rồi mở `/?preview=actors`.
 - Commit theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:`…); version tự tăng theo các commit này.
 
@@ -153,7 +158,8 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, FSM khách, save, hiệu năng. |
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
-| [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo và atlas icon 3D. |
+| [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
+| [docs/reports/p19-polish.md](docs/reports/p19-polish.md) | Các chỉnh sửa P19 với ảnh trước/sau có khoanh. |
 | [CHANGELOG.md](CHANGELOG.md) | Thay đổi theo từng version. |
 
 ## License

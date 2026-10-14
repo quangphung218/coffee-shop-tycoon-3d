@@ -13,6 +13,7 @@ import {
   lowStockItems,
   sellable,
   stockOf,
+  stockOutlook,
   toggleMenuItem,
 } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
@@ -200,5 +201,65 @@ describe('applyRestockSuggestion', () => {
     expect(dispatch(s, { type: 'apply_restock' })).toBe(false);
     expect(s.money).toBe(0);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'notify', level: 'warning' }));
+  });
+});
+
+describe('stockOutlook', () => {
+  /** Espresso only (18 g beans, 1 cup), 40 sold yesterday: 720 g beans for a full day. */
+  function espressoDay(): GameState {
+    const s = createNewGame('A', 'normal', 1);
+    onlyMenu(s, 'espresso');
+    s.history.push({ ...createDayStats(1, 3), sold: { espresso: 40 } });
+    s.day = 2;
+    setStock(s, 'cup', 100);
+    return s;
+  }
+
+  it('marks stock above the warning level but short of the day as low', () => {
+    const s = espressoDay();
+    setStock(s, 'coffee_beans', 704);
+    expect(704).toBeGreaterThan(getIngredient('coffee_beans').lowStock);
+    expect(stockOutlook(s).coffee_beans).toEqual({ qty: 704, need: 720, level: 'low', cups: 39 });
+    expect(stockOutlook(s).cup.level).toBe('ok');
+  });
+
+  it('only counts the part of the day still ahead while open', () => {
+    const s = espressoDay();
+    setStock(s, 'coffee_beans', 704);
+    s.phase = 'opening';
+    // 13:30 is half way through 07:00–20:00.
+    s.minute = 13 * 60 + 30;
+    expect(stockOutlook(s).coffee_beans).toMatchObject({ need: 360, level: 'ok' });
+    s.phase = 'closing';
+    s.minute = 20 * 60 + 10;
+    expect(stockOutlook(s).coffee_beans).toMatchObject({ need: 0, level: 'ok' });
+  });
+
+  it('still uses the fixed warning level and says out at zero', () => {
+    const s = espressoDay();
+    setStock(s, 'coffee_beans', 0);
+    setStock(s, 'milk', 50);
+    const o = stockOutlook(s);
+    expect(o.coffee_beans.level).toBe('out');
+    // Milk is off today's menu: no demand, but below its warning level.
+    expect(o.milk).toEqual({ qty: 50, need: 0, level: 'low', cups: null });
+  });
+
+  it('reuses the result until stock, menu or the 15-minute bucket changes', () => {
+    const s = espressoDay();
+    s.phase = 'opening';
+    s.minute = 9 * 60;
+    const first = stockOutlook(s);
+    s.minute = 9 * 60 + 14;
+    expect(stockOutlook(s)).toBe(first);
+    s.minute = 9 * 60 + 15;
+    const second = stockOutlook(s);
+    expect(second).not.toBe(first);
+    setStock(s, 'coffee_beans', stockOf(s, 'coffee_beans') - 18);
+    const third = stockOutlook(s);
+    expect(third).not.toBe(second);
+    expect(third.coffee_beans.qty).toBe(stockOf(s, 'coffee_beans'));
+    toggleMenuItem(s, 'latte');
+    expect(stockOutlook(s)).not.toBe(third);
   });
 });

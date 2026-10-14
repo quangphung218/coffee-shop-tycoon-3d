@@ -279,9 +279,9 @@ describe('standing spots and walking', () => {
   it('no longer stands the line on the chairs of the middle tables', () => {
     const layout = getShopLayout(gameWith({ tables: 6 }));
     const grid = buildNavGrid(layout);
-    // The old line ran down x = 0 and crossed the chairs at x = ±0.25.
-    const oldLine = Array.from({ length: MAX_QUEUE }, (_, i) => ({ x: 0, z: -1 + i * 0.8 }));
-    expect(oldLine.some((p) => !isWalkable(grid, p) || layoutFootprints(layout).some((f) => shapeDistance(f.shape, p.x, p.z) < AGENT_RADIUS))).toBe(true);
+    // The line runs down x = 0, which is now the main aisle between the two blocks of tables.
+    const aisleLine = Array.from({ length: MAX_QUEUE }, (_, i) => ({ x: 0, z: -1 + i * 0.8 }));
+    expect(aisleLine.every((p) => isWalkable(grid, p) && layoutFootprints(layout).every((f) => shapeDistance(f.shape, p.x, p.z) >= AGENT_RADIUS))).toBe(true);
     for (let i = 0; i < MAX_QUEUE; i++) expectClear(layout, queueSlot(layout, i));
   });
 

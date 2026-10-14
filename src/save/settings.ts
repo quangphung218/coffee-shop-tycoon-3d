@@ -9,6 +9,8 @@ export type GameSpeed = 1 | 2 | 4;
  * 'qa-arrows': Q/A rotate, arrows pan (WASD panning off).
  */
 export type CameraKeys = 'qe-wasd' | 'qa-arrows';
+/** How fast drag and the rotate keys turn the camera. */
+export type CameraRotateSpeed = 'slow' | 'normal' | 'fast';
 
 export interface Settings {
   /** 0..1 */
@@ -18,6 +20,7 @@ export interface Settings {
   quality: Quality;
   gameSpeed: GameSpeed;
   cameraKeys: CameraKeys;
+  cameraRotateSpeed: CameraRotateSpeed;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -26,11 +29,13 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   quality: 'medium',
   gameSpeed: 1,
   cameraKeys: 'qe-wasd',
+  cameraRotateSpeed: 'normal',
 };
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
 const CAMERA_KEYS: readonly CameraKeys[] = ['qe-wasd', 'qa-arrows'];
+const ROTATE_SPEEDS: readonly CameraRotateSpeed[] = ['slow', 'normal', 'fast'];
 
 function volume(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
@@ -49,6 +54,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     quality: oneOf(r.quality, QUALITIES, DEFAULT_SETTINGS.quality),
     gameSpeed: oneOf(r.gameSpeed, SPEEDS, DEFAULT_SETTINGS.gameSpeed),
     cameraKeys: oneOf(r.cameraKeys, CAMERA_KEYS, DEFAULT_SETTINGS.cameraKeys),
+    cameraRotateSpeed: oneOf(r.cameraRotateSpeed, ROTATE_SPEEDS, DEFAULT_SETTINGS.cameraRotateSpeed),
   };
 }
 

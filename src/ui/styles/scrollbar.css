@@ -1,0 +1,72 @@
+/* Thin cartoon scrollbars on every UI scroll area (ui.css overflow: auto):
+   full-screen layers (menu, Load, Settings, Pause, Daily Report) and panel
+   bodies (prep panels, Reviews). The thumb stays clear until the area is
+   hovered, holds focus, or scrolls (.is-scrolling from core/scrollActivity.ts). */
+
+/* Registered so the thumb colour can fade instead of popping in. */
+@property --sb-thumb {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+.ui-screen,
+.panel-body {
+  --sb-thumb: transparent;
+  --sb-thumb-shown: color-mix(in srgb, var(--border-outline) 45%, transparent);
+  --sb-thumb-active: color-mix(in srgb, var(--border-outline) 70%, transparent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) transparent;
+  /* The bar showing or hiding never shifts the content. */
+  scrollbar-gutter: stable;
+  transition: --sb-thumb var(--duration-base) var(--easing-standard);
+}
+.ui-screen:hover,
+.ui-screen:focus-within,
+.ui-screen.is-scrolling,
+.panel-body:hover,
+.panel-body:focus-within,
+.panel-body.is-scrolling {
+  --sb-thumb: var(--sb-thumb-shown);
+}
+.ui-screen.is-scrolling,
+.panel-body.is-scrolling {
+  --sb-thumb: var(--sb-thumb-active);
+}
+
+/* Browsers without scrollbar-color (older Safari) style the WebKit
+   pseudo-elements instead; Chrome 121+ and Firefox use the standard
+   properties above. */
+@supports not (scrollbar-color: auto) {
+  .ui-screen::-webkit-scrollbar,
+  .panel-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .ui-screen::-webkit-scrollbar-track,
+  .panel-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .ui-screen::-webkit-scrollbar-thumb,
+  .panel-body::-webkit-scrollbar-thumb {
+    background: transparent;
+    border: var(--size-outline-sm) solid transparent;
+    border-radius: var(--radius-pill);
+  }
+  .ui-screen:hover::-webkit-scrollbar-thumb,
+  .ui-screen:focus-within::-webkit-scrollbar-thumb,
+  .ui-screen.is-scrolling::-webkit-scrollbar-thumb,
+  .panel-body:hover::-webkit-scrollbar-thumb,
+  .panel-body:focus-within::-webkit-scrollbar-thumb,
+  .panel-body.is-scrolling::-webkit-scrollbar-thumb {
+    background: var(--color-coffee-300);
+    border-color: var(--border-outline);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-screen,
+  .panel-body {
+    transition: none;
+  }
+}

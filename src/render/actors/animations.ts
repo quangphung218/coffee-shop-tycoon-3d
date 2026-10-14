@@ -68,18 +68,35 @@ export const SIT_DROP = -0.05;
 const SIT_LEGS = -Math.PI / 2;
 const TAU = Math.PI * 2;
 
-function rest(): Pose {
-  return { hipsY: 0, lean: 0, twist: 0, headX: 0, headY: 0, armLX: 0, armLZ: 0.06, armRX: 0, armRZ: 0.06, legL: 0, legR: 0 };
+/** The standing rest pose, written into `out` when given. */
+export function restPose(out?: Pose): Pose {
+  if (!out) return { hipsY: 0, lean: 0, twist: 0, headX: 0, headY: 0, armLX: 0, armLZ: 0.06, armRX: 0, armRZ: 0.06, legL: 0, legR: 0 };
+  out.hipsY = 0;
+  out.lean = 0;
+  out.twist = 0;
+  out.headX = 0;
+  out.headY = 0;
+  out.armLX = 0;
+  out.armLZ = 0.06;
+  out.armRX = 0;
+  out.armRZ = 0.06;
+  out.legL = 0;
+  out.legR = 0;
+  return out;
 }
 
-/** Pose of `anim` at time `t` seconds into the loop (any real t; the result repeats every ANIM_PERIOD). */
-export function poseFor(anim: AnimName, t: number): Pose {
+/**
+ * Pose of `anim` at time `t` seconds into the loop (any real t; the result
+ * repeats every ANIM_PERIOD). Written into `out` when given, so a frame
+ * allocates nothing.
+ */
+export function poseFor(anim: AnimName, t: number, out?: Pose): Pose {
   const period = ANIM_PERIOD[anim];
   const phase = Number.isFinite(t) ? (((t % period) + period) % period) / period : 0;
   const a = phase * TAU;
   const s = Math.sin(a);
   const c = Math.cos(a);
-  const p = rest();
+  const p = restPose(out);
   switch (anim) {
     case 'idle':
       p.hipsY = Math.sin(a) * 0.008;
@@ -196,6 +213,37 @@ export function poseFor(anim: AnimName, t: number): Pose {
   return p;
 }
 
+/** Writes a + (b - a)·w into `out` (which may be a or b): w = 0 is a, 1 is b. */
+export function blendPose(a: Pose, b: Pose, w: number, out: Pose): Pose {
+  const k = Math.min(1, Math.max(0, w));
+  out.hipsY = a.hipsY + (b.hipsY - a.hipsY) * k;
+  out.lean = a.lean + (b.lean - a.lean) * k;
+  out.twist = a.twist + (b.twist - a.twist) * k;
+  out.headX = a.headX + (b.headX - a.headX) * k;
+  out.headY = a.headY + (b.headY - a.headY) * k;
+  out.armLX = a.armLX + (b.armLX - a.armLX) * k;
+  out.armLZ = a.armLZ + (b.armLZ - a.armLZ) * k;
+  out.armRX = a.armRX + (b.armRX - a.armRX) * k;
+  out.armRZ = a.armRZ + (b.armRZ - a.armRZ) * k;
+  out.legL = a.legL + (b.legL - a.legL) * k;
+  out.legR = a.legR + (b.legR - a.legR) * k;
+  return out;
+}
+
+/** World units walked per loop of a moving animation (one full stride). */
+export const STRIDE = 0.9;
+/** Most stride loops per real second, so 4× speed does not turn legs into a blur. */
+export const MAX_STRIDES_PER_SECOND = 3;
+
+/**
+ * Stride loops to play for `moved` world units walked in `dtReal` seconds:
+ * in step with the distance, so slow walking takes slow steps and feet do
+ * not slide, up to MAX_STRIDES_PER_SECOND.
+ */
+export function strideCycles(moved: number, dtReal: number): number {
+  return Math.max(0, Math.min(moved / STRIDE, dtReal * MAX_STRIDES_PER_SECOND));
+}
+
 /** Whole-body squash and stretch on top of the pose, scaled around the feet. */
 export interface Bounce {
   /** Width and depth scale; 1/√sy so the volume holds. */
@@ -219,9 +267,9 @@ const HOP_STRETCH = 0.04;
  * Bounce of `anim`. Moving animations hop once per step from `phase` (the
  * same stride clock as poseFor) and squash on landing; standing ones bob
  * every IDLE_BOUNCE_PERIOD of `idleTime`; seated ones stay still. `calm`
- * shrinks the motion to CALM_BOUNCE.
+ * shrinks the motion to CALM_BOUNCE. Written into `out` when given.
  */
-export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm: boolean): Bounce {
+export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm: boolean, out?: Bounce): Bounce {
   const k = calm ? CALM_BOUNCE : 1;
   let sy = 1;
   let lift = 0;
@@ -239,7 +287,20 @@ export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm:
     sy = 1 - IDLE_SQUASH * d * k;
     lift = IDLE_LIFT * (1 - d) * k;
   }
-  return { sx: 1 / Math.sqrt(sy), sy, lift };
+  if (!out) return { sx: 1 / Math.sqrt(sy), sy, lift };
+  out.sx = 1 / Math.sqrt(sy);
+  out.sy = sy;
+  out.lift = lift;
+  return out;
+}
+
+/** Writes the bounce between a (w = 0) and b (w = 1) into `out`, keeping the volume. */
+export function blendBounce(a: Bounce, b: Bounce, w: number, out: Bounce): Bounce {
+  const k = Math.min(1, Math.max(0, w));
+  out.sy = a.sy + (b.sy - a.sy) * k;
+  out.lift = a.lift + (b.lift - a.lift) * k;
+  out.sx = 1 / Math.sqrt(out.sy);
+  return out;
 }
 
 /** Which hand props are shown during an animation. */

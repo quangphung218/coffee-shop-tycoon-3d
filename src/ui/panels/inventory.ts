@@ -1,22 +1,21 @@
 import { INGREDIENTS } from '../../sim/data/ingredients';
-import { autoRestockSuggestion, ingredientPrice, stockOf } from '../../sim/inventory';
+import { autoRestockSuggestion, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
 import type { GameState, IngredientDef, IngredientId } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
+import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { INGREDIENT_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { reasonLine, setIconText, setReason, shortOfMoney, stepper, withIcon, type Stepper } from './widgets';
+import { setIconText, shortOfMoney, stepper, withIcon, type Stepper } from './widgets';
 
 /** Most packs of one ingredient a single purchase can hold. */
 export const MAX_PACKS = 99;
 
-type StockLevel = 'ok' | 'low' | 'out';
+/** Shown in the foot hint while no pack is picked. */
+export const PICK_HINT = 'Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.';
 
-export function stockLevel(def: IngredientDef, qty: number): StockLevel {
-  if (qty <= 0) return 'out';
-  return qty < def.lowStock ? 'low' : 'ok';
-}
+/** Shown under "Gợi ý nhập tự động" until the player uses it or buys. */
+const INTRO = 'Gợi ý tính theo lượng bán của ngày gần nhất và menu hôm nay, cộng thêm 20% dự phòng.';
 
 /** Icon + word, so the level never rests on colour alone. */
 const BADGES: Record<StockLevel, { cls: string; icon: IconId; text: string }> = {
@@ -34,15 +33,25 @@ interface Row {
 }
 
 /**
- * Kho: stock per ingredient with a low-stock badge, a pack stepper per line,
- * the order total and one "Nhập hàng" button. "Gợi ý nhập tự động" fills the
+ * Kho: stock per ingredient with a badge against the demand left today
+ * (stockOutlook, refreshed as the sim runs), a pack stepper per line, the
+ * order total and one "Nhập hàng" button. "Gợi ý nhập tự động" fills the
  * steppers from autoRestockSuggestion first so the player sees the amounts
- * before paying. The buy button is dimmed with the shortfall when money is short.
+ * before paying. The buy button is dimmed while nothing is picked or money is
+ * short; the hint under it always shows, so the foot never changes height.
+ * The note under "Gợi ý" holds the intro, then the last result, in a slot
+ * three lines tall, so the stock list does not jump when it changes.
  */
 export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
 
-  const status = h('div', { class: 'status-ok', hidden: true, attrs: { role: 'status' } });
+  // One slot for the intro and the result of Gợi ý / Nhập hàng, so the list below never moves.
+  const status = h('div', { class: 'status-ok kho-note is-idle', attrs: { role: 'status' } });
+  setIconText(status, 'i-info', INTRO, 24);
+  const report = (id: IconId, text: string): void => {
+    status.classList.remove('is-idle');
+    setIconText(status, id, text, 24);
+  };
   const suggestBtn = h(
     'button',
     { class: 'btn btn-secondary btn-block', attrs: { type: 'button', 'data-action': 'suggest' } },
@@ -52,21 +61,27 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
   const total = h('b');
   const after = h('span');
   const buyText = h('span');
-  const buyBtn = h('button', { class: 'btn btn-primary btn-lg btn-block', attrs: { type: 'button', 'data-action': 'buy' } }, icon('i-inventory'), buyText);
-  const buyWhy = reasonLine();
+  const hint = h('p', { class: 'reason foot-hint', id: uid('why') });
+  const buyBtn = h(
+    'button',
+    { class: 'btn btn-primary btn-lg btn-block', attrs: { type: 'button', 'data-action': 'buy', 'aria-describedby': hint.id } },
+    icon('i-inventory'),
+    buyText,
+  );
 
   const rows: Row[] = INGREDIENTS.map((def) => {
     const badge = h('span');
     const meta = h('p', { class: 'item-meta' });
     const cost = h('span', { class: 'item-cost' });
-    const sug = h('span', { class: 'sug', hidden: true }, ...withIcon('i-sparkle', 'gợi ý'));
+    // Off by class, not `hidden`: the tag keeps its room so the row never reflows.
+    const sug = h('span', { class: 'sug is-off' }, ...withIcon('i-sparkle', 'gợi ý'));
     const step = stepper(
       `Số gói ${def.name}`,
       0,
       MAX_PACKS,
       () => {
         li.classList.remove('is-suggested');
-        sug.hidden = true;
+        sug.classList.add('is-off');
         const s = ctx.getState();
         if (s) refreshFoot(s);
       },
@@ -81,15 +96,25 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       badge,
       h('div', { class: 'item-actions' }, h('span', { class: 'stepper-label', text: `Nhập thêm (gói ${def.packSize} ${def.unit})` }), step.el, cost),
     );
+    let shown: StockLevel | null = null;
+    // stockOutlook is cached, so this is the same object until stock, menu or clock bucket change.
     w.watch(
-      (s) => stockOf(s, def.id),
-      (qty, s) => {
-        const b = BADGES[stockLevel(def, qty)];
+      (s) => stockOutlook(s)[def.id],
+      (o, s) => {
+        const b = BADGES[o.level];
         badge.className = b.cls;
         setIconText(badge, b.icon, b.text);
-        meta.textContent = `Còn ${qty} ${def.unit} · ${formatMoney(ingredientPrice(s, def.id, def.packSize))}/gói`;
+        if (shown !== null && shown !== o.level) {
+          // Restart the pulse when levels change in quick succession.
+          void badge.offsetWidth;
+          badge.classList.add('is-level-changed');
+        }
+        shown = o.level;
+        const cups = o.cups === null ? '' : ` · đủ khoảng ${o.cups} ly hôm nay`;
+        meta.textContent = `Còn ${o.qty} ${def.unit}${cups} · ${formatMoney(ingredientPrice(s, def.id, def.packSize))}/gói`;
       },
     );
+    badge.addEventListener('animationend', () => badge.classList.remove('is-level-changed'));
     return { def, li, step, cost, sug };
   });
 
@@ -110,12 +135,13 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
     total.textContent = formatMoney(sum);
     after.textContent = formatMoney(s.money - sum);
     buyText.textContent = sum > 0 ? `Nhập hàng · ${formatMoney(sum)}` : 'Nhập hàng';
-    let why: string | null = null;
-    if (sum === 0) why = 'Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.';
-    else if (sum > s.money) why = `${shortOfMoney(sum, s.money, formatMoney)} Bớt số gói để vừa tiền.`;
-    setAriaDisabled(buyBtn, why !== null);
-    setReason(buyWhy, buyBtn, why);
-    buyWhy.classList.toggle('reason-danger', sum > 0);
+    const short = sum > s.money;
+    setAriaDisabled(buyBtn, sum === 0 || short);
+    // One slot for every message, so the foot keeps its height.
+    hint.classList.toggle('reason-danger', short);
+    if (sum === 0) setIconText(hint, 'i-info', PICK_HINT);
+    else if (short) setIconText(hint, 'i-lock', `${shortOfMoney(sum, s.money, formatMoney)} Bớt số gói để vừa tiền.`);
+    else setIconText(hint, 'i-info', 'Kiểm tra số gói rồi bấm Nhập hàng.');
   }
 
   suggestBtn.addEventListener('click', () => {
@@ -126,16 +152,13 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       const line = sug.items.find((l) => l.id === r.def.id);
       r.step.set(line ? Math.ceil(line.qty / r.def.packSize) : 0);
       r.li.classList.toggle('is-suggested', !!line);
-      r.sug.hidden = !line;
+      r.sug.classList.toggle('is-off', !line);
     }
-    status.hidden = false;
-    setIconText(
-      status,
+    report(
       'i-sparkle',
       sug.items.length > 0
         ? `Đã điền gợi ý cho ${sug.items.length} mặt hàng (${formatMoney(sug.totalCost)}). Có thể sửa từng dòng trước khi nhập.`
         : 'Kho đã đủ cho ngày tới, không cần nhập thêm.',
-      24,
     );
     refreshFoot(s);
   });
@@ -154,11 +177,10 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
         const row = rows.find((r) => r.def.id === l.id)!;
         row.step.set(0);
         row.li.classList.remove('is-suggested');
-        row.sug.hidden = true;
+        row.sug.classList.add('is-off');
       }
     }
-    status.hidden = bought.length === 0;
-    setIconText(status, 'i-ok', `Đã nhập ${bought.join(', ')}. −${formatMoney(spent)}. Còn ${formatMoney(s.money)}.`, 24);
+    if (bought.length > 0) report('i-ok', `Đã nhập ${bought.join(', ')}. −${formatMoney(spent)}. Còn ${formatMoney(s.money)}.`);
     w.run(s);
     refreshFoot(s);
   });
@@ -168,7 +190,6 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       'div',
       { class: 'prep' },
       suggestBtn,
-      h('p', { class: 'intro', text: 'Gợi ý tính theo lượng bán của ngày gần nhất và menu hôm nay, cộng thêm 20% dự phòng.' }),
       status,
       h('ul', { class: 'stack' }, ...rows.map((r) => r.li)),
       h(
@@ -177,7 +198,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
         h('div', { class: 'foot-sum' }, h('span', { text: 'Tổng nhập' }), total),
         h('div', { class: 'foot-sum' }, h('span', { text: 'Còn lại sau khi nhập' }), after),
         buyBtn,
-        buyWhy,
+        hint,
       ),
     ),
   );

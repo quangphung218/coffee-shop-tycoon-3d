@@ -1,6 +1,19 @@
 import { Raycaster, Scene, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { ALL_ANIMS, ANIM_PERIOD, SPEC_ANIMS, poseFor, propsFor, type AnimName, type Pose } from '../../src/render/actors/animations';
+import {
+  ALL_ANIMS,
+  ANIM_PERIOD,
+  MAX_STRIDES_PER_SECOND,
+  SPEC_ANIMS,
+  STRIDE,
+  blendPose,
+  poseFor,
+  propsFor,
+  restPose,
+  strideCycles,
+  type AnimName,
+  type Pose,
+} from '../../src/render/actors/animations';
 import { createActors } from '../../src/render/actors';
 import {
   ANGRY_ICON,
@@ -17,30 +30,40 @@ import {
 import { Pool } from '../../src/render/actors/pool';
 import { APRON_COLORS, createCharacter, materialFor } from '../../src/render/actors/rig';
 import {
+  ACCEL_MINUTES,
+  BRAKE_DISTANCE,
   CATCH_UP_DISTANCE,
+  CORNER_RADIUS,
   CUSTOMER_ANIM,
   FACE_BACK,
+  MAX_TURN_SPEED,
   SEPARATION_RADIUS,
   WALK_SPEED,
   advance,
+  angleDelta,
   createMotion,
   customerAnim,
   customerGoal,
+  easedStep,
   exitPoint,
+  headingOf,
+  lookAhead,
   playerSpot,
   remaining,
+  roundCorners,
   separate,
   setGoal,
   shownX,
   shownZ,
   snap,
   stepDistance,
+  turnToward,
   workerAnim,
   workerGoal,
   type Motion,
 } from '../../src/render/actors/sync';
 import { dispatch, step } from '../../src/sim';
-import { CHAIR_OFFSET, buildNavGrid, cellCenter, isWalkable, nearestFree } from '../../src/sim/nav';
+import { CHAIR_OFFSET, buildNavGrid, cellAt, cellCenter, findPath, isWalkable, nearestFree, type NavGrid } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, CustomerState, GameState, StaffTaskKind, Vec2 } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
@@ -193,7 +216,7 @@ describe('sync: customers', () => {
     const table = state.tables[0]!;
     const goal = customerGoal(state, c, layout);
     expect(goal.seated).toBe(true);
-    expect(goal.pos.x).toBeCloseTo(table.pos.x - 0.75);
+    expect(goal.pos.x).toBeCloseTo(table.pos.x - CHAIR_OFFSET);
     expect(goal.face).toBeCloseTo(Math.PI / 2);
   });
 
@@ -387,6 +410,227 @@ describe('sync: paths', () => {
     expect(dir).toEqual({ x: 1, z: 0 });
     expect(advance(m, 10, dir)).toBeCloseTo(1);
     expect(m.path).toHaveLength(0);
+  });
+});
+
+/** An all-free nav grid of cols × rows cells with cell (0, 0) at the origin. */
+function openGrid(cols: number, rows: number): NavGrid {
+  return {
+    key: 0,
+    cols,
+    rows,
+    col0: 0,
+    row0: 0,
+    blocked: new Uint8Array(cols * rows),
+    component: new Int32Array(cols * rows).fill(1),
+    mainComponent: 1,
+    doorInside: 0,
+    doorOutside: 0,
+  };
+}
+
+/** Points every 1 cm along from → path. */
+function fine(from: Vec2, path: readonly Vec2[]): Vec2[] {
+  const out: Vec2[] = [];
+  let prev = from;
+  for (const p of path) {
+    const n = Math.max(1, Math.ceil(Math.hypot(p.x - prev.x, p.z - prev.z) / 0.01));
+    for (let s = 0; s <= n; s++) out.push({ x: prev.x + ((p.x - prev.x) * s) / n, z: prev.z + ((p.z - prev.z) * s) / n });
+    prev = p;
+  }
+  return out;
+}
+
+describe('sync: smooth walking', () => {
+  it('rounds a corner with a small arc, no wider than half the shorter side', () => {
+    const grid = openGrid(16, 16);
+    const start = { x: 0.5, z: 0.5 };
+    const corner = { x: 2, z: 0.5 };
+    const path = [corner, { x: 2, z: 3 }];
+    const out = roundCorners(grid, start, path);
+    expect(out.length).toBeGreaterThan(path.length);
+    expect(out.at(-1)).toEqual(path[1]);
+    const arc = out.slice(0, -1);
+    expect(arc[0]!.x).toBeCloseTo(corner.x - CORNER_RADIUS);
+    for (const p of arc) expect(Math.hypot(p.x - corner.x, p.z - corner.z)).toBeLessThanOrEqual(CORNER_RADIUS + 1e-9);
+    // The middle of the arc cuts inside the corner.
+    const mid = arc[Math.floor(arc.length / 2)]!;
+    expect(Math.hypot(mid.x - corner.x, mid.z - corner.z)).toBeGreaterThan(0.05);
+    // Short sides: the arc spans at most half of the shorter one.
+    const near = { x: 0.8, z: 0.5 };
+    for (const p of roundCorners(grid, start, [near, { x: 0.8, z: 2 }]).slice(0, -1)) {
+      expect(Math.hypot(p.x - near.x, p.z - near.z)).toBeLessThanOrEqual(0.15 + 1e-9);
+    }
+    // Straight on: nothing to round.
+    expect(roundCorners(grid, start, [{ x: 1, z: 0.5 }, { x: 2, z: 0.5 }])).toEqual([{ x: 1, z: 0.5 }, { x: 2, z: 0.5 }]);
+  });
+
+  it('keeps a corner sharp when its arc would cross a blocked cell', () => {
+    const grid = openGrid(16, 16);
+    const start = { x: 0.5, z: 0.5 };
+    const path = [{ x: 2, z: 0.5 }, { x: 2, z: 3 }];
+    const arc = roundCorners(grid, start, path);
+    (grid.blocked as Uint8Array)[cellAt(grid, arc[Math.floor(arc.length / 2)]!)] = 1;
+    expect(roundCorners(grid, start, path)).toEqual(path);
+  });
+
+  it('never rounds a walk into furniture, in the starting and the full shop', () => {
+    let rounded = 0;
+    for (const state of [newState(), fullShop()]) {
+      const layout = getShopLayout(state);
+      const grid = buildNavGrid(layout);
+      const door = cellCenter(grid, grid.doorOutside);
+      for (const table of state.tables) {
+        for (const side of [-1, 1]) {
+          const chair = { x: table.pos.x + side * CHAIR_OFFSET, z: table.pos.z };
+          const m = createMotion(door);
+          setGoal(m, chair, layout, true);
+          expect(m.path.at(-1)).toEqual(chair);
+          // Every centimetre but the last step onto the chair is free floor.
+          for (const p of fine(door, m.path.slice(0, -1))) expect(isWalkable(grid, p)).toBe(true);
+          const raw = findPath(grid, door, nearestFree(grid, chair)!)!;
+          if (m.path.length > raw.length + 1) rounded++;
+        }
+      }
+    }
+    expect(rounded).toBeGreaterThan(0);
+  });
+
+  it('speeds up from standing and slows down before the end, monotonically', () => {
+    const m = createMotion({ x: 0, z: 0 });
+    m.path = [{ x: 5, z: 0 }];
+    const dt = 0.02;
+    const full = WALK_SPEED * dt;
+    const steps: number[] = [];
+    const lefts: number[] = [];
+    for (let f = 0; f < 2000 && m.path.length > 0; f++) {
+      lefts.push(remaining(m));
+      const d = easedStep(m, WALK_SPEED, dt);
+      steps.push(d);
+      advance(m, d);
+    }
+    expect(m.path).toHaveLength(0);
+    expect(m.pos.x).toBeCloseTo(5);
+    const peak = steps.indexOf(Math.max(...steps));
+    expect(steps[peak]).toBeCloseTo(full);
+    for (let i = 0; i < peak; i++) expect(steps[i + 1]!).toBeGreaterThanOrEqual(steps[i]! - 1e-12);
+    for (let i = peak; i < steps.length - 1; i++) expect(steps[i + 1]!).toBeLessThanOrEqual(steps[i]! + 1e-12);
+    // Up to full speed over ACCEL_MINUTES, then slower only within BRAKE_DISTANCE of the end.
+    expect(steps[0]!).toBeLessThan(full * 0.2);
+    const reach = steps.findIndex((s) => s >= full - 1e-9);
+    expect((reach + 1) * dt).toBeCloseTo(ACCEL_MINUTES, 1);
+    steps.forEach((s, i) => {
+      if (i > reach && s < full - 1e-9) expect(lefts[i]!).toBeLessThan(BRAKE_DISTANCE);
+    });
+    expect(steps.at(-1)!).toBeLessThan(full * 0.5);
+    // Arrived: standing again.
+    expect(easedStep(m, WALK_SPEED, dt)).toBe(0);
+    expect(m.speed).toBe(0);
+  });
+
+  it('holds speed while paused, still catches up when far behind, and stops on a snap', () => {
+    const m = createMotion({ x: 0, z: 0 });
+    m.path = [{ x: 5, z: 0 }];
+    easedStep(m, WALK_SPEED, 0.1);
+    const v = m.speed;
+    expect(v).toBeGreaterThan(0);
+    expect(easedStep(m, WALK_SPEED, 0)).toBe(0);
+    expect(m.speed).toBe(v);
+    const far = createMotion({ x: 0, z: 0 });
+    far.path = [{ x: 40, z: 0 }];
+    for (let f = 0; f < 100; f++) easedStep(far, WALK_SPEED, 0.05);
+    expect(far.speed).toBeCloseTo(stepDistance(far, WALK_SPEED, 1));
+    expect(far.speed).toBeGreaterThan(WALK_SPEED * 2);
+    snap(far);
+    expect(far.speed).toBe(0);
+  });
+
+  it('looks along the path ahead', () => {
+    const m = createMotion({ x: 0, z: 0 });
+    const dir = { x: 0, z: 0 };
+    expect(lookAhead(m, 0.3, dir)).toBe(false);
+    m.path = [{ x: 1, z: 0 }, { x: 1, z: 1 }];
+    expect(lookAhead(m, 0.3, dir)).toBe(true);
+    expect(dir.x).toBeCloseTo(1);
+    m.pos = { x: 0.9, z: 0 };
+    lookAhead(m, 0.3, dir);
+    // Already turning toward the next leg before reaching the corner.
+    expect(dir.z).toBeGreaterThan(0.5);
+    expect(dir.x).toBeGreaterThan(0);
+  });
+
+  it('turns no faster than MAX_TURN_SPEED and settles on the target', () => {
+    let h = 0;
+    const dt = 1 / 60;
+    for (const target of [Math.PI, -Math.PI / 2, 3, 0.2]) {
+      for (let f = 0; f < 120; f++) {
+        const next = turnToward(h, target, dt);
+        expect(Math.abs(next - h)).toBeLessThanOrEqual(MAX_TURN_SPEED * dt + 1e-9);
+        h = next;
+      }
+      expect(Math.abs(angleDelta(h, target))).toBeLessThan(1e-3);
+    }
+    expect(turnToward(1, 2, 0)).toBe(1);
+  });
+
+  it('walks a rounded corner with a smooth, bounded turn', () => {
+    const grid = openGrid(24, 24);
+    const m = createMotion({ x: 0.5, z: 0.5 });
+    m.path = roundCorners(grid, m.pos, [{ x: 3, z: 0.5 }, { x: 3, z: 4 }]);
+    const dir = { x: 0, z: 0 };
+    const dt = 1 / 60;
+    let h = headingOf(1, 0);
+    let biggest = 0;
+    while (m.path.length > 0) {
+      advance(m, easedStep(m, WALK_SPEED, dt * 2), dir);
+      if (m.path.length > 0 && lookAhead(m, 0.3, dir)) {
+        const next = turnToward(h, headingOf(dir.x, dir.z), dt);
+        biggest = Math.max(biggest, Math.abs(next - h));
+        h = next;
+      }
+    }
+    expect(biggest).toBeLessThanOrEqual(MAX_TURN_SPEED * dt + 1e-9);
+    expect(Math.abs(angleDelta(h, headingOf(0, 1)))).toBeLessThan(0.05);
+  });
+});
+
+describe('animations: stride and blend', () => {
+  it('steps in proportion to the distance walked, up to the stride cap', () => {
+    expect(strideCycles(0, 1)).toBe(0);
+    expect(strideCycles(0.3, 1)).toBeCloseTo(0.3 / STRIDE);
+    expect(strideCycles(0.6, 1)).toBeCloseTo(2 * strideCycles(0.3, 1));
+    expect(strideCycles(0.027, 1 / 60)).toBeCloseTo(0.03, 6);
+    expect(strideCycles(0.09, 1 / 60)).toBeCloseTo(MAX_STRIDES_PER_SECOND / 60, 6);
+    expect(strideCycles(100, 0.1)).toBeCloseTo(0.1 * MAX_STRIDES_PER_SECOND);
+    // An eased walk: slow steps while speeding up, stride per frame matching distance per frame.
+    const m = createMotion({ x: 0, z: 0 });
+    m.path = [{ x: 2, z: 0 }];
+    const dt = 1 / 60;
+    let walked = 0;
+    let cycles = 0;
+    while (m.path.length > 0) {
+      const moved = advance(m, easedStep(m, WALK_SPEED, dt * 0.25), undefined);
+      walked += moved;
+      cycles += strideCycles(moved, dt);
+    }
+    expect(cycles).toBeCloseTo(walked / STRIDE);
+  });
+
+  it('blends between two poses and writes into the given pose', () => {
+    const a = poseFor('idle', 0.4);
+    const b = poseFor('walk', 0.2);
+    const out = restPose();
+    expect(poseFor('walk', 0.2, out)).toBe(out);
+    expect(out).toEqual(b);
+    const keys = Object.keys(a) as (keyof Pose)[];
+    const none = blendPose(a, b, 0, restPose());
+    const all = blendPose(a, b, 1, restPose());
+    const half = blendPose(a, b, 0.5, restPose());
+    for (const k of keys) {
+      expect(none[k]).toBeCloseTo(a[k], 9);
+      expect(all[k]).toBeCloseTo(b[k], 9);
+      expect(half[k]).toBeCloseTo((a[k] + b[k]) / 2, 9);
+    }
   });
 });
 
@@ -643,6 +887,25 @@ describe('createActors', () => {
     actors.dispose();
   });
 
+  it('eases a customer into a walk instead of starting at full speed', () => {
+    const state = newState();
+    const actors = createActors(new Scene());
+    actors.update(state, 0);
+    // Along the free aisle between the rows of tables.
+    const c = addCustomer(state, { state: 'entering', pos: { x: -3, z: 2 }, target: { x: -1, z: 2 } });
+    actors.update(state, 0);
+    const xs = [actors.inspect(`c${c.id}`)!.pos.x];
+    for (let f = 0; f < 6; f++) {
+      state.minute += 0.05;
+      actors.update(state, 0);
+      xs.push(actors.inspect(`c${c.id}`)!.pos.x);
+    }
+    const steps = xs.slice(1).map((x, i) => x - xs[i]!);
+    for (let i = 1; i < steps.length; i++) expect(steps[i]!).toBeGreaterThan(steps[i - 1]!);
+    expect(steps[0]!).toBeLessThan(WALK_SPEED * 0.05 * 0.2);
+    actors.dispose();
+  });
+
   it('lets a removed customer finish walking out, then frees the character', () => {
     const state = newState();
     const actors = createActors(new Scene());
@@ -693,7 +956,7 @@ describe('createActors', () => {
   it('picks a queueing customer as take_order', () => {
     const state = newState();
     const actors = createActors(new Scene());
-    // On free floor between the rows of tables (z = 1 runs through the chairs).
+    // On free floor in the main aisle between the two blocks of tables.
     const c = addCustomer(state, { pos: { x: 0, z: 2 }, target: { x: 0, z: 2 } });
     actors.update(state, 0);
     const ray = new Raycaster(new Vector3(0, 10, 2), new Vector3(0, -1, 0));
