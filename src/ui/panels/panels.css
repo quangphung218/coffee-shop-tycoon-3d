@@ -32,10 +32,23 @@
   gap: var(--space-2);
   color: var(--text-primary);
 }
+/* A panel with a foot: the body drops its side and bottom padding so the foot
+   runs edge to edge and sits on the bottom border, sticky while the rest scrolls. */
+.panel-body:has(> .prep > .panel-foot) {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) 0 0;
+}
+.panel-body > .prep:has(> .panel-foot) {
+  flex: 1 0 auto;
+}
+.prep:has(> .panel-foot) > :not(.panel-foot) {
+  margin-inline: var(--space-4);
+}
 .prep .panel-foot {
   position: sticky;
-  bottom: calc(-1 * var(--space-4));
-  margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  bottom: 0;
+  margin-top: auto;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -244,6 +257,10 @@
 .task.is-warn {
   background: var(--surface-warning);
 }
+.task-flag {
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
 .progress {
   display: block;
   height: var(--space-3);
@@ -382,8 +399,13 @@
   transform: rotate(180deg);
 }
 @media (hover: hover) {
-  .dd-btn:not([aria-disabled='true']):hover {
+  .dd-btn:not([aria-disabled='true'], .is-warn):hover {
     background: var(--surface-sunken);
+  }
+  /* The warning fill is a status and stays; hover lifts the button instead. */
+  .dd-btn.is-warn:not([aria-disabled='true'], :active):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
   }
 }
 .dd-btn:not([aria-disabled='true']):active {

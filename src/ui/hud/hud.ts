@@ -239,6 +239,7 @@ export function createHud(actions: HudActions): Hud {
 
   // Panels registered by other modules, as dock buttons.
   const dock = h('nav', { class: 'dock', attrs: { 'aria-label': 'Bảng quản lý' } });
+  const panelIcon = h('span', { class: 'panel-head-icon' });
   const panelTitle = h('h2');
   const panelBody = h('div', { class: 'panel-body' });
   const panelEl = h(
@@ -247,8 +248,9 @@ export function createHud(actions: HudActions): Hud {
     h(
       'div',
       { class: 'panel-head' },
+      panelIcon,
       panelTitle,
-      h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'aria-label': 'Đóng bảng (Esc)' }, on: { click: () => closePanel() } }, icon('i-close'), 'Đóng'),
+      h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng bảng (Esc)' }, on: { click: () => closePanel() } }, icon('i-close'), 'Đóng'),
     ),
     panelBody,
   );
@@ -331,11 +333,16 @@ export function createHud(actions: HudActions): Hud {
     }
     openId = id;
     opener = from ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setChildren(panelTitle, icon(def.icon), def.label);
+    setChildren(panelIcon, icon(def.icon, { size: 32 }));
+    panelTitle.textContent = def.label;
+    measureEdges();
     panelEl.hidden = false;
     handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel }) ?? null;
     syncPressed();
-    panelBody.querySelector<HTMLElement>('button, input, select, [tabindex]')?.focus();
+    panelEl.scrollTop = 0;
+    panelBody.scrollTop = 0;
+    // The head stays in view: focusing the first control must not scroll it away.
+    panelBody.querySelector<HTMLElement>('button, input, select, [tabindex]')?.focus({ preventScroll: true });
   }
 
   const offPanels = onPanelsChanged(() => {
@@ -372,6 +379,22 @@ export function createHud(actions: HudActions): Hud {
   );
   const el = h('div', { class: 'hud-layer', hidden: true }, bar, dock);
 
+  // The panel sits between the HUD and the dock (ui.css): --hud-h is the HUD's
+  // bottom edge from the top of #ui, --dock-h the dock's top edge from its
+  // bottom. Re-measured whenever either one changes size (wrapping, the note).
+  function measureEdges(): void {
+    const host = el.parentElement;
+    if (!host || el.hidden) return;
+    const box = host.getBoundingClientRect();
+    const hudH = Math.max(0, Math.ceil(bar.getBoundingClientRect().bottom - box.top));
+    const dockH = Math.max(0, Math.ceil(box.bottom - dock.getBoundingClientRect().top));
+    host.style.setProperty('--hud-h', `${hudH}px`);
+    host.style.setProperty('--dock-h', `${dockH}px`);
+  }
+  const edges = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measureEdges()) : null;
+  edges?.observe(bar);
+  edges?.observe(dock);
+
   return {
     el,
     panelEl,
@@ -387,6 +410,7 @@ export function createHud(actions: HudActions): Hud {
     },
     dispose() {
       offPanels();
+      edges?.disconnect();
       closePanel();
       if (resetTimer) clearTimeout(resetTimer);
       if (countFrame) cancelAnimationFrame(countFrame);

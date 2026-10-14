@@ -128,7 +128,13 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
             h(
               'div',
               {},
-              h('p', { class: 'task-title' }, h('span', { class: 'sr-only', text: t.done ? 'Đã xong: ' : 'Chưa xong: ' }), t.title),
+              h(
+                'p',
+                { class: 'task-title' },
+                h('span', { class: 'sr-only', text: t.done ? 'Đã xong: ' : 'Chưa xong: ' }),
+                t.title,
+                !t.done && t.warn ? h('span', { class: 'badge badge-warn task-flag' }, icon('i-warning', { size: 16 }), 'Cần chú ý') : null,
+              ),
               h('p', { class: 'item-meta', text: t.detail }),
               t.done ? null : linkBtn(t.link, t.panel),
             ),
