@@ -2,10 +2,16 @@
    state rules in design/p17-states: ink outlines, hard sticker shadows, one
    channel per state, focus drawn INSIDE each control so it never leaves its
    row. Shared tokens and .btn/.toggle/.badge come from src/ui/styles. */
+/* min-width + overflow-x: clip keep any child from widening .panel-body into
+   a sideways scroll; clip is not a scroll container, so the sticky foot still
+   sticks to .panel-body. */
 .prep {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  min-width: 0;
+  overflow-x: clip;
+  overflow-wrap: break-word;
 }
 .prep ul {
   list-style: none;
@@ -42,7 +48,12 @@
 .panel-body > .prep:has(> .panel-foot) {
   flex: 1 0 auto;
 }
+/* width: auto overrides width: 100% (.btn-block, .input), which plus the
+   margin would be 2 × --space-4 wider than the panel; the flex column
+   stretches each child to the space between the margins instead. */
 .prep:has(> .panel-foot) > :not(.panel-foot) {
+  width: auto;
+  align-self: stretch;
   margin-inline: var(--space-4);
 }
 .prep .panel-foot {
@@ -58,6 +69,7 @@
 }
 .foot-sum {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-3);
   font-size: var(--font-size-sm);
@@ -234,7 +246,7 @@
 /* Task Board */
 .task {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0 var(--space-3);
   padding: var(--space-3);
   background: var(--surface-panel-solid);
@@ -367,6 +379,7 @@
   position: relative;
   display: inline-flex;
   flex-direction: column;
+  max-width: 100%;
 }
 .dd-btn {
   --bw: var(--size-outline);
@@ -375,7 +388,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-width: 184px;
+  min-width: min(184px, 100%);
   padding: 0 var(--space-3);
   border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
@@ -436,8 +449,16 @@
   border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  min-width: 240px;
+  /* At least the button; 240px only while the side panel (42vw) has room
+     for it past the card and body insets, so it never runs off the panel. */
+  min-width: max(100%, min(240px, 42vw - var(--space-16)));
   animation: dd-in var(--duration-base) var(--easing-standard);
+}
+/* Phone: the panel is full width, so the list keeps its 240px. */
+@media (max-width: 640px) {
+  .dd-list {
+    min-width: max(100%, 240px);
+  }
 }
 .dd-list:focus-visible {
   outline: none;
@@ -476,7 +497,7 @@
 /* Staff */
 .staff {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--space-2) var(--space-3);
   padding: var(--space-3);
   background: var(--surface-panel-solid);
