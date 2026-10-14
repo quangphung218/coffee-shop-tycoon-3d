@@ -38,7 +38,9 @@ Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ l
 | --- | --- |
 | ![Main Menu](docs/media/main-menu.png)<br>Main Menu, quán chạy nền phía sau | ![Bảng Kho](docs/media/prep-inventory.png)<br>Chuẩn bị: nhập hàng ở bảng Kho |
 | ![Giờ cao điểm](docs/media/peak.png)<br>Cao điểm trưa: khách xếp hàng, nhân viên pha và mang món | ![Daily Report](docs/media/daily-report.png)<br>Daily Report: lãi/lỗ, khách, món bán chạy |
-| ![Đánh giá](docs/media/reviews.png)<br>Đánh giá của khách sau một ngày | |
+| ![Đánh giá](docs/media/reviews.png)<br>Đánh giá của khách sau một ngày | ![Bảng Menu](docs/media/menu-icons.png)<br>Bảng Menu với icon 3D |
+| ![Mặt tiền ban ngày](docs/media/facade-day.png)<br>Mặt tiền quán buổi sáng | ![Mặt tiền chiều tối](docs/media/facade-evening.png)<br>Chiều tối: cửa sổ và biển hiệu sáng ấm |
+| ![Hàng chờ](docs/media/queue.png)<br>Hàng chờ đi theo lối trống giữa các bàn | |
 
 Tạo lại ảnh và GIF: `npm run media` (xem [docs/media.md](docs/media.md)).
 
@@ -72,7 +74,7 @@ Tắt **Cài đặt → Di chuyển camera bằng WASD** để xoay bằng `Q`/`
 | `src/ui/` | Lớp phủ HTML/CSS: `core/` (DOM, icon SVG dùng chung UI và 3D), `screens/` (menu, cài đặt, tạm dừng), `hud/`, `panels/` (bảng chuẩn bị), `report/` (Daily Report, Đánh giá), `styles/` (token CSS). |
 | `src/audio/` | Âm thanh tổng hợp bằng Web Audio. |
 | `src/save/` | Lưu/tải game và cài đặt. |
-| `tests/` | Test Vitest theo cùng cấu trúc, cộng `integration/` chạy cả ngày chơi. |
+| `tests/` | Test Vitest theo cùng cấu trúc, cộng `integration/` chạy cả ngày chơi và `report/` vẽ sơ đồ cho `docs/reports/`. |
 | `design/` | Token và mockup giao diện. |
 
 ## Phát triển và kiểm thử

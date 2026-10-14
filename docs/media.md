@@ -23,9 +23,12 @@ npm run media
 Lệnh build bản tĩnh, mở `vite preview` ở `127.0.0.1:4173`, rồi Chromium headless chơi ngày 1:
 
 1. Chụp Main Menu (quán chạy nền phía sau).
-2. **Ván mới** độ khó Dễ, mở bảng Nhân viên ở dock và tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
-3. Zoom camera gần hơn, bấm **Mở cửa**, chọn tốc độ 4x, chụp lúc 12:00 trong giờ cao điểm.
-4. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
+2. **Ván mới** độ khó Dễ, mở bảng Menu ở dock và chụp. Mở bảng Nhân viên và tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
+3. Zoom camera gần hơn, bấm **Mở cửa**, chọn tốc độ 4x.
+4. 10:00: zoom và pan tới cửa quán (giữ `A`+`S`), chụp mặt tiền, rồi `Home` về góc cũ.
+5. 12:00: chụp giờ cao điểm, rồi zoom gần quầy chụp hàng chờ.
+6. 19:00: chụp lại mặt tiền như bước 4 (ảnh rơi vào khoảng 19:25, đèn gần sáng hết).
+7. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
 
 Ảnh chụp ẩn toast; đoạn quay vẫn giữ.
 
@@ -40,8 +43,12 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `demo.gif` | Một vòng ngày, dùng ở đầu README. Tự giảm khổ và fps cho tới khi dưới 5 MB. |
 | `demo.mp4` | Cùng đoạn đó, 1280×720 H.264, để đăng nơi khác. |
 | `main-menu.png` | Main Menu. |
+| `menu-icons.png` | Pha chuẩn bị, bảng Menu với icon 3D. |
 | `prep-inventory.png` | Pha chuẩn bị, bảng Kho. |
+| `facade-day.png` | Mặt tiền quán lúc 10:00. |
 | `peak.png` | Quán giờ cao điểm. |
+| `queue.png` | Gần quầy giờ cao điểm: hàng chờ. |
+| `facade-evening.png` | Mặt tiền quán chiều tối, đèn ấm. |
 | `daily-report.png` | Daily Report. |
 | `reviews.png` | Tab Đánh giá trong báo cáo. |
 
