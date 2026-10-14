@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, saveSettings, type GameSpeed, type Quality, type Settings } from '../../save/settings';
 import type { StorageLike } from '../../save/storage';
-import { h, uid } from '../core/dom';
+import { h, setChildren, uid } from '../core/dom';
+import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
 
 export interface SettingsActions {
@@ -38,11 +39,15 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     value = { ...value, ...patch };
     const saved = saveSettings(value, storage);
     status.classList.toggle('is-error', !saved);
-    status.textContent = saved ? '✓ Đã lưu cài đặt' : '⚠️ Không lưu được, chỉ áp dụng cho lần chơi này';
+    setChildren(
+      status,
+      icon(saved ? 'i-ok' : 'i-warning', { size: 16 }),
+      saved ? 'Đã lưu cài đặt' : 'Không lưu được, chỉ áp dụng cho lần chơi này',
+    );
     actions.onChange({ ...value });
   }
 
-  function range(label: string, key: 'musicVolume' | 'sfxVolume'): { row: HTMLElement; sync(): void } {
+  function range(iconId: IconId, label: string, key: 'musicVolume' | 'sfxVolume'): { row: HTMLElement; sync(): void } {
     const id = uid(key);
     const out = h('span', { class: 'range-val', attrs: { 'aria-hidden': 'true' } });
     const input = h('input', { class: 'range', id, attrs: { type: 'range', min: 0, max: 100, step: 5, name: key } });
@@ -56,11 +61,12 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       commit({ [key]: Number(input.value) / 100 });
       sync();
     });
-    const row = h('div', { class: 'set-row' }, h('label', { class: 'label', attrs: { for: id }, text: label }), h('div', { class: 'range-wrap' }, input, out));
+    const row = h('div', { class: 'set-row' }, h('label', { class: 'label', attrs: { for: id } }, icon(iconId), label), h('div', { class: 'range-wrap' }, input, out));
     return { row, sync };
   }
 
   function seg<T extends string | number>(
+    iconId: IconId,
     label: string,
     hint: string,
     name: string,
@@ -79,7 +85,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     const row = h(
       'div',
       { class: 'set-row' },
-      h('div', { class: 'field' }, h('span', { class: 'label', id: labelId, text: label }), h('span', { class: 'hint', text: hint })),
+      h('div', { class: 'field' }, h('span', { class: 'label', id: labelId }, icon(iconId), label), h('span', { class: 'hint', text: hint })),
       h(
         'div',
         { class: 'seg', attrs: { role: 'radiogroup', 'aria-labelledby': labelId } },
@@ -89,10 +95,11 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     return { row, sync };
   }
 
-  const music = range('🎵 Nhạc nền', 'musicVolume');
-  const sfx = range('🔔 Hiệu ứng (chuông cửa, máy pha, tiền)', 'sfxVolume');
+  const music = range('i-music', 'Nhạc nền', 'musicVolume');
+  const sfx = range('i-sound', 'Hiệu ứng (chuông cửa, máy pha, tiền)', 'sfxVolume');
   const quality = seg(
-    '🖥️ Chất lượng',
+    'i-quality',
+    'Chất lượng',
     'Thấp: không bóng đổ, phố thưa. Cao: bóng đổ, phố đông xe và người.',
     'quality',
     QUALITY_OPTIONS,
@@ -100,7 +107,8 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     (q) => commit({ quality: q }),
   );
   const speed = seg(
-    '⏩ Tốc độ khi mở cửa',
+    'i-speed-2',
+    'Tốc độ khi mở cửa',
     'Có thể đổi bất cứ lúc nào trên HUD.',
     'speed',
     SPEED_OPTIONS,
@@ -153,7 +161,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
   const form = h(
     'form',
     { class: 'card w-wide', attrs: { 'aria-labelledby': titleId } },
-    h('h2', { id: titleId, text: '⚙️ Cài đặt' }),
+    h('h2', { id: titleId }, icon('i-settings', { size: 32 }), 'Cài đặt'),
     h('p', { class: 'section-title', text: 'Âm thanh' }),
     music.row,
     sfx.row,
@@ -167,7 +175,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       h(
         'div',
         { class: 'field' },
-        h('span', { class: 'label', id: panLabelId, text: '⌨️ Di chuyển camera bằng WASD' }),
+        h('span', { class: 'label', id: panLabelId }, icon('i-camera'), 'Di chuyển camera bằng WASD'),
         h('span', { class: 'hint', text: 'Tắt để dùng Q/A xoay camera như phím gốc; khi bật, xoay bằng Q/E.' }),
       ),
       panToggle,
@@ -190,7 +198,8 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
             },
           },
         },
-        '↺ Về mặc định',
+        icon('i-reset'),
+        'Về mặc định',
       ),
       done,
     ),

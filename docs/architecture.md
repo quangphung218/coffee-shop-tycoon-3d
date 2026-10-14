@@ -136,7 +136,7 @@ Mỗi slot là JSON:
 
 ### Khởi động
 
-1. `index.html` vẽ màn hình chờ `#boot` (CSS thuần, thanh tiến độ chạy bằng animation) ngay khi trang tải, trước khi có JS.
+1. `index.html` vẽ màn hình chờ `#boot` (CSS và SVG inline: linh vật ly, thanh tiến độ chạy bằng animation; không chờ font) ngay khi trang tải, trước khi có JS.
 2. Chunk chính (UI, sim, save, audio) chạy `createShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`.
 3. `main.ts` gọi `import('./render/scene')` ngay đầu `start()`. Sau khi menu đã vẽ, `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
 
