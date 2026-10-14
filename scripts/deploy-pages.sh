@@ -1,11 +1,18 @@
 #!/bin/sh
-# Builds the game and publishes dist/ to the gh-pages branch of origin,
+# Bumps the version when there are feat/fix/perf commits since the last v*
+# tag, builds the game and publishes dist/ to the gh-pages branch of origin,
 # then makes sure GitHub Pages serves that branch. Safe to run repeatedly:
-# each run replaces gh-pages with a single fresh commit.
+# each run replaces gh-pages with a single fresh commit. Never pushes the
+# release commit or tag; it prints the push command instead.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+
+# Before the build, so the bundle shows the new version.
+TAG_BEFORE=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+node scripts/release.mjs
+TAG_AFTER=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
 
 # A half-finished install can leave node_modules/ without the build tools,
 # so check the tools and the installed lockfile, not just the directory.
@@ -60,3 +67,10 @@ else
 fi
 
 echo "Site: $PAGE_URL"
+
+if [ "$TAG_AFTER" != "$TAG_BEFORE" ]; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  echo ""
+  echo "Released $TAG_AFTER (commit and tag are local only). Push them with:"
+  echo "  git push origin $BRANCH $TAG_AFTER"
+fi

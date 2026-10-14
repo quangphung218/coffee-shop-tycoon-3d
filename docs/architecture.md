@@ -32,7 +32,13 @@ flowchart LR
 | `src/audio` | Phát âm thanh theo `GameEvent`. | Đọc hay sửa state. |
 | `src/save` | Ghi/đọc `GameState` và cài đặt vào `localStorage`, nâng phiên bản save cũ. | Biết gì về DOM ngoài `StorageLike`. |
 
-`GameState` là JSON thuần (không class, Map hay hàm) nên lưu, so sánh và nhân bản trực tiếp được. Bộ sinh số ngẫu nhiên mulberry32 giữ trạng thái trong `state.rngState`: cùng state cộng cùng chuỗi lệnh cho ra cùng một ngày. Tiền là số nguyên đồng (`25000` = 25.000đ); thời gian là phút game tính từ nửa đêm (`420` = 07:00).
+| Quy ước | Chi tiết |
+| --- | --- |
+| `GameState` | JSON thuần (không class, Map hay hàm), nên lưu, so sánh và nhân bản trực tiếp được. |
+| Ngẫu nhiên | Mulberry32, trạng thái trong `state.rngState`: cùng state cộng cùng chuỗi lệnh cho ra cùng một ngày. |
+| Tiền | Số nguyên đồng (`25000` = 25.000đ). |
+| Thời gian | Phút game tính từ nửa đêm (`420` = 07:00). |
+| Version | `src/version.ts` (`APP_VERSION`), Vite thay `__APP_VERSION__` bằng `package.json` → `"version"` lúc build; xem [deploy.md](deploy.md#version-và-phát-hành). |
 
 ### Icon và font
 
@@ -60,7 +66,12 @@ Thêm icon:
 3. Chạy `npm run icons -- --only <id>` để vẽ hai ô mới vào atlas.
 4. Dùng `icon('<id>')` trong UI, hoặc nối id của sim trong `iconMap.ts`.
 
-Font chữ là Nunito từ `@fontsource/nunito`, import trong `src/main.ts`: chỉ subset `latin` và `vietnamese`, weight 400 và 700 (600 và 800 hiển thị bằng 700). `@font-face` dùng `font-display: swap` và không preload, nên Main Menu vẽ bằng font hệ thống rồi đổi sang Nunito khi tải xong. Token `--font-family-base` nằm ở `src/ui/styles/tokens.css`.
+Font chữ:
+
+- Nunito từ `@fontsource/nunito` (SIL OFL 1.1, xem [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)), import trong `src/main.ts`.
+- Chỉ subset `latin` và `vietnamese`, weight 400 và 700; 600 và 800 hiển thị bằng 700.
+- `@font-face` dùng `font-display: swap`, không preload: Main Menu vẽ bằng font hệ thống rồi đổi sang Nunito khi tải xong.
+- Token `--font-family-base` nằm ở `src/ui/styles/tokens.css`.
 
 ## Vòng khung hình
 
@@ -141,7 +152,9 @@ stateDiagram-v2
   angry_leave --> [*]
 ```
 
-Kiên nhẫn (`patience`) chỉ giảm khi xếp hàng và chờ đồ. `served` và `angry` sinh trải nghiệm: khách để lại review (1–5 sao, lý do `ReviewReason`) với xác suất 30% khi được phục vụ, 60% khi bỏ đi. Game giữ tối đa 30 review (`MAX_REVIEWS`).
+- Kiên nhẫn (`patience`) chỉ giảm khi xếp hàng và chờ đồ.
+- `served` và `angry` sinh trải nghiệm: khách để lại review (1–5 sao, lý do `ReviewReason`) với xác suất 30% khi được phục vụ, 60% khi bỏ đi.
+- Game giữ tối đa 30 review (`MAX_REVIEWS`).
 
 Chuyển trạng thái đi theo đồng hồ, không chờ khách tới nơi. Đích đi (`target`) theo trạng thái:
 
@@ -246,7 +259,9 @@ Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless 
 - UI dựng DOM một lần bằng `h()` và cập nhật qua `Watcher` (`src/ui/core/dom.ts`); khung hình không đổi gì thì không chạm DOM. Daily Report chỉ dựng lại khi `state.lastReport` đổi.
 - Bàn, ghế, đồ trang trí trong quán và nhà, cây, đèn ngoài phố dùng `InstancedMesh` với vật liệu dùng chung.
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.
-- Chất lượng đồ họa:
+- Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
+
+Chất lượng đồ họa:
 
 | Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố | Chi tiết quán | Chuyển động nhẹ | Đèn điểm trong quán |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -254,7 +269,16 @@ Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless 
 | Vừa | 1,5 | Tắt | Vừa | Đủ, trừ hộp hoa dưới cửa sổ | Bật | 0 |
 | Cao | 2 | Bật | Cao | Đủ | Bật | 2 |
 
-- Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`): `facadePlan(layout, quality)` đặt cửa sổ, cửa kính, mái hiên, biển tên quán (`state.shopName` vẽ lên canvas), chậu cây, bậc thềm, kệ lọ hạt, bảng menu, đèn thả, thảm cửa, quạt trần; `FacadeView` gộp thành vài mesh, chỉ dựng lại khi `layoutKey` hoặc mức đồ họa đổi. Đồ gắn tường co và ẩn theo tường khi tường hạ; khung cửa, mái hiên và biển đứng riêng nên vẫn thấy khi tường trước hạ.
-- Đèn ấm và chuyển động (`src/render/scene/ambient.ts`): `warmGlow(minute, weather)` lấy hệ số `lamps` của `lightingAt` (0 ban ngày, tăng từ 16:00, đủ 1 sau 19:30; trời mưa giữ tối thiểu 0,4). Hệ số này làm kính cửa sổ và cửa phát sáng (`GLASS_MATERIAL` emissive), bóng đèn sáng hơn và biển hiệu ấm lên; mức Cao thêm 2 `PointLight` ấm không đổ bóng, tạo theo mức đồ họa chứ không theo giờ. Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn, dừng khi game tạm dừng, tắt ở Thấp và khi trình duyệt bật `prefers-reduced-motion`.
+Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 
-- Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
+- `facadePlan(layout, quality)` đặt cửa sổ, cửa kính, mái hiên, biển tên quán (`state.shopName` vẽ lên canvas), chậu cây, bậc thềm, kệ lọ hạt, bảng menu, đèn thả, thảm cửa, quạt trần.
+- `FacadeView` gộp thành vài mesh, chỉ dựng lại khi `layoutKey` hoặc mức đồ họa đổi.
+- Đồ gắn tường co và ẩn theo tường khi tường hạ; khung cửa, mái hiên và biển đứng riêng nên vẫn thấy khi tường trước hạ.
+
+Đèn ấm và chuyển động (`src/render/scene/ambient.ts`):
+
+- `warmGlow(minute, weather)` lấy hệ số `lamps` của `lightingAt`: 0 ban ngày, tăng từ 16:00, đủ 1 sau 19:30; trời mưa giữ tối thiểu 0,4.
+- Hệ số này làm kính cửa sổ và cửa phát sáng (`GLASS_MATERIAL` emissive), bóng đèn sáng hơn và biển hiệu ấm lên.
+- Mức Cao thêm 2 `PointLight` ấm không đổ bóng, tạo theo mức đồ họa chứ không theo giờ.
+- Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn.
+- Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi trình duyệt bật `prefers-reduced-motion`.
