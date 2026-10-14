@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 import { Scene, Vector3 } from 'three';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import type { CameraRotateSpeed } from '../../src/save/settings';
 import {
   CLICK_THRESHOLD_PX,
+  CameraController,
   DEFAULT_PITCH,
+  DEFAULT_YAW,
   DragTracker,
+  MAX_PITCH,
   MAX_ZOOM,
   MIN_ZOOM,
+  ROTATE_SPEED_SCALE,
   clampPitch,
   clampZoom,
   damp,
+  dampMoving,
+  decayDistance,
+  decayVelocity,
   edgePanInput,
   keyAction,
   orbitOffset,
@@ -17,6 +25,7 @@ import {
   shouldCameraHandleKey,
   zoomFromWheel,
   type CameraKeyEvent,
+  type CameraOptions,
 } from '../../src/render/scene/camera';
 import { commandForHit } from '../../src/render/scene/picking';
 import { pixelRatioFor, shadowsFor } from '../../src/render/scene/renderer';
@@ -209,6 +218,191 @@ describe('damp', () => {
     expect(one).toBeGreaterThan(0);
     expect(one).toBeLessThan(10);
     expect(damp(damp(0, 10, 10, 0.05), 10, 10, 0.05)).toBeCloseTo(one);
+  });
+
+  it('follows a steadily moving target the same way at any step size', () => {
+    expect(dampMoving(0, 10, 10, 6, 0.1)).toBeCloseTo(damp(0, 10, 6, 0.1));
+    // Target moving at 2 units/s for 1 s, followed in 30 or 144 steps.
+    const follow = (steps: number): number => {
+      let c = 0;
+      for (let i = 0; i < steps; i++) c = dampMoving(c, (2 * i) / steps, (2 * (i + 1)) / steps, 6, 1 / steps);
+      return c;
+    };
+    expect(follow(30)).toBeCloseTo(follow(144), 10);
+    expect(follow(144)).toBeLessThan(2);
+  });
+});
+
+describe('decayVelocity', () => {
+  it('fades to zero and covers the same distance in many steps as in one', () => {
+    expect(decayVelocity(2, 4, 0)).toBe(2);
+    expect(Math.abs(decayVelocity(2, 4, 3))).toBeLessThan(1e-4);
+    let v = 2;
+    let dist = 0;
+    for (let i = 0; i < 144; i++) {
+      dist += decayDistance(v, 4, 1 / 144);
+      v = decayVelocity(v, 4, 1 / 144);
+    }
+    expect(dist).toBeCloseTo(decayDistance(2, 4, 1), 10);
+    expect(v).toBeCloseTo(decayVelocity(2, 4, 1), 10);
+    // A spin never runs further than v/k.
+    expect(decayDistance(2, 4, 100)).toBeCloseTo(0.5);
+  });
+});
+
+describe('CameraController motion', () => {
+  const open: CameraController[] = [];
+  afterEach(() => {
+    for (const c of open.splice(0)) c.dispose();
+  });
+
+  function make(opts: CameraOptions = {}): { cam: CameraController; canvas: HTMLCanvasElement } {
+    const canvas = document.createElement('canvas');
+    const cam = new CameraController(canvas, { edgePan: false, reducedMotion: () => false, ...opts });
+    open.push(cam);
+    return { cam, canvas };
+  }
+  const ptr = (canvas: HTMLCanvasElement, type: string, x: number, y: number): void => {
+    canvas.dispatchEvent(new MouseEvent(type, { button: 0, clientX: x, clientY: y }));
+  };
+  const key = (type: 'keydown' | 'keyup', code: string): void => {
+    window.dispatchEvent(new KeyboardEvent(type, { code }));
+  };
+  function run(cam: CameraController, seconds: number, fps: number): void {
+    for (let i = 0; i < Math.round(seconds * fps); i++) cam.update(1 / fps);
+  }
+  function pitchOf(cam: CameraController): number {
+    const p = cam.camera.position;
+    return Math.atan2(p.y, Math.hypot(p.x, p.z));
+  }
+  /** Drags at a steady pointer speed with frames at `fps`, then lets go. */
+  function flick(cam: CameraController, canvas: HTMLCanvasElement, fps: number, vx = 600, vy = 0, seconds = 1 / 3): void {
+    let x = 100;
+    let y = 100;
+    ptr(canvas, 'pointerdown', x, y);
+    x += 10;
+    ptr(canvas, 'pointermove', x, y);
+    for (let i = 0; i < Math.round(seconds * fps); i++) {
+      x += vx / fps;
+      y += vy / fps;
+      ptr(canvas, 'pointermove', x, y);
+      cam.update(1 / fps);
+    }
+    ptr(canvas, 'pointerup', x, y);
+  }
+
+  it('keeps spinning after a drag is released and slows to a stop', () => {
+    const { cam, canvas } = make();
+    flick(cam, canvas, 60);
+    expect(cam.spinning).toBe(true);
+    cam.update(1 / 60);
+    const atRelease = cam.yaw;
+    run(cam, 0.5, 60);
+    // Dragging right turns the yaw down, and the spin carries on that way.
+    expect(cam.yaw).toBeLessThan(atRelease - 0.05);
+    run(cam, 4, 60);
+    expect(cam.spinning).toBe(false);
+    const settled = cam.yaw;
+    run(cam, 1, 60);
+    expect(cam.yaw).toBeCloseTo(settled, 6);
+  });
+
+  it('ends up in the same place at 30 and 144 fps', () => {
+    // Durations are whole frames at both rates, so both runs cover the same time.
+    const yaws = [30, 144].map((fps) => {
+      const { cam, canvas } = make();
+      flick(cam, canvas, fps, 600, 0, 1 / 3);
+      run(cam, 0.5, fps);
+      const midSpin = cam.yaw;
+      run(cam, 2, fps);
+      return [DEFAULT_YAW - midSpin, DEFAULT_YAW - cam.yaw];
+    });
+    expect(yaws[1]![1]).toBeGreaterThan(1);
+    expect(Math.abs(yaws[0]![0]! - yaws[1]![0]!)).toBeLessThan(0.01);
+    expect(Math.abs(yaws[0]![1]! - yaws[1]![1]!)).toBeLessThan(0.01);
+
+    const keyed = [30, 144].map((fps) => {
+      const { cam } = make();
+      key('keydown', 'KeyE');
+      run(cam, 0.5, fps);
+      const held = cam.yaw;
+      key('keyup', 'KeyE');
+      run(cam, 1, fps);
+      return [held, cam.yaw];
+    });
+    expect(Math.abs(keyed[0]![0]! - keyed[1]![0]!)).toBeLessThan(0.01);
+    expect(Math.abs(keyed[0]![1]! - keyed[1]![1]!)).toBeLessThan(0.01);
+  });
+
+  it('does not drift after a click, and a click stops a spin', () => {
+    const { cam, canvas } = make();
+    ptr(canvas, 'pointerdown', 50, 50);
+    ptr(canvas, 'pointermove', 52, 51);
+    ptr(canvas, 'pointerup', 52, 51);
+    run(cam, 1, 60);
+    expect(cam.yaw).toBeCloseTo(DEFAULT_YAW, 6);
+    expect(cam.spinning).toBe(false);
+
+    flick(cam, canvas, 60);
+    expect(cam.spinning).toBe(true);
+    ptr(canvas, 'pointerdown', 200, 200);
+    ptr(canvas, 'pointerup', 200, 200);
+    expect(cam.spinning).toBe(false);
+  });
+
+  it('has no spin after a drag with prefers-reduced-motion', () => {
+    const { cam, canvas } = make({ reducedMotion: () => true });
+    flick(cam, canvas, 60);
+    expect(cam.spinning).toBe(false);
+  });
+
+  it('keeps the pitch inside its limits while spinning', () => {
+    const { cam, canvas } = make();
+    flick(cam, canvas, 60, 0, 3000);
+    run(cam, 3, 60);
+    expect(pitchOf(cam)).toBeLessThanOrEqual(MAX_PITCH + 1e-6);
+    expect(pitchOf(cam)).toBeGreaterThan(DEFAULT_PITCH);
+  });
+
+  it('eases a held rotate key in and turns slower than before', () => {
+    const { cam } = make();
+    key('keydown', 'KeyE');
+    run(cam, 0.1, 60);
+    const early = cam.yaw - DEFAULT_YAW;
+    run(cam, 1.9, 60);
+    const total = cam.yaw - DEFAULT_YAW;
+    key('keyup', 'KeyE');
+    // The first tenth of a second turns well under a tenth of the steady rate.
+    expect(early).toBeLessThan(0.1 * 1.08 * 0.5);
+    // About 40% slower than the old 1.8 rad/s.
+    expect(total).toBeLessThan(2 * 1.8 * 0.65);
+    expect(total).toBeGreaterThan(0);
+  });
+
+  it('turns slow < normal < fast for the same drag and key hold', () => {
+    const speeds: CameraRotateSpeed[] = ['slow', 'normal', 'fast'];
+    const dragged = speeds.map((rotateSpeed) => {
+      const { cam, canvas } = make({ rotateSpeed, reducedMotion: () => true });
+      flick(cam, canvas, 60);
+      run(cam, 2, 60);
+      return DEFAULT_YAW - cam.yaw;
+    });
+    expect(dragged[0]).toBeGreaterThan(0);
+    expect(dragged[0]).toBeLessThan(dragged[1]!);
+    expect(dragged[1]).toBeLessThan(dragged[2]!);
+    expect(ROTATE_SPEED_SCALE.slow).toBeLessThan(ROTATE_SPEED_SCALE.normal);
+
+    const keyed = speeds.map((speed) => {
+      const { cam } = make();
+      cam.setRotateSpeed(speed);
+      key('keydown', 'KeyQ');
+      run(cam, 1, 60);
+      key('keyup', 'KeyQ');
+      return DEFAULT_YAW - cam.yaw;
+    });
+    expect(keyed[0]).toBeGreaterThan(0);
+    expect(keyed[0]).toBeLessThan(keyed[1]!);
+    expect(keyed[1]).toBeLessThan(keyed[2]!);
   });
 });
 

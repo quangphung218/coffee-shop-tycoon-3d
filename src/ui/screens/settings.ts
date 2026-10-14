@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, saveSettings, type GameSpeed, type Quality, type Settings } from '../../save/settings';
+import { DEFAULT_SETTINGS, saveSettings, type CameraRotateSpeed, type GameSpeed, type Quality, type Settings } from '../../save/settings';
 import type { StorageLike } from '../../save/storage';
 import { h, setChildren, uid } from '../core/dom';
 import { icon, type IconId } from '../core/icons';
@@ -25,10 +25,15 @@ const SPEED_OPTIONS: readonly { value: GameSpeed; label: string }[] = [
   { value: 2, label: '2x' },
   { value: 4, label: '4x' },
 ];
+const ROTATE_OPTIONS: readonly { value: CameraRotateSpeed; label: string }[] = [
+  { value: 'slow', label: 'Chậm' },
+  { value: 'normal', label: 'Vừa' },
+  { value: 'fast', label: 'Nhanh' },
+];
 
 /**
- * Settings: music and SFX volume, graphics quality, game speed and camera
- * keys. Every change applies at once and is saved; there is no Save button.
+ * Settings: music and SFX volume, graphics quality, game speed, camera keys
+ * and rotate speed. Every change applies at once and is saved; there is no Save button.
  */
 export function createSettings(storage: StorageLike, initial: Settings, actions: SettingsActions): SettingsScreen {
   let value: Settings = { ...initial };
@@ -115,6 +120,15 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     () => value.gameSpeed,
     (s) => commit({ gameSpeed: s }),
   );
+  const rotate = seg(
+    'i-camera',
+    'Tốc độ xoay camera',
+    'Khi kéo chuột và giữ phím xoay.',
+    'cameraRotateSpeed',
+    ROTATE_OPTIONS,
+    () => value.cameraRotateSpeed,
+    (r) => commit({ cameraRotateSpeed: r }),
+  );
 
   const panLabelId = uid('pan-l');
   const panState = h('span', { class: 'toggle-state' });
@@ -154,6 +168,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     sfx.sync();
     quality.sync();
     speed.sync();
+    rotate.sync();
     syncKeys();
   }
 
@@ -180,6 +195,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       ),
       panToggle,
     ),
+    rotate.row,
     h('p', { class: 'section-title', text: 'Phím tắt' }),
     keysList,
     h(

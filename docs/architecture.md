@@ -177,7 +177,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 | --- | --- |
 | `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
-| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera. |
+| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`). |
 
 Mỗi slot là JSON:
 

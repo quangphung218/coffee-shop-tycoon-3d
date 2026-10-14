@@ -302,12 +302,28 @@ describe('Settings', () => {
     expect(keys.getAttribute('aria-checked')).toBe('false');
     expect(changes.at(-1)?.cameraKeys).toBe('qa-arrows');
 
-    expect(loadSettings(storage)).toEqual({ musicVolume: 0.2, sfxVolume: 0, quality: 'high', gameSpeed: 4, cameraKeys: 'qa-arrows' });
+    const normal = q<HTMLInputElement>(screen.el, 'input[data-setting="cameraRotateSpeed"][value="normal"]');
+    expect(normal.checked).toBe(true);
+    expect(normal.closest('[role="radiogroup"]')?.textContent).toBe('ChậmVừaNhanh');
+    const slow = q<HTMLInputElement>(screen.el, 'input[data-setting="cameraRotateSpeed"][value="slow"]');
+    slow.checked = true;
+    slow.dispatchEvent(new Event('change'));
+    expect(changes.at(-1)?.cameraRotateSpeed).toBe('slow');
+
+    expect(loadSettings(storage)).toEqual({
+      musicVolume: 0.2,
+      sfxVolume: 0,
+      quality: 'high',
+      gameSpeed: 4,
+      cameraKeys: 'qa-arrows',
+      cameraRotateSpeed: 'slow',
+    });
     expect(q(screen.el, '[role="status"]').textContent).toContain('Đã lưu');
 
     button(screen.el, 'Về mặc định').click();
     expect(loadSettings(storage)).toEqual(DEFAULT_SETTINGS);
     expect(music.value).toBe('50');
+    expect(normal.checked).toBe(true);
   });
 
   it('still applies when storage cannot save', () => {
