@@ -2,7 +2,18 @@ import { Raycaster, Scene, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { ALL_ANIMS, ANIM_PERIOD, SPEC_ANIMS, poseFor, propsFor, type AnimName, type Pose } from '../../src/render/actors/animations';
 import { createActors } from '../../src/render/actors';
-import { ANGRY_ICON, commandForCustomer, labelFor, patienceColor, PATIENCE_COLORS } from '../../src/render/actors/labels';
+import {
+  ANGRY_ICON,
+  Label,
+  LabelAssets,
+  POP_SECONDS,
+  commandForCustomer,
+  faceFor,
+  labelFor,
+  patienceColor,
+  PATIENCE_COLORS,
+  popScale,
+} from '../../src/render/actors/labels';
 import { Pool } from '../../src/render/actors/pool';
 import { APRON_COLORS, createCharacter, materialFor } from '../../src/render/actors/rig';
 import {
@@ -247,17 +258,60 @@ describe('sync: routes', () => {
 });
 
 describe('labels', () => {
-  it('shows the item and patience while waiting, 💢 when angry, nothing when drinking', () => {
+  it('shows the item icon, face and patience while waiting, the angry face when leaving, nothing when drinking', () => {
     const state = newState();
     const c = addCustomer(state, { patience: 10, maxPatience: 40 });
-    expect(labelFor(state, c)).toEqual({ icon: '🥛', patience: 0.25, ready: false });
+    expect(labelFor(state, c)).toEqual({ icon: 'i-latte', patience: 0.25, ready: false, face: 'i-face-worried' });
+    c.state = 'ordering';
+    expect(labelFor(state, c)).toEqual({ icon: 'i-latte', patience: null, ready: false, face: null });
     c.state = 'angry_leave';
+    expect(ANGRY_ICON).toBe('i-face-angry');
     expect(labelFor(state, c).icon).toBe(ANGRY_ICON);
     c.state = 'drinking';
-    expect(labelFor(state, c)).toEqual({ icon: null, patience: null, ready: false });
+    expect(labelFor(state, c)).toEqual({ icon: null, patience: null, ready: false, face: null });
     expect(patienceColor(0.9)).toBe(PATIENCE_COLORS.high);
     expect(patienceColor(0.4)).toBe(PATIENCE_COLORS.mid);
     expect(patienceColor(0.1)).toBe(PATIENCE_COLORS.low);
+  });
+
+  it('picks the face from the patience thresholds', () => {
+    expect(faceFor(1)).toBe('i-face-happy');
+    expect(faceFor(0.6)).toBe('i-face-happy');
+    expect(faceFor(0.59)).toBe('i-face-ok');
+    expect(faceFor(0.3)).toBe('i-face-ok');
+    expect(faceFor(0.29)).toBe('i-face-worried');
+    expect(faceFor(0)).toBe('i-face-worried');
+    const state = newState();
+    const c = addCustomer(state, { state: 'waiting', patience: 30, maxPatience: 40 });
+    expect(labelFor(state, c).face).toBe('i-face-happy');
+    c.patience = 16;
+    expect(labelFor(state, c).face).toBe('i-face-ok');
+    c.patience = 4;
+    expect(labelFor(state, c).face).toBe('i-face-worried');
+  });
+
+  it('pops the bubble with an overshoot, unless motion is reduced', () => {
+    expect(popScale(0, false)).toBeCloseTo(0);
+    const peak = Math.max(...[0.2, 0.25, 0.3].map((t) => popScale(t, false)));
+    expect(peak).toBeGreaterThan(1);
+    expect(popScale(POP_SECONDS, false)).toBe(1);
+    expect(popScale(10, false)).toBe(1);
+    for (const t of [0, 0.1, 0.25]) expect(popScale(t, true)).toBe(1);
+  });
+
+  it('shows the face beside the bar and never in the angry tag', () => {
+    const state = newState();
+    const assets = new LabelAssets();
+    const label = new Label(assets);
+    const c = addCustomer(state, { state: 'waiting', patience: 35, maxPatience: 40 });
+    label.set(labelFor(state, c), 1);
+    expect(label.iconShown).toBe('i-latte');
+    expect(label.faceShown).toBe('i-face-happy');
+    c.state = 'angry_leave';
+    label.set(labelFor(state, c), 2);
+    expect(label.iconShown).toBe('i-face-angry');
+    expect(label.faceShown).toBeNull();
+    assets.dispose();
   });
 
   it('turns clicks into take_order and deliver', () => {
@@ -347,7 +401,7 @@ describe('createActors', () => {
     const queued = actors.inspect(`c${c.id}`)!;
     expect(queued.anim).toBe('queue');
     expect(queued.pos).toEqual({ x: 0, z: -1 });
-    expect(queued.label).toBe('🥛');
+    expect(queued.label).toBe('i-latte');
     c.state = 'angry_leave';
     state.minute += 1;
     actors.update(state, 0.5);
