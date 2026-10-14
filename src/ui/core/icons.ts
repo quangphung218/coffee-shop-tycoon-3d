@@ -9,7 +9,8 @@
  * drawImage. The atlas loads on its own: nothing waits for it, and the box
  * has its final size before it arrives.
  */
-import ATLAS_JSON from '../../../public/icons3d/atlas.json';
+// Named imports only: Vite tree-shakes the rest of the JSON (the per-icon table).
+import { cell, columns, gap, height, rows, width } from '../../../public/icons3d/atlas.json';
 
 /** Every icon, in atlas order. Each id needs a model in src/icon-studio/models. */
 export const ICON_IDS = [
@@ -67,15 +68,29 @@ interface AtlasCell {
   h: number;
 }
 
-/** public/icons3d/atlas.json: @1x px; the @2x image doubles every number. */
-const ATLAS: { width: number; height: number; icons: Readonly<Record<string, AtlasCell>> } = ATLAS_JSON;
+/** Atlas cells after the icons: one per AVATAR_LOOKS entry (iconMap.ts). */
+export const AVATAR_CELLS = 8;
+
+/** Cell number in atlas order: the icons, then the avatar looks. */
+const CELL_INDEX: ReadonlyMap<string, number> = new Map<string, number>([
+  ...ICON_IDS.map((id, i) => [id, i] as const),
+  ...Array.from({ length: AVATAR_CELLS }, (_, n) => [`i-avatar-${n}`, ICON_IDS.length + n] as const),
+]);
 
 /** Image URLs, relative to the page so they hold under base './'. */
 export const ICON_ATLAS_URLS = { 1: 'icons3d/atlas@1x.webp', 2: 'icons3d/atlas@2x.webp' } as const;
 
-/** Where `id` sits in the atlas (@1x px), or undefined when the atlas has no cell for it yet. */
+/**
+ * Where `id` sits in the atlas (@1x px), or undefined when it has no cell.
+ * The atlas is a row-by-row grid in ICON_IDS order (packAtlas in
+ * src/icon-studio/atlas.ts), so only the grid numbers are imported from
+ * atlas.json; the per-icon table stays out of the bundle and a test checks
+ * every cell against it.
+ */
 export function iconCell(id: IconCellId): AtlasCell | undefined {
-  return Object.hasOwn(ATLAS.icons, id) ? ATLAS.icons[id] : undefined;
+  const i = CELL_INDEX.get(id);
+  if (i === undefined || i >= columns * rows) return undefined;
+  return { x: gap + (i % columns) * (cell + gap), y: gap + Math.floor(i / columns) * (cell + gap), w: cell, h: cell };
 }
 
 const pct = (n: number): string => `${+n.toFixed(4)}%`;
@@ -86,10 +101,9 @@ const pct = (n: number): string => `${+n.toFixed(4)}%`;
  * icon() hands them to ui.css as --ic-size and --ic-pos.
  */
 function cellBackground(c: AtlasCell): { size: string; position: string } {
-  const { width: W, height: H } = ATLAS;
   return {
-    size: `${pct((W / c.w) * 100)} ${pct((H / c.h) * 100)}`,
-    position: `${pct(W === c.w ? 0 : (c.x / (W - c.w)) * 100)} ${pct(H === c.h ? 0 : (c.y / (H - c.h)) * 100)}`,
+    size: `${pct((width / c.w) * 100)} ${pct((height / c.h) * 100)}`,
+    position: `${pct(width === c.w ? 0 : (c.x / (width - c.w)) * 100)} ${pct(height === c.h ? 0 : (c.y / (height - c.h)) * 100)}`,
   };
 }
 
@@ -144,7 +158,7 @@ export function loadIconAtlas(): Promise<HTMLImageElement> {
 export function drawIcon(ctx: CanvasRenderingContext2D, atlas: HTMLImageElement, id: IconCellId, x: number, y: number, size: number): boolean {
   const c = iconCell(id);
   if (!c) return false;
-  const k = atlas.naturalWidth / ATLAS.width;
+  const k = atlas.naturalWidth / width;
   ctx.drawImage(atlas, c.x * k, c.y * k, c.w * k, c.h * k, x, y, size, size);
   return true;
 }
