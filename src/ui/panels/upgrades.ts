@@ -3,27 +3,29 @@ import { nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
 import type { GameState, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { UPGRADE_ICONS } from '../core/iconMap';
+import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { inlineConfirm, keepFocus, reasonLine, sender, setReason, shortOfMoney } from './widgets';
+import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
 
-/** Groups from the spec, in display order. */
-export const UPGRADE_GROUPS: readonly { title: string; ids: readonly UpgradeId[] }[] = [
-  { title: '🪑 Bàn ghế', ids: ['tables'] },
-  { title: '☕ Máy pha', ids: ['better_machine', 'fast_machine'] },
-  { title: '🧾 Quầy', ids: ['big_counter'] },
-  { title: '⛱️ Ngoài trời', ids: ['outdoor_seating'] },
-  { title: '🏗️ Mở rộng', ids: ['expand_area'] },
-  { title: '🪴 Trang trí', ids: ['plants', 'paintings', 'lights', 'window_bar'] },
+/** Groups from the spec, in display order; each heading borrows the icon of its first upgrade. */
+export const UPGRADE_GROUPS: readonly { title: string; icon: IconId; ids: readonly UpgradeId[] }[] = [
+  { title: 'Bàn ghế', icon: UPGRADE_ICONS.tables, ids: ['tables'] },
+  { title: 'Máy pha', icon: UPGRADE_ICONS.better_machine, ids: ['better_machine', 'fast_machine'] },
+  { title: 'Quầy', icon: UPGRADE_ICONS.big_counter, ids: ['big_counter'] },
+  { title: 'Ngoài trời', icon: UPGRADE_ICONS.outdoor_seating, ids: ['outdoor_seating'] },
+  { title: 'Mở rộng', icon: UPGRADE_ICONS.expand_area, ids: ['expand_area'] },
+  { title: 'Trang trí', icon: UPGRADE_ICONS.plants, ids: ['plants', 'paintings', 'lights', 'window_bar'] },
 ];
 
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 const dec = (v: number): string => String(Math.round(v * 100) / 100).replace('.', ',');
 
-/** "+2 chỗ ngồi · +0,05 ★ · +4% khách · pha nhanh hơn 20%" per level. */
+/** "+2 chỗ ngồi · +0,05 sao mỗi đơn · +4% khách · pha nhanh hơn 20%" per level. */
 export function effectText(e: UpgradeEffect): string {
   const parts: string[] = [];
   if (e.capacity) parts.push(`+${e.capacity} chỗ ngồi`);
-  if (e.ratingBonus) parts.push(`+${dec(e.ratingBonus)} ★ mỗi đơn`);
+  if (e.ratingBonus) parts.push(`+${dec(e.ratingBonus)} sao mỗi đơn`);
   if (e.appeal) parts.push(`+${pct(e.appeal)} khách`);
   if (e.brewSpeed) parts.push(`pha nhanh hơn ${pct(e.brewSpeed)}`);
   return parts.join(' · ');
@@ -47,7 +49,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
     const li = h(
       'li',
       { class: 'item', attrs: { 'data-upgrade': id } },
-      h('span', { class: 'item-icon', attrs: { 'aria-hidden': 'true' }, text: def.icon }),
+      h('span', { class: 'item-icon' }, icon(UPGRADE_ICONS[id], { size: 32 })),
       h('div', {}, h('p', { class: 'item-title', text: def.name }), level, h('p', { class: 'item-meta', text: `Mỗi cấp: ${effectText(def.effectPerLevel)}` })),
       side,
       actions,
@@ -81,7 +83,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         level.textContent = `Cấp ${lv}/${def.maxLevel} · ${def.description}`;
         if (cost === null) {
           side.className = 'badge badge-ok';
-          side.textContent = '✅ Tối đa';
+          setIconText(side, 'i-ok', 'Tối đa');
           actions.hidden = true;
           return;
         }
@@ -100,7 +102,9 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
     h(
       'div',
       { class: 'prep' },
-      ...UPGRADE_GROUPS.map((g) => h('section', { class: 'stack', attrs: { 'aria-label': g.title } }, h('h3', { class: 'section-title', text: g.title }), h('ul', { class: 'stack' }, ...g.ids.map(row)))),
+      ...UPGRADE_GROUPS.map((g) =>
+        h('section', { class: 'stack', attrs: { 'aria-label': g.title } }, h('h3', { class: 'section-title' }, ...withIcon(g.icon, g.title, 24)), h('ul', { class: 'stack' }, ...g.ids.map(row))),
+      ),
     ),
   );
   const state = ctx.getState();

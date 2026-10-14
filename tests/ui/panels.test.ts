@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { getIngredient } from '../../src/sim/data/ingredients';
+import { getUpgrade } from '../../src/sim/data/upgrades';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { createNewGame } from '../../src/sim/state';
 import type { Command, GameState } from '../../src/sim/types';
@@ -47,6 +48,11 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
   return el;
 }
 
+/** href of the first icon inside `el`. */
+function useOf(el: Element): string | null {
+  return el.querySelector('svg.ic use')?.getAttribute('href') ?? null;
+}
+
 afterEach(() => {
   document.body.replaceChildren();
 });
@@ -63,6 +69,11 @@ describe('registration', () => {
       q<HTMLButtonElement>(hud.el, '[data-panel="inventory"]').click();
       expect(hud.openPanelId).toBe('inventory');
       expect(hud.panelEl.querySelectorAll('[data-ingredient]').length).toBeGreaterThan(0);
+
+      // Task Board links open another panel through its dock button.
+      q<HTMLButtonElement>(hud.el, '[data-panel="tasks"]').click();
+      q<HTMLButtonElement>(hud.panelEl, '[data-goto="staff"]').click();
+      expect(hud.openPanelId).toBe('staff');
       hud.dispose();
     } finally {
       off();
@@ -84,6 +95,8 @@ describe('menu panel', () => {
     expect(sw.getAttribute('aria-disabled')).toBe('true');
     const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
     expect(why.textContent).toContain(getIngredient('cacao').name);
+    expect(useOf(why)).toBe('#i-lock');
+    expect(useOf(q(mocha, '.item-icon'))).toBe('#i-mocha');
 
     sw.click();
     expect(sent).toHaveLength(0);
@@ -143,8 +156,23 @@ describe('inventory panel', () => {
     state.inventory.find((i) => i.id === 'milk')!.qty = 10;
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
     const { body } = mount(renderInventoryPanel, state);
-    expect(q(body, 'li[data-ingredient="milk"] .badge').textContent).toContain('Sắp hết');
-    expect(q(body, 'li[data-ingredient="cacao"] .badge').textContent).toContain('Hết');
+    expect(q(body, 'li[data-ingredient="milk"] .badge').textContent).toBe('Sắp hết');
+    expect(q(body, 'li[data-ingredient="cacao"] .badge').textContent).toBe('Hết');
+    expect(q(body, 'li[data-ingredient="coffee_beans"] .badge').textContent).toBe('Đủ');
+    // Icon + word, not colour alone.
+    expect(useOf(q(body, 'li[data-ingredient="milk"] .badge'))).toBe('#i-warning');
+    expect(useOf(q(body, 'li[data-ingredient="cacao"] .badge'))).toBe('#i-error');
+    expect(useOf(q(body, 'li[data-ingredient="coffee_beans"] .badge'))).toBe('#i-ok');
+  });
+
+  it('draws the ingredient icon by id and names the ingredient on − and +', () => {
+    const state = game();
+    const { body } = mount(renderInventoryPanel, state);
+    expect(useOf(q(body, 'li[data-ingredient="milk"] .item-icon'))).toBe('#i-milk');
+    const name = getIngredient('milk').name;
+    const buttons = [...body.querySelectorAll('.stepper[data-ingredient="milk"] .step-btn')].map((b) => b.getAttribute('aria-label'));
+    expect(buttons).toEqual([`Bớt 1 gói ${name}`, `Thêm 1 gói ${name}`]);
+    expect(q(body, '.stepper[data-ingredient="milk"] .step-input').id).toBeTruthy();
   });
 });
 
@@ -207,6 +235,8 @@ describe('staff panel', () => {
     const btn = q<HTMLButtonElement>(body, '.dd-btn');
     expect(btn.getAttribute('aria-disabled')).toBe('true');
     expect(btn.textContent).toContain('Tự động');
+    expect([...btn.querySelectorAll('use')].map((u) => u.getAttribute('href'))).toEqual(['#i-auto', '#i-chevron-down']);
+    expect(useOf(q(document, `#${btn.getAttribute('aria-describedby')}`))).toBe('#i-lock');
     btn.click();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
   });
@@ -319,6 +349,73 @@ describe('task board', () => {
     simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
     (handle as PanelHandle).update!(state);
     expect(q(body, '[data-task="staff"]').getAttribute('data-done')).toBe('true');
+  });
+});
+
+describe('no emoji', () => {
+  // Emoji plus the old symbol glyphs (dots, caret, box, tick, star, arrow).
+  const EMOJI = /\p{Extended_Pictographic}|[●○▾⬜✓★→]/u;
+
+  /** A state that reaches most branches: report tips, an unassigned and a busy hire, a locked item, low and empty stock, a running campaign, a maxed upgrade. */
+  function busyState(): GameState {
+    const state = game();
+    const [a, b] = state.candidates;
+    simDispatch(state, { type: 'hire_staff', candidateId: a!.id, role: 'none' });
+    simDispatch(state, { type: 'hire_staff', candidateId: b!.id, role: 'barista' });
+    state.staff[1]!.busy = true;
+    state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
+    state.inventory.find((i) => i.id === 'milk')!.qty = 10;
+    state.campaigns.push({ id: 'flyers', daysLeft: 2 });
+    state.upgrades.plants = getUpgrade('plants').maxLevel;
+    state.lastReport = {
+      day: 1,
+      revenue: 0,
+      ingredientCost: 0,
+      wages: 0,
+      marketingCost: 0,
+      profit: 0,
+      money: state.money,
+      customersArrived: 0,
+      customersServed: 0,
+      customersLost: 0,
+      topSellers: [],
+      outOfStock: [],
+      ratingStart: 3,
+      ratingEnd: 3,
+      reviews: [],
+      suggestions: [{ kind: 'restock', text: 'Nhập thêm sữa' }],
+    };
+    return state;
+  }
+
+  it.each(PREP_PANELS.map((p) => [p.id, p.render] as const))('%s panel text has no emoji', (_, render) => {
+    const state = busyState();
+    const { body, handle } = mount(render, state);
+    expect(body.textContent).not.toMatch(EMOJI);
+    expect(body.querySelectorAll('svg.ic').length).toBeGreaterThan(0);
+
+    // Later states: suggestion filled, auto-assign on, money gone, shop open.
+    body.querySelector<HTMLButtonElement>('[data-action="suggest"]')?.click();
+    state.autoAssign = true;
+    state.money = 0;
+    state.phase = 'opening';
+    (handle as PanelHandle).update?.(state);
+    expect(body.textContent).not.toMatch(EMOJI);
+  });
+
+  it('shows an icon, not an emoji, when nobody is hired', () => {
+    const { body } = mount(renderStaffPanel, game());
+    expect(useOf(q(body, '.empty'))).toBe('#i-chef');
+    expect(body.textContent).not.toMatch(EMOJI);
+  });
+
+  it('keeps the data-action hooks the media script clicks', () => {
+    const state = game();
+    expect(mount(renderStaffPanel, state).body.querySelector('[data-action="hire"]')).not.toBeNull();
+    const inv = mount(renderInventoryPanel, state).body;
+    expect(inv.querySelector('[data-action="suggest"]')).not.toBeNull();
+    expect(inv.querySelector('[data-action="buy"]')).not.toBeNull();
+    expect(mount(renderUpgradesPanel, state).body.querySelector('[data-action="buy"]')).not.toBeNull();
   });
 });
 

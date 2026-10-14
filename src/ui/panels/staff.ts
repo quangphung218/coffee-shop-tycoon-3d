@@ -2,12 +2,13 @@ import { MAX_STAFF, ROLE_NAMES, rolePlan } from '../../sim/staff';
 import type { GameState, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { avatarIcon, ROLE_ICONS } from '../core/iconMap';
+import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { dropdown, inlineConfirm, keepFocus, reasonLine, sender, setReason, toggle, type DropdownOption } from './widgets';
+import { dropdown, inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, toggle, withIcon, type DropdownOption } from './widgets';
 
-const ROLE_ICONS: Record<StaffRole, string> = { barista: '☕', server: '🍽️', cleaner: '🧹', marketer: '📣', none: '💤' };
 export const ROLE_ORDER: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'marketer', 'none'];
-const ROLE_OPTIONS: readonly DropdownOption<StaffRole>[] = ROLE_ORDER.map((r) => ({ value: r, label: `${ROLE_ICONS[r]} ${ROLE_NAMES[r]}` }));
+const ROLE_OPTIONS: readonly DropdownOption<StaffRole>[] = ROLE_ORDER.map((r) => ({ value: r, label: ROLE_NAMES[r], icon: ROLE_ICONS[r] }));
 
 const TASK_TEXT: Record<StaffTaskKind, string> = {
   brew: 'đang pha',
@@ -18,7 +19,11 @@ const TASK_TEXT: Record<StaffTaskKind, string> = {
   promote: 'đang mời khách',
   idle: 'đang chờ',
 };
-const AVATARS = ['👩', '👨', '🧑', '👱', '👩‍🦱', '👨‍🦱', '🧔', '👵'];
+
+/** Round avatar; the sim's `look` picks one of the drawn skin/hair pairs. */
+function avatar(look: number): HTMLElement {
+  return h('span', { class: 'staff-av' }, avatarIcon(look, { size: 32 }));
+}
 
 /** Speed 0.8–1.3 shown as ×1,15 plus a bar. */
 function speedMeter(speed: number): HTMLElement {
@@ -65,7 +70,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const wages = h('b');
   w.text(wages, (s) => formatMoney(s.staff.reduce((a, m) => a + m.wagePerDay, 0)));
   const teamCount = h('span');
-  w.text(teamCount, (s) => `👥 Đang có ${s.staff.length}/${MAX_STAFF} người`);
+  w.text(teamCount, (s) => `Đang có ${s.staff.length}/${MAX_STAFF} người`);
 
   function staffRow(member: Staff): HTMLElement {
     const badge = h('span');
@@ -77,7 +82,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     const li = h(
       'li',
       { class: 'staff', attrs: { 'data-staff': member.id } },
-      h('span', { class: 'staff-av', attrs: { 'aria-hidden': 'true' }, text: AVATARS[member.look % AVATARS.length]! }),
+      avatar(member.look),
       h('div', {}, h('p', { class: 'staff-name' }, member.name, ' ', badge), meta, speedMeter(member.speed)),
       h('div', { class: 'staff-row' }, h('span', { class: 'stepper-label', text: 'Vai' }), dd.el, fireBtn, why),
     );
@@ -105,7 +110,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         const m = s.staff.find((x) => x.id === member.id);
         if (!m) return;
         badge.className = m.busy ? 'badge badge-warn' : 'badge badge-ok';
-        badge.textContent = m.busy ? '⏳ Bận' : '🟢 Rảnh';
+        setIconText(badge, m.busy ? 'i-busy' : 'i-free', m.busy ? 'Bận' : 'Rảnh');
         meta.textContent = `Lương ${formatMoney(m.wagePerDay)}/ngày${m.busy && m.task ? ` · ${TASK_TEXT[m.task.kind]}` : ''}`;
         const others: Partial<Record<StaffRole, string>> = {};
         for (const r of ROLE_ORDER) {
@@ -117,7 +122,11 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         dd.set(m.role, {
           disabled: autoOn,
           warn: !autoOn && m.role === 'none',
-          display: autoOn ? `🤖 Tự động: ${ROLE_NAMES[m.role]}` : m.role === 'none' ? '⚠️ Chưa có vai' : undefined,
+          display: autoOn
+            ? { icon: 'i-auto', text: `Tự động: ${ROLE_NAMES[m.role]}` }
+            : m.role === 'none'
+              ? { icon: 'i-warning', text: 'Chưa có vai' }
+              : undefined,
         });
         setReason(why, dd.button, autoOn ? 'Tắt Tự phân vai để chọn tay.' : null);
       },
@@ -137,13 +146,13 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       (s) => s.staff.length >= MAX_STAFF,
       (full) => {
         setAriaDisabled(hire, full);
-        setReason(why, hire, full ? `🔒 Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
+        setReason(why, hire, full ? `Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
       },
     );
     const li = h(
       'li',
       { class: 'staff', attrs: { 'data-candidate': c.id } },
-      h('span', { class: 'staff-av', attrs: { 'aria-hidden': 'true' }, text: AVATARS[c.look % AVATARS.length]! }),
+      avatar(c.look),
       h('div', {}, h('p', { class: 'staff-name', text: c.name }), h('p', { class: 'item-meta', text: `Lương ${formatMoney(c.wagePerDay)}/ngày` }), speedMeter(c.speed)),
       h('div', { class: 'staff-row' }, hire, why),
     );
@@ -161,7 +170,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
           h(
             'li',
             { class: 'empty' },
-            h('span', { class: 'empty-icon', attrs: { 'aria-hidden': 'true' }, text: '🧑‍🍳' }),
+            icon('i-chef', { size: 48 }),
             h('p', { class: 'item-title', text: 'Chưa có nhân viên' }),
             h('p', { class: 'item-meta', text: 'Bạn đang tự làm mọi việc, sẽ chậm khi đông khách. Người đầu tiên nên là Pha chế.' }),
           ),
@@ -180,10 +189,10 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       h(
         'div',
         { class: 'setting' },
-        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: autoId, text: '🤖 Tự phân vai (Auto-assign)' }), h('p', { class: 'item-meta', text: 'Mỗi sáng game xếp vai theo việc bị ùn hôm trước.' })),
+        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: autoId }, ...withIcon('i-auto', 'Tự phân vai (Auto-assign)', 24)), h('p', { class: 'item-meta', text: 'Mỗi sáng game xếp vai theo việc bị ùn hôm trước.' })),
         auto.el,
       ),
-      h('p', { class: 'intro' }, teamCount),
+      h('p', { class: 'intro intro-icon' }, icon('i-people', { size: 16 }), teamCount),
       staffList,
       h('h3', { class: 'section-title', text: 'Ứng viên hôm nay' }),
       candList,
