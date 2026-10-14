@@ -1,7 +1,9 @@
 /**
  * The 3D icon set: low-poly models from src/icon-studio rendered by
  * `npm run icons` into public/icons3d (atlas@1x.webp, atlas@2x.webp and
- * atlas.json with each cell's position).
+ * atlas.json with each cell's position). Every icon has two cells: 48 px for
+ * the 32 and 48 px sizes, and a 24 px one drawn for small sizes (thicker
+ * ink, no fine detail) for 16 and 24 px.
  *
  * The DOM shows a cell as the background of an empty box (ui.css `.ic`
  * loads the atlas through image-set, so a 2x screen gets the @2x image);
@@ -10,7 +12,7 @@
  * has its final size before it arrives.
  */
 // Named imports only: Vite tree-shakes the rest of the JSON (the per-icon table).
-import { cell, columns, gap, height, rows, width } from '../../../public/icons3d/atlas.json';
+import { cell, columns, gap, height, rows, small, width } from '../../../public/icons3d/atlas.json';
 
 /** Every icon, in atlas order. Each id needs a model in src/icon-studio/models. */
 export const ICON_IDS = [
@@ -81,14 +83,20 @@ const CELL_INDEX: ReadonlyMap<string, number> = new Map<string, number>([
 export const ICON_ATLAS_URLS = { 1: 'icons3d/atlas@1x.webp', 2: 'icons3d/atlas@2x.webp' } as const;
 
 /**
- * Where `id` sits in the atlas (@1x px), or undefined when it has no cell.
- * The atlas is a row-by-row grid in ICON_IDS order (packAtlas in
- * src/icon-studio/atlas.ts), so only the grid numbers are imported from
- * atlas.json; the per-icon table stays out of the bundle and a test checks
- * every cell against it.
+ * Where `id` sits in the atlas (@1x px), or undefined when it has no cell:
+ * the 48 px cell, or the 24 px one when `size` is 16 or 24. The atlas is two
+ * row-by-row grids in ICON_IDS order, 48 px cells on top and 24 px cells
+ * under them (packAtlas in src/icon-studio/atlas.ts), so only the grid
+ * numbers are imported from atlas.json; the per-icon tables stay out of the
+ * bundle and a test checks every cell against them.
  */
-export function iconCell(id: IconCellId): AtlasCell | undefined {
+export function iconCell(id: IconCellId, size: IconSize = 48): AtlasCell | undefined {
   const i = CELL_INDEX.get(id);
+  if (size <= small.cell) {
+    if (i === undefined || i >= small.columns * small.rows) return undefined;
+    const s = small.cell;
+    return { x: gap + (i % small.columns) * (s + gap), y: small.top + Math.floor(i / small.columns) * (s + gap), w: s, h: s };
+  }
   if (i === undefined || i >= columns * rows) return undefined;
   return { x: gap + (i % columns) * (cell + gap), y: gap + Math.floor(i / columns) * (cell + gap), w: cell, h: cell };
 }
@@ -107,9 +115,6 @@ function cellBackground(c: AtlasCell): { size: string; position: string } {
   };
 }
 
-/** Inserted the old SVG sprite; the atlas needs nothing in the page. Kept for callers, does nothing. */
-export function mountIconSprite(_doc?: Document): void {}
-
 export type IconSize = 16 | 24 | 32 | 48;
 
 const SIZE_CLASS: Record<IconSize, string> = { 16: 'ic-sm', 24: '', 32: 'ic-lg', 48: 'ic-xl' };
@@ -121,14 +126,15 @@ export interface IconOptions {
   class?: string;
 }
 
-/** Decorative icon: <span class="ic" data-icon="id" aria-hidden="true" focusable="false"> showing the atlas cell. */
+/** Decorative icon: <span class="ic" data-icon="id" aria-hidden="true" focusable="false"> showing the atlas cell for its size. */
 export function icon(id: IconCellId, opts: IconOptions = {}): HTMLElement {
+  const size = opts.size ?? 24;
   const el = document.createElement('span');
-  el.className = ['ic', SIZE_CLASS[opts.size ?? 24], opts.class].filter(Boolean).join(' ');
+  el.className = ['ic', SIZE_CLASS[size], opts.class].filter(Boolean).join(' ');
   el.dataset.icon = id;
   el.setAttribute('aria-hidden', 'true');
   el.setAttribute('focusable', 'false');
-  const cell = iconCell(id);
+  const cell = iconCell(id, size);
   if (cell) {
     const bg = cellBackground(cell);
     el.style.setProperty('--ic-size', bg.size);
