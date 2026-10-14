@@ -7,6 +7,7 @@ import {
   clearNavGridCache,
   clearPathCache,
   createNavGrid,
+  doorPlanters,
   findPath,
   isWalkable,
   layoutFootprints,
@@ -108,6 +109,21 @@ describe('nav grid', () => {
       for (const f of fps) closest = Math.min(closest, shapeDistance(f.shape, x, z));
     }
     expect(closest).toBeGreaterThanOrEqual(AGENT_RADIUS - 1e-6);
+  });
+
+  it('blocks the planters beside the door but keeps the doorway and the patio passable', () => {
+    for (const levels of [{}, FULL]) {
+      const layout = layoutWith(levels);
+      const grid = buildNavGrid(layout);
+      const planters = doorPlanters(layout);
+      expect(layoutFootprints(layout).filter((f) => f.kind === 'planter').map((f) => f.id)).toEqual(['planter:L', 'planter:R']);
+      for (const p of planters) expect(isWalkable(grid, p)).toBe(false);
+      // Straight out of the door onto the sidewalk, between the planters.
+      expect(isWalkable(grid, { x: layout.door.x, z: planters[0]!.z })).toBe(true);
+      expectClearPath(layout, grid, OUTSIDE, { x: layout.door.x, z: layout.indoor.maxZ - 0.5 });
+      // Around the outside of a planter, toward the patio corners.
+      expectClearPath(layout, grid, OUTSIDE, { x: -4, z: planters[0]!.z });
+    }
   });
 
   it('ignores lamps and paintings', () => {
@@ -239,6 +255,13 @@ describe('validateLayout', () => {
     const layout = layoutWith({ plants: 1 });
     layout.decor[0]!.pos = { ...layout.tables[0]!.pos };
     expect(validateLayout(layout)).toContainEqual({ kind: 'overlap', a: `table:${layout.tables[0]!.id}`, b: 'plant:0' });
+  });
+
+  it('reports a table standing on a door planter', () => {
+    const layout = layoutWith({ outdoor_seating: 1 });
+    const table = layout.tables.find((t) => t.zone === 'outdoor')!;
+    table.pos = { ...doorPlanters(layout)[1] };
+    expect(validateLayout(layout)).toContainEqual({ kind: 'overlap', a: 'planter:R', b: `table:${table.id}` });
   });
 
   it('reports a blocked door', () => {

@@ -144,7 +144,7 @@ Sim giữ mọi người trên sàn trống: không xuyên tường, quầy, má
 
 | Phần | Cách làm |
 | --- | --- |
-| Footprint | `layoutFootprints(layout)` (`nav/footprints.ts`) trả hình chiếu sàn của tường, khung cửa, quầy, quầy sau, máy, bàn, ghế, cột dù, chậu cây. Render vẽ bằng cùng hằng số kích thước. |
+| Footprint | `layoutFootprints(layout)` (`nav/footprints.ts`) trả hình chiếu sàn của tường, khung cửa, hai chậu cây hai bên cửa (`doorPlanters`), quầy, quầy sau, máy, bàn, ghế, cột dù, chậu cây. Bậc thềm và thảm thấp, đi qua được, không có footprint. Render vẽ bằng cùng hằng số kích thước. |
 | Lưới | `buildNavGrid(layout)`: ô `NAV_CELL` = 0,25; ô bị chặn khi tâm ô nằm ngoài sàn hoặc cách footprint dưới `AGENT_RADIUS` = 0,2. Lưới cache theo `navLayoutKey`, chỉ dựng lại khi bố cục đổi (mua nâng cấp). |
 | Tìm đường | `findPath(grid, from, to)`: A* 8 hướng, không cắt góc ô chặn, hòa thì chọn chỉ số ô nhỏ hơn; đường được rút gọn theo tầm nhìn và cache LRU 128 đường. Đầu mút bị chặn được dời tới ô trống gần nhất (`nearestFree`). |
 | Đi bộ của khách | Mỗi tick khách đi 4 đơn vị dọc `findPath(pos, target)`. Đường không lưu vào state. Khách ngồi dừng ở ô trống cạnh ghế; render vẽ họ trên ghế. |
@@ -224,10 +224,12 @@ Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless 
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.
 - Chất lượng đồ họa:
 
-| Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố |
-| --- | --- | --- | --- |
-| Thấp | 1 | Tắt | Thấp |
-| Vừa | 1,5 | Tắt | Vừa |
-| Cao | 2 | Bật | Cao |
+| Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố | Chi tiết quán |
+| --- | --- | --- | --- | --- |
+| Thấp | 1 | Tắt | Thấp | Bỏ lọ hạt, đèn thả, diềm mái hiên, song cửa sổ |
+| Vừa | 1,5 | Tắt | Vừa | Đủ, trừ hộp hoa dưới cửa sổ |
+| Cao | 2 | Bật | Cao | Đủ |
+
+- Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`): `facadePlan(layout, quality)` đặt cửa sổ, cửa kính, mái hiên, biển tên quán (`state.shopName` vẽ lên canvas), chậu cây, bậc thềm, kệ lọ hạt, bảng menu, đèn thả, thảm cửa, quạt trần; `FacadeView` gộp thành vài mesh, chỉ dựng lại khi `layoutKey` hoặc mức đồ họa đổi. Đồ gắn tường co và ẩn theo tường khi tường hạ; khung cửa, mái hiên và biển đứng riêng nên vẫn thấy khi tường trước hạ.
 
 - Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
