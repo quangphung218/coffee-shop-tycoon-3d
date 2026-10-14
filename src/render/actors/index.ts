@@ -1,5 +1,6 @@
 import { Group, type Object3D, type Raycaster, type Scene } from 'three';
 import type { Quality } from '../../save/settings';
+import { buildNavGrid, type NavGrid } from '../../sim/nav';
 import type { Command, GameState, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
 import { layoutKey } from '../scene/shop';
@@ -10,6 +11,7 @@ import { Pool } from './pool';
 import { createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
 import {
   ANGRY_SPEED,
+  SEPARATION_RATE,
   STAFF_SPEED,
   WALK_SPEED,
   advance,
@@ -19,7 +21,11 @@ import {
   customerGoal,
   headingOf,
   playerHome,
+  playerSpot,
+  separate,
   setGoal,
+  shownX,
+  shownZ,
   snap,
   stepDistance,
   workerAnim,
@@ -125,7 +131,15 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   const byHitbox = new Map<Object3D, Actor>();
   const dir = { x: 0, z: 1 };
   let layout: ShopLayout | null = null;
+  let grid: NavGrid | null = null;
   let layoutSig = -1;
+  /** The player's spot, worked out again only when what it depends on changes (not every frame). */
+  let playerAt: Vec2 | null = null;
+  const playerKey = { clock: -1, layout: -1, task: null as GameState['playerTasks'][number] | null, customers: -1, staff: -1 };
+  /** Motions of everyone on screen this frame, for separate(); reused so frames allocate nothing. */
+  const walking: Motion[] = [];
+  const walkingRoots: Object3D[] = [];
+  let walkingCount = 0;
   let lastState: GameState | null = null;
   let lastClock = -1;
   let lastTime = -1;
@@ -196,8 +210,10 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   ): boolean {
     const m = actor.motion;
     if (!layout) return false;
-    setGoal(m, actor.goal.pos, layout);
+    setGoal(m, actor.goal.pos, layout, actor.goal.seated);
     if (snapNow) snap(m);
+    walking[walkingCount] = m;
+    walkingRoots[walkingCount++] = actor.body.char.root;
     const moved = advance(m, stepDistance(m, speed, dtGame), dir);
     // Still on the way (also while paused mid-walk, which freezes the stride).
     const moving = m.path.length > 0;
@@ -254,9 +270,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       const sig = layoutKey(state);
       if (!layout || sig !== layoutSig) {
         layout = getShopLayout(state);
+        grid = buildNavGrid(layout);
         layoutSig = sig;
       }
       const shop = layout;
+      walkingCount = 0;
 
       // Free the characters of people who left before handing out new ones.
       for (const c of state.customers) markSeen(`c${c.id}`);
@@ -272,7 +290,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         }
         actor.ghost = true;
         animate(actor, () => (actor.angry ? 'angry_leave' : 'walk'), customerSpeed(actor), dtGame, dtReal, false, now);
-        if (reachedExit(actor)) release(actor);
+        if (reachedExit(actor)) {
+          // Out of the separation list again: the body goes back to the pool.
+          if (walkingCount > 0 && walking[walkingCount - 1] === actor.motion) walkingCount -= 1;
+          release(actor);
+        }
       }
 
       for (const c of state.customers) {
@@ -291,21 +313,38 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         }
       }
 
-      state.staff.forEach((s, slot) => {
+      for (const s of state.staff) {
         const role: CharacterRole = s.role;
         const actor = ensure(`s${s.id}`, 'staff', s.id, role, s.look, s.pos);
-        actor.goal = workerGoal(state, s.task, shop, s.pos, slot);
+        // s.pos is the spot the sim holds for them (staffSpots).
+        actor.goal = workerGoal(state, s.task, shop, s.pos);
         const moving = animate(actor, (m) => workerAnim(s.task, m), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null, now);
         actor.body.label.set(NO_LABEL, now);
         actor.body.steam.update(!still && steamFor(state, s.task, moving), now + actor.bobOffset);
-      });
+      }
 
       const head = state.playerTasks[0] ?? null;
       const player = ensure('player', 'player', 0, 'player', 3, playerHome(shop));
-      player.goal = workerGoal(state, head, shop, playerHome(shop), state.staff.length);
+      const tick = state.day * 1440 + state.minute;
+      const k = playerKey;
+      if (!playerAt || k.clock !== tick || k.layout !== sig || k.task !== head || k.customers !== state.customers.length || k.staff !== state.staff.length) {
+        playerAt = playerSpot(state, head, shop);
+        k.clock = tick;
+        k.layout = sig;
+        k.task = head;
+        k.customers = state.customers.length;
+        k.staff = state.staff.length;
+      }
+      player.goal = workerGoal(state, head, shop, playerAt);
       const playerMoving = animate(player, (m) => workerAnim(head, m), STAFF_SPEED * 1.1, dtGame, dtReal, jump || player.motion.goal === null, now);
       player.body.label.set(NO_LABEL, now);
       player.body.steam.update(!still && steamFor(state, head, playerMoving), now);
+
+      // Walkers drift apart a little where they cross; only what is drawn moves.
+      if (grid) {
+        separate(walking, walkingCount, grid, SEPARATION_RATE * dtGame);
+        for (let i = 0; i < walkingCount; i++) walkingRoots[i]!.position.set(shownX(walking[i]!), 0, shownZ(walking[i]!));
+      }
 
       // Money coming in (take-away paid at the counter, cash picked up from a table).
       for (const e of state.events) {
@@ -345,7 +384,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       if (!actor) return null;
       return {
         anim: actor.anim,
-        pos: { x: actor.motion.pos.x, z: actor.motion.pos.z },
+        pos: { x: shownX(actor.motion), z: shownZ(actor.motion) },
         heading: actor.heading,
         visible: actor.body.char.root.visible,
         label: actor.body.label.iconShown,

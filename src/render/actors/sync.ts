@@ -1,4 +1,6 @@
+import { claimSpot } from '../../sim/customers';
 import { CHAIR_OFFSET } from '../../sim/nav/footprints';
+import { buildNavGrid, cellAt, cellCenter, findPath, isWalkable, nearestFree, type NavGrid } from '../../sim/nav';
 import type { Customer, CustomerState, GameState, StaffTask, StaffTaskKind, Vec2 } from '../../sim/types';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { AnimName } from './animations';
@@ -8,11 +10,11 @@ import type { AnimName } from './animations';
  * animation, a spot to walk to and the direction to face once there.
  * Everything here is pure; index.ts owns the three objects.
  *
- * The sim moves customers in straight 4-unit hops once per game minute and
- * teleports staff to their task spot, so the renderer walks each person
- * along a short route (around the counter, through the door) on the
- * continuous game clock `minute + alpha`, which keeps movement smooth
- * between ticks.
+ * The sim moves customers in 4-unit hops once per game minute and teleports
+ * staff to the spot they hold, so the renderer walks each person to the
+ * spot the sim gave them along the nav grid's path (findPath, around the
+ * furniture and through the door) on the continuous game clock
+ * `minute + alpha`, which keeps movement smooth between ticks.
  */
 
 /** Heading (rotation.y) that faces -z: toward the counter and the machines. */
@@ -106,80 +108,93 @@ export function customerGoal(state: GameState, c: Customer, layout: ShopLayout):
   return { pos: { x: pos.x, z: pos.z }, face: FACE_BACK, seated: false };
 }
 
+/** Heading from `from` toward `to`, or `fallback` when they are on the same spot. */
+function faceToward(from: Vec2, to: Vec2, fallback: number): number {
+  return dist(from, to) > 1e-3 ? headingOf(to.x - from.x, to.z - from.z) : fallback;
+}
+
 /**
- * Spot and facing for a staff member or the player working on `task`.
- * `home` is where they wait when idle; `slot` spreads several workers along
- * the counter and over the machines.
+ * Pose for a staff member or the player standing on `spot` (the spot the
+ * sim holds for them) while working on `task`: facing the machines, the
+ * room, the customer they serve or the table they clean.
  */
-export function workerGoal(state: GameState, task: StaffTask | null, layout: ShopLayout, home: Vec2, slot: number): Goal {
-  const counter = layout.counter;
+export function workerGoal(state: GameState, task: StaffTask | null, layout: ShopLayout, spot: Vec2): Goal {
+  const pos = { x: spot.x, z: spot.z };
+  let face = FACE_FRONT;
   switch (task?.kind) {
-    case 'brew': {
-      const machine = layout.machines[slot % Math.max(1, layout.machines.length)];
-      const m = machine?.pos ?? { x: counter.pos.x, z: counter.pos.z - 1.3 };
-      return { pos: { x: m.x, z: m.z + 0.45 }, face: FACE_BACK, seated: false };
-    }
-    case 'take_order': {
-      const reach = Math.max(0, counter.width / 2 - 0.4);
-      const offset = Math.max(-reach, Math.min(reach, ((slot % 3) - 1) * 0.8));
-      return { pos: { x: counter.pos.x + offset, z: counter.pos.z - 0.55 }, face: FACE_FRONT, seated: false };
-    }
+    case 'brew':
+      face = FACE_BACK;
+      break;
     case 'serve': {
       const order = state.orders.find((o) => o.id === task.targetId);
       const customer = state.customers.find((c) => c.id === order?.customerId);
-      if (!customer) break;
-      const spot = customerGoal(state, customer, layout).pos;
-      return { pos: { x: spot.x, z: spot.z + 0.65 }, face: FACE_BACK, seated: false };
+      if (customer) face = faceToward(pos, customerGoal(state, customer, layout).pos, FACE_BACK);
+      break;
+    }
+    case 'collect':
+    case 'clean': {
+      const table = state.tables.find((t) => t.id === task.targetId);
+      if (table) face = faceToward(pos, table.pos, FACE_FRONT);
+      break;
+    }
+    default:
+      break;
+  }
+  return { pos, face, seated: false };
+}
+
+/** Where the sim's staff stand for a task (src/sim/staff.ts wantedSpots): behind the counter, by a table. */
+const COUNTER_BACK = 0.75;
+const TABLE_SIDE = 0.8;
+
+/** Spots the player would like to stand on for `task`, best first, as the sim picks them for staff. */
+function playerWants(state: GameState, task: StaffTask | null, layout: ShopLayout): Vec2[] {
+  const counter = layout.counter.pos;
+  switch (task?.kind) {
+    case 'brew': {
+      const machine = layout.machines[0]?.pos ?? counter;
+      return [{ x: machine.x, z: counter.z - COUNTER_BACK }];
+    }
+    case 'take_order':
+      return [{ x: counter.x, z: counter.z - COUNTER_BACK }];
+    case 'serve': {
+      const order = state.orders.find((o) => o.id === task.targetId);
+      const customer = state.customers.find((c) => c.id === order?.customerId);
+      return [customer ? (customer.target ?? customer.pos) : layout.pickup];
     }
     case 'collect':
     case 'clean': {
       const table = state.tables.find((t) => t.id === task.targetId);
       if (!table) break;
-      return { pos: { x: table.pos.x, z: table.pos.z - 0.8 }, face: FACE_FRONT, seated: false };
+      return [
+        { x: table.pos.x, z: table.pos.z - TABLE_SIDE },
+        { x: table.pos.x, z: table.pos.z + TABLE_SIDE },
+      ];
     }
     default:
       break;
   }
-  return { pos: { x: home.x, z: home.z }, face: FACE_FRONT, seated: false };
-}
-
-export type Region = 'back' | 'front' | 'out';
-
-/** Behind the counter, in the room, or outside the front wall. */
-export function regionOf(p: Vec2, layout: ShopLayout): Region {
-  if (p.z > layout.indoor.maxZ + 0.05) return 'out';
-  const c = layout.counter;
-  if (p.z < c.pos.z && Math.abs(p.x - c.pos.x) < c.width / 2 + 0.3) return 'back';
-  return 'front';
-}
-
-/** The gap at the end of the counter nearest to x. */
-function counterGate(layout: ShopLayout, x: number): Vec2 {
-  const c = layout.counter;
-  const side = x >= c.pos.x ? 1 : -1;
-  return { x: c.pos.x + side * (c.width / 2 + 0.55), z: c.pos.z };
+  return [playerHome(layout)];
 }
 
 /**
- * Waypoints from `from` to `to` (ending at `to`): around the end of the
- * counter between the bar and the room, through the door between the room
- * and outside. Tables are low enough to walk past without detours.
+ * The player's standing spot for `task`. The sim does not place the player,
+ * so this claims one with the sim's claimSpot after the cells customers and
+ * staff hold: nobody ends up inside furniture or on top of someone else.
  */
-export function route(from: Vec2, to: Vec2, layout: ShopLayout): Vec2[] {
-  const ra = regionOf(from, layout);
-  const rb = regionOf(to, layout);
-  const end = { x: to.x, z: to.z };
-  if (ra === rb) return [end];
-  const door = layout.door;
-  const doorIn = { x: door.x, z: door.z - 0.6 };
-  const doorOut = { x: door.x, z: door.z + 0.6 };
-  const path: Vec2[] = [];
-  if (ra === 'back') path.push(counterGate(layout, to.x));
-  if (ra === 'out') path.push(doorOut, doorIn);
-  if (rb === 'back') path.push(counterGate(layout, path.at(-1)?.x ?? from.x));
-  if (rb === 'out') path.push(doorIn, doorOut);
-  path.push(end);
-  return path;
+export function playerSpot(state: GameState, task: StaffTask | null, layout: ShopLayout): Vec2 {
+  const grid = buildNavGrid(layout);
+  const taken = new Set<number>();
+  for (const c of state.customers) {
+    if (c.state === 'leaving' || c.state === 'angry_leave') continue;
+    const spot = nearestFree(grid, c.target ?? c.pos);
+    if (spot) taken.add(cellAt(grid, spot));
+  }
+  for (const s of state.staff) {
+    const i = cellAt(grid, s.pos);
+    if (i >= 0) taken.add(i);
+  }
+  return claimSpot(grid, playerWants(state, task, layout), taken);
 }
 
 /** Walking state of one person on screen. */
@@ -188,23 +203,47 @@ export interface Motion {
   /** Remaining waypoints, the last one is the goal. */
   path: Vec2[];
   goal: Vec2 | null;
+  /** Where the path to the goal ends: the goal, or the free cell next to it when it is blocked. */
+  end: Vec2 | null;
+  /** Drawn this far from `pos` so walkers do not overlap (see separate); 0 once they stand still. */
+  offset: Vec2;
 }
 
 export function createMotion(pos: Vec2): Motion {
-  return { pos: { x: pos.x, z: pos.z }, path: [], goal: null };
+  return { pos: { x: pos.x, z: pos.z }, path: [], goal: null, end: null, offset: { x: 0, z: 0 } };
 }
 
-/** Points the motion at a new goal; a goal within a few centimetres of the current one is ignored. */
-export function setGoal(m: Motion, goal: Vec2, layout: ShopLayout): void {
+/**
+ * Points the motion at a new goal along the nav grid (findPath, cached), so
+ * people walk around furniture instead of through it. A goal within a few
+ * centimetres of the current one is ignored, so A* only runs when the goal
+ * changes. `seat` adds the last step from the floor onto a chair, which is
+ * furniture; other goals end on the nearest free cell when theirs is blocked.
+ */
+export function setGoal(m: Motion, goal: Vec2, layout: ShopLayout, seat = false): void {
   if (m.goal && dist(m.goal, goal) < 0.05) return;
   m.goal = { x: goal.x, z: goal.z };
-  m.path = route(m.pos, goal, layout);
+  const grid = buildNavGrid(layout);
+  // Mid-walk the person is rarely on a cell centre; stepping to the centre of
+  // their (free) cell first keeps the whole walk on cells A* checked.
+  const cell = cellAt(grid, m.pos);
+  const centre = cell >= 0 && grid.blocked[cell] === 0 ? cellCenter(grid, cell) : null;
+  const from = centre && dist(centre, m.pos) > 1e-6 ? centre : m.pos;
+  const path = findPath(grid, from, goal) ?? [{ x: goal.x, z: goal.z }];
+  if (from !== m.pos) path.unshift(from);
+  const end = path[path.length - 1]!;
+  if (seat && dist(end, goal) > 1e-6) path.push({ x: goal.x, z: goal.z });
+  m.path = path;
+  m.end = path[path.length - 1]!;
 }
 
-/** Jumps straight to the current goal (first frame, new day, loaded save). */
+/** Jumps straight to the end of the current path (first frame, new day, loaded save). */
 export function snap(m: Motion): void {
-  if (m.goal) m.pos = { x: m.goal.x, z: m.goal.z };
+  const end = m.end ?? m.goal;
+  if (end) m.pos = { x: end.x, z: end.z };
   m.path = [];
+  m.offset.x = 0;
+  m.offset.z = 0;
 }
 
 export function remaining(m: Motion): number {
@@ -241,17 +280,119 @@ export function advance(m: Motion, distance: number, dir?: { x: number; z: numbe
       dir.z = dz / d;
     }
     if (d <= left) {
-      m.pos = { x: next.x, z: next.z };
+      m.pos.x = next.x;
+      m.pos.z = next.z;
       m.path.shift();
       left -= d;
       moved += d;
     } else {
-      m.pos = { x: m.pos.x + (dx / d) * left, z: m.pos.z + (dz / d) * left };
+      m.pos.x += (dx / d) * left;
+      m.pos.z += (dz / d) * left;
       moved += left;
       left = 0;
     }
   }
   return moved;
+}
+
+/** People walking closer than this to someone else are eased apart. */
+export const SEPARATION_RADIUS = 0.3;
+/** Most a walker is pushed aside per game minute, so the push stays a gentle drift. */
+export const SEPARATION_RATE = 1.5;
+/** A walker is never drawn further than this from their path. */
+const MAX_OFFSET = SEPARATION_RADIUS;
+
+const probe: Vec2 = { x: 0, z: 0 };
+
+/** True when m drawn at offset (ox, oz) stands on a walkable cell. */
+function fits(m: Motion, ox: number, oz: number, grid: NavGrid): boolean {
+  probe.x = m.pos.x + ox;
+  probe.z = m.pos.z + oz;
+  return isWalkable(grid, probe);
+}
+
+/** Sets m's offset to (ox, oz), or one axis of it, or leaves it, whichever is first to keep m on free floor. */
+function setOffset(m: Motion, ox: number, oz: number, grid: NavGrid): boolean {
+  const len = Math.hypot(ox, oz);
+  if (len > MAX_OFFSET) {
+    ox *= MAX_OFFSET / len;
+    oz *= MAX_OFFSET / len;
+  }
+  if (fits(m, ox, oz, grid)) {
+    m.offset.x = ox;
+    m.offset.z = oz;
+    return true;
+  }
+  if (fits(m, ox, m.offset.z, grid)) {
+    m.offset.x = ox;
+    return true;
+  }
+  if (fits(m, m.offset.x, oz, grid)) {
+    m.offset.z = oz;
+    return true;
+  }
+  return false;
+}
+
+/** Where m is drawn: its place on the path plus the separation offset. */
+export function shownX(m: Motion): number {
+  return m.pos.x + m.offset.x;
+}
+
+export function shownZ(m: Motion): number {
+  return m.pos.z + m.offset.z;
+}
+
+/**
+ * Eases walking people apart when they are drawn within SEPARATION_RADIUS
+ * of each other, by at most `maxStep` per pair this frame. It moves only
+ * the drawing offset, never `pos`, so everyone still follows the path A*
+ * found; once someone stops walking their offset melts back to 0 and they
+ * stand right on the spot the sim holds for them. People standing still
+ * are not pushed; walkers step around them. An offset that would put
+ * someone on a blocked cell is cut to one axis, or dropped. Looks only; the
+ * sim never sees it. Reads the first `count` motions and allocates nothing.
+ */
+export function separate(motions: readonly Motion[], count: number, grid: NavGrid, maxStep: number): void {
+  if (!(maxStep > 0)) return;
+  // Settle offsets first: melt them for people who stopped, and drop any the
+  // walk itself has carried onto furniture.
+  for (let i = 0; i < count; i++) {
+    const m = motions[i]!;
+    const o = m.offset;
+    if (o.x === 0 && o.z === 0) continue;
+    const len = Math.hypot(o.x, o.z);
+    const k = m.path.length === 0 ? Math.max(0, len - maxStep) / len : 1;
+    const ox = o.x * k;
+    const oz = o.z * k;
+    if (k > 0 && fits(m, ox, oz, grid)) {
+      o.x = ox;
+      o.z = oz;
+    } else {
+      o.x = 0;
+      o.z = 0;
+    }
+  }
+  for (let i = 0; i < count; i++) {
+    const a = motions[i]!;
+    for (let j = i + 1; j < count; j++) {
+      const b = motions[j]!;
+      const aWalks = a.path.length > 0;
+      const bWalks = b.path.length > 0;
+      if (!aWalks && !bWalks) continue;
+      const dx = shownX(b) - shownX(a);
+      const dz = shownZ(b) - shownZ(a);
+      const d = Math.hypot(dx, dz);
+      if (d >= SEPARATION_RADIUS) continue;
+      // On the very same point, part along x; the order keeps it deterministic.
+      const ux = d > 1e-6 ? dx / d : 1;
+      const uz = d > 1e-6 ? dz / d : 0;
+      const push = Math.min(maxStep, SEPARATION_RADIUS - d);
+      const share = aWalks && bWalks ? push / 2 : push;
+      if (aWalks) setOffset(a, a.offset.x - ux * share, a.offset.z - uz * share, grid);
+      if (bWalks) setOffset(b, b.offset.x + ux * share, b.offset.z + uz * share, grid);
+    }
+  }
 }
 
 /** Shortest signed turn from heading a to heading b, in (-π, π]. */
