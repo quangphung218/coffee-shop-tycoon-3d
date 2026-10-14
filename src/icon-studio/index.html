@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Icon studio</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #f6e7d2;
+        color: #3a2216;
+        font: 14px/1.4 Nunito, ui-rounded, system-ui, sans-serif;
+      }
+      #preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      figure {
+        margin: 0;
+        text-align: center;
+      }
+      figcaption {
+        font-size: 12px;
+      }
+      #sheet {
+        display: inline-grid;
+        gap: 4px;
+        padding: 16px;
+        background: #fffaf2;
+        border: 2px solid #3a2216;
+        border-radius: 12px;
+      }
+      #sheet:empty {
+        display: none;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 110px 140px 140px;
+        align-items: center;
+        gap: 16px;
+      }
+      .row > span {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .row.head {
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .sprite {
+        display: block;
+        background-repeat: no-repeat;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sheet"></div>
+    <div id="preview"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
