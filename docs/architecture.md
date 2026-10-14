@@ -151,6 +151,15 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 36,8 kB gzip.
 
+Thời gian tính từ lúc mở trang, bản build qua `vite preview`, Chrome headless không cache trên Apple M2 (ANGLE Metal), trung vị 3 lần:
+
+| Cấu hình | Bản | Màn chờ hiện | Main Menu hiện | Cảnh 3D hiện |
+| --- | --- | --- | --- | --- |
+| Máy bàn, không giới hạn | Một chunk | Không có (trang trống tới khi menu hiện) | 121 ms | 121 ms |
+| Máy bàn, không giới hạn | Tách chunk + màn chờ | 76 ms | 84 ms | 155 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Một chunk | Không có (trang trống tới khi menu hiện) | 1584 ms | 1584 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Tách chunk + màn chờ | 620 ms | 746 ms | 1891 ms |
+
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 
 ```sh
