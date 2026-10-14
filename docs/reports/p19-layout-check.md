@@ -42,19 +42,21 @@ Kết quả `npm run layout` (`scripts/check-layout.mjs`) và `scripts/measure-s
 
 - Khung tổng giữ 202 px ở mọi bước và mọi khổ; dòng hướng dẫn, tổng tiền và nút Nhập hàng không xê dịch.
 - Dòng giới thiệu và kết quả Gợi ý / Nhập hàng dùng chung ô `.kho-note` cao 3 dòng, nên bấm Gợi ý không đẩy danh sách hàng.
-- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`) và dòng hàng cao thêm khi hiện nhãn "gợi ý" hoặc giá dài.
-- CLS khác 0 chỉ ở bước vượt tiền, từ một node đã bị gỡ khỏi trang khi entry được đọc. Bảng trên đo khi toast còn hiện; script hiện ẩn `.toasts` trong lúc đo để chỉ chấm bảng Kho.
+- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`) và dòng hàng cao thêm khi nhãn "gợi ý" hiện ra.
+- CLS khác 0 ở bước vượt tiền đến từ nhãn "gợi ý" (ô 46×22 px trong dòng tên) bị gỡ khỏi layout khi sửa số gói của dòng đã gợi ý. Nhãn `.sug` giờ giữ chỗ khi ẩn (`visibility: hidden`), nên dòng hàng không đổi chiều cao khi nhãn hiện hay ẩn.
 
 ## Thời gian tới Main Menu
 
-Chrome trên Apple M2, trung vị của 5 lần, cache trống.
+Chrome trên Apple M2, cache trống, trung vị của 9 lần.
 
 | Hồ sơ | Bản | First paint | Main Menu | Cảnh 3D |
 | --- | --- | --- | --- | --- |
-| Desktop, không giới hạn | `origin/main` | 164 ms | 233 ms | 411 ms |
-| Desktop, không giới hạn | P19 | 104 ms | 245 ms | 432 ms |
-| Mobile: RTT 150 ms, 1,6 Mbps, CPU 4× | `origin/main` | 576 ms | 845 ms | 3212 ms |
-| Mobile: RTT 150 ms, 1,6 Mbps, CPU 4× | P19 | 688 ms | 928 ms | 3272 ms |
+| Desktop, không giới hạn | `origin/main` | 176 ms | 321 ms | 509 ms |
+| Desktop, không giới hạn | P19 | 108 ms | 265 ms | 536 ms |
+| Mobile: RTT 150 ms, 1,6 Mbps, CPU 4× | `origin/main` | 744 ms | 1081 ms | 4026 ms |
+| Mobile: RTT 150 ms, 1,6 Mbps, CPU 4× | P19 | 688 ms | 1032 ms | 3659 ms |
+
+Lượt 5 lần trước đó cho P19 chậm hơn 12 ms (desktop) và 83 ms (mobile); lượt 9 lần cho P19 nhanh hơn 56 ms và 49 ms. Chênh lệch nằm trong dao động giữa các lượt đo: Main Menu không chậm đi.
 
 | Chunk | `origin/main` (gzip) | P19 (gzip) |
 | --- | --- | --- |
@@ -63,14 +65,14 @@ Chrome trên Apple M2, trung vị của 5 lần, cache trống.
 | `index` (nhỏ) | 27,2 kB | 29,0 kB |
 | CSS | 8,7 kB | 9,2 kB |
 
-Main Menu chậm hơn 12 ms trên desktop và 83 ms trên mobile; tổng gzip tăng 3,5 kB (khoảng 18 ms tải ở 1,6 Mbps).
+Tổng gzip tăng 3,5 kB, khoảng 18 ms tải ở 1,6 Mbps.
 
 ## Chạy lại
 
 ```sh
 npx playwright install chromium   # một lần
 npm run layout                    # in bảng PASS/FAIL, thoát mã 1 nếu có FAIL
-node scripts/measure-startup.mjs --base origin/main --runs 5
+node scripts/measure-startup.mjs --base origin/main --runs 9
 ```
 
 `measure-startup` dùng Chrome cài trên máy (`CHROME_PATH` nếu ở chỗ khác).
