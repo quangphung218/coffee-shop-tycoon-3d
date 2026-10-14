@@ -1,22 +1,18 @@
 import { INGREDIENTS } from '../../sim/data/ingredients';
-import { autoRestockSuggestion, ingredientPrice, stockOf } from '../../sim/inventory';
+import { autoRestockSuggestion, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
 import type { GameState, IngredientDef, IngredientId } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
+import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { INGREDIENT_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { reasonLine, setIconText, setReason, shortOfMoney, stepper, withIcon, type Stepper } from './widgets';
+import { setIconText, shortOfMoney, stepper, withIcon, type Stepper } from './widgets';
 
 /** Most packs of one ingredient a single purchase can hold. */
 export const MAX_PACKS = 99;
 
-type StockLevel = 'ok' | 'low' | 'out';
-
-export function stockLevel(def: IngredientDef, qty: number): StockLevel {
-  if (qty <= 0) return 'out';
-  return qty < def.lowStock ? 'low' : 'ok';
-}
+/** Shown in the foot hint while no pack is picked. */
+export const PICK_HINT = 'Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.';
 
 /** Icon + word, so the level never rests on colour alone. */
 const BADGES: Record<StockLevel, { cls: string; icon: IconId; text: string }> = {
@@ -34,10 +30,12 @@ interface Row {
 }
 
 /**
- * Kho: stock per ingredient with a low-stock badge, a pack stepper per line,
- * the order total and one "Nhập hàng" button. "Gợi ý nhập tự động" fills the
+ * Kho: stock per ingredient with a badge against the demand left today
+ * (stockOutlook, refreshed as the sim runs), a pack stepper per line, the
+ * order total and one "Nhập hàng" button. "Gợi ý nhập tự động" fills the
  * steppers from autoRestockSuggestion first so the player sees the amounts
- * before paying. The buy button is dimmed with the shortfall when money is short.
+ * before paying. The buy button is dimmed while nothing is picked or money is
+ * short; the hint under it always shows, so the foot never changes height.
  */
 export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -52,8 +50,13 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
   const total = h('b');
   const after = h('span');
   const buyText = h('span');
-  const buyBtn = h('button', { class: 'btn btn-primary btn-lg btn-block', attrs: { type: 'button', 'data-action': 'buy' } }, icon('i-inventory'), buyText);
-  const buyWhy = reasonLine();
+  const hint = h('p', { class: 'reason foot-hint', id: uid('why') });
+  const buyBtn = h(
+    'button',
+    { class: 'btn btn-primary btn-lg btn-block', attrs: { type: 'button', 'data-action': 'buy', 'aria-describedby': hint.id } },
+    icon('i-inventory'),
+    buyText,
+  );
 
   const rows: Row[] = INGREDIENTS.map((def) => {
     const badge = h('span');
@@ -81,15 +84,25 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       badge,
       h('div', { class: 'item-actions' }, h('span', { class: 'stepper-label', text: `Nhập thêm (gói ${def.packSize} ${def.unit})` }), step.el, cost),
     );
+    let shown: StockLevel | null = null;
+    // stockOutlook is cached, so this is the same object until stock, menu or clock bucket change.
     w.watch(
-      (s) => stockOf(s, def.id),
-      (qty, s) => {
-        const b = BADGES[stockLevel(def, qty)];
+      (s) => stockOutlook(s)[def.id],
+      (o, s) => {
+        const b = BADGES[o.level];
         badge.className = b.cls;
         setIconText(badge, b.icon, b.text);
-        meta.textContent = `Còn ${qty} ${def.unit} · ${formatMoney(ingredientPrice(s, def.id, def.packSize))}/gói`;
+        if (shown !== null && shown !== o.level) {
+          // Restart the pulse when levels change in quick succession.
+          void badge.offsetWidth;
+          badge.classList.add('is-level-changed');
+        }
+        shown = o.level;
+        const cups = o.cups === null ? '' : ` · đủ khoảng ${o.cups} ly hôm nay`;
+        meta.textContent = `Còn ${o.qty} ${def.unit}${cups} · ${formatMoney(ingredientPrice(s, def.id, def.packSize))}/gói`;
       },
     );
+    badge.addEventListener('animationend', () => badge.classList.remove('is-level-changed'));
     return { def, li, step, cost, sug };
   });
 
@@ -110,12 +123,13 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
     total.textContent = formatMoney(sum);
     after.textContent = formatMoney(s.money - sum);
     buyText.textContent = sum > 0 ? `Nhập hàng · ${formatMoney(sum)}` : 'Nhập hàng';
-    let why: string | null = null;
-    if (sum === 0) why = 'Chọn số gói cần nhập, hoặc bấm gợi ý nhập tự động.';
-    else if (sum > s.money) why = `${shortOfMoney(sum, s.money, formatMoney)} Bớt số gói để vừa tiền.`;
-    setAriaDisabled(buyBtn, why !== null);
-    setReason(buyWhy, buyBtn, why);
-    buyWhy.classList.toggle('reason-danger', sum > 0);
+    const short = sum > s.money;
+    setAriaDisabled(buyBtn, sum === 0 || short);
+    // One slot for every message, so the foot keeps its height.
+    hint.classList.toggle('reason-danger', short);
+    if (sum === 0) setIconText(hint, 'i-info', PICK_HINT);
+    else if (short) setIconText(hint, 'i-lock', `${shortOfMoney(sum, s.money, formatMoney)} Bớt số gói để vừa tiền.`);
+    else setIconText(hint, 'i-info', 'Kiểm tra số gói rồi bấm Nhập hàng.');
   }
 
   suggestBtn.addEventListener('click', () => {
@@ -177,7 +191,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
         h('div', { class: 'foot-sum' }, h('span', { text: 'Tổng nhập' }), total),
         h('div', { class: 'foot-sum' }, h('span', { text: 'Còn lại sau khi nhập' }), after),
         buyBtn,
-        buyWhy,
+        hint,
       ),
     ),
   );

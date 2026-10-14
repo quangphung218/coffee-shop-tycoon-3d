@@ -4,12 +4,13 @@ import { dispatch as simDispatch } from '../../src/sim';
 import { getIngredient } from '../../src/sim/data/ingredients';
 import { getUpgrade } from '../../src/sim/data/upgrades';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
-import { createNewGame } from '../../src/sim/state';
+import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { Command, GameState } from '../../src/sim/types';
+import { toastForEvent } from '../../src/ui/hud/events';
 import { createHud } from '../../src/ui/hud/hud';
 import { listPanels, type PanelContext, type PanelHandle, type PanelRender } from '../../src/ui/hud/panels';
-import { PREP_PANELS, registerPrepPanels } from '../../src/ui/panels';
-import { renderInventoryPanel } from '../../src/ui/panels/inventory';
+import { PREP_PANELS, lowStockCount, registerPrepPanels } from '../../src/ui/panels';
+import { PICK_HINT, renderInventoryPanel } from '../../src/ui/panels/inventory';
 import { renderMarketingPanel } from '../../src/ui/panels/marketing';
 import { renderMenuPanel } from '../../src/ui/panels/menu';
 import { renderStaffPanel } from '../../src/ui/panels/staff';
@@ -155,6 +156,8 @@ describe('inventory panel', () => {
     const state = game();
     state.inventory.find((i) => i.id === 'milk')!.qty = 10;
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
+    // Enough for the whole day-1 demand.
+    state.inventory.find((i) => i.id === 'coffee_beans')!.qty = 10_000;
     const { body } = mount(renderInventoryPanel, state);
     expect(q(body, 'li[data-ingredient="milk"] .badge').textContent).toBe('Sắp hết');
     expect(q(body, 'li[data-ingredient="cacao"] .badge').textContent).toBe('Hết');
@@ -163,6 +166,64 @@ describe('inventory panel', () => {
     expect(useOf(q(body, 'li[data-ingredient="milk"] .badge'))).toBe('i-warning');
     expect(useOf(q(body, 'li[data-ingredient="cacao"] .badge'))).toBe('i-error');
     expect(useOf(q(body, 'li[data-ingredient="coffee_beans"] .badge'))).toBe('i-ok');
+  });
+
+  it('moves the badge and the dock count with the stock, against the demand left today', () => {
+    const state = game();
+    for (const m of state.menu) m.enabled = m.id === 'espresso';
+    state.history.push({ ...createDayStats(1, 3), sold: { espresso: 40 } });
+    state.day = 2;
+    for (const i of state.inventory) i.qty = 10_000;
+    const { body, handle } = mount(renderInventoryPanel, state);
+    const badge = q(body, 'li[data-ingredient="coffee_beans"] .badge');
+    expect(badge.textContent).toBe('Đủ');
+    expect(lowStockCount(state)).toBe(0);
+
+    // 704 g is above the fixed warning level (100 g) but short of 40 × 18 g.
+    state.inventory.find((i) => i.id === 'coffee_beans')!.qty = 704;
+    handle!.update!(state);
+    expect(badge.textContent).toBe('Sắp hết');
+    expect(badge.classList.contains('is-level-changed')).toBe(true);
+    expect(q(body, 'li[data-ingredient="coffee_beans"] .item-meta').textContent).toContain('đủ khoảng 39 ly hôm nay');
+    const notOk = body.querySelectorAll('li[data-ingredient] .badge:not(.badge-ok)').length;
+    expect(lowStockCount(state)).toBe(notOk);
+    expect(notOk).toBe(1);
+    expect(toastForEvent({ type: 'low_stock', ingredientId: 'coffee_beans' }, state)?.title).toBe('Sắp hết Cà phê hạt');
+
+    state.inventory.find((i) => i.id === 'coffee_beans')!.qty = 0;
+    handle!.update!(state);
+    expect(badge.textContent).toBe('Hết');
+    expect(lowStockCount(state)).toBe(1);
+  });
+
+  it('keeps one hint slot under the buy button, never hidden, for every message', () => {
+    const state = game();
+    state.money = 1_000_000;
+    const { body } = mount(renderInventoryPanel, state);
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    const hint = q(document, `#${buy.getAttribute('aria-describedby')}`);
+    expect(hint.hidden).toBe(false);
+    expect(hint.textContent).toBe(PICK_HINT);
+    expect(useOf(hint)).toBe('i-info');
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+
+    const plus = q<HTMLButtonElement>(body, '.stepper[data-ingredient="coffee_beans"] button[aria-label^="Thêm"]');
+    plus.click();
+    expect(buy.getAttribute('aria-disabled')).toBeNull();
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`)).toBe(hint);
+    expect(hint.hidden).toBe(false);
+    expect(hint.textContent).not.toBe(PICK_HINT);
+    expect(hint.classList.contains('reason-danger')).toBe(false);
+
+    state.money = 1000;
+    plus.click();
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`)).toBe(hint);
+    expect(hint.hidden).toBe(false);
+    expect(hint.textContent).toContain('Thiếu');
+    expect(hint.classList.contains('reason-danger')).toBe(true);
+    expect(useOf(hint)).toBe('i-lock');
+    expect(body.querySelectorAll('.panel-foot .reason')).toHaveLength(1);
   });
 
   it('draws the ingredient icon by id and names the ingredient on − and +', () => {

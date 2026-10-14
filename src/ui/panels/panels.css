@@ -562,3 +562,28 @@
     transform: none !important;
   }
 }
+
+/* Kho foot hint: one slot for "pick packs" (info) and the money shortfall
+   (danger). Always shown and two lines tall, so swapping text never moves
+   the total or the buy button. */
+.prep .foot-hint {
+  align-items: flex-start;
+  min-height: 2lh;
+}
+.foot-hint .ic {
+  flex: none;
+}
+/* Kho badge: a short pop when the level changes (Đủ → Sắp hết → Hết). */
+.badge.is-level-changed {
+  animation: badge-pop var(--duration-pop) var(--easing-bounce);
+}
+@keyframes badge-pop {
+  50% {
+    transform: scale(1.15);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge.is-level-changed {
+    animation: none;
+  }
+}
