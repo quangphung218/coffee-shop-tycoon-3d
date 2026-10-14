@@ -8,6 +8,7 @@ So sánh bản P17 (commit `07439cf`) với bản P18: các ca đi xuyên đã s
 - [Sơ đồ đường đi trước/sau](#sơ-đồ-đường-đi-trướcsau)
 - [Ảnh trong game trước/sau](#ảnh-trong-game-trướcsau)
 - [Atlas icon 3D](#atlas-icon-3d)
+- [Khởi động và chunk](#khởi-động-và-chunk)
 - [Tạo lại báo cáo](#tạo-lại-báo-cáo)
 
 ## Các ca đi xuyên
@@ -88,6 +89,28 @@ Quầy có 4 pha chế (1 nhận order, 1 pha, 2 rảnh) và 2 phục vụ (1 r�
 
 Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px: [p18-icons-sample.png](p18-icons-sample.png). Trang xem mọi icon: `icons3d/` trong bản build (xem [media.md](../media.md#xem-icon)).
 
+## Khởi động và chunk
+
+`node scripts/measure-startup.mjs --base 07439cf --runs 3`: bản build qua `vite preview`, Chrome headless không cache trên Apple M2 (ANGLE Metal), trung vị 3 lần, hai bản đo trong cùng một lượt.
+
+| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu hiện | Cảnh 3D hiện |
+| --- | --- | --- | --- | --- |
+| Máy bàn, không giới hạn | P17 (`07439cf`) | 124 ms | 446 ms | 794 ms |
+| Máy bàn, không giới hạn | P18 | 112 ms | 361 ms | 599 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | P17 (`07439cf`) | 780 ms | 1165 ms | 3181 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | P18 | 476 ms | 669 ms | 2515 ms |
+
+Main Menu trên di động của P18 không chậm hơn P17. Số tuyệt đối thay đổi giữa các lượt đo; chỉ so hai bản trong cùng lượt.
+
+| Chunk | P17 raw / gzip | P18 raw / gzip |
+| --- | --- | --- |
+| `index-*.js` (chunk chính, cần cho Main Menu) | 134,9 / 45,8 kB | 128,5 / 44,8 kB |
+| `index-*.css` | 53,9 / 8,5 kB | 54,8 / 8,7 kB |
+| `index-*.js` (`src/render`, tải sau menu) | 58,0 / 21,9 kB | 72,5 / 27,1 kB |
+| `three-*.js` (tải sau menu) | 495,1 / 123,9 kB | 496,5 / 124,2 kB |
+
+Mặt tiền, đèn ấm và chuyển động nằm trong chunk `src/render`, tải sau Main Menu.
+
 ## Tạo lại báo cáo
 
 | Phần | Lệnh |
@@ -95,3 +118,4 @@ Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px: [p18-icons-sample.png](p18-
 | Sơ đồ `p18-collision-*.svg` | `npx vitest run tests/report -u` (test `tests/report/collision-plot.test.ts` vẽ từ code nav thật và báo lỗi khi sơ đồ đã commit lệch code) |
 | Ảnh trong game | `npm run media` (xem [media.md](../media.md)) |
 | Atlas icon | `npm run icons` |
+| Số đo khởi động | `node scripts/measure-startup.mjs --base 07439cf --runs 3` |
