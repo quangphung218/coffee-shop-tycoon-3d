@@ -81,37 +81,34 @@ export const REVIEW_REASON_ICONS: Readonly<Record<ReviewReason, IconId>> = {
 };
 
 export interface AvatarLook {
-  /** CSS values for --av-skin / --av-hair (token with its hex as fallback). */
-  skinVar: string;
-  hairVar: string;
-  /** Plain hex, for canvas drawing through iconSvgMarkup(). */
+  /** Token hex values; the icon studio builds atlas cell `i-avatar-<index>` from them. */
   skin: string;
   hair: string;
 }
 
-function look(skinToken: string, skin: string, hairToken: string, hair: string): AvatarLook {
-  return { skinVar: `var(${skinToken}, ${skin})`, hairVar: `var(${hairToken}, ${hair})`, skin, hair };
-}
-
-/** The 8 skin/hair pairs drawn in the design file, replacing 8 person emoji. */
+/** The 8 skin/hair pairs drawn in the design file (skin and hair tokens), replacing 8 person emoji. */
 export const AVATAR_LOOKS: readonly AvatarLook[] = [
-  look('--color-skin-1', '#ffdcbf', '--color-hair-1', '#3a2216'),
-  look('--color-skin-2', '#f0b98d', '--color-hair-2', '#6b3f24'),
-  look('--color-skin-3', '#c98a5e', '--color-hair-1', '#3a2216'),
-  look('--color-skin-1', '#ffdcbf', '--color-hair-4', '#f2cf63'),
-  look('--color-skin-2', '#f0b98d', '--color-hair-3', '#d9822b'),
-  look('--color-skin-4', '#8d5a3b', '--color-hair-1', '#3a2216'),
-  look('--color-skin-3', '#c98a5e', '--color-hair-2', '#6b3f24'),
-  look('--color-skin-1', '#ffdcbf', '--color-cream-200', '#ecd3b2'),
+  { skin: '#ffdcbf', hair: '#3a2216' },
+  { skin: '#f0b98d', hair: '#6b3f24' },
+  { skin: '#c98a5e', hair: '#3a2216' },
+  { skin: '#ffdcbf', hair: '#f2cf63' },
+  { skin: '#f0b98d', hair: '#d9822b' },
+  { skin: '#8d5a3b', hair: '#3a2216' },
+  { skin: '#c98a5e', hair: '#6b3f24' },
+  { skin: '#ffdcbf', hair: '#ecd3b2' },
 ];
 
-/** Same staff id → same look, every session. */
-export function avatarLook(staffId: number): AvatarLook {
+/** Index into AVATAR_LOOKS: same staff id → same look, every session. */
+export function avatarIndex(staffId: number): number {
   const n = AVATAR_LOOKS.length;
-  return AVATAR_LOOKS[((Math.trunc(staffId) % n) + n) % n]!;
+  return ((Math.trunc(staffId) % n) + n) % n;
 }
 
-export function avatarIcon(staffId: number, opts: Omit<IconOptions, 'vars'> = {}): SVGSVGElement {
-  const l = avatarLook(staffId);
-  return icon('i-avatar', { ...opts, vars: { '--av-skin': l.skinVar, '--av-hair': l.hairVar } });
+export function avatarLook(staffId: number): AvatarLook {
+  return AVATAR_LOOKS[avatarIndex(staffId)]!;
+}
+
+/** The staff member's face from the atlas (one rendered cell per look). */
+export function avatarIcon(staffId: number, opts: IconOptions = {}): HTMLElement {
+  return icon(`i-avatar-${avatarIndex(staffId)}`, opts);
 }

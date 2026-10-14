@@ -7,7 +7,8 @@
  */
 import { NoToneMapping, SRGBColorSpace, WebGLRenderer } from 'three';
 import { AVATAR_LOOKS } from '../ui/core/iconMap';
-import { iconSvgMarkup, isIconId } from '../ui/core/icons';
+import { isIconId } from '../ui/core/icons';
+import { iconSvgMarkup } from '../ui/core/iconSvg';
 import { ATLAS_IDS, type AtlasManifest, AVATAR_IDS, CELL, orderIds, packAtlas } from './atlas';
 import { MODELS } from './models';
 import { createStage } from './style';

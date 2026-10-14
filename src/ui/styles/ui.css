@@ -28,6 +28,46 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+/* 3D icons (src/ui/core/icons.ts): one cell of the atlas in public/icons3d;
+   icon() sets --ic-size/--ic-pos per cell in %, so any box size works.
+   The box has its size before the atlas loads, so nothing moves. */
+.ic {
+  display: inline-block;
+  flex: none;
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+  vertical-align: middle;
+  background-image: url('/icons3d/atlas@1x.webp');
+  background-image: image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x);
+  background-repeat: no-repeat;
+  background-size: var(--ic-size, 0 0);
+  background-position: var(--ic-pos, 0 0);
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+.ic-sm {
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+}
+.ic-lg {
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
+}
+.ic-xl {
+  width: var(--size-icon-xl);
+  height: var(--size-icon-xl);
+}
+/* Icons inside a control hop and tilt on hover, squash on press. */
+@media (hover: hover) {
+  button:not([aria-disabled='true'], :disabled):hover .ic,
+  .choice:hover .ic {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+}
+button:not([aria-disabled='true'], :disabled):active .ic,
+.choice:active .ic {
+  transform: scale(0.88) rotate(3deg);
+  transition-duration: var(--duration-instant);
+}
 .stack {
   display: flex;
   flex-direction: column;
@@ -1431,7 +1471,8 @@ legend {
   .seg button,
   .hud-btn,
   .dock-btn,
-  .toggle-thumb {
+  .toggle-thumb,
+  .ic {
     transform: none !important;
   }
   .range::-webkit-slider-thumb {
