@@ -57,7 +57,7 @@ Tạo lại ảnh và GIF: `npm run media` (xem [docs/media.md](docs/media.md)).
 | Tốc độ 1x / 2x / 4x | `1` / `2` / `3` |
 | Đóng bảng, mở menu tạm dừng | `Esc` |
 
-Tắt **Cài đặt → Di chuyển camera bằng WASD** để xoay bằng `Q`/`A` (`E` vẫn xoay); khi đó chỉ phím mũi tên dùng để pan. Cài đặt còn có âm lượng nhạc, âm lượng hiệu ứng, chất lượng đồ họa Thấp/Vừa/Cao và tốc độ mặc định.
+Tắt **Cài đặt → Di chuyển camera bằng WASD** để xoay bằng `Q`/`A` (`E` vẫn xoay); khi đó chỉ phím mũi tên dùng để pan. **Cài đặt → Tốc độ xoay camera** chọn Chậm/Vừa/Nhanh cho cả kéo chuột và phím xoay; thả chuột sau khi kéo thì camera trôi thêm một chút rồi dừng (tắt khi hệ điều hành bật giảm chuyển động). Cài đặt còn có âm lượng nhạc, âm lượng hiệu ứng, chất lượng đồ họa Thấp/Vừa/Cao và tốc độ mặc định.
 
 ## Lưu game
 
