@@ -28,6 +28,7 @@ import {
   findPath,
   isWalkable,
   layoutFootprints,
+  navSearchCount,
   nearestFree,
   shapeDistance,
   validateLayout,
@@ -36,10 +37,10 @@ import {
 } from '../../src/sim/nav';
 import { staffSpots } from '../../src/sim/staff';
 import { createNewGame } from '../../src/sim/state';
-import type { Customer, Difficulty, GameState, Vec2 } from '../../src/sim/types';
+import type { Customer, Difficulty, GameState, UpgradeId, Vec2 } from '../../src/sim/types';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, type ShopLayout } from '../../src/sim/upgrades';
-import { playDay } from './helpers';
+import { autoPlay, playDay } from './helpers';
 
 /**
  * Nobody walks or stands inside furniture, walls or each other: a week of
@@ -60,8 +61,18 @@ const MIN_STANDING_GAP = 0.4;
 const SAMPLE_STEP = 0.05;
 const MAX_REPORTED = 8;
 
-type Config = 'base' | 'maxed';
+type Config = 'base' | 'maxed' | 'expanded' | 'patio' | 'long_bar';
 const CONFIGS: readonly Config[] = ['base', 'maxed'];
+/** Shops part way through the upgrades, soaked on hard for fewer days. */
+const PARTIAL: Readonly<Record<Exclude<Config, 'base' | 'maxed'>, Partial<Record<UpgradeId, number>>>> = {
+  // The side room without the patio.
+  expanded: { tables: 3, expand_area: 2 },
+  // The patio without the side room.
+  patio: { tables: 3, outdoor_seating: 2 },
+  // The longest counter with every machine.
+  long_bar: { tables: 2, big_counter: 2, fast_machine: 3, better_machine: 3 },
+};
+const PARTIAL_DAYS = 3;
 
 function dist(a: Vec2, b: Vec2): number {
   return Math.hypot(a.x - b.x, a.z - b.z);
@@ -94,6 +105,17 @@ function buyEverything(state: GameState): void {
   state.money = 1e12;
   for (const def of UPGRADES) {
     while (nextUpgradeCost(state, def.id) !== null) expect(buyUpgrade(state, def.id).ok, def.id).toBe(true);
+  }
+  state.money = money;
+  state.events = [];
+}
+
+/** These upgrade levels bought, in the order given. */
+function buyLevels(state: GameState, levels: Partial<Record<UpgradeId, number>>): void {
+  const money = state.money;
+  state.money = 1e12;
+  for (const [id, n] of Object.entries(levels) as [UpgradeId, number][]) {
+    for (let i = 0; i < n; i++) expect(buyUpgrade(state, id).ok, id).toBe(true);
   }
   state.money = money;
   state.events = [];
@@ -156,6 +178,8 @@ interface Soak {
   ticks: number;
   standingPairs: number;
   frames: number;
+  /** Most seatless customers waiting for a takeaway at once. */
+  maxTakeaway: number;
 }
 
 /**
@@ -190,7 +214,7 @@ function checkTick(state: GameState, layout: ShopLayout, grid: NavGrid, soak: So
   }
 
   const spots = floorSpots(layout, grid);
-  const all = [...spots.queue, ...spots.pickup];
+  const all = [...spots.queue, ...spots.takeaway];
   for (let i = 0; i < all.length; i++) {
     if (!isWalkable(grid, all[i]!)) bad(`floor spot ${fmt(all[i]!)} is blocked`);
     for (let j = i + 1; j < all.length; j++) {
@@ -206,14 +230,13 @@ function checkTick(state: GameState, layout: ShopLayout, grid: NavGrid, soak: So
       if (!spots.queue.some((q) => q.x === t.x && q.z === t.z)) bad(`customer ${c.id} in line off the queue at ${fmt(t)}`);
     } else if (c.state === 'waiting' && c.tableId === null) {
       takeaway++;
-      const k = spots.pickup.findIndex((p) => p.x === t.x && p.z === t.z);
-      if (k < 0) bad(`takeaway customer ${c.id} off the pickup spots at ${fmt(t)}`);
+      const k = spots.takeaway.findIndex((p) => p.x === t.x && p.z === t.z);
+      if (k < 0) bad(`takeaway customer ${c.id} off the takeaway spots at ${fmt(t)}`);
       else held.set(k, (held.get(k) ?? 0) + 1);
     }
   }
-  if (takeaway <= PICKUP_SPOTS) {
-    for (const [k, n] of held) if (n > 1) bad(`${n} takeaway customers share pickup spot ${k}`);
-  }
+  for (const [k, n] of held) if (n > 1) bad(`${n} takeaway customers share takeaway spot ${k}`);
+  soak.maxTakeaway = Math.max(soak.maxTakeaway, takeaway);
 }
 
 /** Walks every motion toward its goal for one game minute in fixed frames; every drawn point must be walkable. */
@@ -285,28 +308,41 @@ function fingerprint(state: GameState): string {
 }
 
 /**
- * A week of play: restock every morning, hire staff (two baristas in the
- * starting shop, a full team in the maxed one) and serve alone besides them.
- * `render` adds the motion replay.
+ * Days of play: restock every morning, hire staff (two baristas in the
+ * starting shop, an auto-assigned team in the others: six in the maxed shop,
+ * four part way) and serve alone besides them. `render` adds the motion replay.
+ *
+ * `stalled` piles takeaway customers up instead: no staff, every table left
+ * dirty, the player only takes orders and never brews, and nobody waiting
+ * gives up before closing time, so the waiting crowd grows to all the shop
+ * admits.
  */
-function soakWeek(difficulty: Difficulty, config: Config, render: boolean): Soak {
+function soakWeek(difficulty: Difficulty, config: Config, render: boolean, days = DAYS, stalled = false): Soak {
   const state = createNewGame('Quán Va Chạm', difficulty, SEED);
   if (config === 'maxed') buyEverything(state);
-  const soak: Soak = { days: [], violations: [], ticks: 0, standingPairs: 0, frames: 0 };
-  for (let day = 1; day <= DAYS; day++) {
+  else if (config !== 'base') buyLevels(state, PARTIAL[config]);
+  const soak: Soak = { days: [], violations: [], ticks: 0, standingPairs: 0, frames: 0, maxTakeaway: 0 };
+  for (let day = 1; day <= days; day++) {
     dispatch(state, { type: 'apply_restock' });
-    const team = config === 'maxed' ? 6 : 2;
+    const team = stalled ? 0 : config === 'maxed' ? 6 : config === 'base' ? 2 : 4;
     for (const cand of [...state.candidates]) {
       if (state.staff.length >= team) break;
-      dispatch(state, { type: 'hire_staff', candidateId: cand.id, role: config === 'maxed' ? 'none' : 'barista' });
+      dispatch(state, { type: 'hire_staff', candidateId: cand.id, role: config === 'base' ? 'barista' : 'none' });
     }
-    if (config === 'maxed' && day === 1) dispatch(state, { type: 'set_auto_assign', enabled: true });
+    if (config !== 'base' && team > 0 && day === 1) dispatch(state, { type: 'set_auto_assign', enabled: true });
     const layout = getShopLayout(state);
     expect(validateLayout(layout)).toEqual([]);
     const grid = buildNavGrid(layout);
     const replay = createReplay();
     playDay(state, {
+      play: !stalled,
       onMinute: (s) => {
+        if (stalled) {
+          for (const t of s.tables) t.trash = Math.max(t.trash, 1);
+          if (s.phase !== 'closing') for (const c of s.customers) if (c.state === 'waiting') c.patience = c.maxPatience;
+          const next = s.customers.find((c) => c.state === 'queueing');
+          if (s.playerTasks.length === 0 && next) dispatch(s, { type: 'take_order', customerId: next.id });
+        }
         soak.ticks++;
         checkTick(s, layout, grid, soak);
         if (render) replayMinute(s, layout, grid, replay, soak);
@@ -334,6 +370,21 @@ describe(`collision soak: ${DAYS} days per difficulty and shop`, () => {
     }
   }
 
+  for (const config of Object.keys(PARTIAL) as (keyof typeof PARTIAL)[]) {
+    it(`hard, ${config} shop for ${PARTIAL_DAYS} days: nobody in a blocked cell or on top of someone`, () => {
+      const soak = soakWeek('hard', config, true, PARTIAL_DAYS);
+      expect(soak.violations).toEqual([]);
+      expect(soak.ticks).toBeGreaterThan(PARTIAL_DAYS * 700);
+      expect(soak.standingPairs).toBeGreaterThan(1000);
+    });
+  }
+
+  it(`hard, maxed shop with drinks stalled: more takeaway customers than the mat's ${PICKUP_SPOTS} spots, none sharing`, () => {
+    const soak = soakWeek('hard', 'maxed', true, 2, true);
+    expect(soak.violations).toEqual([]);
+    expect(soak.maxTakeaway).toBeGreaterThan(PICKUP_SPOTS + 4);
+  });
+
   it('replays the same week to the same state, with cold nav caches', () => {
     const first = soaks.get('hard|maxed') ?? soakWeek('hard', 'maxed', true);
     clearNavGridCache();
@@ -342,6 +393,43 @@ describe(`collision soak: ${DAYS} days per difficulty and shop`, () => {
     expect(again.days.length).toBe(DAYS);
     again.days.forEach((d, i) => expect(d, `day ${i + 1}`).toBe(first.days[i]));
     expect(again.ticks).toBe(first.ticks);
+  });
+});
+
+describe('nav cost', () => {
+  it('a busy day at 4× speed builds one distance field per goal and searches no route per tick', () => {
+    const state = createNewGame('Quán Va Chạm', 'hard', SEED);
+    buyEverything(state);
+    dispatch(state, { type: 'apply_restock' });
+    for (const cand of [...state.candidates]) dispatch(state, { type: 'hire_staff', candidateId: cand.id, role: 'none' });
+    dispatch(state, { type: 'set_auto_assign', enabled: true });
+    expect(dispatch(state, { type: 'set_speed', speed: 4 })).toBe(true);
+    clearPathCache();
+    expect(dispatch(state, { type: 'start_day' })).toBe(true);
+    // As the game loop drives it: 60 frames a second, 2 game minutes a second at 1×.
+    const frameMinutes = (1 / 60) * 2 * state.speed;
+    const goals = new Set<string>();
+    let walks = 0;
+    for (let frame = 0; state.phase !== 'report' && frame < 100_000; frame++) {
+      autoPlay(state);
+      const minute = state.minute;
+      step(state, frameMinutes);
+      state.events = [];
+      if (state.minute === minute) continue;
+      for (const c of state.customers) {
+        if (!c.target) continue;
+        goals.add(`${c.target.x},${c.target.z}`);
+        walks++;
+      }
+    }
+    expect(state.phase).toBe('report');
+    const { paths, fields } = navSearchCount();
+    expect(walks).toBeGreaterThan(1000);
+    // A field per goal the customers walked to (the door, line, takeaway spots and chairs), kept for the whole day.
+    expect(fields).toBeLessThanOrEqual(goals.size);
+    expect(fields).toBeLessThan(96);
+    // Routes are searched only to lay out the line, once per floor plan.
+    expect(paths).toBeLessThanOrEqual(1);
   });
 });
 

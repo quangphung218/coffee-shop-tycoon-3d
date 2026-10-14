@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DOOR_POS,
   ENTER_MINUTES,
   MAX_QUEUE,
+  PICKUP_SPOTS,
   findSeat,
   floorSpots,
   pickOrder,
@@ -325,6 +327,86 @@ describe('standing spots and walking', () => {
     crowd[0]!.timer = 1;
     updateCustomers(s);
     expect(crowd.slice(1).map((c) => c.target)).toEqual(targets.slice(1));
+  });
+
+  /** `count` takeaway customers waiting at once from the door, walked for a while; returns them. */
+  function takeawayCrowd(s: GameState, count: number): Customer[] {
+    for (const t of s.tables) t.trash = 1;
+    const grid = buildNavGrid(getShopLayout(s));
+    const crowd = Array.from({ length: count }, (_, k): Customer => {
+      const c: Customer = {
+        id: s.nextId++,
+        state: 'waiting',
+        pos: { ...DOOR_POS },
+        target: null,
+        patience: 999,
+        maxPatience: 999,
+        order: 'espresso',
+        tableId: null,
+        timer: 0,
+        look: k % 8,
+      };
+      s.customers.push(c);
+      return c;
+    });
+    for (let minute = 0; minute < 15; minute++) {
+      updateCustomers(s);
+      for (const c of crowd) expect(isWalkable(grid, c.pos), `${c.id} at ${c.pos.x},${c.pos.z}`).toBe(true);
+    }
+    return crowd;
+  }
+
+  for (const [name, levels] of [
+    ['a new shop', {}],
+    ['every upgrade', FULL],
+  ] as const) {
+    it(`gives 13 to 20 takeaway customers a spot each, past the mat's ${PICKUP_SPOTS}, in ${name}`, () => {
+      for (let count = PICKUP_SPOTS + 1; count <= 20; count++) {
+        const s = gameWith(levels);
+        for (const m of s.menu) m.enabled = m.id === 'espresso';
+        dispatch(s, { type: 'start_day' });
+        const layout = getShopLayout(s);
+        const spots = floorSpots(layout);
+        const crowd = takeawayCrowd(s, count);
+        const targets = crowd.map((c) => c.target!);
+        // The mat first, then the aisle by the door, then the sidewalk, in customer order.
+        expect(targets).toEqual(spots.takeaway.slice(0, count));
+        expect(spots.takeaway.slice(0, PICKUP_SPOTS)).toEqual(spots.pickup);
+        expect(crowd.map((c) => c.pos)).toEqual(targets);
+        const cells = new Set(targets.map((p) => `${p.x},${p.z}`));
+        expect(cells.size, `${count} customers`).toBe(count);
+        for (const p of targets) expectClear(layout, p);
+        expectApart([...targets, ...spots.queue]);
+      }
+    });
+  }
+
+  it('places the overflow in the aisle by the door, then on the sidewalk, for every customer the shop admits', () => {
+    for (const levels of [{}, FULL]) {
+      const layout = getShopLayout(gameWith(levels));
+      const { overflow } = floorSpots(layout);
+      expect(PICKUP_SPOTS + overflow.length).toBeGreaterThanOrEqual(layout.totalSeats + MAX_QUEUE);
+      expect(overflow.length).toBeGreaterThanOrEqual(8);
+      for (const p of overflow.slice(0, 4)) {
+        expect(p.z).toBeLessThan(layout.indoor.maxZ - 0.5);
+        expect(Math.hypot(p.x - layout.door.x, p.z - layout.indoor.maxZ)).toBeLessThan(3);
+      }
+      // Then out on the sidewalk, spreading from in front of the door.
+      expect(overflow[4]!.z).toBeGreaterThan(layout.indoor.maxZ + 0.5);
+      expect(overflow.slice(4, 8).every((p) => p.z > layout.indoor.maxZ)).toBe(true);
+      // The doorway stays clear.
+      for (const p of overflow) expect(Math.abs(p.x - layout.door.x) > 1 || Math.abs(p.z - layout.indoor.maxZ) > 0.5, `${p.x},${p.z}`).toBe(true);
+    }
+  });
+
+  it('still gives everyone a spot of their own when more wait than the shop admits', () => {
+    const s = openShopWith('espresso');
+    const layout = getShopLayout(s);
+    const all = floorSpots(layout).takeaway.length;
+    const crowd = takeawayCrowd(s, all + 4);
+    const targets = crowd.map((c) => c.target!);
+    expect(new Set(targets.map((p) => `${p.x},${p.z}`)).size).toBe(crowd.length);
+    expectApart([...targets, ...floorSpots(layout).queue]);
   });
 
   it('works the spots out once per floor plan', () => {
