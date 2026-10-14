@@ -28,7 +28,10 @@ sh scripts/deploy-pages.sh
 
 Script làm lần lượt:
 
-1. Chạy `npm ci` nếu chưa có `node_modules/`.
+1. Chạy `npm ci` khi gặp một trong các trường hợp sau, và in một dòng `Running npm ci: <lý do>.`:
+   - chưa có `node_modules/`;
+   - thiếu `node_modules/.bin/tsc` hoặc `node_modules/.bin/vite`;
+   - `node_modules/.package-lock.json` không có hoặc khác `package-lock.json` (so bằng `cmp`).
 2. Chạy `npm run build`.
 3. Chép `dist/` vào thư mục tạm, thêm `.nojekyll`, tạo một commit `deploy: build from <sha>` và force-push lên nhánh `gh-pages` của `origin`. Nhánh `gh-pages` luôn chỉ có commit của lần deploy mới nhất.
 4. Gọi `gh api repos/<owner>/<repo>/pages`; nếu Pages chưa bật thì bật với nguồn `gh-pages`, thư mục `/`.
@@ -44,6 +47,7 @@ Khi máy không có `gh`: vào repo trên GitHub → **Settings** → **Pages** 
 
 | Triệu chứng | Cách xử lý |
 | --- | --- |
+| `sh: tsc: command not found` (exit 127) khi `npm run build` | `node_modules/` cài dở. Chạy `npm ci` rồi build lại; script deploy tự chạy `npm ci` khi thiếu `tsc` hoặc `vite`. |
 | `npm run build` báo lỗi kiểu | Sửa lỗi TypeScript; chạy `npm run check` để xem cả test. |
 | Push bị từ chối | Kiểm tra quyền push và `git remote get-url origin`. |
 | `gh api` trả 404 hoặc 403 khi bật Pages | Chạy `gh auth status`; tài khoản cần quyền admin trên repo. Repo private cần gói GitHub hỗ trợ Pages. |
