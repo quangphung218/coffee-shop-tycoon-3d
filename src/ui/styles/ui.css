@@ -488,8 +488,17 @@ legend {
   border-color: var(--border-outline);
   box-shadow: var(--shadow-sm);
 }
-.seg-opt input:checked + span::before {
-  content: '✓';
+/* Checked is not colour-only: a tick on the option and in the toggle thumb,
+   the i-check path as a mask in the text colour (the Nunito subset has no tick glyph). */
+.seg-opt input:checked + span::before,
+.toggle[aria-checked='true'] .toggle-thumb::after {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .seg-opt input:disabled + span {
   color: var(--text-muted);
@@ -677,10 +686,6 @@ legend {
 }
 .toggle[aria-checked='true'] .toggle-thumb {
   left: 23px;
-}
-/* Checked is not colour-only: a tick sits in the thumb. */
-.toggle[aria-checked='true'] .toggle-thumb::after {
-  content: '✓';
 }
 @media (hover: hover) {
   .toggle:not([aria-disabled='true'], :disabled):hover .toggle-thumb {
@@ -1119,19 +1124,21 @@ legend {
   }
 }
 
-/* Side panel: right edge, ends above the dock so it never covers it. */
+/* Side panel: right edge, between the HUD and the dock so it covers neither
+   (WCAG 2.4.11). hud.ts measures both into --hud-h (HUD bottom edge from the
+   top of #ui) and --dock-h (dock top edge from the bottom), so a HUD that
+   wraps onto more lines still pushes the panel down. Only .panel-body scrolls. */
 #ui > .panel {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: var(--dock-space);
+  top: calc(var(--hud-h, 72px) + var(--space-2));
+  right: var(--space-3);
+  bottom: calc(var(--dock-h, var(--dock-space)) + var(--space-2));
   width: min(var(--size-panel), 42vw);
   display: flex;
   flex-direction: column;
   background: var(--surface-panel-solid);
   border: var(--size-outline) solid var(--border-outline);
-  border-width: 0 0 var(--size-outline) var(--size-outline);
-  border-radius: 0 0 0 var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: panel-in var(--duration-slow) var(--easing-standard);
@@ -1142,24 +1149,39 @@ legend {
     opacity: 0;
   }
 }
+/* Head after the Kho mockup: icon tile, title, level-4 close button. */
 .panel-head {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
+  background: var(--surface-selected);
+  border-bottom: var(--size-outline) solid var(--border-outline);
+}
+.panel-head-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
   background: var(--surface-panel-solid);
-  border-bottom: var(--size-border-thin) solid var(--border-subtle);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 .panel-head h2 {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-lg);
+  min-width: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
 }
 .panel-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: var(--space-4);
 }
 
@@ -1168,18 +1190,20 @@ legend {
   position: absolute;
   left: var(--space-3);
   /* Above the dock (WCAG 2.4.11): a toast never hides a focused dock button. */
-  bottom: var(--dock-space);
+  bottom: calc(var(--dock-h, var(--dock-space)) + var(--space-2));
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   width: min(360px, calc(100% - var(--space-6)));
   pointer-events: none;
 }
-/* Phone, panel open (its dock button is pressed) across the width (bottom sheet, up to 60% tall): the
-   stack moves above the sheet's tallest extent so it never covers the panel. */
+/* Phone, panel open (its dock button is pressed) across the whole width
+   between HUD and dock: the stack moves to the top of the panel
+   (design/p17-states, WCAG 2.4.11) so it stays clear of the panel foot. */
 @media (max-width: 640px) {
   #ui:has(.dock-btn[aria-pressed='true']) > .toasts {
-    bottom: calc(var(--dock-space) + 60%);
+    top: calc(var(--hud-h, 72px) + var(--space-2));
+    bottom: auto;
   }
 }
 /* Cream sticker card; the level shows in the icon chip colour, the icon
@@ -1359,21 +1383,33 @@ legend {
     transform: none;
     border-radius: var(--radius-lg);
   }
+  /* Narrow cells: labels such as "Nhân viên" wrap onto two lines inside the
+     border (line height leaves room for Vietnamese marks); the cell grows
+     past 68px instead of overflowing, so the inset focus ring is never cut. */
   .dock-btn {
     min-width: 0;
+    padding: var(--space-1);
     font-size: var(--font-size-xs);
+    line-height: 1.3;
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .dock-btn .ic {
+    width: 24px;
+    height: 24px;
   }
   /* Narrow cells: tuck the badge into the corner, still inside the focus ring. */
   .dock-badge {
     right: var(--space-1);
   }
+  /* Full width, still between the HUD and the dock. */
   #ui > .panel {
-    top: auto;
     left: 0;
+    right: 0;
     width: auto;
-    max-height: 60%;
     border-width: var(--size-outline) 0;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--radius-lg);
   }
 }
 
