@@ -211,6 +211,12 @@
   font-weight: var(--font-weight-heavy);
   color: var(--text-warning);
 }
+/* The tag keeps its room while hidden, so the row never reflows when a
+   suggestion is filled or edited away. */
+.sug[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
 .badge-warn {
   background: var(--surface-warning);
   color: var(--text-warning);
