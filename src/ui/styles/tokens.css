@@ -186,6 +186,9 @@
   --size-icon-lg: 32px;
   --size-icon-xl: 48px;
   --size-icon-stroke: 2px;
+  --size-bar: 16px;
+  --size-avatar: 40px;
+  --size-report-col: 280px;
 }
 
 @media (prefers-reduced-motion: reduce) {
