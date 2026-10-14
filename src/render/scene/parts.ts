@@ -1,33 +1,15 @@
 import { BoxGeometry, BufferAttribute, type BufferGeometry, Color, CylinderGeometry, MeshBasicMaterial, MeshLambertMaterial } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { PALETTE } from './palette';
 
 /**
- * Shared look of the shop scene: palette, the one flat-shaded vertex-colour
- * material, and helpers that bake a primitive's transform and colour so many
- * parts merge into one geometry (src/render/scene/shop.ts, facade.ts).
+ * Shared look of the shop scene: palette (palette.ts), the one flat-shaded
+ * vertex-colour material, and helpers that bake a primitive's transform and
+ * colour so many parts merge into one geometry (src/render/scene/shop.ts,
+ * facade.ts).
  */
 
-export const PALETTE = {
-  ground: 0xb9de9a,
-  floor: 0xe9cfa8,
-  patio: 0xdcd3c4,
-  wall: 0xf6e3c6,
-  wood: 0xa0704c,
-  woodDark: 0x5c3a26,
-  woodLight: 0xc98b5a,
-  cream: 0xfff9f0,
-  mint: 0x2fb898,
-  coral: 0xe07a5f,
-  gold: 0xf2c14e,
-  plant: 0x3fa66b,
-  plantDark: 0x2f8a56,
-  pot: 0xc8693f,
-  cup: 0xf7f3ea,
-  coffee: 0x6b4226,
-  steel: 0x9aa3ab,
-  steelDark: 0x4a4f55,
-  bulb: 0xffe7a3,
-} as const;
+export { PALETTE };
 
 export const WALL_HEIGHT = 2.2;
 export const WALL_LOW = 0.35;

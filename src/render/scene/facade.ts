@@ -32,7 +32,8 @@ import {
 } from '../../sim/nav/footprints';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { Vec2 } from '../../sim/types';
-import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+import { PALETTE, cssColor } from './palette';
+import { GLASS_MATERIAL, GLOW_MATERIAL, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
 
 /**
  * Architecture and small interior details of the shop: framed windows with
@@ -47,10 +48,6 @@ import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, W
  * The door frame, awning and sign stand on their own, so the shop front still
  * reads when the front wall is down.
  */
-
-const GLASS = 0xbfe0e8;
-const STONE = 0xcfc4b3;
-const CHALKBOARD = 0x2e3a35;
 
 export const WINDOW_WIDTH = 1.2;
 export const WINDOW_HEIGHT = 0.95;
@@ -269,12 +266,12 @@ export function doorGeometry(): BufferGeometry {
 export function doorGlassGeometry(): BufferGeometry {
   const w = DOOR_LEAF_WIDTH - 2 * DOOR_STILE;
   const h = DOOR_LEAF_HEIGHT - DOOR_TOP_RAIL - DOOR_KICK;
-  return merge(onDoorLeaf([part(box(w, h, DOOR_LEAF_THICKNESS * 0.5), GLASS, 0, (DOOR_KICK - DOOR_TOP_RAIL) / 2, 0)]));
+  return merge(onDoorLeaf([part(box(w, h, DOOR_LEAF_THICKNESS * 0.5), PALETTE.glass, 0, (DOOR_KICK - DOOR_TOP_RAIL) / 2, 0)]));
 }
 
 /** Glass pane of a window; it passes through the wall so it shows on both faces. */
 function windowGlass(spot: WindowSpot): BufferGeometry[] {
-  return placed([part(box(WINDOW_WIDTH, WINDOW_HEIGHT, WALL_THICKNESS + 0.02), GLASS, 0, WINDOW_SILL + WINDOW_HEIGHT / 2, 0)], spot.x, 0, spot.z, spot.yaw);
+  return placed([part(box(WINDOW_WIDTH, WINDOW_HEIGHT, WALL_THICKNESS + 0.02), PALETTE.glass, 0, WINDOW_SILL + WINDOW_HEIGHT / 2, 0)], spot.x, 0, spot.z, spot.yaw);
 }
 
 function windowParts(spot: WindowSpot, plan: FacadePlan): BufferGeometry[] {
@@ -371,7 +368,7 @@ function signParts(plan: FacadePlan): BufferGeometry[] {
 
 function stepParts(plan: FacadePlan): BufferGeometry[] {
   const { x, z } = plan.step;
-  const parts = [part(box(STEP_WIDTH, STEP_HEIGHT, STEP_DEPTH), STONE, x, STEP_HEIGHT / 2, z)];
+  const parts = [part(box(STEP_WIDTH, STEP_HEIGHT, STEP_DEPTH), PALETTE.stone, x, STEP_HEIGHT / 2, z)];
   // Striped doormat on the step.
   for (let k = 0; k < 3; k++) {
     parts.push(part(box(1.2 / 3, 0.015, 0.36), k === 1 ? PALETTE.cream : PALETTE.coral, x + (k - 1) * 0.4, STEP_HEIGHT + 0.008, z));
@@ -399,7 +396,7 @@ function backWallParts(plan: FacadePlan): BufferGeometry[] {
   const mz = menu.z + 0.03;
   parts.push(
     part(box(MENU_WIDTH, MENU_HEIGHT, 0.05), PALETTE.woodDark, menu.x, menu.y, mz),
-    part(box(MENU_WIDTH - 0.12, MENU_HEIGHT - 0.12, 0.06), CHALKBOARD, menu.x, menu.y, mz),
+    part(box(MENU_WIDTH - 0.12, MENU_HEIGHT - 0.12, 0.06), PALETTE.chalkboard, menu.x, menu.y, mz),
     part(box(0.6, 0.08, 0.065), PALETTE.coral, menu.x, menu.y + 0.25, mz),
   );
   for (let k = 0; k < 3; k++) {
@@ -454,9 +451,9 @@ function signTexture(name: string): CanvasTexture | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const { width: w, height: h } = SIGN_CANVAS;
-  ctx.fillStyle = '#fff9f0';
+  ctx.fillStyle = cssColor(PALETTE.cream);
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#e07a5f';
+  ctx.fillStyle = cssColor(PALETTE.coral);
   for (const x of [28, w - 28]) {
     ctx.beginPath();
     ctx.arc(x, h / 2, 9, 0, Math.PI * 2);
@@ -469,7 +466,7 @@ function signTexture(name: string): CanvasTexture | null {
     size -= 4;
     ctx.font = `700 ${size}px Nunito, sans-serif`;
   }
-  ctx.fillStyle = '#5c3a26';
+  ctx.fillStyle = cssColor(PALETTE.woodDark);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, w / 2, h / 2 + size * 0.05, w - 100);
@@ -595,7 +592,9 @@ export class FacadeView {
     const tex = signTexture(name);
     this.signMaterial.map?.dispose();
     this.signMaterial.map = tex;
-    this.signBase.set(tex ? 0xffffff : PALETTE.cream);
+    // White lets the name texture show its own palette colours.
+    if (tex) this.signBase.setRGB(1, 1, 1);
+    else this.signBase.set(PALETTE.cream);
     this.setSignGlow(this.signGlow);
     this.signMaterial.needsUpdate = true;
   }

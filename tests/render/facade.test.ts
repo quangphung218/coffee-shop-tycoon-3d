@@ -10,7 +10,8 @@ import {
   facadePlan,
   windowSpots,
 } from '../../src/render/scene/facade';
-import { WALL_HEIGHT, WALL_LOW } from '../../src/render/scene/parts';
+import { PALETTE, cssColor } from '../../src/render/scene/palette';
+import { PALETTE as PARTS_PALETTE, WALL_HEIGHT, WALL_LOW } from '../../src/render/scene/parts';
 import { ShopView } from '../../src/render/scene/shop';
 import { DOOR_WIDTH, doorPlanters, wallSpans } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
@@ -223,5 +224,27 @@ describe('FacadeView', () => {
     shop.update(s, 0.032, 0.016, 0);
     expect(shop.facade.current).not.toBe(plan);
     shop.dispose();
+  });
+});
+
+// The project has no Node types, so node:fs comes in through a dynamically
+// named import; the path is relative to the repo root.
+const FS_MODULE = 'node:fs';
+const fs = (await import(/* @vite-ignore */ FS_MODULE)) as { readFileSync(path: string, encoding: 'utf8'): string };
+
+describe('facade colours', () => {
+  it('takes every colour from PALETTE', () => {
+    const hex = /0x[0-9a-f]{6}\b|#[0-9a-f]{6}\b/gi;
+    expect(fs.readFileSync('src/render/scene/facade.ts', 'utf8').match(hex)).toBeNull();
+  });
+
+  it('writes palette colours as CSS strings for the sign canvas', () => {
+    expect(cssColor(PALETTE.cream)).toBe('#fff9f0');
+    expect(cssColor(PALETTE.chalkboard)).toBe('#2e3a35');
+    expect(cssColor(0x00ff00)).toBe('#00ff00');
+  });
+
+  it('keeps the parts.ts export of PALETTE for older importers', () => {
+    expect(PARTS_PALETTE).toBe(PALETTE);
   });
 });
