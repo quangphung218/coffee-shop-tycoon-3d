@@ -1,79 +1,122 @@
-/* design/tokens.json as CSS variables; names follow the mapping in design/NOTES.md. */
+/* design/tokens.json as CSS variables (cozy cartoon, T237 + P17 focus);
+   names follow design/t237-cartoon/tokens.css. */
 :root {
-  --color-coffee-900: #3b2418;
-  --color-coffee-700: #5c3a26;
-  --color-coffee-500: #8a5a3b;
-  --color-coffee-300: #c9a27e;
-  --color-cream-50: #fff9f0;
-  --color-cream-100: #fbefdd;
-  --color-cream-200: #f3dfc2;
+  --color-coffee-900: var(--color-neutral-900);
+  --color-coffee-700: #6b3f24;
+  --color-coffee-500: #a0673f;
+  --color-coffee-300: #d9a877;
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
   --color-mint-800: #0b5444;
   --color-mint-700: #0f6b57;
-  --color-mint-500: #2fb898;
-  --color-mint-100: #ddf6ee;
+  --color-mint-500: #3dbd8f;
+  --color-mint-400: #5fd3a8;
+  --color-mint-100: #d9f6ea;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-sky-700: #1a5fd0;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-cinnamon-700: #7a3000;
   --color-neutral-0: #ffffff;
   --color-neutral-500: #8c7f75;
-  --color-neutral-700: #6b5e55;
-  --color-neutral-900: #2a211c;
-  --color-ok-700: #1e7a46;
-  --color-ok-100: #e3f5ea;
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-ok-700: #17663a;
+  --color-ok-100: var(--color-mint-100);
   --color-warning-700: #7a4a00;
-  --color-warning-500: #f2a516;
-  --color-warning-100: #fff1d6;
+  --color-warning-500: var(--color-honey-500);
+  --color-warning-100: var(--color-honey-100);
   --color-danger-700: #b3261e;
-  --color-danger-400: #f2675b;
-  --color-danger-100: #fde7e5;
-  --color-star-500: #c77700;
-  --color-focus-500: #0b57d0;
+  --color-danger-400: var(--color-berry-400);
+  --color-danger-100: var(--color-berry-100);
+  --color-star-500: var(--color-honey-400);
+  --color-focus-500: var(--color-cinnamon-700);
   --color-focus-300: #ffd166;
+  --color-skin-1: #ffdcbf;
+  --color-skin-2: #f0b98d;
+  --color-skin-3: #c98a5e;
+  --color-skin-4: #8d5a3b;
+  --color-hair-1: var(--color-neutral-900);
+  --color-hair-2: var(--color-coffee-700);
+  --color-hair-3: #d9822b;
+  --color-hair-4: #f2cf63;
 
   --text-primary: var(--color-neutral-900);
   --text-muted: var(--color-neutral-700);
   --text-inverse: var(--color-cream-50);
   --text-inverse-muted: var(--color-coffee-300);
-  --text-on-accent: var(--color-neutral-0);
-  --text-on-bright: var(--color-coffee-900);
+  --text-on-accent: var(--color-neutral-900);
+  --text-on-bright: var(--color-neutral-900);
   --text-ok: var(--color-ok-700);
   --text-warning: var(--color-warning-700);
   --text-danger: var(--color-danger-700);
   --text-danger-inverse: var(--color-danger-400);
 
   --surface-app: var(--color-cream-100);
-  --surface-panel: rgba(255, 249, 240, 0.94);
+  --surface-panel: rgba(255, 250, 242, 0.97);
   --surface-panel-solid: var(--color-cream-50);
   --surface-sunken: var(--color-cream-100);
-  --surface-hud: rgba(59, 36, 24, 0.92);
-  --surface-hud-solid: var(--color-coffee-900);
-  --surface-hud-raised: var(--color-coffee-700);
+  --surface-hud: rgba(255, 250, 242, 0.97);
+  --surface-hud-solid: var(--color-cream-50);
+  --surface-hud-raised: var(--color-cream-100);
+  --surface-ink: var(--color-neutral-900);
   --surface-ok: var(--color-ok-100);
   --surface-warning: var(--color-warning-100);
   --surface-danger: var(--color-danger-100);
+  --surface-info: var(--color-sky-100);
   --surface-disabled: var(--color-cream-200);
-  --surface-selected: var(--color-mint-100);
-  --surface-scrim: rgba(42, 33, 28, 0.55);
+  --surface-selected: var(--color-honey-100);
+  --surface-scrim: rgba(58, 34, 22, 0.5);
 
   --border-subtle: var(--color-cream-200);
-  --border-strong: var(--color-neutral-500);
+  --border-strong: var(--color-neutral-900);
+  --border-outline: var(--color-neutral-900);
   --border-inverse: var(--color-coffee-300);
+  --border-disabled: var(--color-neutral-700);
 
-  --accent-primary: var(--color-coffee-700);
-  --accent-primary-hover: var(--color-coffee-900);
-  --accent-mint: var(--color-mint-700);
-  --accent-mint-hover: var(--color-mint-800);
-  --accent-mint-bright: var(--color-mint-500);
+  --accent-primary: var(--color-honey-400);
+  --accent-primary-hover: var(--color-honey-500);
+  --accent-mint: var(--color-mint-400);
+  --accent-mint-hover: var(--color-mint-500);
+  --accent-mint-bright: var(--color-mint-400);
+  --accent-danger: var(--color-berry-400);
+  --accent-danger-hover: var(--color-berry-500);
+  --accent-info: var(--color-sky-400);
 
-  --data-bar: var(--color-coffee-500);
+  --data-bar: var(--color-honey-400);
   --data-track: var(--color-cream-200);
-  --patience-high: var(--color-mint-500);
-  --patience-mid: var(--color-warning-500);
-  --patience-low: var(--color-danger-400);
-  --patience-track: var(--color-coffee-700);
-  --rating-star: var(--color-star-500);
-  --rating-empty: var(--color-neutral-500);
+  --patience-high: var(--color-mint-400);
+  --patience-mid: var(--color-honey-400);
+  --patience-low: var(--color-berry-400);
+  --patience-track: var(--color-neutral-900);
+  --rating-star: var(--color-honey-400);
+  --rating-empty: var(--color-cream-200);
+  /* P17: border colour + ring drawn inside the border on :focus-visible, never outside. */
   --focus-ring: var(--color-focus-500);
   --focus-ring-inverse: var(--color-focus-300);
 
-  --font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --icon-ink: var(--color-neutral-900);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-coffee: var(--color-coffee-700);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-orange: var(--color-tangerine-400);
+  --icon-fill-empty: var(--color-cream-200);
+
+  --font-family-base: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-md: 16px;
@@ -81,10 +124,12 @@
   --font-size-xl: 24px;
   --font-size-2xl: 32px;
   --font-size-3xl: 40px;
+  --font-size-4xl: 48px;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --line-height-tight: 1.2;
+  --font-weight-heavy: 800;
+  --line-height-tight: 1.25;
   --line-height-base: 1.5;
 
   --space-1: 4px;
@@ -96,27 +141,58 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
 
-  --shadow-sm: 0 1px 2px 0 rgba(59, 36, 24, 0.18);
-  --shadow-md: 0 4px 12px 0 rgba(59, 36, 24, 0.2);
-  --shadow-lg: 0 12px 32px 0 rgba(59, 36, 24, 0.28);
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+  --shadow-soft: 0 12px 24px 0 rgba(58, 34, 22, 0.18);
+  --shadow-card: var(--shadow-lg), var(--shadow-soft);
 
+  --duration-instant: 80ms;
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  --duration-pop: 360ms;
+  --duration-float: 800ms;
+  --duration-count: 400ms;
+  --duration-idle-bob: 1200ms;
   --duration-toast-visible: 4000ms;
   --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   --size-target: 44px;
   --size-target-lg: 56px;
-  --size-panel: 360px;
-  --size-dialog: 720px;
-  --size-border-thin: 1px;
+  --size-hud-pill: 48px;
+  --size-panel: 380px;
+  --size-dialog: 760px;
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-border-thin: 2px;
   --size-border-thick: 4px;
   --size-focus-width: 3px;
-  --size-focus-offset: 2px;
+  /* Deprecated (P17): kept at 0 so no rule can push focus outside the ink outline. */
+  --size-focus-offset: 0px;
+  --size-focus-clearance: 4px;
+  --size-group-gap: var(--space-1);
+  --size-group-padding: var(--space-1);
+  --size-icon-sm: 16px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 32px;
+  --size-icon-xl: 48px;
+  --size-icon-stroke: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-pop: 0ms;
+    --duration-float: 0ms;
+    --duration-count: 0ms;
+    --easing-bounce: var(--easing-standard);
+  }
 }

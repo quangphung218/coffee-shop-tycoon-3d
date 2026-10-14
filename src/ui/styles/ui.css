@@ -1,4 +1,8 @@
-/* Overlay UI components, after design/main-menu.html and design/hud.html. */
+/* Overlay UI components, after design/t237-cartoon and design/p17-states. */
+/* The hidden attribute always wins over component display rules (.btn, .hud…). */
+[hidden] {
+  display: none !important;
+}
 #ui {
   font-family: var(--font-family-base);
   font-size: var(--font-size-md);
@@ -40,9 +44,6 @@
   justify-content: center;
   padding: var(--space-12) var(--space-4);
 }
-.ui-screen[hidden] {
-  display: none;
-}
 .ui-screen.is-scrim {
   background: var(--surface-scrim);
 }
@@ -79,7 +80,8 @@
   max-width: 400px;
 }
 
-/* Buttons */
+/* Buttons: ink outline + hard sticker shadow. Hover lifts, press sinks
+   (elevation channel only); focus lives in the shared rule at the end. */
 .btn {
   min-height: var(--size-target);
   display: inline-flex;
@@ -88,54 +90,52 @@
   gap: var(--space-2);
   padding: 0 var(--space-4);
   border-radius: var(--radius-md);
-  border: var(--size-border-thin) solid transparent;
+  border: var(--size-outline) solid var(--border-outline);
+  background: var(--surface-panel-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
   font: inherit;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--easing-standard);
+  transition:
+    transform var(--duration-fast) var(--easing-bounce),
+    box-shadow var(--duration-fast) var(--easing-standard);
 }
 .btn-primary {
   background: var(--accent-primary);
   color: var(--text-on-accent);
 }
-.btn-primary:hover,
-.btn-primary:active {
-  background: var(--accent-primary-hover);
-}
 .btn-accent {
   background: var(--accent-mint);
   color: var(--text-on-accent);
 }
-.btn-accent:hover {
-  background: var(--accent-mint-hover);
-}
 .btn-secondary {
   background: var(--surface-panel-solid);
   color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-.btn-secondary:hover {
-  background: var(--surface-sunken);
 }
 .btn-danger {
-  background: var(--surface-panel-solid);
-  color: var(--text-danger);
-  border-color: var(--text-danger);
+  background: var(--accent-danger);
+  color: var(--text-on-accent);
 }
-.btn-danger:hover {
-  background: var(--surface-danger);
+@media (hover: hover) {
+  .btn:not([aria-disabled='true'], :disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
 }
-.btn:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+.btn:not([aria-disabled='true'], :disabled):active {
+  transform: translateY(2px);
+  box-shadow: var(--shadow-sm);
+  transition-duration: var(--duration-instant);
 }
-.btn:active {
-  transform: translateY(1px);
-}
-.btn[aria-disabled='true'] {
+.btn[aria-disabled='true'],
+.btn:disabled {
   background: var(--surface-disabled);
   color: var(--text-muted);
-  border-color: var(--surface-disabled);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  box-shadow: none;
   cursor: not-allowed;
   transform: none;
 }
@@ -145,7 +145,9 @@
 }
 .btn-lg {
   min-height: var(--size-target-lg);
+  padding: 0 var(--space-6);
   font-size: var(--font-size-lg);
+  border-radius: var(--radius-lg);
 }
 .btn-sm-text {
   font-size: var(--font-size-sm);
@@ -252,16 +254,20 @@ kbd {
 .input {
   min-height: var(--size-target);
   padding: 0 var(--space-3);
-  border: var(--size-border-thin) solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-md);
   background: var(--surface-panel-solid);
   font: inherit;
   color: var(--text-primary);
   width: 100%;
 }
-.input:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+.input[aria-disabled='true'],
+.input:disabled {
+  background: var(--surface-disabled);
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  cursor: not-allowed;
 }
 .field-error {
   border-left: var(--size-border-thick) solid var(--text-danger);
@@ -292,10 +298,15 @@ kbd {
   color: var(--text-danger);
   font-weight: var(--font-weight-semibold);
 }
-.error-summary:focus-visible,
+.error-summary:focus-visible {
+  border-color: var(--focus-ring);
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * (var(--size-border-thick) + var(--size-focus-width)));
+}
 .error-summary a:focus-visible {
   outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+  outline-offset: 0;
+  border-radius: var(--radius-sm);
 }
 fieldset {
   border: 0;
@@ -319,10 +330,14 @@ legend {
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-4);
-  border: var(--size-border-thin) solid var(--border-strong);
+  border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   background: var(--surface-panel-solid);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--easing-bounce),
+    box-shadow var(--duration-fast) var(--easing-standard);
 }
 .choice input {
   position: absolute;
@@ -330,16 +345,27 @@ legend {
   width: 1px;
   height: 1px;
 }
-.choice:hover {
-  background: var(--surface-sunken);
+@media (hover: hover) {
+  .choice:not(:has(input:disabled)):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+.choice:not(:has(input:disabled)):active {
+  transform: translateY(2px);
+  box-shadow: var(--shadow-sm);
+  transition-duration: var(--duration-instant);
 }
 .choice:has(input:checked) {
-  border: var(--size-focus-width) solid var(--accent-primary);
-  padding: calc(var(--space-4) - 2px);
+  background: var(--accent-primary);
 }
-.choice:has(input:focus-visible) {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+.choice:has(input:disabled) {
+  background: var(--surface-disabled);
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 .choice-title {
   font-weight: var(--font-weight-bold);
@@ -351,8 +377,8 @@ legend {
 }
 .choice-check {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-ok);
+  font-weight: var(--font-weight-heavy);
+  color: var(--text-primary);
   display: none;
 }
 .choice:has(input:checked) .choice-check {
@@ -363,11 +389,12 @@ legend {
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  background: var(--surface-sunken);
-  border-radius: var(--radius-md);
-  border: var(--size-border-thin) solid var(--border-strong);
+  gap: var(--size-group-gap);
+  padding: var(--size-group-padding);
+  background: var(--surface-hud-solid);
+  border-radius: var(--radius-lg);
+  border: var(--size-outline) solid var(--border-outline);
+  box-shadow: var(--shadow-md);
 }
 .seg-opt {
   position: relative;
@@ -385,21 +412,37 @@ legend {
   min-height: var(--size-target);
   min-width: var(--size-target);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-sm);
-  font-weight: var(--font-weight-semibold);
+  border: var(--size-outline-sm) solid transparent;
+  border-radius: var(--radius-pill);
+  font-weight: var(--font-weight-heavy);
   cursor: pointer;
   color: var(--text-primary);
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+/* Ghost option: hover only fills, never borders (border + fill = selected). */
+@media (hover: hover) {
+  .seg-opt input:not(:checked, :disabled) + span:hover {
+    background: var(--surface-sunken);
+  }
+}
+.seg-opt input:not(:disabled) + span:active {
+  transform: translateY(1px) scale(0.96);
+  transition-duration: var(--duration-instant);
 }
 .seg-opt input:checked + span {
   background: var(--accent-primary);
   color: var(--text-on-accent);
+  border-color: var(--border-outline);
+  box-shadow: var(--shadow-sm);
 }
 .seg-opt input:checked + span::before {
   content: '✓';
 }
-.seg-opt input:focus-visible + span {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+.seg-opt input:disabled + span {
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  cursor: not-allowed;
 }
 
 /* Settings */
@@ -429,14 +472,98 @@ legend {
   gap: var(--space-3);
   flex: 1 1 220px;
 }
+/* Range: ink-edged track, 28px cream thumb. Focus is drawn on the thumb. */
 .range {
   flex: 1;
   min-height: var(--size-target);
-  accent-color: var(--accent-mint);
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 10px;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--data-track);
+}
+.range::-moz-range-track {
+  height: 10px;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--data-track);
+}
+.range::-moz-range-progress {
+  height: 10px;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--accent-primary);
+}
+.range::-webkit-slider-thumb {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  margin-top: -9px;
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: 50%;
+  background: var(--surface-panel-solid);
+  appearance: none;
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+.range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: 50%;
+  background: var(--surface-panel-solid);
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+@media (hover: hover) {
+  .range:not(:disabled):hover::-webkit-slider-thumb {
+    transform: translateY(-1px);
+  }
+  .range:not(:disabled):hover::-moz-range-thumb {
+    transform: translateY(-1px);
+  }
+}
+.range:not(:disabled):active::-webkit-slider-thumb {
+  transform: translateY(1px);
+}
+.range:not(:disabled):active::-moz-range-thumb {
+  transform: translateY(1px);
 }
 .range:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+  outline: none;
+}
+/* outline is unreliable on slider thumbs, so the ring is an inset shadow; the
+   thumb has no sticker shadow, so this does not overwrite the elevation channel. */
+.range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--focus-ring);
+  box-shadow: inset 0 0 0 var(--size-focus-width) var(--focus-ring);
+}
+.range:focus-visible::-moz-range-thumb {
+  border-color: var(--focus-ring);
+  box-shadow: inset 0 0 0 var(--size-focus-width) var(--focus-ring);
+}
+.range:disabled {
+  cursor: not-allowed;
+}
+.range:disabled::-webkit-slider-runnable-track {
+  border-style: dashed;
+  border-color: var(--border-disabled);
+}
+.range:disabled::-moz-range-track {
+  border-style: dashed;
+  border-color: var(--border-disabled);
+}
+.range:disabled::-webkit-slider-thumb {
+  background: var(--surface-disabled);
+  border-color: var(--border-disabled);
+}
+.range:disabled::-moz-range-thumb {
+  background: var(--surface-disabled);
+  border-color: var(--border-disabled);
 }
 .range-val {
   min-width: 5ch;
@@ -457,32 +584,63 @@ legend {
   cursor: pointer;
   border-radius: var(--radius-sm);
 }
+/* Track 52 × 32 with a 3px ink outline; the 20px thumb sits inside the
+   focus-ring band so the inset ring never covers it. */
 .toggle-track {
   position: relative;
-  width: var(--size-target);
-  height: var(--space-6);
+  width: 52px;
+  height: 32px;
   border-radius: var(--radius-pill);
-  background: var(--surface-panel-solid);
-  border: 2px solid var(--border-strong);
+  background: var(--surface-disabled);
+  border: var(--size-outline) solid var(--border-outline);
   flex: none;
 }
 .toggle-thumb {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: var(--space-4);
-  height: var(--space-4);
+  top: var(--size-focus-width);
+  left: var(--size-focus-width);
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  background: var(--border-strong);
-  transition: left var(--duration-fast) var(--easing-standard);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  background: var(--surface-panel-solid);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  line-height: 1;
+  transition:
+    left var(--duration-fast) var(--easing-bounce),
+    transform var(--duration-fast) var(--easing-bounce);
 }
 .toggle[aria-checked='true'] .toggle-track {
   background: var(--accent-mint);
-  border-color: var(--accent-mint);
 }
 .toggle[aria-checked='true'] .toggle-thumb {
-  left: 22px;
-  background: var(--color-neutral-0);
+  left: 23px;
+}
+/* Checked is not colour-only: a tick sits in the thumb. */
+.toggle[aria-checked='true'] .toggle-thumb::after {
+  content: '✓';
+}
+@media (hover: hover) {
+  .toggle:not([aria-disabled='true'], :disabled):hover .toggle-thumb {
+    transform: translateY(-1px);
+  }
+}
+.toggle:not([aria-disabled='true'], :disabled):active .toggle-thumb {
+  transform: scale(0.9);
+}
+.toggle[aria-disabled='true'],
+.toggle:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.toggle[aria-disabled='true'] .toggle-track,
+.toggle:disabled .toggle-track {
+  background: var(--surface-disabled);
+  border-style: dashed;
+  border-color: var(--border-disabled);
 }
 .toggle-state {
   font-size: var(--font-size-sm);
@@ -490,9 +648,9 @@ legend {
   min-width: 4ch;
   text-align: left;
 }
+/* The ring is drawn on the track (see the state rules at the end). */
 .toggle:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+  outline: none;
 }
 .keys {
   display: grid;
@@ -621,9 +779,6 @@ legend {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
 }
-#ui > .hud[hidden] {
-  display: none;
-}
 .hud-group {
   display: flex;
   flex-wrap: wrap;
@@ -711,10 +866,6 @@ legend {
   color: var(--text-on-bright);
   border-color: var(--accent-mint-bright);
 }
-.hud-btn:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring-inverse);
-  outline-offset: var(--size-focus-offset);
-}
 .hud-btn-cta {
   background: var(--accent-mint-bright);
   color: var(--text-on-bright);
@@ -725,15 +876,9 @@ legend {
 .hud-btn-cta:hover {
   background: var(--color-mint-100);
 }
-.hud-btn[hidden] {
-  display: none;
-}
 .speed {
   display: inline-flex;
   gap: var(--space-1);
-}
-.speed[hidden] {
-  display: none;
 }
 .hud-note {
   flex-basis: 100%;
@@ -759,9 +904,6 @@ legend {
   backdrop-filter: blur(6px);
   box-shadow: var(--shadow-lg);
   animation: panel-in var(--duration-slow) var(--easing-standard);
-}
-#ui > .panel[hidden] {
-  display: none;
 }
 @keyframes panel-in {
   from {
@@ -862,21 +1004,66 @@ legend {
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
+  padding: 0 var(--space-2);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel-solid);
+  color: var(--text-primary);
   font: inherit;
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce);
 }
-.icon-btn:hover {
-  background: var(--surface-sunken);
-  color: var(--text-primary);
+@media (hover: hover) {
+  .icon-btn:not([aria-disabled='true'], :disabled):hover {
+    background: var(--surface-sunken);
+  }
 }
-.icon-btn:focus-visible {
+.icon-btn:not([aria-disabled='true'], :disabled):active {
+  transform: translateY(1px) scale(0.96);
+  transition-duration: var(--duration-instant);
+}
+.icon-btn[aria-disabled='true'],
+.icon-btn:disabled {
+  background: var(--surface-disabled);
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  cursor: not-allowed;
+}
+
+/* Focus (design/p17-states): one rule for every control. The border turns
+   --focus-ring and a ring is drawn just INSIDE it, so nothing paints outside
+   the ink outline and focus never overlaps a group frame or a neighbour.
+   --bw is the border width of each control. Placed last so it also recolours
+   a disabled (dashed) border. */
+.btn,
+.input,
+.choice,
+.toggle-track {
+  --bw: var(--size-outline);
+}
+.icon-btn,
+.seg-opt span {
+  --bw: var(--size-outline-sm);
+}
+.hud-btn {
+  --bw: var(--size-border-thin);
+}
+.btn:focus-visible,
+.input:focus-visible,
+.icon-btn:focus-visible,
+.hud-btn:focus-visible,
+.choice:has(input:focus-visible),
+.seg-opt input:focus-visible + span,
+.toggle:focus-visible .toggle-track {
+  border-color: var(--focus-ring);
   outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: 0;
+  outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}
+.input:focus-visible {
+  caret-color: var(--focus-ring);
 }
 
 @media (max-width: 640px) {
@@ -927,5 +1114,19 @@ legend {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+  }
+  /* No lift, sink or squash; hover and press still change the sticker shadow. */
+  .btn,
+  .choice,
+  .icon-btn,
+  .seg-opt span,
+  .toggle-thumb {
+    transform: none !important;
+  }
+  .range::-webkit-slider-thumb {
+    transform: none !important;
+  }
+  .range::-moz-range-thumb {
+    transform: none !important;
   }
 }
