@@ -80,6 +80,9 @@ async function playDay(page, videoStart) {
   await page.goto(URL_BASE);
   const newGame = page.getByRole('button', { name: '✨ Ván mới' });
   await newGame.waitFor();
+  // The menu comes up before the 3D scene; wait for the loading screen to go and the scene to fade in.
+  await page.locator('#boot').waitFor({ state: 'detached' });
+  await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
   // The menu backdrop is a busy lunchtime shop; give the first customers time to walk in.
   await sleep(4000);
   await shot('main-menu.png');
