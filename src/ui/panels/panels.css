@@ -211,10 +211,10 @@
   font-weight: var(--font-weight-heavy);
   color: var(--text-warning);
 }
-/* The tag keeps its room while hidden, so the row never reflows when a
-   suggestion is filled or edited away. */
-.sug[hidden] {
-  display: inline-flex;
+/* The tag keeps its room while off, so the row never reflows when a
+   suggestion is filled or edited away. visibility also drops it from the
+   accessibility tree. */
+.sug.is-off {
   visibility: hidden;
 }
 .badge-warn {

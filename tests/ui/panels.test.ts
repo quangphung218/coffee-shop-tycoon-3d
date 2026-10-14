@@ -129,6 +129,10 @@ describe('inventory panel', () => {
       const packs = line.qty / getIngredient(line.id).packSize;
       expect(q<HTMLInputElement>(body, `.stepper[data-ingredient="${line.id}"] input`).value).toBe(String(packs));
       expect(q(body, `li[data-ingredient="${line.id}"]`).classList.contains('is-suggested')).toBe(true);
+      // The tag is switched on in place; it is never removed from layout.
+      const tag = q(body, `li[data-ingredient="${line.id}"] .sug`);
+      expect(tag.hidden).toBe(false);
+      expect(tag.classList.contains('is-off')).toBe(false);
     }
     const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBeNull();
@@ -138,6 +142,9 @@ describe('inventory panel', () => {
       suggestion.items.map((l) => ({ type: 'buy_ingredient', ingredientId: l.id, packs: l.qty / getIngredient(l.id).packSize })),
     );
     expect(state.money).toBe(1000);
+    for (const line of suggestion.items) {
+      expect(q(body, `li[data-ingredient="${line.id}"] .sug`).classList.contains('is-off')).toBe(true);
+    }
   });
 
   it('shows the intro, then each result, in the same note above the list', () => {

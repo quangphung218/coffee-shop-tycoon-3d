@@ -73,14 +73,15 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
     const badge = h('span');
     const meta = h('p', { class: 'item-meta' });
     const cost = h('span', { class: 'item-cost' });
-    const sug = h('span', { class: 'sug', hidden: true }, ...withIcon('i-sparkle', 'gợi ý'));
+    // Off by class, not `hidden`: the tag keeps its room so the row never reflows.
+    const sug = h('span', { class: 'sug is-off' }, ...withIcon('i-sparkle', 'gợi ý'));
     const step = stepper(
       `Số gói ${def.name}`,
       0,
       MAX_PACKS,
       () => {
         li.classList.remove('is-suggested');
-        sug.hidden = true;
+        sug.classList.add('is-off');
         const s = ctx.getState();
         if (s) refreshFoot(s);
       },
@@ -151,7 +152,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       const line = sug.items.find((l) => l.id === r.def.id);
       r.step.set(line ? Math.ceil(line.qty / r.def.packSize) : 0);
       r.li.classList.toggle('is-suggested', !!line);
-      r.sug.hidden = !line;
+      r.sug.classList.toggle('is-off', !line);
     }
     report(
       'i-sparkle',
@@ -176,7 +177,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
         const row = rows.find((r) => r.def.id === l.id)!;
         row.step.set(0);
         row.li.classList.remove('is-suggested');
-        row.sug.hidden = true;
+        row.sug.classList.add('is-off');
       }
     }
     if (bought.length > 0) report('i-ok', `Đã nhập ${bought.join(', ')}. −${formatMoney(spent)}. Còn ${formatMoney(s.money)}.`);
