@@ -1,9 +1,11 @@
 import {
   type BufferGeometry,
   CanvasTexture,
+  Color,
   ConeGeometry,
   Group,
   IcosahedronGeometry,
+  type Material,
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
@@ -30,7 +32,7 @@ import {
 } from '../../sim/nav/footprints';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { Vec2 } from '../../sim/types';
-import { GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
 
 /**
  * Architecture and small interior details of the shop: framed windows with
@@ -68,6 +70,9 @@ export const SIGN_WIDTH = 2.3;
 export const SIGN_HEIGHT = 0.5;
 const SIGN_FRAME = 0.06;
 const SIGN_CANVAS = { width: 512, height: 112 } as const;
+/** Sign brightness by day, and its warm RGB gain at full evening glow (past 1 reads as lit). */
+const SIGN_DAY = 0.94;
+const SIGN_NIGHT: readonly [number, number, number] = [1.25, 1.12, 0.95];
 
 const SHELF_WIDTH = 1.5;
 const SHELF_LEVELS: readonly number[] = [1.3, 1.75];
@@ -228,29 +233,48 @@ function placed(parts: BufferGeometry[], x: number, y: number, z: number, yaw: n
   return parts;
 }
 
-/** Door frame and the framed glass leaf, swung open inward; centred on the doorway at floor level. */
+const DOOR_LEAF_HEIGHT = 1.95;
+const DOOR_STILE = 0.08;
+const DOOR_TOP_RAIL = 0.1;
+const DOOR_KICK = 0.3;
+
+/** Places door leaf parts (built around the leaf centre) on the swung-open leaf. */
+function onDoorLeaf(parts: BufferGeometry[]): BufferGeometry[] {
+  return placed(parts, -DOOR_WIDTH / 2 + DOOR_LEAF_X, 0.99, DOOR_LEAF_Z, DOOR_LEAF_YAW);
+}
+
+/** Door frame and the leaf's frame, swung open inward; centred on the doorway at floor level. The glass is doorGlassGeometry(). */
 export function doorGeometry(): BufferGeometry {
   const half = DOOR_WIDTH / 2;
   const w = DOOR_LEAF_WIDTH;
-  const h = 1.95;
+  const h = DOOR_LEAF_HEIGHT;
   const t = DOOR_LEAF_THICKNESS;
-  const stile = 0.08;
-  const topRail = 0.1;
-  const kick = 0.3;
+  const stile = DOOR_STILE;
   const leaf = [
     part(box(stile, h, t), PALETTE.mint, -w / 2 + stile / 2, 0, 0),
     part(box(stile, h, t), PALETTE.mint, w / 2 - stile / 2, 0, 0),
-    part(box(w - 2 * stile, topRail, t), PALETTE.mint, 0, h / 2 - topRail / 2, 0),
-    part(box(w - 2 * stile, kick, t), PALETTE.mint, 0, -h / 2 + kick / 2, 0),
-    part(box(w - 2 * stile, h - topRail - kick, t * 0.5), GLASS, 0, (kick - topRail) / 2, 0),
+    part(box(w - 2 * stile, DOOR_TOP_RAIL, t), PALETTE.mint, 0, h / 2 - DOOR_TOP_RAIL / 2, 0),
+    part(box(w - 2 * stile, DOOR_KICK, t), PALETTE.mint, 0, -h / 2 + DOOR_KICK / 2, 0),
     part(box(0.04, 0.24, t + 0.08), PALETTE.gold, w / 2 - stile - 0.05, 0, 0),
   ];
   return merge([
     part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, -half, WALL_HEIGHT / 2, 0),
     part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, half, WALL_HEIGHT / 2, 0),
     part(box(DOOR_WIDTH + DOOR_POST_WIDTH, 0.18, DOOR_FRAME_DEPTH), PALETTE.woodDark, 0, WALL_HEIGHT - 0.09, 0),
-    ...placed(leaf, -half + DOOR_LEAF_X, 0.99, DOOR_LEAF_Z, DOOR_LEAF_YAW),
+    ...onDoorLeaf(leaf),
   ]);
+}
+
+/** Glass pane of the door leaf, drawn with GLASS_MATERIAL so it glows in the evening. */
+export function doorGlassGeometry(): BufferGeometry {
+  const w = DOOR_LEAF_WIDTH - 2 * DOOR_STILE;
+  const h = DOOR_LEAF_HEIGHT - DOOR_TOP_RAIL - DOOR_KICK;
+  return merge(onDoorLeaf([part(box(w, h, DOOR_LEAF_THICKNESS * 0.5), GLASS, 0, (DOOR_KICK - DOOR_TOP_RAIL) / 2, 0)]));
+}
+
+/** Glass pane of a window; it passes through the wall so it shows on both faces. */
+function windowGlass(spot: WindowSpot): BufferGeometry[] {
+  return placed([part(box(WINDOW_WIDTH, WINDOW_HEIGHT, WALL_THICKNESS + 0.02), GLASS, 0, WINDOW_SILL + WINDOW_HEIGHT / 2, 0)], spot.x, 0, spot.z, spot.yaw);
 }
 
 function windowParts(spot: WindowSpot, plan: FacadePlan): BufferGeometry[] {
@@ -259,9 +283,7 @@ function windowParts(spot: WindowSpot, plan: FacadePlan): BufferGeometry[] {
   const t = WALL_THICKNESS;
   const mid = WINDOW_SILL + h / 2;
   const frame = PALETTE.woodDark;
-  // The pane passes through the wall so it shows on both faces.
   const parts = [
-    part(box(w, h, t + 0.02), GLASS, 0, mid, 0),
     part(box(w + 0.16, 0.08, t + 0.08), frame, 0, WINDOW_SILL + h + 0.04, 0),
     part(box(w + 0.28, 0.07, t + 0.22), PALETTE.cream, 0, WINDOW_SILL - 0.035, 0),
     part(box(0.08, h, t + 0.08), frame, -w / 2 - 0.04, mid, 0),
@@ -281,20 +303,46 @@ function windowParts(spot: WindowSpot, plan: FacadePlan): BufferGeometry[] {
   return placed(parts, spot.x, 0, spot.z, spot.yaw);
 }
 
+/** Top of the soil in a door planter, where its plant pivots when it sways. */
+const PLANTER_SOIL_Y = 0.45;
+
 function planterParts(p: Vec2): BufferGeometry[] {
   const s = PLANTER_HALF * 2;
   return [
     part(box(s, 0.42, s), PALETTE.wood, p.x, 0.21, p.z),
     part(box(s + 0.06, 0.05, s + 0.06), PALETTE.woodDark, p.x, 0.43, p.z),
-    part(box(s - 0.06, 0.02, s - 0.06), PALETTE.coffee, p.x, 0.45, p.z),
-    part(cyl(0.035, 0.045, 0.45, 6), PALETTE.woodDark, p.x, 0.66, p.z),
-    part(new IcosahedronGeometry(0.34, 0), PALETTE.plant, p.x, 1.02, p.z),
-    part(new IcosahedronGeometry(0.22, 0), PALETTE.plantDark, p.x + 0.08, 1.32, p.z - 0.04),
+    part(box(s - 0.06, 0.02, s - 0.06), PALETTE.coffee, p.x, PLANTER_SOIL_Y, p.z),
   ];
 }
 
+/** Stem and leaves of a door planter, around its pivot on the soil. */
+function planterFoliageGeometry(): BufferGeometry {
+  const y = PLANTER_SOIL_Y;
+  return merge([
+    part(cyl(0.035, 0.045, 0.45, 6), PALETTE.woodDark, 0, 0.66 - y, 0),
+    part(new IcosahedronGeometry(0.34, 0), PALETTE.plant, 0, 1.02 - y, 0),
+    part(new IcosahedronGeometry(0.22, 0), PALETTE.plantDark, 0.08, 1.32 - y, -0.04),
+  ]);
+}
+
+/** Pivot of the valance: the awning's front edge. */
+function valancePivot(plan: FacadePlan): { y: number; z: number } {
+  return { y: AWNING_TOP - Math.sin(AWNING_TILT) * AWNING_DEPTH, z: plan.frontZ + Math.cos(AWNING_TILT) * AWNING_DEPTH + 0.03 };
+}
+
+/** The striped cloth hanging from the awning's front edge, around its pivot (valancePivot). */
+function valanceGeometry(plan: FacadePlan): BufferGeometry {
+  const { width, stripes } = plan.awning;
+  const sw = width / stripes;
+  const parts: BufferGeometry[] = [];
+  for (let i = 0; i < stripes; i++) {
+    parts.push(part(box(sw, 0.16, 0.03), i % 2 === 0 ? PALETTE.coral : PALETTE.cream, -width / 2 + (i + 0.5) * sw, -0.08, 0));
+  }
+  return merge(parts);
+}
+
 function awningParts(plan: FacadePlan): BufferGeometry[] {
-  const { x, width, stripes, valance } = plan.awning;
+  const { x, width, stripes } = plan.awning;
   const sw = width / stripes;
   const drop = Math.sin(AWNING_TILT) * AWNING_DEPTH;
   const reach = Math.cos(AWNING_TILT) * AWNING_DEPTH;
@@ -303,7 +351,6 @@ function awningParts(plan: FacadePlan): BufferGeometry[] {
     const color = i % 2 === 0 ? PALETTE.coral : PALETTE.cream;
     const sx = x - width / 2 + (i + 0.5) * sw;
     parts.push(part(box(sw, 0.04, AWNING_DEPTH), color, sx, AWNING_TOP - drop / 2, plan.frontZ + reach / 2 + 0.03, 0, AWNING_TILT));
-    if (valance) parts.push(part(box(sw, 0.16, 0.03), color, sx, AWNING_TOP - drop - 0.08, plan.frontZ + reach + 0.03));
   }
   // Brackets from the door posts to the front corners.
   for (const side of [-1, 1]) {
@@ -392,9 +439,9 @@ function fanBladesGeometry(): BufferGeometry {
 
 // ---------- View ----------
 
-function staticMesh(parts: BufferGeometry[], shadows: boolean): Mesh | null {
+function staticMesh(parts: BufferGeometry[], shadows: boolean, material: Material = SHARED_MATERIAL): Mesh | null {
   if (parts.length === 0) return null;
-  const mesh = new Mesh(merge(parts), SHARED_MATERIAL);
+  const mesh = new Mesh(merge(parts), material);
   mesh.castShadow = shadows;
   mesh.receiveShadow = true;
   return mesh;
@@ -435,13 +482,21 @@ export class FacadeView {
   readonly root = new Group();
   /** Blade meshes of the ceiling fans; spinning them around y animates the fans. */
   readonly fans: Mesh[] = [];
+  /** Plants in the door planters, pivoting on the soil; tilting them sways the leaves. */
+  readonly foliage: Mesh[] = [];
+  /** Awning valance pivoting on the awning's front edge (null without one); tilting it around x flutters it. */
+  valance: Mesh | null = null;
   /** One group per wall of wallSpans(), holding what hangs on that wall. */
   private readonly wallGroups: Group[] = [];
   /** Everything else built from the layout. */
   private readonly free = new Group();
   private readonly fanGeometry = fanBladesGeometry();
+  private readonly foliageGeometry = planterFoliageGeometry();
   private readonly signMaterial = new MeshBasicMaterial({ color: PALETTE.cream });
+  /** Sign colour before the evening glow (white under the name texture, cream without one). */
+  private readonly signBase = new Color(PALETTE.cream);
   private signName: string | null = null;
+  private signGlow = 0;
   private layout: ShopLayout | null = null;
   private quality: Quality;
   private plan: FacadePlan | null = null;
@@ -469,16 +524,37 @@ export class FacadeView {
     this.plan = plan;
 
     const byWall: BufferGeometry[][] = [[], [], [], [], []];
-    for (const w of plan.windows) byWall[w.wall]!.push(...windowParts(w, plan));
+    const glassByWall: BufferGeometry[][] = [[], [], [], [], []];
+    for (const w of plan.windows) {
+      byWall[w.wall]!.push(...windowParts(w, plan));
+      glassByWall[w.wall]!.push(...windowGlass(w));
+    }
     byWall[0]!.push(...backWallParts(plan));
     byWall.forEach((parts, i) => {
       const mesh = staticMesh(parts, false);
       if (mesh) this.wallGroups[i]!.add(mesh);
+      const glass = staticMesh(glassByWall[i]!, false, GLASS_MATERIAL);
+      if (glass) this.wallGroups[i]!.add(glass);
     });
 
     const front = [...stepParts(plan), ...awningParts(plan), ...signParts(plan)];
-    for (const p of plan.planters) front.push(...planterParts(p));
+    for (const p of plan.planters) {
+      front.push(...planterParts(p));
+      const leaves = new Mesh(this.foliageGeometry, SHARED_MATERIAL);
+      leaves.position.set(p.x, PLANTER_SOIL_Y, p.z);
+      leaves.castShadow = true;
+      this.foliage.push(leaves);
+      this.free.add(leaves);
+    }
     this.free.add(staticMesh(front, true)!, staticMesh(interiorParts(plan), false)!);
+
+    if (plan.awning.valance) {
+      const pivot = valancePivot(plan);
+      this.valance = new Mesh(valanceGeometry(plan), SHARED_MATERIAL);
+      this.valance.position.set(plan.awning.x, pivot.y, pivot.z);
+      this.valance.castShadow = true;
+      this.free.add(this.valance);
+    }
 
     if (plan.pendants.length > 0) {
       const bulbs = merge(plan.pendants.map((p) => part(new IcosahedronGeometry(0.07, 0), PALETTE.bulb, p.x, PENDANT_Y - 0.12, p.z)));
@@ -519,8 +595,29 @@ export class FacadeView {
     const tex = signTexture(name);
     this.signMaterial.map?.dispose();
     this.signMaterial.map = tex;
-    this.signMaterial.color.set(tex ? 0xffffff : PALETTE.cream);
+    this.signBase.set(tex ? 0xffffff : PALETTE.cream);
+    this.setSignGlow(this.signGlow);
     this.signMaterial.needsUpdate = true;
+  }
+
+  /**
+   * Lights the sign for the evening: `glow` 0 (day) leaves it a little below
+   * full white so it sits in the lit scene, 1 (night) pushes it past white
+   * toward warm, so it reads as lit from inside.
+   */
+  setSignGlow(glow: number): void {
+    const g = Math.min(1, Math.max(0, glow));
+    this.signGlow = g;
+    this.signMaterial.color.setRGB(
+      this.signBase.r * (SIGN_DAY + (SIGN_NIGHT[0] - SIGN_DAY) * g),
+      this.signBase.g * (SIGN_DAY + (SIGN_NIGHT[1] - SIGN_DAY) * g),
+      this.signBase.b * (SIGN_DAY + (SIGN_NIGHT[2] - SIGN_DAY) * g),
+    );
+  }
+
+  /** Current sign colour (tests). */
+  get signColor(): Color {
+    return this.signMaterial.color;
   }
 
   /** Whether wall `index`'s details are showing (tests). */
@@ -531,6 +628,7 @@ export class FacadeView {
   dispose(): void {
     this.clear();
     this.fanGeometry.dispose();
+    this.foliageGeometry.dispose();
     this.signMaterial.map?.dispose();
     this.signMaterial.dispose();
     this.root.removeFromParent();
@@ -540,12 +638,14 @@ export class FacadeView {
     const drop = (g: Group): void => {
       for (const child of g.children) {
         const geo = (child as Mesh).geometry;
-        if (geo && geo !== this.fanGeometry) geo.dispose();
+        if (geo && geo !== this.fanGeometry && geo !== this.foliageGeometry) geo.dispose();
       }
       g.clear();
     };
     for (const g of this.wallGroups) drop(g);
     drop(this.free);
     this.fans.length = 0;
+    this.foliage.length = 0;
+    this.valance = null;
   }
 }
