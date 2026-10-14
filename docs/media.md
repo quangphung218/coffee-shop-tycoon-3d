@@ -48,7 +48,8 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `facade-day.png` | Mặt tiền quán lúc 10:00. |
 | `peak.png` | Quán giờ cao điểm. |
 | `queue.png` | Gần quầy giờ cao điểm: hàng chờ. |
-| `facade-evening.png` | Mặt tiền quán chiều tối, đèn ấm. |
+| `facade-evening.png` | Mặt tiền quán từ 19:30 tới 20:00, đèn sáng đầy. |
+| `facade-day-evening.png` | Mặt tiền cùng góc máy lúc 15:30 và sau 19:30, cạnh nhau; khoanh và ghi tên chỗ phát sáng ấm (cửa sổ, cửa kính, biển hiệu, đèn thả). Lệnh tìm chỗ phát sáng bằng cách so điểm ảnh hai ảnh tối với ảnh ngày, và trả mã lỗi 1 khi không thấy biển hiệu hay kính. |
 | `daily-report.png` | Daily Report. |
 | `reviews.png` | Tab Đánh giá trong báo cáo. |
 
