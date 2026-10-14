@@ -400,12 +400,10 @@ function staticMesh(parts: BufferGeometry[], shadows: boolean): Mesh | null {
   return mesh;
 }
 
-/** Draws the shop name on a small canvas; null without a DOM (tests). */
+/** Draws the shop name on a small canvas; null without OffscreenCanvas (tests, jsdom). */
 function signTexture(name: string): CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  const canvas = document.createElement('canvas');
-  canvas.width = SIGN_CANVAS.width;
-  canvas.height = SIGN_CANVAS.height;
+  if (typeof OffscreenCanvas === 'undefined') return null;
+  const canvas = new OffscreenCanvas(SIGN_CANVAS.width, SIGN_CANVAS.height);
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const { width: w, height: h } = SIGN_CANVAS;
