@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="626" height="642" viewBox="0 0 626 642" role="img" aria-labelledby="t-staff" font-family="Nunito, system-ui, sans-serif">
+<title id="t-staff">Nhân viên: đứng trong quầy, chồng nhau, đè khách → mỗi người một ô trống</title>
+<rect width="626" height="642" fill="#fffaf2"/>
+<text x="16" y="26" font-size="18" font-weight="800" fill="#3a2216">Nhân viên: đứng trong quầy, chồng nhau, đè khách → mỗi người một ô trống</text>
+<line x1="16" y1="46" x2="50" y2="46" stroke="#b3261e" stroke-width="3" stroke-dasharray="7 4"/>
+<text x="58" y="50" font-size="13" font-weight="700" fill="#3a2216">Trước (P17, 07439cf): đi thẳng</text>
+<line x1="286" y1="46" x2="320" y2="46" stroke="#17663a" stroke-width="3"/>
+<text x="328" y="50" font-size="13" font-weight="700" fill="#3a2216">Sau (P18): lưới điều hướng, A*</text>
+<rect x="16" y="463.6" width="594" height="126" fill="#e4ddd0"/>
+<rect x="84.4" y="85.6" width="504" height="378" fill="#e9cfa8"/>
+<rect x="77.2" y="78.4" width="518.4" height="7.2" fill="#e2c59d" stroke="#3a2216" stroke-width="1"/>
+<rect x="77.2" y="85.6" width="7.2" height="378" fill="#e2c59d" stroke="#3a2216" stroke-width="1"/>
+<rect x="588.4" y="85.6" width="7.2" height="378" fill="#e2c59d" stroke="#3a2216" stroke-width="1"/>
+<rect x="77.2" y="463.6" width="140.4" height="7.2" fill="#e2c59d" stroke="#3a2216" stroke-width="1"/>
+<rect x="275.2" y="463.6" width="320.4" height="7.2" fill="#e2c59d" stroke="#3a2216" stroke-width="1"/>
+<rect x="215.1" y="462.5" width="5" height="9.4" fill="#a0704c" stroke="#3a2216" stroke-width="1"/>
+<rect x="272.7" y="462.5" width="5" height="9.4" fill="#a0704c" stroke="#3a2216" stroke-width="1"/>
+<line x1="216.8" y1="466.4" x2="225.6" y2="442.1" stroke="#3a2216" stroke-width="3.2" stroke-linecap="round"/>
+<rect x="188.4" y="474.4" width="18.7" height="18.7" fill="#8fcf5f" stroke="#3a2216" stroke-width="1"/>
+<rect x="285.6" y="474.4" width="18.7" height="18.7" fill="#8fcf5f" stroke="#3a2216" stroke-width="1"/>
+<rect x="136.2" y="159" width="220.3" height="33.1" fill="#a0673f" stroke="#3a2216" stroke-width="1"/>
+<rect x="173" y="111.5" width="211.7" height="27.4" fill="#6b3f24" stroke="#3a2216" stroke-width="1"/>
+<rect x="193.1" y="118" width="34.6" height="21.6" fill="#8fd3f4" stroke="#3a2216" stroke-width="1"/>
+<rect x="242.1" y="119.1" width="23" height="19.4" fill="#8fd3f4" stroke="#3a2216" stroke-width="1"/>
+<rect x="285.3" y="119.1" width="23" height="19.4" fill="#8fd3f4" stroke="#3a2216" stroke-width="1"/>
+<rect x="328.5" y="119.1" width="23" height="19.4" fill="#8fd3f4" stroke="#3a2216" stroke-width="1"/>
+<circle cx="138.4" cy="283.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="103.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="157.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="210.4" cy="283.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="175.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="229.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="282.4" cy="283.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="247.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="301.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="354.4" cy="283.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="319.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="373.5" y="275.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="138.4" cy="355.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="103.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="157.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="210.4" cy="355.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="175.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="229.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="282.4" cy="355.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="247.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="301.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="354.4" cy="355.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="319.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="373.5" y="347.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="138.4" cy="427.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="103.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="157.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="156.4" cy="528.4" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="121.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="175.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="156.4" cy="528.4" r="1.5" fill="#ff8a7a" stroke="#3a2216" stroke-width="1"/>
+<circle cx="336.4" cy="528.4" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="301.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="355.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="336.4" cy="528.4" r="1.5" fill="#ff8a7a" stroke="#3a2216" stroke-width="1"/>
+<circle cx="84.4" cy="528.4" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="49.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="103.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="84.4" cy="528.4" r="1.5" fill="#ff8a7a" stroke="#3a2216" stroke-width="1"/>
+<circle cx="408.4" cy="528.4" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="373.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="427.5" y="520.5" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="408.4" cy="528.4" r="1.5" fill="#ff8a7a" stroke="#3a2216" stroke-width="1"/>
+<circle cx="462.4" cy="211.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="427.5" y="203.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="481.5" y="203.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="462.4" cy="290.8" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="427.5" y="282.9" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="481.5" y="282.9" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="462.4" cy="370" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="427.5" y="362.1" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="481.5" y="362.1" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="534.4" cy="211.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="499.5" y="203.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="553.5" y="203.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="534.4" cy="290.8" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="499.5" y="282.9" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="553.5" y="282.9" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="534.4" cy="370" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="499.5" y="362.1" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="553.5" y="362.1" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="210.4" cy="427.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="175.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="229.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="282.4" cy="427.6" r="18" fill="#d9a877" stroke="#3a2216" stroke-width="1"/>
+<rect x="247.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<rect x="301.5" y="419.7" width="15.8" height="15.8" fill="#f6e7d2" stroke="#3a2216" stroke-width="1"/>
+<circle cx="102.4" cy="103.6" r="15.1" fill="#8fcf5f" stroke="#3a2216" stroke-width="1"/>
+<circle cx="390.4" cy="442" r="15.1" fill="#8fcf5f" stroke="#3a2216" stroke-width="1"/>
+<circle cx="102.4" cy="391.6" r="15.1" fill="#8fcf5f" stroke="#3a2216" stroke-width="1"/>
+<polyline points="336.4,202.6 93.4,265.6 93.4,283.6" fill="none" stroke="#17663a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="246.4" cy="148.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="210.4" cy="148.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="192.4" cy="148.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="228.4" cy="148.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="336.4" cy="202.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="93.4" cy="283.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<circle cx="111.4" cy="283.6" r="7.2" fill="#17663a" fill-opacity="0.3" stroke="#17663a" stroke-width="2"/>
+<polyline points="336.4,182.8 120.4,283.6" fill="none" stroke="#b3261e" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<circle cx="246.4" cy="190" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="210.4" cy="143.2" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="210.4" cy="150.4" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="210.4" cy="150.4" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="336.4" cy="182.8" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="120.4" cy="283.6" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<circle cx="120.4" cy="283.6" r="7.2" fill="#b3261e" fill-opacity="0.3" stroke="#b3261e" stroke-width="2"/>
+<path d="M330.4 176.8L342.4 188.8M342.4 176.8L330.4 188.8" stroke="#b3261e" stroke-width="3" stroke-linecap="round"/>
+<path d="M204.4 137.2L216.4 149.2M216.4 137.2L204.4 149.2" stroke="#b3261e" stroke-width="3" stroke-linecap="round"/>
+<text x="260.4" y="212" font-size="12" font-weight="800" fill="#b3261e" stroke="#fffaf2" stroke-width="3" paint-order="stroke" text-anchor="start">nhận order trong quầy</text>
+<text x="196.4" y="172.4" font-size="12" font-weight="800" fill="#b3261e" stroke="#fffaf2" stroke-width="3" paint-order="stroke" text-anchor="end">2 pha chế chồng nhau</text>
+<text x="120.4" y="267.6" font-size="12" font-weight="800" fill="#b3261e" stroke="#fffaf2" stroke-width="3" paint-order="stroke" text-anchor="middle">phục vụ đè lên khách</text>
+<text x="93.4" y="309.6" font-size="12" font-weight="800" fill="#17663a" stroke="#fffaf2" stroke-width="3" paint-order="stroke" text-anchor="middle">phục vụ đứng ô cạnh khách</text>
+<text x="16" y="610" font-size="13" font-weight="700" fill="#b3261e">Trước: người chạm 1 quầy, 1 máy pha; 3 người đứng chồng lên người khác</text>
+<text x="16" y="630" font-size="13" font-weight="700" fill="#17663a">Sau: không chạm đồ vật, không ai đứng chồng</text>
+</svg>
