@@ -125,8 +125,8 @@ describe('migrate', () => {
       s.tables.push({ id: s.nextId++, seats: 2, cash: 0, trash: 0, pos: tablePosition(i), occupants: [] });
     }
     const grid = buildNavGrid(getShopLayout(s));
-    // The last spot of the old line down x = 0, between the chairs of the back row.
-    const oldSpot = { x: 0, z: -1 + 5 * 0.8 };
+    // Between the back-to-back chairs of two neighbouring tables.
+    const oldSpot = { x: (tablePosition(0).x + tablePosition(2).x) / 2, z: tablePosition(0).z };
     expect(isWalkable(grid, oldSpot)).toBe(false);
     const fine = { x: 3, z: -1 };
     expect(isWalkable(grid, fine)).toBe(true);
@@ -165,8 +165,8 @@ describe('migrate', () => {
     }
     expect(dispatch(s, { type: 'start_day' })).toBe(true);
     const grid = buildNavGrid(getShopLayout(s));
-    // One saved on the old line between the chairs of the back row, one on a chair heading into a table.
-    const inChairs = { x: 0, z: -1 + 5 * 0.8 };
+    // One saved between the back-to-back chairs of two tables, one on a chair heading into a table.
+    const inChairs = { x: (tablePosition(4).x + tablePosition(6).x) / 2, z: tablePosition(4).z };
     const onChair = { x: s.tables[1]!.pos.x + CHAIR_OFFSET, z: s.tables[1]!.pos.z };
     const table = s.tables[0]!.pos;
     for (const p of [inChairs, onChair, table]) expect(isWalkable(grid, p), `${p.x},${p.z}`).toBe(false);
