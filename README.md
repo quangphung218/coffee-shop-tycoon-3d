@@ -71,7 +71,7 @@ Tắt **Cài đặt → Di chuyển camera bằng WASD** để xoay bằng `Q`/`
 | `src/sim/` | Lõi mô phỏng thuần TypeScript, tất định: giờ, pha, khách, đơn, kho, nhân viên, kinh tế, rating, review, báo cáo ngày. Không dùng DOM hay Three.js. |
 | `src/sim/data/` | Bảng dữ liệu: menu, nguyên liệu, nâng cấp, marketing, độ khó. |
 | `src/render/` | Three.js: `scene/` (renderer, camera, quán, chọn đối tượng), `actors/` (nhân vật và animation), `street/` (phố, xe, người đi đường). |
-| `src/ui/` | Lớp phủ HTML/CSS: `core/` (DOM, icon SVG dùng chung UI và 3D), `screens/` (menu, cài đặt, tạm dừng), `hud/`, `panels/` (bảng chuẩn bị), `report/` (Daily Report, Đánh giá), `styles/` (token CSS). |
+| `src/ui/` | Lớp phủ HTML/CSS: `core/` (DOM, icon 3D từ atlas WebP `public/icons3d/` dùng chung UI và 3D), `screens/` (menu, cài đặt, tạm dừng), `hud/`, `panels/` (bảng chuẩn bị), `report/` (Daily Report, Đánh giá), `styles/` (token CSS). |
 | `src/audio/` | Âm thanh tổng hợp bằng Web Audio. |
 | `src/save/` | Lưu/tải game và cài đặt. |
 | `tests/` | Test Vitest theo cùng cấu trúc, cộng `integration/` chạy cả ngày chơi và `report/` vẽ sơ đồ cho `docs/reports/`. |
