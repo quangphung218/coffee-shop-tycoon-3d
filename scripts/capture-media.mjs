@@ -1,8 +1,9 @@
-// Captures the README screenshots and demo clip from the production build.
-// Run through `npm run media` (builds first). Needs Playwright with Chromium
-// and ffmpeg; see docs/media.md.
+// Captures the README screenshots and demo clip from the production build,
+// and the P18/P19 before/after boards. Run through `npm run media` (builds
+// first). Needs Playwright with Chromium, ffmpeg and the git history back to
+// P18_COMMIT; see docs/media.md.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -12,10 +13,17 @@ import { chromium } from 'playwright';
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const OUT = join(ROOT, 'docs', 'media');
 const PORT = Number(process.env.MEDIA_PORT ?? 4173);
-const URL_BASE = `http://127.0.0.1:${PORT}/`;
+/** The P18 build is served on the next port. */
+const P18_PORT = PORT + 1;
+const urlFor = (port) => `http://127.0.0.1:${port}/`;
+const URL_BASE = urlFor(PORT);
 /** Date.now() inside the page is frozen at this value, so New Game always gets the same seed. */
 const FIXED_NOW = Number(process.env.MEDIA_SEED ?? 1760400000000);
 const VIEWPORT = { width: 1280, height: 720 };
+/** Phone screen of the Kho boards (the 390 px of the P19 layout check). */
+const PHONE = { width: 390, height: 844 };
+/** Settings stored before each page loads. */
+const SETTINGS = { musicVolume: 0, sfxVolume: 0, quality: 'high', gameSpeed: 1, cameraKeys: 'qe-wasd' };
 /** README limit per file. */
 const MAX_BYTES = 5 * 1024 * 1024;
 /** Length of the sped-up day in the clip, seconds. */
@@ -23,6 +31,16 @@ const DAY_CLIP_S = 12;
 /** Real-time lead-in before "Mở cửa" and hold on the Daily Report, seconds. */
 const INTRO_S = 1.5;
 const REPORT_HOLD_S = 3.5;
+/**
+ * Real-time part of the clip at the lunch peak: 1x, close on the counter, a
+ * drag across the view released mid-swing so the camera coasts to a stop,
+ * then people walking and rounding corners. Pixels and ms.
+ */
+const SPIN_LEAD_MS = 800;
+const SPIN_DRAG_PX = 260;
+const SPIN_DRAG_MS = 450;
+const SPIN_STEPS = 18;
+const SPIN_HOLD_MS = 3000;
 /** Packs added on top of the Auto-restock suggestion, by ingredient name in the Kho panel. */
 const EXTRA_PACKS = [
   ['Cà phê hạt', 3],
@@ -57,41 +75,21 @@ const FACADE_EVENING_END = '20:00';
 const GLOW_RECHECK_MS = 2000;
 /** The HUD, dock and toasts are hidden in the frames the glow pair is built from. */
 const HIDE_UI = '.hud-layer, .toasts { display: none !important; }';
+/** Toasts would cover the shop and the panels in still images; the clip keeps them. */
+const HIDE_TOASTS = '.toasts { display: none !important; }';
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
 const DAY_TIMEOUT_MS = 8 * 60_000;
-/** Commit of the P17 screenshots the before/after pairs compare against (read with git show). */
-const P17_COMMIT = '07439cf';
-/**
- * Where P17 put people (07439cf src/sim/customers.ts queueSlot and
- * PICKUP_POS, src/sim/staff.ts MACHINE_FRONT, COUNTER_FRONT and STATIONS).
- * The P17 and P18 peak shots use the same camera (Home, ZOOM_WHEEL), so these
- * are projected onto the P17 frame with the camera of the P18 one.
- */
-const P17_SPOTS = {
-  queue: Array.from({ length: 6 }, (_, i) => ({ x: 0, z: -1 + i * 0.8 })),
-  pickup: [{ x: 2.5, z: -1 }],
-  staff: [
-    { x: -1, z: -2.9 },
-    { x: 0, z: -1.6 },
-    { x: -1, z: -2.7 },
-    { x: 2.5, z: -1.8 },
-  ],
-};
-/** Top of a character's head (src/render/actors/rig.ts HEAD_TOP_Y) and the body's half width, world units. */
-const PERSON_TOP = 1.35;
-const PERSON_HALF = 0.3;
-/** A person counts as standing on a sim spot within this distance. */
-const ON_SPOT = 0.3;
-/** Sizes from src/render/scene/facade.ts (FAN_Y, FAN_BLADE, SHELF_WIDTH, PENDANT_Y, WINDOW_*, AWNING_*). */
-const FACADE_SIZE = { fanY: 2.6, fanBlade: 0.62, shelfHalf: 0.75, pendantY: 2.3, windowHalf: 0.6, windowSill: 0.95, windowHeight: 0.95, awningHalf: 1.2, awningDepth: 0.95 };
-/** DOM boxes measured with the frames; each is the union of the visible matches. */
-const DOM_MARKS = {
-  dock: '.dock',
-  hud: '.hud .hud-stat, .hud .phases',
-  panel: '.panel:not([hidden])',
-  menuCard: '.w-menu',
-  menuList: '.w-menu .menu-list',
-};
+/** Commit of the P18 build and screenshots the P19 boards compare against (git archive, git show). */
+const P18_COMMIT = 'd643d89';
+/** Kho at open hours: staff hired, then the day runs at 4x to this clock with the starting stock. */
+const KHO_HIRES = 2;
+const KHO_OPEN_AT = '10:00';
+/** Two chairs closer than this, side to side, leave no way between them (world units, metres). */
+const NO_WAY = 0.5;
+/** A gap this wide between two tables' chairs is an aisle. */
+const AISLE = 1;
+/** Height of a table with its chairs, for the rings. */
+const TABLE_TOP = 0.9;
 /** GIF tries, largest first, until one fits under MAX_BYTES. */
 const GIF_TRIES = [
   { width: 720, fps: 12 },
@@ -112,13 +110,14 @@ function sizeMb(path) {
   return statSync(path).size / 1024 / 1024;
 }
 
-async function startPreview() {
+/** Serves the build in `root`/dist with `vite preview` on `port`. */
+async function startPreview(root, port) {
   const vite = join(ROOT, 'node_modules', '.bin', 'vite');
-  const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
+  const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' });
   for (let i = 0; i < 100; i++) {
-    if (server.exitCode !== null) throw new Error(`vite preview exited (port ${PORT} busy?)`);
+    if (server.exitCode !== null) throw new Error(`vite preview exited (port ${port} busy?)`);
     try {
-      if ((await fetch(URL_BASE)).ok) return server;
+      if ((await fetch(urlFor(port))).ok) return server;
     } catch {
       // not listening yet
     }
@@ -126,6 +125,24 @@ async function startPreview() {
   }
   server.kill();
   throw new Error('vite preview did not start');
+}
+
+/** Exports `ref` into a temp dir sharing this checkout's node_modules and builds it there. */
+function buildRef(ref) {
+  // macOS tmpdir() is under the /var -> /private/var symlink; vite needs the real path.
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'cst3d-media-ref-')));
+  const tar = spawnSync('git', ['archive', '--format=tar', ref], { cwd: ROOT, maxBuffer: 1 << 30 });
+  if (tar.status !== 0) throw new Error(`git archive ${ref} failed (shallow clone?): ${tar.stderr}`);
+  const file = join(dir, 'src.tar');
+  writeFileSync(file, tar.stdout);
+  const x = spawnSync('tar', ['-xf', file, '-C', dir]);
+  if (x.status !== 0) throw new Error(`tar failed: ${x.stderr}`);
+  rmSync(file);
+  symlinkSync(realpathSync(join(ROOT, 'node_modules')), join(dir, 'node_modules'));
+  const vite = join(ROOT, 'node_modules', '.bin', 'vite');
+  const b = spawnSync(vite, ['build', '--logLevel', 'warn'], { cwd: dir, stdio: 'inherit' });
+  if (b.status !== 0) throw new Error(`vite build of ${ref} failed`);
+  return dir;
 }
 
 /** Waits until the HUD clock reads `hhmm` or later. */
@@ -165,6 +182,19 @@ async function cameraFacade(page) {
   await sleep(1000);
 }
 
+/** Drags across the middle of the view and lets go mid-swing, so the camera keeps turning and slows to a stop. */
+async function dragSpin(page) {
+  const x = VIEWPORT.width / 2 - SPIN_DRAG_PX / 2;
+  const y = VIEWPORT.height / 2 + 40;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= SPIN_STEPS; i++) {
+    await page.mouse.move(x + (SPIN_DRAG_PX * i) / SPIN_STEPS, y);
+    await sleep(SPIN_DRAG_MS / SPIN_STEPS);
+  }
+  await page.mouse.up();
+}
+
 /**
  * Runs in the page before its scripts. three.js announces each WebGLRenderer
  * to window.__THREE_DEVTOOLS__; the one drawing #scene gets its render()
@@ -186,6 +216,19 @@ function observeThree() {
     });
   });
   window.__THREE_DEVTOOLS__ = hook;
+}
+
+/** A browser context whose pages get the fixed clock and SETTINGS. */
+async function newContext(browser, options) {
+  const context = await browser.newContext({ deviceScaleFactor: 1, ...options });
+  await context.addInitScript(
+    ({ now, settings }) => {
+      Date.now = () => now;
+      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
+    },
+    { now: FIXED_NOW, settings: SETTINGS },
+  );
+  return context;
 }
 
 /**
@@ -239,27 +282,6 @@ async function sceneSnapshot(page) {
   return snap;
 }
 
-/** Viewport box of each DOM_MARKS selector (union of its visible matches), or null. */
-function domSnapshot(page) {
-  return page.evaluate((selectors) => {
-    const out = {};
-    for (const [key, sel] of Object.entries(selectors)) {
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const el of document.querySelectorAll(sel)) {
-        const r = el.getBoundingClientRect();
-        const left = Math.max(0, r.left);
-        const top = Math.max(0, r.top);
-        const right = Math.min(innerWidth, r.right);
-        const bottom = Math.min(innerHeight, r.bottom);
-        if (right <= left || bottom <= top) continue;
-        x0 = Math.min(x0, left); y0 = Math.min(y0, top); x1 = Math.max(x1, right); y1 = Math.max(y1, bottom);
-      }
-      out[key] = x0 < x1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
-    }
-    return out;
-  }, DOM_MARKS);
-}
-
 /** Screen position (CSS px) of world point (x, y, z) through the snapshot's camera. */
 function project(snap, x, y, z) {
   const v = snap.view;
@@ -288,116 +310,47 @@ function cuboid(x0, x1, y0, y1, z0, z1) {
   return out;
 }
 
-/** One ring per person standing at `feet`, head included. */
-function personBoxes(snap, feet, top = PERSON_TOP, half = PERSON_HALF) {
-  return feet.map((p) => worldBox(snap, cuboid(p.x - half, p.x + half, 0, top, p.z - half, p.z + half))).filter(Boolean);
-}
-
-/** People in the snapshot standing on one of `spots`; the spots themselves when nobody does. */
-function onSpots(snap, spots) {
-  const hit = snap.people.filter((p) => spots.some((s) => Math.hypot(s.x - p.x, s.z - p.z) <= ON_SPOT));
-  return hit.length > 0 ? hit : spots;
-}
-
-/** Door, awning and name sign, from facadePlan(). */
-function facadeBoxes(snap, plan) {
-  const f = FACADE_SIZE;
-  const { door, sign, frontZ } = plan;
-  return [worldBox(snap, cuboid(door.x - f.awningHalf, door.x + f.awningHalf, 0, sign.y + 0.35, frontZ - 0.2, frontZ + f.awningDepth))].filter(Boolean);
-}
-
-/**
- * Rings for the peak pair. P17: the old line, takeaway point and staff spots
- * (P17_SPOTS) through the same camera. P18: the people standing on the sim's
- * line and takeaway spots and behind the counter, the shop front and the dock.
- */
-function peakMarks({ scene, dom }, sim) {
-  const staff = scene.people.filter((p) => p.z < sim.counter.pos.z - 0.4);
-  return [
-    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.queue), label: 'Hàng chờ thẳng x = 0, đè ghế' },
-    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.pickup, PERSON_TOP, 0.45), label: 'Khách mang đi chồng một điểm' },
-    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.staff), label: 'Nhân viên chồng nhau, trong quầy' },
-    { side: 'before', boxes: [dom.dock], label: 'Icon SVG phẳng' },
-    { side: 'after', boxes: personBoxes(scene, onSpots(scene, sim.queue)), label: 'Hàng chờ đi lối giữa, không đè ghế' },
-    { side: 'after', boxes: personBoxes(scene, onSpots(scene, sim.pickup)), label: 'Khách mang đi: mỗi người một ô' },
-    { side: 'after', boxes: personBoxes(scene, staff), label: 'Nhân viên không chồng' },
-    { side: 'after', boxes: facadeBoxes(scene, sim.facade), label: 'Mặt tiền mới' },
-    { side: 'after', boxes: [dom.dock], label: 'Icon 3D' },
-  ];
-}
-
-/** Rings for the main menu pair: new facade and interior details on the P18 side; menu icons on both. */
-function menuMarks({ scene, dom }, sim) {
-  const f = FACADE_SIZE;
-  const plan = sim.facade;
-  const card = dom.menuCard;
-  // Details behind the menu card would be ringed on top of it.
-  const clear = (b) => !card || !(b.x + b.w / 2 > card.x && b.x + b.w / 2 < card.x + card.w && b.y + b.h / 2 > card.y && b.y + b.h / 2 < card.y + card.h);
-  const boxes = (points) => points.map((p) => worldBox(scene, p)).filter((b) => b && clear(b));
-  const left = plan.windows.filter((w) => w.wall === 1);
-  return [
-    { side: 'before', boxes: [dom.menuList], label: 'Icon SVG phẳng' },
-    { side: 'after', boxes: [dom.menuList], label: 'Icon 3D' },
-    { side: 'after', boxes: facadeBoxes(scene, plan).filter(clear), label: 'Mái hiên, biển tên, cửa kính' },
-    { side: 'after', boxes: personBoxes(scene, plan.planters, 1.2, 0.45).filter(clear), label: 'Chậu cây' },
-    {
-      side: 'after',
-      boxes: boxes(left.map((w) => cuboid(w.x, w.x, f.windowSill, f.windowSill + f.windowHeight, w.z - f.windowHalf, w.z + f.windowHalf))),
-      label: 'Khung cửa sổ',
-    },
-    { side: 'after', boxes: boxes(plan.fans.map((p) => cuboid(p.x - f.fanBlade, p.x + f.fanBlade, f.fanY - 0.1, f.fanY + 0.1, p.z - f.fanBlade, p.z + f.fanBlade))), label: 'Quạt trần' },
-    {
-      side: 'after',
-      boxes: boxes([cuboid(plan.shelves.x - f.shelfHalf, plan.shelves.x + f.shelfHalf, plan.shelves.levels[0] - 0.1, plan.shelves.levels.at(-1) + 0.3, plan.shelves.z, plan.shelves.z + 0.26)]),
-      label: 'Kệ lọ hạt',
-    },
-    { side: 'after', boxes: boxes(plan.pendants.map((p) => cuboid(p.x - 0.2, p.x + 0.2, f.pendantY - 0.35, f.pendantY + 0.1, p.z - 0.2, p.z + 0.2))), label: 'Đèn thả' },
-  ];
-}
-
-/** Rings for the Kho pair: the dock, the HUD and the panel, where flat SVG icons became 3D ones. */
-function prepMarks({ dom }) {
-  const marks = [];
-  for (const [key, name] of [['dock', 'Dock'], ['hud', 'HUD'], ['panel', 'Bảng Kho']]) {
-    marks.push({ side: 'before', boxes: [dom[key]], label: `${name}: icon SVG phẳng` });
-    marks.push({ side: 'after', boxes: [dom[key]], label: `${name}: icon 3D` });
-  }
-  return marks;
-}
-
-/** Freezes the frame loop, takes `shoot()` and reads the camera, people and DOM boxes of that frame. */
+/** Freezes the frame loop, takes `shoot()` and reads the camera and people of that frame. */
 async function measured(page, shoot) {
   await freeze(page);
   try {
     await shoot();
-    return { scene: await sceneSnapshot(page), dom: await domSnapshot(page) };
+    return { scene: await sceneSnapshot(page) };
   } finally {
     await thaw(page);
   }
 }
 
-/** Plays day 1 on Easy with three hires, taking the screenshots. Returns clip timestamps in seconds. */
-async function playDay(page, videoStart) {
-  const at = () => (Date.now() - videoStart) / 1000;
-  // Toasts would cover the shop in still images; the clip keeps them.
-  const shot = (name) => page.screenshot({ path: join(OUT, name), style: '.toasts { display: none !important; }' });
-
-  await page.goto(URL_BASE);
+/** Loads `url` and waits for the Main Menu with the 3D scene behind it. Returns the "Ván mới" button. */
+async function openMenu(page, url) {
+  await page.goto(url);
   const newGame = page.getByRole('button', { name: 'Ván mới', exact: true });
   await newGame.waitFor();
   // The menu comes up before the 3D scene; wait for the loading screen to go and the scene to fade in.
   await page.locator('#boot').waitFor({ state: 'detached' });
   await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
-  // The menu backdrop is a busy lunchtime shop; give the first customers time to walk in.
-  await sleep(4000);
-  // Each frame of a before/after pair is measured as it is taken (camera, people, DOM boxes).
-  const marks = {};
-  marks.menu = await measured(page, () => shot('main-menu.png'));
+  return newGame;
+}
 
+/** From the Main Menu: New Game on Easy, into the day-1 preparation. */
+async function startEasyDay(page, newGame) {
   await newGame.click();
   await page.locator('label.choice', { has: page.locator('input[value="easy"]') }).click();
   await page.getByRole('button', { name: 'Bắt đầu ngày 1', exact: true }).click();
   await page.locator('[data-action="open"]').waitFor();
+}
+
+/** Plays day 1 on Easy with three hires, taking the screenshots. Returns clip timestamps in seconds. */
+async function playDay(page, videoStart) {
+  const at = () => (Date.now() - videoStart) / 1000;
+  const shot = (name) => page.screenshot({ path: join(OUT, name), style: HIDE_TOASTS });
+
+  const newGame = await openMenu(page, URL_BASE);
+  // The menu backdrop is a busy lunchtime shop; give the first customers time to walk in.
+  await sleep(4000);
+  await shot('main-menu.png');
+
+  await startEasyDay(page, newGame);
 
   // Panels open and close from the dock at the bottom centre. The Menu panel
   // shows a 3D atlas icon on every drink.
@@ -417,7 +370,6 @@ async function playDay(page, videoStart) {
   }
   await sleep(800);
   await shot('prep-inventory.png');
-  marks.prep = { dom: await domSnapshot(page) };
   await page.locator('[data-action="buy"]').click();
   await page.locator('.dock [data-panel="inventory"]').click();
   // Closer camera so customers and staff are readable in the clip.
@@ -439,11 +391,21 @@ async function playDay(page, videoStart) {
     timeout: DAY_TIMEOUT_MS,
   });
   // About an hour of game time into the lunch peak, when the queue is longest.
+  // The frame is measured as it is taken (camera, people) for the peak board.
   await clockAt(page, '12:00');
-  marks.peak = await measured(page, () => shot('peak.png'));
+  const peak = await measured(page, () => shot('peak.png'));
   // Closer on the counter: the line follows the free aisle between the tables.
   await cameraHome(page, QUEUE_WHEEL);
   await shot('queue.png');
+
+  // Real time in the clip: the camera coasts after a drag while people walk and round their corners.
+  await page.locator('[data-speed="1"]').click();
+  const spinAt = at();
+  await sleep(SPIN_LEAD_MS);
+  await dragSpin(page);
+  await sleep(SPIN_HOLD_MS);
+  const spinEnd = at();
+  await page.locator('[data-speed="4"]').click();
   await cameraHome(page, ZOOM_WHEEL);
 
   // Day/evening pair from one framing: late afternoon with the lamps off,
@@ -481,7 +443,521 @@ async function playDay(page, videoStart) {
   await page.locator('[data-tab="reviews"]').click();
   await sleep(600);
   await shot('reviews.png');
-  return { times: { openAt, reportAt, endAt }, glow, marks };
+  return { times: { openAt, spinAt, spinEnd, reportAt, endAt }, glow, peak };
+}
+
+/**
+ * Runs in the page. Boxes (viewport CSS px, not clipped) of the open panel's
+ * body and its scrollbar, the Kho parts the boards ring, every stock row with
+ * its badge, and the Kho dock button with its count. Works on the P18 and the
+ * P19 markup (P18 .intro and a hidden reason line; P19 .kho-note and .foot-hint).
+ */
+function khoDom() {
+  const rect = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+  };
+  const body = document.querySelector('#ui > .panel:not([hidden]) .panel-body');
+  if (!body) return null;
+  const cs = getComputedStyle(body);
+  const b = body.getBoundingClientRect();
+  const left = b.left + body.clientLeft;
+  const bar = body.offsetWidth - body.clientWidth - (parseFloat(cs.borderLeftWidth) || 0) - (parseFloat(cs.borderRightWidth) || 0);
+  const level = (badge) => (badge?.classList.contains('badge-ok') ? 'ok' : badge?.classList.contains('badge-danger') ? 'out' : 'low');
+  const dockBadge = document.querySelector('.dock [data-panel="inventory"] .dock-badge');
+  return {
+    body: rect(body),
+    inner: { left, right: left + body.clientWidth },
+    scrollWidth: body.scrollWidth,
+    clientWidth: body.clientWidth,
+    bar: bar > 0 ? { x: left + body.clientWidth, y: b.top + body.clientTop, w: bar, h: body.clientHeight } : null,
+    barWidth: Math.max(0, Math.round(bar)),
+    suggest: rect(body.querySelector('[data-action="suggest"]')),
+    intro: rect(body.querySelector('.prep > .intro, .prep > .kho-note')),
+    foot: rect(body.querySelector('.prep > .panel-foot')),
+    hint: rect(body.querySelector('.panel-foot .reason:not([hidden])')),
+    items: [...body.querySelectorAll('.stack > .item')].map((li) => {
+      const badge = li.querySelector('.badge');
+      const meta = li.querySelector('.item-meta');
+      return {
+        id: li.getAttribute('data-ingredient'),
+        box: rect(li),
+        badge: rect(badge),
+        level: level(badge),
+        text: badge?.textContent.trim() ?? '',
+        meta: rect(meta),
+        metaText: meta?.textContent.trim() ?? '',
+      };
+    }),
+    dock: rect(document.querySelector('.dock [data-panel="inventory"]')),
+    dockBadge: dockBadge && !dockBadge.hidden ? { box: rect(dockBadge), text: dockBadge.textContent.trim() } : null,
+  };
+}
+
+/**
+ * Kho frames of one build, the same steps on P18 and P19: on a phone, the
+ * scrollbar at rest and while scrolling, the body pushed sideways as far as
+ * it goes, the foot with 0 packs and with 1; then on a desktop screen at
+ * open hours with the starting stock and no Auto-restock, the row of
+ * `focus` (else the first one not "Đủ") in view.
+ */
+async function khoSession(browser, url, focus) {
+  const context = await newContext(browser, { viewport: PHONE });
+  const page = await context.newPage();
+  const panel = '#ui > .panel:not([hidden])';
+  const frame = async () => ({ png: await page.screenshot({ style: HIDE_TOASTS }), dom: await page.evaluate(khoDom) });
+  const scrollBody = (top, left) =>
+    page.evaluate(
+      ({ sel, top, left }) => {
+        const b = document.querySelector(sel);
+        b.scrollTop = top;
+        b.scrollLeft = left;
+      },
+      { sel: `${panel} .panel-body`, top, left },
+    );
+  const openKho = async () => {
+    await page.locator('.dock [data-panel="inventory"]').click();
+    await page.locator(`${panel} .panel-body .stack`).waitFor();
+    await sleep(800);
+  };
+  try {
+    await startEasyDay(page, await openMenu(page, url));
+    await openKho();
+
+    // Scrollbar at rest: pointer off the panel, nothing focused (the dock click left focus there).
+    await page.mouse.move(2, 2);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await sleep(600);
+    const idle = await frame();
+    // Scrollbar while the body scrolls under the pointer.
+    const body = idle.dom.body;
+    await page.mouse.move(body.x + body.w / 2, body.y + body.h / 2);
+    await page.mouse.wheel(0, 240);
+    await sleep(300);
+    const scrolling = await frame();
+
+    // Margins: the body scrolled sideways as far as it goes; it only moves when content is wider than the panel.
+    await scrollBody(0, 100_000);
+    await sleep(300);
+    const margins = await frame();
+
+    // Foot with 0 packs, then 1 pack of the first ingredient.
+    await scrollBody(0, 0);
+    await sleep(300);
+    const foot0 = await frame();
+    const stepper = page.locator(`${panel} .item .stepper`).first();
+    await stepper.locator('.step-btn').last().click();
+    await scrollBody(0, 0);
+    await sleep(400);
+    const foot1 = await frame();
+    await stepper.locator('.step-btn').first().click();
+
+    // Open hours on a desktop screen.
+    await page.setViewportSize(VIEWPORT);
+    await page.locator('.dock [data-panel="inventory"]').click();
+    await page.locator('.dock [data-panel="staff"]').click();
+    for (let i = 0; i < KHO_HIRES; i++) {
+      await page.locator(`${panel} [data-action="hire"]`).first().click();
+      await sleep(300);
+    }
+    await page.locator('.dock [data-panel="staff"]').click();
+    await page.locator('[data-action="open"]').click();
+    await page.locator('[data-speed="4"]').click();
+    await clockAt(page, KHO_OPEN_AT);
+    await openKho();
+    const id =
+      focus ??
+      (await page.evaluate((sel) => document.querySelector(`${sel} .stack > .item:has(.badge:not(.badge-ok))`)?.getAttribute('data-ingredient') ?? null, panel));
+    if (id) await page.evaluate(({ sel, id }) => document.querySelector(`${sel} .stack > .item[data-ingredient="${id}"]`)?.scrollIntoView({ block: 'center' }), { sel: panel, id });
+    await page.mouse.move(2, VIEWPORT.height / 2);
+    await sleep(300);
+    await freeze(page);
+    let open;
+    try {
+      open = { ...(await frame()), clock: await clockText(page) };
+    } finally {
+      await thaw(page);
+    }
+    return { idle, scrolling, margins, foot0, foot1, open, focus: id };
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * Runs in the browser. Draws the frames in a row at 3/4 size with a title
+ * over each, rings each mark's boxes on its frame (P18 dashed coral, P19
+ * solid mint), draws the yellow `lines` across frames, puts each label next
+ * to its rings and a legend with the notes below.
+ */
+async function drawBoard({ frames, marks, lines, lineLegend, notes, names }) {
+  const INK = '#2b1d14';
+  const COLOR = { before: '#e07a5f', after: '#2fb898' };
+  const LINE = '#f2c14e';
+  const SCALE = 0.75;
+  const PAD = 24;
+  const TITLE = 44;
+  const ROW = 28;
+  const TITLE_FONT = (px) => `700 ${px}px Nunito, system-ui, sans-serif`;
+  const LABEL_FONT = '700 15px Nunito, system-ui, sans-serif';
+  const LABEL_LINE = 19;
+  const LEGEND_FONT = '600 17px Nunito, system-ui, sans-serif';
+  const load = async (b64) => createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+  const imgs = await Promise.all(frames.map((f) => load(f.png)));
+  const panels = [];
+  let px = PAD;
+  for (const [i, img] of imgs.entries()) {
+    const w = Math.round(img.width * SCALE);
+    panels.push({ img, x: px, w, h: Math.round(img.height * SCALE), ...frames[i] });
+    px += w + PAD;
+  }
+  const width = px;
+  const ph = Math.max(...panels.map((p) => p.h));
+  const wrap = (c, text, max) => {
+    const out = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && c.measureText(next).width > max) {
+        out.push(line);
+        line = word;
+      } else line = next;
+    }
+    if (line) out.push(line);
+    return out;
+  };
+  const probe = new OffscreenCanvas(1, 1).getContext('2d');
+  probe.font = LEGEND_FONT;
+  const noteLines = notes.flatMap((n) => wrap(probe, n, width - 2 * PAD));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = PAD + TITLE + ph + 16 + ROW * (1 + noteLines.length) + 12;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff9f0';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textBaseline = 'middle';
+  const top = PAD + TITLE;
+  for (const p of panels) {
+    let size = 22;
+    ctx.font = TITLE_FONT(size);
+    while (size > 13 && ctx.measureText(p.title).width > p.w) ctx.font = TITLE_FONT(--size);
+    ctx.fillStyle = INK;
+    ctx.fillText(p.title, p.x, PAD + TITLE / 2 - 4);
+    ctx.drawImage(p.img, p.x, top, p.w, p.h);
+  }
+
+  // Rings, clipped to their frame.
+  for (const m of marks) {
+    const p = panels[m.frame];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(p.x, top, p.w, p.h);
+    ctx.clip();
+    ctx.setLineDash(p.side === 'before' ? [8, 6] : []);
+    for (const b of m.boxes) {
+      ctx.beginPath();
+      ctx.roundRect(p.x + b.x * SCALE - 3, top + b.y * SCALE - 3, b.w * SCALE + 6, b.h * SCALE + 6, 8);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = COLOR[p.side];
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // Level lines across frames, e.g. the top of the foot in two states.
+  ctx.setLineDash([]);
+  for (const l of lines) {
+    const a = panels[l.from];
+    const b = panels[l.to];
+    const y = top + l.y * SCALE;
+    for (const [w, color] of [[5, INK], [3, LINE]]) {
+      ctx.beginPath();
+      ctx.moveTo(a.x - 8, y);
+      ctx.lineTo(b.x + b.w + 8, y);
+      ctx.lineWidth = w;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    }
+  }
+  for (const p of panels) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.strokeRect(p.x, top, p.w, p.h);
+  }
+
+  // One label per mark, above its rings, else below, else stacked further away; never on another label.
+  ctx.font = LABEL_FONT;
+  const placed = [];
+  const clash = (a) => placed.some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h);
+  for (const m of marks) {
+    const p = panels[m.frame];
+    const text = wrap(ctx, m.label, p.w - 26);
+    const tw = Math.max(...text.map((t) => ctx.measureText(t).width)) + 18;
+    const th = 8 + LABEL_LINE * text.length;
+    const x0 = Math.min(...m.boxes.map((b) => b.x)) * SCALE;
+    const x1 = Math.max(...m.boxes.map((b) => b.x + b.w)) * SCALE;
+    const y0 = Math.min(...m.boxes.map((b) => b.y)) * SCALE;
+    const y1 = Math.max(...m.boxes.map((b) => b.y + b.h)) * SCALE;
+    const lx = Math.min(p.x + p.w - tw - 4, Math.max(p.x + 4, p.x + (x0 + x1) / 2 - tw / 2));
+    const at = (y) => ({ x: lx, y: Math.min(top + p.h - th - 4, Math.max(top + 4, y)), w: tw, h: th });
+    const tries = [];
+    for (let k = 0; k < 8; k++) tries.push(at(top + y0 - th - 8 - k * (th + 4)), at(top + y1 + 8 + k * (th + 4)));
+    const spot = tries.find((t) => !clash(t)) ?? tries[0];
+    placed.push(spot);
+    ctx.beginPath();
+    ctx.roundRect(spot.x, spot.y, tw, th, 12);
+    ctx.fillStyle = COLOR[p.side];
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    text.forEach((t, i) => ctx.fillText(t, spot.x + 9, spot.y + 4 + LABEL_LINE * i + LABEL_LINE / 2));
+  }
+
+  // Legend: the two ring styles, the yellow line, then the notes.
+  let fy = top + ph + 16 + ROW / 2;
+  ctx.font = LEGEND_FONT;
+  let x = PAD;
+  const chips = [['before', `Nét đứt: ${names.before}`], ['after', `Nét liền: ${names.after}`]];
+  for (const [side, text] of chips) {
+    ctx.beginPath();
+    ctx.roundRect(x, fy - 10, 34, 20, 8);
+    ctx.setLineDash(side === 'before' ? [6, 4] : []);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = COLOR[side];
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = INK;
+    ctx.fillText(text, x + 44, fy);
+    x += 44 + ctx.measureText(text).width + 28;
+  }
+  if (lines.length > 0 && lineLegend) {
+    ctx.beginPath();
+    ctx.moveTo(x, fy);
+    ctx.lineTo(x + 34, fy);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = LINE;
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.fillText(lineLegend, x + 44, fy);
+  }
+  for (const line of noteLines) {
+    fy += ROW;
+    ctx.fillText(line, PAD, fy);
+  }
+  return canvas.toDataURL('image/png').split(',')[1];
+}
+
+/**
+ * Writes docs/media/<out>: `frames` ({ png, title, side }) side by side with
+ * the marks ({ frame, boxes, label }) ringed and labelled. Prints the rings
+ * per label and warns with !! for a label with nothing to ring.
+ */
+async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [] }) {
+  const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) }));
+  const ringed = kept.filter((m) => m.boxes.length > 0);
+  const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
+  try {
+    const png = await page.evaluate(drawBoard, {
+      frames: frames.map((f) => ({ ...f, png: f.png.toString('base64') })),
+      marks: ringed,
+      lines,
+      lineLegend,
+      notes,
+      names: { before: `P18 (${P18_COMMIT})`, after: 'P19' },
+    });
+    writeFileSync(join(OUT, out), Buffer.from(png, 'base64'));
+  } finally {
+    await page.close();
+  }
+  console.log(`${out}: ${ringed.map((m) => `${frames[m.frame].side} "${m.label}" ×${m.boxes.length}`).join(', ')}`);
+  const missing = kept.filter((m) => m.boxes.length === 0);
+  if (missing.length > 0) console.warn(`!! ${out}: nothing to ring for ${missing.map((m) => `"${m.label}"`).join(', ')}`);
+}
+
+/** Metres to 2 decimals with a decimal comma, e.g. 1,32 or 2. */
+const metres = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+const px = (n) => String(Math.round(n));
+
+/** True when `box` lies in the body's visible height, above the sticky foot. */
+function inView(dom, box) {
+  if (!box || !dom.body) return false;
+  const bottom = dom.foot ? dom.foot.y : dom.body.y + dom.body.h;
+  return box.y >= dom.body.y - 0.5 && box.y + box.h <= bottom + 0.5;
+}
+
+/** How far `box` sticks out past `left` and `right`, whole px. */
+function cutOf(box, left, right) {
+  return { left: Math.max(0, Math.round(left - box.x)), right: Math.max(0, Math.round(box.x + box.w - right)) };
+}
+
+/** "Nút Auto-restock: cắt 16 px mép trái", or "Nút Auto-restock: nằm gọn trong khung" when nothing sticks out. */
+function cutLabel(name, cut, fits) {
+  const parts = [];
+  if (cut.left > 0) parts.push(`cắt ${cut.left} px mép trái`);
+  if (cut.right > 0) parts.push(`lòi ${cut.right} px mép phải`);
+  return `${name}: ${parts.length > 0 ? parts.join(', ') : fits}`;
+}
+
+/** Board (a): intro, Auto-restock button and the first row's badge against the body's edges. */
+function marginMarks(dom, frame) {
+  const marks = [];
+  const add = (box, name, fits, right = dom.inner.right) => {
+    const cut = box ? cutOf(box, dom.inner.left, right) : { left: 0, right: 0 };
+    marks.push({ frame, boxes: [box], label: box ? cutLabel(name, cut, fits) : name, cut: cut.left + cut.right });
+  };
+  add(dom.intro, 'Đoạn giới thiệu', 'đủ chữ');
+  add(dom.suggest, 'Nút Auto-restock', 'nằm gọn trong khung');
+  const row = dom.items.find((i) => inView(dom, i.badge));
+  if (row) add(row.badge, `Nhãn "${row.text}"`, 'nằm trong thẻ', Math.min(dom.inner.right, row.box.x + row.box.w));
+  else add(null, 'Nhãn trạng thái của dòng đầu');
+  return marks;
+}
+
+/** Board (b): the foot with 0 packs (frame i) and with 1 pack (frame i + 1), and the level line of the first. */
+function footMarks(k, i) {
+  const a = k.foot0.dom;
+  const b = k.foot1.dom;
+  const h0 = a.foot?.h ?? 0;
+  const h1 = b.foot?.h ?? 0;
+  const d = Math.round(h1 - h0);
+  const change = d === 0 ? 'chiều cao không đổi' : `khung ${d < 0 ? 'thấp đi' : 'cao thêm'} ${Math.abs(d)} px`;
+  const gone = a.hint && !b.hint ? ', dòng hướng dẫn biến mất' : '';
+  const marks = [
+    { frame: i, boxes: [a.foot], label: `0 gói: khung tổng cao ${px(h0)} px` },
+    { frame: i, boxes: [a.hint], label: 'Dòng hướng dẫn "Chọn số gói…"' },
+    { frame: i + 1, boxes: [b.foot], label: `1 gói: ${px(h1)} px, ${change}${gone}` },
+  ];
+  if (b.hint) marks.push({ frame: i + 1, boxes: [b.hint], label: 'Cùng ô, chỉ đổi chữ' });
+  return { marks, lines: a.foot ? [{ from: i, to: i + 1, y: a.foot.y }] : [] };
+}
+
+/** Board (c): rows not "Đủ" in P19 and the same rows in P18, the cups line, the dock count. */
+function openMarks(dom, frame, ids, after) {
+  const rows = dom.items.filter((i) => ids.includes(i.id) && inView(dom, i.badge));
+  const texts = [...new Set(rows.map((r) => `"${r.text}"`))].join(' / ');
+  const marks = [
+    {
+      frame,
+      boxes: rows.map((r) => r.badge),
+      label: after ? `${texts} theo lượng bán còn lại hôm nay` : `Cùng mặt hàng: ${texts}, so với ngưỡng cố định`,
+    },
+  ];
+  if (after) {
+    const row = rows.find((r) => /đủ khoảng \d+ ly hôm nay/.test(r.metaText));
+    const cups = row?.metaText.match(/đủ khoảng \d+ ly hôm nay/)?.[0];
+    marks.push({ frame, boxes: [row?.meta], label: cups ? `"${cups}"` : 'Dòng số ly còn đủ' });
+  }
+  marks.push(
+    dom.dockBadge
+      ? { frame, boxes: [dom.dockBadge.box], label: `Huy hiệu dock: ${dom.dockBadge.text} mặt hàng cần nhập` }
+      : { frame, boxes: [dom.dock], label: 'Dock Kho: không có huy hiệu' },
+  );
+  return marks;
+}
+
+/** Board (e): tables and chairs of one floor plan, through the camera of the P19 peak frame. */
+function tableMarks(scene, plan, frame, after) {
+  const { chairOffset, chairSize, tableRadius } = plan;
+  // An aisle runs the depth of its table row: the row pitch where the plan has one.
+  const aisleHalf = (plan.rowPitch ?? 2 * tableRadius) / 2;
+  const rows = new Map();
+  for (const t of plan.tables) {
+    const key = t.pos.z.toFixed(2);
+    rows.set(key, [...(rows.get(key) ?? []), t.pos]);
+  }
+  const tight = [];
+  const aisles = [];
+  for (const row of rows.values()) {
+    row.sort((a, b) => a.x - b.x);
+    for (let i = 1; i < row.length; i++) {
+      const a = row[i - 1];
+      const b = row[i];
+      const x0 = a.x + chairOffset + chairSize / 2;
+      const x1 = b.x - chairOffset - chairSize / 2;
+      const gap = x1 - x0;
+      if (gap < NO_WAY) tight.push({ gap, box: worldBox(scene, cuboid(x0 - chairSize, x1 + chairSize, 0, TABLE_TOP, a.z - chairSize / 2, a.z + chairSize / 2)) });
+      if (gap >= AISLE) aisles.push({ gap, box: worldBox(scene, cuboid(x0, x1, 0, 0.05, a.z - aisleHalf, a.z + aisleHalf)) });
+    }
+  }
+  if (!after) {
+    const gap = tight.length > 0 ? Math.min(...tight.map((t) => t.gap)) : null;
+    return [{ frame, boxes: tight.map((t) => t.box), label: gap === null ? 'Ghế hai bàn sát nhau' : `Ghế hai bàn cách ${metres(gap)} m, không có lối đi` }];
+  }
+  const span = chairOffset + chairSize / 2;
+  return [
+    {
+      frame,
+      boxes: aisles.map((a) => a.box),
+      label: aisles.length > 0 ? `Lối đi chính rộng ${metres(Math.min(...aisles.map((a) => a.gap)))} m giữa hai khối bàn` : 'Lối đi chính',
+    },
+    {
+      frame,
+      boxes: plan.tables.map((t) => worldBox(scene, cuboid(t.pos.x - span, t.pos.x + span, 0, TABLE_TOP, t.pos.z - tableRadius, t.pos.z + tableRadius))),
+      label: `Bàn theo lưới ${metres(plan.tablePitch ?? 0)} m, ghế hai bên quay vào bàn`,
+    },
+  ];
+}
+
+/** Writes the five P18/P19 boards. */
+async function makeP19Boards(browser, kho, peak, plans) {
+  const before = (png, title) => ({ png, title: `${title} · P18`, side: 'before' });
+  const after = (png, title) => ({ png, title: `${title} · P19`, side: 'after' });
+  const { p18, p19 } = kho;
+
+  // (a) Margins at 390 px.
+  const a18 = marginMarks(p18.margins.dom, 0);
+  const a19 = marginMarks(p19.margins.dom, 1);
+  const width = (k) => `${k.margins.dom.scrollWidth}/${k.margins.dom.clientWidth} px`;
+  await makeBoard(browser, 'kho-390-p18-p19.png', {
+    frames: [before(p18.margins.png, 'Kho 390 px'), after(p19.margins.png, 'Kho 390 px')],
+    marks: [...a18, ...a19],
+    notes: [`Cả hai bản cuộn ngang khung bảng hết cỡ trước khi chụp. Rộng nội dung / khung: P18 ${width(p18)}, P19 ${width(p19)}.`],
+  });
+  if (a19.some((m) => m.cut > 0)) console.warn('!! kho-390-p18-p19.png: P19 still has content past the panel edge');
+  if (!a18.some((m) => m.cut > 0)) console.log('note: kho-390-p18-p19.png: nothing sticks out of the P18 panel in this run');
+
+  // (b) Foot with 0 and 1 pack.
+  const b18 = footMarks(p18, 0);
+  const b19 = footMarks(p19, 2);
+  await makeBoard(browser, 'kho-foot-p18-p19.png', {
+    frames: [before(p18.foot0.png, '0 gói'), before(p18.foot1.png, '1 gói'), after(p19.foot0.png, '0 gói'), after(p19.foot1.png, '1 gói')],
+    marks: [...b18.marks, ...b19.marks],
+    lines: [...b18.lines, ...b19.lines],
+    lineLegend: 'Vạch vàng: mép trên khung tổng lúc 0 gói',
+    notes: ['Bấm + một gói ở dòng đầu. Khung tổng dính đáy bảng, nên nó đổi chiều cao thì mép trên lệch khỏi vạch vàng.'],
+  });
+
+  // (c) Open hours, no Auto-restock.
+  const ids = p19.open.dom.items.filter((i) => i.level !== 'ok' && inView(p19.open.dom, i.badge)).map((i) => i.id);
+  await makeBoard(browser, 'kho-open-p18-p19.png', {
+    frames: [before(p18.open.png, `Kho ${p18.open.clock}`), after(p19.open.png, `Kho ${p19.open.clock}`)],
+    marks: [...openMarks(p18.open.dom, 0, ids, false), ...openMarks(p19.open.dom, 1, ids, true)],
+    notes: [`Không bấm Gợi ý. Mỗi bản: kho ban đầu, ${KHO_HIRES} nhân viên, mở cửa chạy 4x tới ${KHO_OPEN_AT}, rồi mở bảng Kho.`],
+  });
+
+  // (d) Scrollbar.
+  await makeBoard(browser, 'scrollbar-p18-p19.png', {
+    frames: [before(p18.idle.png, 'Đứng yên'), after(p19.idle.png, 'Đứng yên'), after(p19.scrolling.png, 'Đang cuộn')],
+    marks: [
+      { frame: 0, boxes: [p18.idle.dom.bar], label: `Thanh cuộn mặc định, rãnh ${p18.idle.dom.barWidth} px` },
+      { frame: 1, boxes: [p19.idle.dom.bar], label: 'Chuột ngoài bảng: thanh ẩn' },
+      { frame: 2, boxes: [p19.scrolling.dom.bar], label: `Khi cuộn: thanh mảnh, rãnh ${p19.scrolling.dom.barWidth} px, màu viền theo token` },
+    ],
+    notes: ['Đứng yên: chuột ngoài bảng, không ô nào được focus. Đang cuộn: lăn chuột trên bảng.'],
+  });
+
+  // (e) Peak: tables and aisle.
+  await makeBoard(browser, 'peak-p18-p19.png', {
+    frames: [before(refFrame(P18_COMMIT, 'peak.png'), 'Cao điểm'), after(readFileSync(join(OUT, 'peak.png')), 'Cao điểm')],
+    marks: [...tableMarks(peak.scene, plans.p18, 0, false), ...tableMarks(peak.scene, plans.p19, 1, true)],
+    notes: [`Cùng góc máy (Home, zoom 1,25x). Vòng P18: bàn ghế theo sim P18 (${P18_COMMIT}), chiếu qua camera của ảnh P19.`],
+  });
 }
 
 /**
@@ -707,175 +1183,51 @@ async function makeGlowPair(browser, glow, out) {
 }
 
 /**
- * Loads the sim and facadePlan() with Vite (TypeScript as is) and works out
- * the day-1 shop: counter, line and takeaway spots, and where the facade
- * details stand. The main menu and day 1 both have the starting layout.
+ * Loads the sim of the checkout in `root` with Vite (TypeScript as is) and
+ * reads the day-1 floor plan: tables, chair and table sizes, table and row
+ * pitch (P19 only). The main menu and day 1 both have the starting layout.
  */
-async function simPlan() {
+async function simPlan(root) {
   const { createServer } = await import('vite');
-  const vite = await createServer({ root: ROOT, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
+  const vite = await createServer({ root, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
   try {
     const load = (path) => vite.ssrLoadModule(path);
-    const [{ createNewGame }, { getShopLayout }, { floorSpots }, { facadePlan }] = await Promise.all(
-      ['/src/sim/state.ts', '/src/sim/upgrades.ts', '/src/sim/customers.ts', '/src/render/scene/facade.ts'].map(load),
+    const [state, { getShopLayout }, footprints] = await Promise.all(['/src/sim/state.ts', '/src/sim/upgrades.ts', '/src/sim/nav/footprints.ts'].map(load));
+    const layout = getShopLayout(state.createNewGame('Coffee Shop', 'easy', FIXED_NOW >>> 0));
+    return JSON.parse(
+      JSON.stringify({
+        tables: layout.tables,
+        chairOffset: footprints.CHAIR_OFFSET,
+        chairSize: footprints.CHAIR_SIZE,
+        tableRadius: footprints.TABLE_RADIUS,
+        tablePitch: state.TABLE_PITCH ?? null,
+        rowPitch: state.TABLE_ROW_PITCH ?? null,
+      }),
     );
-    const layout = getShopLayout(createNewGame('Coffee Shop', 'easy', FIXED_NOW >>> 0));
-    const spots = floorSpots(layout);
-    return JSON.parse(JSON.stringify({ counter: layout.counter, queue: spots.queue, pickup: spots.pickup, facade: facadePlan(layout, 'high') }));
   } finally {
     await vite.close();
   }
 }
 
-/**
- * Runs in the browser. Draws the P17 and P18 frames side by side, rings each
- * mark's boxes (P17 dashed coral, P18 solid mint) and puts its label next to
- * them, with a legend below.
- */
-async function drawMarkedPair({ before, after, beforeTitle, afterTitle, marks, note }) {
-  const INK = '#2b1d14';
-  const COLOR = { before: '#e07a5f', after: '#2fb898' };
-  const load = async (b64) => createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
-  const [beforeImg, afterImg] = await Promise.all([before, after].map(load));
-  const SCALE = 0.75;
-  const PAD = 24;
-  const TITLE = 44;
-  const FOOT = 60;
-  const pw = Math.round(afterImg.width * SCALE);
-  const ph = Math.round(afterImg.height * SCALE);
-  const canvas = document.createElement('canvas');
-  canvas.width = PAD * 3 + pw * 2;
-  canvas.height = PAD + TITLE + ph + FOOT;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff9f0';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.textBaseline = 'middle';
-  const top = PAD + TITLE;
-  const panels = {
-    before: { img: beforeImg, x: PAD, title: beforeTitle },
-    after: { img: afterImg, x: PAD * 2 + pw, title: afterTitle },
-  };
-  for (const p of Object.values(panels)) {
-    ctx.font = '700 22px Nunito, system-ui, sans-serif';
-    ctx.fillStyle = INK;
-    ctx.fillText(p.title, p.x, PAD + TITLE / 2 - 4);
-    ctx.drawImage(p.img, p.x, top, pw, ph);
-  }
-
-  // Rings, clipped to their panel.
-  for (const m of marks) {
-    const p = panels[m.side];
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(p.x, top, pw, ph);
-    ctx.clip();
-    ctx.setLineDash(m.side === 'before' ? [8, 6] : []);
-    for (const b of m.boxes) {
-      ctx.beginPath();
-      ctx.roundRect(p.x + b.x * SCALE, top + b.y * SCALE, b.w * SCALE, b.h * SCALE, 10);
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = INK;
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = COLOR[m.side];
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-  ctx.setLineDash([]);
-  for (const p of Object.values(panels)) {
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = INK;
-    ctx.strokeRect(p.x, top, pw, ph);
-  }
-
-  // One label per mark, above its rings, else below, else stacked further away; never on another label.
-  ctx.font = '700 16px Nunito, system-ui, sans-serif';
-  const placed = [];
-  const clash = (a) => placed.some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h);
-  for (const m of marks) {
-    const p = panels[m.side];
-    const x0 = Math.min(...m.boxes.map((b) => b.x)) * SCALE;
-    const x1 = Math.max(...m.boxes.map((b) => b.x + b.w)) * SCALE;
-    const y0 = Math.min(...m.boxes.map((b) => b.y)) * SCALE;
-    const y1 = Math.max(...m.boxes.map((b) => b.y + b.h)) * SCALE;
-    const tw = ctx.measureText(m.label).width + 18;
-    const lx = Math.min(p.x + pw - tw - 4, Math.max(p.x + 4, p.x + (x0 + x1) / 2 - tw / 2));
-    const at = (y) => ({ x: lx, y: Math.min(top + ph - 30, Math.max(top + 4, y)), w: tw, h: 26 });
-    const tries = [];
-    for (let k = 0; k < 6; k++) tries.push(at(top + y0 - 32 - k * 30), at(top + y1 + 6 + k * 30));
-    const spot = tries.find((t) => !clash(t)) ?? tries[0];
-    placed.push(spot);
-    ctx.beginPath();
-    ctx.roundRect(spot.x, spot.y, tw, 26, 13);
-    ctx.fillStyle = COLOR[m.side];
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.fillText(m.label, spot.x + 9, spot.y + 14);
-  }
-
-  // Legend: what the two ring styles mean.
-  const fy = top + ph + FOOT / 2;
-  ctx.font = '600 17px Nunito, system-ui, sans-serif';
-  let x = PAD;
-  for (const [side, text] of [['before', 'Nét đứt: P17'], ['after', 'Nét liền: P18']]) {
-    ctx.beginPath();
-    ctx.roundRect(x, fy - 10, 34, 20, 8);
-    ctx.setLineDash(side === 'before' ? [6, 4] : []);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = COLOR[side];
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = INK;
-    ctx.fillText(text, x + 44, fy);
-    x += 44 + ctx.measureText(text).width + 28;
-  }
-  if (note) ctx.fillText(note, x, fy);
-  return canvas.toDataURL('image/png').split(',')[1];
-}
-
-/** The P17 screenshot `name` from P17_COMMIT. */
-function p17Frame(name) {
-  const r = spawnSync('git', ['show', `${P17_COMMIT}:docs/media/${name}`], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
-  if (r.status !== 0) throw new Error(`git show ${P17_COMMIT}:docs/media/${name} failed (shallow clone?): ${r.stderr}`);
+/** The screenshot `name` committed at `commit`. */
+function refFrame(commit, name) {
+  const r = spawnSync('git', ['show', `${commit}:docs/media/${name}`], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+  if (r.status !== 0) throw new Error(`git show ${commit}:docs/media/${name} failed (shallow clone?): ${r.stderr}`);
   return r.stdout;
 }
 
-/** Writes docs/media/<name>-p17-p18.png: the P17 frame and the new one, ringed and labelled. */
-async function makeMarkedPair(browser, { name, title, marks, note }) {
-  const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) })).filter((m) => m.boxes.length > 0);
-  const out = `${name}-p17-p18.png`;
-  const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
-  try {
-    const png = await page.evaluate(drawMarkedPair, {
-      before: p17Frame(`${name}.png`).toString('base64'),
-      after: readFileSync(join(OUT, `${name}.png`)).toString('base64'),
-      beforeTitle: `${title} P17 (${P17_COMMIT})`,
-      afterTitle: `${title} P18`,
-      marks: kept,
-      note,
-    });
-    writeFileSync(join(OUT, out), Buffer.from(png, 'base64'));
-  } finally {
-    await page.close();
-  }
-  console.log(`${out}: ${kept.map((m) => `${m.side} "${m.label}" ×${m.boxes.length}`).join(', ')}`);
-  const missing = marks.filter((m) => !m.boxes.some(Boolean));
-  if (missing.length > 0) console.warn(`!! ${out}: nothing to ring for ${missing.map((m) => `"${m.label}"`).join(', ')}`);
-}
-
-/** Lead-in at 1x, the open day squeezed into DAY_CLIP_S, then the report at 1x. */
-function makeMp4(video, { openAt, reportAt, endAt }, out) {
+/** Lead-in at 1x, the open day squeezed into DAY_CLIP_S with the camera spin kept at 1x, then the report at 1x. */
+function makeMp4(video, { openAt, spinAt, spinEnd, reportAt, endAt }, out) {
   const startDay = openAt + INTRO_S;
-  const factor = Math.max(1, (reportAt - startDay) / DAY_CLIP_S);
+  const factor = Math.max(1, (spinAt - startDay + (reportAt - spinEnd)) / DAY_CLIP_S);
+  const fast = factor.toFixed(3);
   const graph = [
     `[0:v]trim=start=${openAt}:end=${startDay},setpts=PTS-STARTPTS[a]`,
-    `[0:v]trim=start=${startDay}:end=${reportAt},setpts=(PTS-STARTPTS)/${factor.toFixed(3)}[b]`,
+    `[0:v]trim=start=${startDay}:end=${spinAt},setpts=(PTS-STARTPTS)/${fast}[b]`,
+    `[0:v]trim=start=${spinAt}:end=${spinEnd},setpts=PTS-STARTPTS[s]`,
+    `[0:v]trim=start=${spinEnd}:end=${reportAt},setpts=(PTS-STARTPTS)/${fast}[d]`,
     `[0:v]trim=start=${reportAt}:end=${endAt},setpts=PTS-STARTPTS[c]`,
-    '[a][b][c]concat=n=3:v=1:a=0,fps=30,scale=1280:-2,format=yuv420p[v]',
+    '[a][b][s][d][c]concat=n=5:v=1:a=0,fps=30,scale=1280:-2,format=yuv420p[v]',
   ].join(';');
   ffmpeg(['-i', video, '-filter_complex', graph, '-map', '[v]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-movflags', '+faststart', out]);
 }
@@ -896,37 +1248,43 @@ async function main() {
     console.warn('ffmpeg not found: taking screenshots only. Install it (macOS: brew install ffmpeg; Debian/Ubuntu: sudo apt install ffmpeg) and run again for demo.gif and demo.mp4.');
   }
   mkdirSync(OUT, { recursive: true });
-  const sim = await simPlan();
   const tmp = mkdtempSync(join(tmpdir(), 'cst3d-media-'));
-  const server = await startPreview();
-  const browser = await chromium.launch({
-    headless: process.env.MEDIA_HEADED !== '1',
-    // Lets WebGL fall back to software rendering when headless Chromium has no GPU.
-    args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-  });
+  const temps = [tmp];
+  const servers = [];
+  const browsers = [];
   try {
-    const context = await browser.newContext({
-      viewport: VIEWPORT,
-      deviceScaleFactor: 1,
-      recordVideo: withVideo ? { dir: tmp, size: VIEWPORT } : undefined,
+    // The P18 build first, so a missing commit fails before the long run.
+    console.log(`building P18 (${P18_COMMIT})…`);
+    const p18Root = buildRef(P18_COMMIT);
+    temps.push(p18Root);
+    const plans = { p18: await simPlan(p18Root), p19: await simPlan(ROOT) };
+    servers.push(await startPreview(ROOT, PORT));
+    servers.push(await startPreview(p18Root, P18_PORT));
+    const browser = await chromium.launch({
+      headless: process.env.MEDIA_HEADED !== '1',
+      // Lets WebGL fall back to software rendering when headless Chromium has no GPU.
+      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
-    await context.addInitScript(
-      ({ now, settings }) => {
-        Date.now = () => now;
-        localStorage.setItem('cst3d:settings', JSON.stringify(settings));
-      },
-      { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'high', gameSpeed: 1, cameraKeys: 'qe-wasd' } },
-    );
+    browsers.push(browser);
+    const context = await newContext(browser, { viewport: VIEWPORT, recordVideo: withVideo ? { dir: tmp, size: VIEWPORT } : undefined });
     await context.addInitScript(observeThree);
     const page = await context.newPage();
     const videoStart = Date.now();
-    const { times, glow, marks } = await playDay(page, videoStart);
+    const { times, glow, peak } = await playDay(page, videoStart);
     const video = page.video();
     await context.close();
     await makeGlowPair(browser, glow, join(OUT, 'facade-day-evening.png'));
-    await makeMarkedPair(browser, { name: 'main-menu', title: 'Main Menu', marks: menuMarks(marks.menu, sim), note: 'P17 chưa có các chi tiết khoanh bên P18.' });
-    await makeMarkedPair(browser, { name: 'peak', title: 'Cao điểm', marks: peakMarks(marks.peak, sim), note: 'Vòng P17: chỗ đứng sim P17 cho cùng góc máy.' });
-    await makeMarkedPair(browser, { name: 'prep-inventory', title: 'Bảng Kho', marks: prepMarks(marks.prep) });
+
+    // Headless Chromium hides scrollbars unless told otherwise; the Kho frames need them.
+    const khoBrowser = await chromium.launch({
+      headless: process.env.MEDIA_HEADED !== '1',
+      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
+      ignoreDefaultArgs: ['--hide-scrollbars'],
+    });
+    browsers.push(khoBrowser);
+    const p19 = await khoSession(khoBrowser, URL_BASE, null);
+    const p18 = await khoSession(khoBrowser, urlFor(P18_PORT), p19.focus);
+    await makeP19Boards(browser, { p18, p19 }, peak, plans);
 
     if (withVideo && video) {
       const raw = await video.path();
@@ -935,25 +1293,27 @@ async function main() {
       makeGif(mp4, join(OUT, 'demo.gif'));
     }
   } finally {
-    await browser.close();
-    server.kill();
-    rmSync(tmp, { recursive: true, force: true });
+    for (const b of browsers) await b.close();
+    for (const s of servers) s.kill();
+    for (const t of temps) rmSync(t, { recursive: true, force: true });
   }
 
   const files = [
     'main-menu.png',
-    'main-menu-p17-p18.png',
     'menu-icons.png',
     'prep-inventory.png',
-    'prep-inventory-p17-p18.png',
     'facade-day.png',
     'peak.png',
-    'peak-p17-p18.png',
     'queue.png',
     'facade-evening.png',
     'facade-day-evening.png',
     'daily-report.png',
     'reviews.png',
+    'kho-390-p18-p19.png',
+    'kho-foot-p18-p19.png',
+    'kho-open-p18-p19.png',
+    'scrollbar-p18-p19.png',
+    'peak-p18-p19.png',
     ...(withVideo ? ['demo.gif', 'demo.mp4'] : []),
   ];
   let over = false;
