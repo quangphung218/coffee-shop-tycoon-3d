@@ -7,6 +7,7 @@ Tài liệu giải thích (Diátaxis: explanation): vì sao giao diện đổi s
 | `design/t237-cartoon/index.html` | Nền tảng (màu, chữ, viền, bóng), thành phần đủ trạng thái, Main Menu (có / chưa có bản lưu), HUD lúc Cao điểm + biến thể Đóng cửa, bảng Kho (pha Chuẩn bị) + thiếu tiền / đã nhập / kho đủ, Daily Report (lãi) + lỗ / không khách / đang tổng kết / lỗi tự lưu, ghi chú chuyển động và hướng cảnh 3D |
 | `design/t237-cartoon/icons/index.html` | 101 icon cạnh nhau ở 48 px, theo nhóm, ở 3 cỡ 48/24/16, quy tắc vẽ, màu tô, nền thật |
 | `design/tokens.json` | Token mới (thay bộ P14), kèm `contrastPairs` |
+| `design/t237-cartoon/tokens.css` | Cùng token dạng biến CSS (tên giống `src/ui/styles/tokens.css`), bản giảm chuyển động, và class vẽ icon (`.ic`, `.fh`…) |
 
 ## Mục tiêu
 
