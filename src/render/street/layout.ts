@@ -52,18 +52,42 @@ export const LANES: readonly Lane[] = [
   { z: ROAD.maxZ - 0.8, dir: 1, speed: 5.5, kinds: ['bike'] },
 ];
 
-/** Walking lines on both sidewalks; people walk both ways. Trees and lamps stand by the kerb. */
-export const WALK_LINES: readonly { z: number; dir: 1 | -1 }[] = [
-  { z: NEAR_WALK.minZ + 0.8, dir: 1 },
-  { z: NEAR_WALK.minZ + 1.8, dir: -1 },
-  { z: FAR_WALK.minZ + 1.2, dir: 1 },
-  { z: FAR_WALK.minZ + 2.2, dir: -1 },
-];
 export const WALK_SPEED = 1.15;
+
+/**
+ * Walking lines on both sidewalks; people walk both ways. Like a traffic
+ * lane, everyone on a line shares its speed, so walkers on one line keep
+ * their spacing and never walk through each other. Trees and lamps stand by
+ * the kerb, at least PROP_CLEARANCE from every line.
+ */
+export interface WalkLine {
+  z: number;
+  dir: 1 | -1;
+  /** World units per second. */
+  speed: number;
+}
+
+export const WALK_LINES: readonly WalkLine[] = [
+  { z: NEAR_WALK.minZ + 0.8, dir: 1, speed: WALK_SPEED * 1.02 },
+  { z: NEAR_WALK.minZ + 1.65, dir: -1, speed: WALK_SPEED * 0.94 },
+  { z: FAR_WALK.minZ + 1.35, dir: 1, speed: WALK_SPEED * 0.97 },
+  { z: FAR_WALK.minZ + 2.2, dir: -1, speed: WALK_SPEED * 1.05 },
+];
 /** Top of the sidewalk slabs; walkers stand on it. */
 export const CURB_HEIGHT = 0.12;
 /** z of the tree and lamp row on each sidewalk. */
 export const KERB_PROP_Z: readonly number[] = [NEAR_WALK.maxZ - 0.45, FAR_WALK.minZ + 0.45];
+/**
+ * Half the width of a walker, and how far a kerb prop reaches out at the
+ * height of a walker's body and head: the lowest part of the largest tree
+ * canopy (the tree pit and lamp pole are narrower).
+ */
+export const WALKER_RADIUS = 0.22;
+export const KERB_PROP_RADIUS = 0.65;
+/** Smallest distance in z between a walking line and the kerb prop row. */
+export const PROP_CLEARANCE = WALKER_RADIUS + KERB_PROP_RADIUS;
+/** Smallest distance along a line between two walkers on it. */
+export const MIN_WALKER_GAP = 2;
 
 export interface StreetDensity {
   cars: number;
@@ -167,7 +191,7 @@ export function minLaneGap(slots: readonly VehicleSlot[]): number {
   return best;
 }
 
-/** A walker: which walking line, where they were at t = 0 and a small speed variation. */
+/** A walker: which walking line, where they were at t = 0, the line's speed and a look. */
 export interface WalkerSlot {
   line: number;
   start: number;
@@ -175,13 +199,42 @@ export interface WalkerSlot {
   look: number;
 }
 
-/** Walker `i` of the street; stable per index. */
-export function walkerSlot(i: number): WalkerSlot {
-  const line = i % WALK_LINES.length;
-  const round = Math.floor(i / WALK_LINES.length);
-  // Golden-ratio spacing spreads people along the street for any count.
-  const frac = (round * 0.618034 + line * 0.27) % 1;
-  return { line, start: wrapX(-STREET_HALF + frac * STREET_SPAN), speed: WALK_SPEED * (0.85 + ((i * 37) % 10) * 0.03), look: i * 3 + 1 };
+/**
+ * `count` walkers spread round-robin over the lines and evenly along each
+ * line, like vehicleSlots: everyone on a line shares its speed, so the gaps
+ * never change. Walker i keeps its line and look for any count.
+ */
+export function walkerSlots(count: number): WalkerSlot[] {
+  const n = Math.max(0, Math.floor(count));
+  const lines = WALK_LINES.length;
+  const slots: WalkerSlot[] = [];
+  for (let i = 0; i < n; i++) {
+    const line = i % lines;
+    const onLine = Math.floor((n - 1 - line) / lines) + 1;
+    const nth = Math.floor(i / lines);
+    // A fixed offset per line so the two directions do not cross in step.
+    const start = wrapX(-STREET_HALF + (nth * STREET_SPAN) / onLine + line * 5.3);
+    slots.push({ line, start, speed: WALK_LINES[line]!.speed, look: i * 3 + 1 });
+  }
+  return slots;
+}
+
+/** Smallest distance along a line between two walkers on it at time t (Infinity with fewer than two per line). */
+export function minWalkerGap(slots: readonly WalkerSlot[], t: number): number {
+  let best = Infinity;
+  for (let line = 0; line < WALK_LINES.length; line++) {
+    const w = WALK_LINES[line]!;
+    const xs = slots
+      .filter((s) => s.line === line)
+      .map((s) => travelX(s.start, w.dir, s.speed, t))
+      .sort((a, b) => a - b);
+    if (xs.length < 2) continue;
+    for (let i = 0; i < xs.length; i++) {
+      const gap = i + 1 < xs.length ? xs[i + 1]! - xs[i]! : xs[0]! + STREET_SPAN - xs[i]!;
+      best = Math.min(best, gap);
+    }
+  }
+  return best;
 }
 
 /** Light for one moment of the day; written into an existing object so the frame loop allocates nothing. */

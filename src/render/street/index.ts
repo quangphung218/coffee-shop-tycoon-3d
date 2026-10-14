@@ -49,7 +49,7 @@ import {
   travelX,
   vehicleCount,
   vehicleSlots,
-  walkerSlot,
+  walkerSlots,
   type StreetDensity,
   type VehicleKind,
   type VehicleSlot,
@@ -231,15 +231,17 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
       v.slots.forEach((_, i) => v.body.setColorAt(i, color.setHex(palette[Math.floor(hash01(i * 13 + kind.length) * palette.length)]!)));
       if (v.body.instanceColor) v.body.instanceColor.needsUpdate = true;
     }
+    // Walkers are spaced evenly per line for this count, so a new count re-spaces everyone.
+    const walkerPlan = walkerSlots(density.pedestrians);
     while (walkers.length < density.pedestrians) {
-      const i = walkers.length;
-      const slot = walkerSlot(i);
+      const slot = walkerPlan[walkers.length]!;
       const char = createCharacter({ role: 'customer', look: slot.look });
       walkerRoot.add(char.root);
       walkers.push({ char, slot });
     }
     walkers.forEach((w, i) => {
       w.char.root.visible = i < density.pedestrians;
+      if (i < walkerPlan.length) w.slot = walkerPlan[i]!;
     });
     trees.count = Math.ceil(treeSpots.length * density.props);
     lamps.count = Math.ceil(lampSpots.length * density.props);
@@ -268,7 +270,7 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
     for (let i = 0; i < density.pedestrians; i++) {
       const w = walkers[i]!;
       const line = WALK_LINES[w.slot.line]!;
-      const x = travelX(w.slot.start, line.dir, w.slot.speed, time);
+      const x = travelX(w.slot.start, line.dir, line.speed, time);
       const loops = (time * w.slot.speed) / STRIDE + i * 0.37;
       const frame = Math.floor((loops - Math.floor(loops)) * WALK_FRAMES) % WALK_FRAMES;
       w.char.applyPose(WALK_POSES[frame]!);
