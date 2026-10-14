@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { arrivalRate, spawnCustomer } from '../../src/sim/customers';
+import { arrivalRate, floorSpots, spawnCustomer } from '../../src/sim/customers';
 import { getCampaign } from '../../src/sim/data/marketing';
 import { dispatch, step } from '../../src/sim/index';
 import { MARKETER_BONUS, customerMultiplier, runCampaign } from '../../src/sim/marketing';
+import { CHAIR_OFFSET, NAV_CELL, buildNavGrid, isWalkable, nearestFree } from '../../src/sim/nav';
 import { isClaimed, updatePlayerTasks } from '../../src/sim/orders';
-import { MAX_STAFF, fireStaff, hireStaff, rolePlan, updateStaff } from '../../src/sim/staff';
+import { MAX_STAFF, fireStaff, hireStaff, rolePlan, staffSpots, updateStaff } from '../../src/sim/staff';
 import { createDayStats, createNewGame } from '../../src/sim/state';
-import type { DayStats, GameState, Staff, StaffRole } from '../../src/sim/types';
+import type { DayStats, GameState, Staff, StaffRole, Vec2 } from '../../src/sim/types';
+import { getShopLayout } from '../../src/sim/upgrades';
 
 /** Serves alone on whatever the staff have not picked up: delivers first, cleans last. */
 function autoPlay(state: GameState): void {
@@ -223,6 +225,95 @@ describe('staff work', () => {
     expect(t.customersServed + t.customersLost).toBe(t.customersArrived);
     expect(t.revenue).toBeGreaterThan(0);
     expect(s.staff.every((m) => m.task === null && !m.busy)).toBe(true);
+  });
+});
+
+/** Asserts that every staff member stands on free floor, two nav cells or more from the others. */
+function expectStaffApart(s: GameState): void {
+  const grid = buildNavGrid(getShopLayout(s));
+  for (const m of s.staff) expect(isWalkable(grid, m.pos), `${m.role} ${m.id} at ${m.pos.x},${m.pos.z}`).toBe(true);
+  for (let i = 0; i < s.staff.length; i++) {
+    for (let j = i + 1; j < s.staff.length; j++) {
+      const [a, b] = [s.staff[i]!, s.staff[j]!];
+      expect(Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z), `${a.role} ${a.id} and ${b.role} ${b.id}`).toBeGreaterThanOrEqual(2 * NAV_CELL - 1e-9);
+    }
+  }
+}
+
+function dist(a: Vec2, b: Vec2): number {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
+describe('where staff stand', () => {
+  it('spreads staff of one role over free floor', () => {
+    const s = createNewGame('A', 'normal', 1);
+    for (const role of ['barista', 'barista', 'server', 'server', 'cleaner', 'none'] as const) {
+      if (s.candidates.length === 0) s.candidates.push({ ...s.staff[0]!, id: s.nextId++, role: 'none' });
+      expect(hireStaff(s, s.candidates[0]!.id, role)).not.toBeNull();
+    }
+    expectStaffApart(s);
+    expect(staffSpots(s)).toEqual(staffSpots(s));
+  });
+
+  it('never stands two baristas on one spot while they take orders and brew', () => {
+    const s = openWithQueue(2);
+    const a = hire(s, 'barista');
+    const b = hire(s, 'barista');
+    expectStaffApart(s);
+    let bothBrewed = false;
+    for (let minute = 0; minute < 20; minute++) {
+      advance(s, 1);
+      expectStaffApart(s);
+      bothBrewed ||= a.task?.kind === 'brew' && b.task?.kind === 'brew';
+    }
+    expect(bothBrewed).toBe(true);
+  });
+
+  it('serves from a free spot next to the customer, not on top of them', () => {
+    const s = openWithQueue(0);
+    const server = hire(s, 'server', 0.1);
+    const layout = getShopLayout(s);
+    const grid = buildNavGrid(layout);
+    const spot = floorSpots(layout).pickup[0]!;
+    const c = spawnCustomer(s)!;
+    c.state = 'waiting';
+    c.target = { ...spot };
+    c.pos = { ...spot };
+    s.orders.push({ id: 900, customerId: c.id, itemId: 'latte', status: 'ready', remaining: 0, staffId: null });
+    advance(s, 1);
+    expect(server.task).toMatchObject({ kind: 'serve', targetId: 900 });
+    expect(isWalkable(grid, server.pos)).toBe(true);
+    expect(dist(server.pos, c.pos)).toBeGreaterThanOrEqual(2 * NAV_CELL - 1e-9);
+    expect(dist(server.pos, c.pos)).toBeLessThanOrEqual(3 * NAV_CELL * Math.SQRT2);
+
+    // A seated customer: the server stands by the chair, off the floor the customer stands on.
+    const table = s.tables[0]!;
+    c.tableId = table.id;
+    table.occupants.push(c.id);
+    c.target = { x: table.pos.x - CHAIR_OFFSET, z: table.pos.z };
+    c.pos = nearestFree(grid, c.target)!;
+    advance(s, 1);
+    expect(isWalkable(grid, server.pos)).toBe(true);
+    expect(dist(server.pos, c.pos)).toBeGreaterThanOrEqual(2 * NAV_CELL - 1e-9);
+    expect(dist(server.pos, c.target)).toBeLessThan(1.2);
+  });
+
+  it('cleans a table from whichever side is free', () => {
+    const s = openWithQueue(0);
+    const cleaner = hire(s, 'cleaner', 0.1);
+    const table = s.tables[0]!;
+    table.trash = 1;
+    advance(s, 1);
+    expect(cleaner.task).toMatchObject({ kind: 'clean', targetId: table.id });
+    const front = { x: table.pos.x, z: table.pos.z - 0.75 };
+    expect(cleaner.pos).toEqual(front);
+
+    // Someone waits on that side: the cleaner goes round to the other.
+    const c = spawnCustomer(s)!;
+    c.state = 'waiting';
+    c.target = { ...front };
+    advance(s, 1);
+    expect(cleaner.pos).toEqual({ x: table.pos.x, z: table.pos.z + 0.75 });
   });
 });
 

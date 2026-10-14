@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
-import { createNewGame } from '../../src/sim/state';
+import { buildNavGrid, isWalkable } from '../../src/sim/nav';
+import { createNewGame, tablePosition } from '../../src/sim/state';
+import type { Customer, Vec2 } from '../../src/sim/types';
+import { getShopLayout } from '../../src/sim/upgrades';
 
 function sampleState() {
   const s = createNewGame('Quán Test', 'normal', 2024);
@@ -113,6 +116,45 @@ describe('migrate', () => {
       expect(r.value.savedAt).toBe(5);
       expect(r.value.state.events).toEqual([]);
     }
+  });
+
+  it('moves people saved inside furniture out to the nearest free floor', () => {
+    const s = sampleState();
+    for (let i = s.tables.length; i < 8; i++) {
+      s.tables.push({ id: s.nextId++, seats: 2, cash: 0, trash: 0, pos: tablePosition(i), occupants: [] });
+    }
+    const grid = buildNavGrid(getShopLayout(s));
+    // The last spot of the old line down x = 0, between the chairs of the back row.
+    const oldSpot = { x: 0, z: -1 + 5 * 0.8 };
+    expect(isWalkable(grid, oldSpot)).toBe(false);
+    const fine = { x: 3, z: -1 };
+    expect(isWalkable(grid, fine)).toBe(true);
+    const customer = (id: number, pos: Vec2): Customer => ({
+      id,
+      state: 'queueing',
+      pos: { ...pos },
+      target: { ...pos },
+      patience: 30,
+      maxPatience: 40,
+      order: 'latte',
+      tableId: null,
+      timer: 0,
+      look: 0,
+    });
+    s.customers.push(customer(s.nextId++, oldSpot), customer(s.nextId++, fine));
+    // The old unassigned-staff spot, inside the back counter.
+    s.staff.push({ ...s.candidates[0]!, role: 'none', pos: { x: 0, z: -3.8 } });
+    expect(isWalkable(grid, s.staff[0]!.pos)).toBe(false);
+
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: s }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [moved, stayed] = r.value.customers;
+    for (const p of [moved!.pos, stayed!.pos, r.value.staff[0]!.pos]) expect(isWalkable(grid, p), `${p.x},${p.z}`).toBe(true);
+    expect(Math.hypot(moved!.pos.x - oldSpot.x, moved!.pos.z - oldSpot.z)).toBeLessThan(1);
+    expect(stayed!.pos).toEqual(fine);
   });
 });
 
