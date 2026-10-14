@@ -174,18 +174,21 @@ async function takeShifts(page) {
 /**
  * Boxes of the Kho foot, its direct rows and the stock list, rounded to
  * 0.1 px; null without a foot. The list's height grows with the cost text,
- * so only its top and left edge count.
+ * so only its top and left edge count, measured in the scrolled content
+ * (clicks scroll the body to their target; that is not a layout change).
  */
 function footBoxes(page) {
   return page.evaluate(() => {
-    const foot = document.querySelector('#ui > .panel:not([hidden]) .prep > .panel-foot');
-    const list = document.querySelector('#ui > .panel:not([hidden]) .prep > .stack');
+    const body = document.querySelector('#ui > .panel:not([hidden]) .panel-body');
+    const foot = body?.querySelector('.prep > .panel-foot');
+    const list = body?.querySelector('.prep > .stack');
     if (!foot || !list) return null;
     const box = (el) => {
       const r = el.getBoundingClientRect();
       return [r.top, r.height, r.left, r.width].map((v) => Math.round(v * 10) / 10);
     };
-    return { foot: box(foot), rows: [...foot.children].map(box), list: box(list).filter((_, i) => i === 0 || i === 2) };
+    const [top, , left] = box(list);
+    return { foot: box(foot), rows: [...foot.children].map(box), list: [Math.round((top + body.scrollTop) * 10) / 10, left] };
   });
 }
 
@@ -214,8 +217,9 @@ async function checkKhoShift(page, results, viewport) {
       'Số gói vượt tiền',
       async () => {
         await stepper.locator('.step-input').fill('99');
-        // Leaving the field commits the value (change event), as a player would.
-        await stepper.locator('.step-input').press('Tab');
+        // Clicking away commits the value (change event), as a player would.
+        // A click always counts as recent input for layout shift; a Tab key press did not here.
+        await page.locator('#ui > .panel:not([hidden]) .kho-note').click();
       },
     ],
   ];
