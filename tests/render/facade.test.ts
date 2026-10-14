@@ -164,6 +164,38 @@ describe('FacadeView', () => {
     view.dispose();
   });
 
+  it('keeps the moving parts as their own meshes: one plant per planter, a valance where the plan has one', () => {
+    const layout = getShopLayout(full());
+    for (const q of QUALITIES) {
+      const view = new FacadeView(q);
+      view.build(layout);
+      const plan = view.current!;
+      expect(view.foliage).toHaveLength(plan.planters.length);
+      view.foliage.forEach((leaves, i) => {
+        expect(leaves.position.x).toBe(plan.planters[i]!.x);
+        expect(leaves.position.z).toBe(plan.planters[i]!.z);
+      });
+      expect(view.valance !== null).toBe(plan.awning.valance);
+      view.build(layout);
+      expect(view.foliage).toHaveLength(plan.planters.length);
+      view.dispose();
+    }
+  });
+
+  it('warms the sign up with the evening glow', () => {
+    const view = new FacadeView('medium');
+    view.setShopName('Quán Mây');
+    view.setSignGlow(0);
+    const day = view.signColor.clone();
+    view.setSignGlow(1);
+    const night = view.signColor.clone();
+    expect(night.r).toBeGreaterThan(day.r);
+    expect(night.r).toBeGreaterThan(night.b);
+    view.setSignGlow(5);
+    expect(view.signColor.equals(night)).toBe(true);
+    view.dispose();
+  });
+
   it('lowers the details of the walls facing the camera, but keeps the shop front', () => {
     const shop = new ShopView(new Scene(), 'medium');
     // Default view from the front right: the front and right walls go down.
