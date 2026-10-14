@@ -9,9 +9,22 @@ import { NoToneMapping, SRGBColorSpace, WebGLRenderer } from 'three';
 import { AVATAR_LOOKS } from '../ui/core/iconMap';
 import { isIconId } from '../ui/core/icons';
 import { iconSvgMarkup } from '../ui/core/iconSvg';
-import { ATLAS_IDS, type AtlasCell, type AtlasManifest, AVATAR_IDS, BUDGET, CELL, orderIds, packAtlas, SHEET_IDS, SMALL_CELL } from './atlas';
-import { MODELS } from './models';
-import { createStage, type Look, LOOKS } from './style';
+import {
+  ATLAS_IDS,
+  type AtlasCell,
+  type AtlasManifest,
+  AVATAR_IDS,
+  BUDGET,
+  CELL,
+  hexRgb,
+  measureCell,
+  orderIds,
+  packAtlas,
+  SHEET_IDS,
+  SMALL_CELL,
+} from './atlas';
+import { MODELS, SMALL_MODELS } from './models';
+import { createStage, inkRing, type Look, LOOKS, PALETTE } from './style';
 
 /** Each icon is drawn this many times larger than its @2x cell, then halved step by step. */
 const SUPERSAMPLE = 4;
@@ -73,19 +86,20 @@ function hasModel(id: string): boolean {
 
 type Scaled = { 1: HTMLCanvasElement; 2: HTMLCanvasElement };
 
-/** The icon drawn in `look` at @2x and @1x of `cell` px. */
+/** The icon drawn in `look` at @2x and @1x of `cell` px; the small look takes the SMALL_MODELS model when there is one. */
 function renderLook(id: string, look: Look, cell: number): Scaled {
-  const build = MODELS[id];
+  const build = (look === 'small' ? SMALL_MODELS[id] : undefined) ?? MODELS[id];
   if (!build) throw new Error(`No model for ${id}`);
   stage.show(build(), look);
   const size = cell * 2 * SUPERSAMPLE;
   renderer.setSize(size, size, false);
   renderer.render(stage.scene, stage.camera);
-  const full = canvas(size);
+  let full = canvas(size);
   const ctx = context(full);
-  const { contrast, saturate } = LOOKS[look];
+  const { contrast, saturate, ring } = LOOKS[look];
   if (contrast !== 1 || saturate !== 1) ctx.filter = `contrast(${contrast}) saturate(${saturate})`;
   ctx.drawImage(renderer.domElement, 0, 0);
+  if (ring > 0) full = inkRing(full, ring * size);
   const x2 = shrink(full, cell * 2);
   return { 2: x2, 1: shrink(x2, cell) };
 }
@@ -189,7 +203,21 @@ async function build(input: BuildInput): Promise<BuildOutput> {
     images[scale] = url;
     encodings[scale] = used;
   }
+  manifest.smallQuality = await measureSmall(manifest, images[1]);
   return { manifest, images, encodings };
+}
+
+/** CellQuality of every small cell, read back from the encoded @1x atlas, against the HUD cream. */
+async function measureSmall(manifest: AtlasManifest, url: string): Promise<NonNullable<AtlasManifest['smallQuality']>> {
+  const img = await loadImage(url);
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  const px = ctx.getImageData(0, 0, c.width, c.height).data;
+  const cream = hexRgb(PALETTE.cream);
+  return Object.fromEntries(Object.entries(manifest.smallIcons).map(([id, cell]) => [id, measureCell(px, c.width, cell, cream)]));
 }
 
 /** One 3D icon from the atlas as a CSS sprite, `size` px square: the small cell up to its size, else the large one. */

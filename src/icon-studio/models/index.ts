@@ -10,6 +10,7 @@ import * as H from './hud';
 import * as I from './items';
 import { AVATAR_MODELS, avatar } from './people';
 import * as S from './shop';
+import * as Small from './small';
 
 const ICON_MODELS: Readonly<Record<IconId, () => Object3D>> = {
   // HUD & navigation
@@ -133,3 +134,13 @@ const ICON_MODELS: Readonly<Record<IconId, () => Object3D>> = {
 };
 
 export const MODELS: Readonly<Record<string, () => Object3D>> = { ...ICON_MODELS, ...AVATAR_MODELS };
+
+/** Models drawn in the 24 px cell instead of the MODELS one (small.ts); every other id uses its MODELS model in both cells. */
+export const SMALL_MODELS: Readonly<Record<string, () => Object3D>> = {
+  'i-coin': Small.coin,
+  'i-camera': Small.camera,
+  'i-close': Small.close,
+  'i-settings': Small.settings,
+  'i-pause': Small.pause,
+  'i-speed-4': Small.speed4,
+} satisfies Partial<Record<IconId, () => Object3D>>;
