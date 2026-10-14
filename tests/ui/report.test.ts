@@ -357,11 +357,12 @@ describe('no emoji', () => {
 
 describe('report.css', () => {
   // Vitest stubs .css imports; read the file through a dynamically named node:fs import (see styles.test.ts).
+  // A plain path from the repo root: under jsdom, `URL` is jsdom's and node:fs rejects it.
   const FS_MODULE = 'node:fs';
 
   async function css(): Promise<string> {
-    const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as { readFileSync(path: URL, encoding: 'utf8'): string };
-    return readFileSync(new URL('../../src/ui/report/report.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as { readFileSync(path: string, encoding: 'utf8'): string };
+    return readFileSync('src/ui/report/report.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   }
 
   it('draws tab focus inside the border, never as an outer outline', async () => {
