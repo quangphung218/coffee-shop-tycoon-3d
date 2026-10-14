@@ -1,9 +1,8 @@
-import { INGREDIENTS } from '../../sim/data/ingredients';
-import { stockOf } from '../../sim/inventory';
+import { stockOutlook } from '../../sim/inventory';
 import type { GameState } from '../../sim/types';
 import { h } from '../core/dom';
 import { registerPanel, type PanelDef, type PanelRender } from '../hud/panels';
-import { renderInventoryPanel, stockLevel } from './inventory';
+import { renderInventoryPanel } from './inventory';
 import { renderMarketingPanel } from './marketing';
 import { renderMenuPanel } from './menu';
 import { renderStaffPanel } from './staff';
@@ -13,7 +12,7 @@ import './panels.css';
 
 /** Ingredients the Kho panel marks "Sắp hết" or "Hết". */
 export function lowStockCount(state: GameState): number {
-  return INGREDIENTS.filter((def) => stockLevel(def, stockOf(state, def.id)) !== 'ok').length;
+  return Object.values(stockOutlook(state)).filter((o) => o.level !== 'ok').length;
 }
 
 /** Unfinished tasks on the Việc checklist. */
