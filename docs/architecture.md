@@ -33,6 +33,20 @@ flowchart LR
 
 `GameState` là JSON thuần (không class, Map hay hàm) nên lưu, so sánh và nhân bản trực tiếp được. Bộ sinh số ngẫu nhiên mulberry32 giữ trạng thái trong `state.rngState`: cùng state cộng cùng chuỗi lệnh cho ra cùng một ngày. Tiền là số nguyên đồng (`25000` = 25.000đ); thời gian là phút game tính từ nửa đêm (`420` = 07:00).
 
+### Icon và font
+
+UI và cảnh 3D không hiển thị emoji; mọi biểu tượng lấy từ bộ icon SVG vẽ trong `design/t237-cartoon/icons/index.html`.
+
+| Module | Nội dung |
+| --- | --- |
+| `src/ui/core/icons.ts` | Bộ icon (khung 24×24). `mountIconSprite()` chèn một sprite ẩn vào `<body>`; `icon(id)` trả `<svg><use>` trang trí (`aria-hidden`); `iconSvgMarkup(id)` trả SVG tự đủ, màu đã đổi sang hex, để vẽ lên canvas. |
+| `src/ui/core/iconMap.ts` | Ánh xạ id của sim (món, nguyên liệu, marketing, nâng cấp, pha, vai, lý do review) sang icon, cộng ngoại hình avatar nhân viên. Trường `icon` emoji trong `src/sim/data` giữ nguyên nhưng không còn được hiển thị. |
+| `src/render/actors/labels.ts` | Nhãn món trên đầu khách trong cảnh 3D, vẽ từ `iconSvgMarkup` và `MENU_ICONS`. |
+
+Thêm icon: chép thân `<symbol>` từ file thiết kế vào bảng `SYMBOLS` trong `icons.ts`, rồi nối id của sim trong `iconMap.ts`.
+
+Font chữ là Nunito từ `@fontsource/nunito`, import trong `src/main.ts`: chỉ subset `latin` và `vietnamese`, weight 400 và 700 (600 và 800 hiển thị bằng 700). `@font-face` dùng `font-display: swap` và không preload, nên Main Menu vẽ bằng font hệ thống rồi đổi sang Nunito khi tải xong. Token `--font-family-base` nằm ở `src/ui/styles/tokens.css`.
+
 ## Vòng khung hình
 
 `src/main.ts` chạy mỗi `requestAnimationFrame`:
@@ -84,7 +98,7 @@ stateDiagram-v2
 
 | Pha | Đồng hồ | Việc chính |
 | --- | --- | --- |
-| `preparation` | Dừng ở 07:00 | Bảng chuẩn bị trên HUD; nút **Mở cửa**. |
+| `preparation` | Dừng ở 07:00 | Bảng chuẩn bị ở dock giữa đáy; nút **Mở cửa** trên HUD. |
 | `opening` | Chạy | Khách đến theo tốc độ cơ bản. |
 | `peak` | Chạy | Khách đến nhiều hơn. |
 | `closing` | Chạy | Không nhận khách mới. |
