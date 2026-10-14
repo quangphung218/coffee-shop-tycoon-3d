@@ -67,9 +67,9 @@ function text(root: ParentNode, selector: string): string {
   return q(root, selector).textContent ?? '';
 }
 
-/** Icon ids drawn inside `root`, in order ("#i-star"…). */
+/** Icon ids drawn inside `root`, in order ("i-star"…). */
 function iconsIn(root: Element): string[] {
-  return [...root.querySelectorAll('svg.ic use')].map((u) => u.getAttribute('href') ?? '');
+  return [...root.querySelectorAll<HTMLElement>('.ic[aria-hidden="true"]')].map((u) => u.dataset.icon ?? '');
 }
 
 afterEach(() => {
@@ -86,7 +86,7 @@ describe('Daily Report', () => {
     expect(result.dataset.result).toBe('profit');
     expect(result.className).not.toMatch(/is-loss|is-none/);
     // Not colour alone: triangle icon, word and sign.
-    expect(iconsIn(result)).toEqual(['#i-trend-up']);
+    expect(iconsIn(result)).toEqual(['i-trend-up']);
     expect(text(result, '.rpt-result-label')).toBe('Lãi');
     expect(text(result, '.rpt-result-value')).toBe('+600.000đ');
 
@@ -110,9 +110,9 @@ describe('Daily Report', () => {
     expect(rating).toContain('3,8');
     expect(rating).toContain('4,0');
     expect(text(el, '.rpt-delta')).toBe('+0,2');
-    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['#i-trend-up']);
-    expect(iconsIn(q(el, '[data-block="top"] [data-item="latte"]'))).toEqual(['#i-latte']);
-    expect(iconsIn(q(el, '[data-block="tips"] [data-kind="restock"]'))).toEqual(['#i-inventory']);
+    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['i-trend-up']);
+    expect(iconsIn(q(el, '[data-block="top"] [data-item="latte"]'))).toEqual(['i-latte']);
+    expect(iconsIn(q(el, '[data-block="tips"] [data-kind="restock"]'))).toEqual(['i-inventory']);
 
     // The three newest reviews, newest first.
     const recent = [...el.querySelectorAll('[data-block="recent"] .rpt-review-name')].map((n) => n.textContent);
@@ -129,12 +129,12 @@ describe('Daily Report', () => {
     const result = q(el, '[data-result]');
     expect(result.dataset.result).toBe('loss');
     expect(result.classList.contains('is-loss')).toBe(true);
-    expect(iconsIn(result)).toEqual(['#i-trend-down']);
+    expect(iconsIn(result)).toEqual(['i-trend-down']);
     expect(text(result, '.rpt-result-label')).toBe('Lỗ');
     expect(text(result, '.rpt-result-value')).toBe('−500.000đ');
     expect(q(el, '[data-block="money"] .is-total dd').className).toBe('neg');
     expect(text(el, '.rpt-delta')).toBe('−0,2');
-    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['#i-trend-down']);
+    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['i-trend-down']);
     expect(el.textContent).toContain('mọi thứ ổn');
   });
 
@@ -158,7 +158,7 @@ describe('Daily Report', () => {
     expect(result.dataset.result).toBe('none');
     expect(result.classList.contains('is-none')).toBe(true);
     expect(result.textContent).toContain('Không có khách');
-    expect(iconsIn(result)).toEqual(['#i-people']);
+    expect(iconsIn(result)).toEqual(['i-people']);
     expect(el.querySelector('[data-block="top"]')).toBeNull();
     expect(el.querySelector('[data-block="out"]')).toBeNull();
     expect(el.querySelector('[data-block="recent"]')).toBeNull();
@@ -261,8 +261,8 @@ describe('Reviews', () => {
     const items = [...body.querySelectorAll<HTMLElement>('.rpt-review')];
     expect(items.map((i) => i.querySelector('.rpt-review-name')?.textContent)).toEqual(['Vy', 'Tâm', 'Hoa']);
     expect(items[1]!.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('1 trên 5 sao');
-    expect(iconsIn(q(items[1]!, '.rpt-stars'))).toEqual(['#i-star', '#i-star-empty', '#i-star-empty', '#i-star-empty', '#i-star-empty']);
-    expect(iconsIn(q(items[1]!, '[data-reason="long_wait"]'))).toEqual(['#i-thumb-down']);
+    expect(iconsIn(q(items[1]!, '.rpt-stars'))).toEqual(['i-star', 'i-star-empty', 'i-star-empty', 'i-star-empty', 'i-star-empty']);
+    expect(iconsIn(q(items[1]!, '[data-reason="long_wait"]'))).toEqual(['i-thumb-down']);
     expect(items[1]!.querySelector('[data-reason="long_wait"]')?.className).toContain('is-bad');
     expect(items[0]!.querySelector('[data-reason="tasty"]')?.className).toContain('is-good');
     // Summary: "Đồ uống ngon" mentioned twice comes first.
@@ -312,10 +312,10 @@ describe('no emoji', () => {
   ] as const)('%s report has icons, no emoji', (_, r) => {
     const { view, el } = mountReport(atReport(r, [...r.reviews]));
     expect(allText(view, el)).not.toMatch(EMOJI);
-    expect(el.querySelectorAll('svg.ic').length).toBeGreaterThan(0);
-    expect(iconsIn(q(el, '[data-action="next-day"]'))).toEqual(['#i-next-day']);
-    expect(iconsIn(q(el, '[data-tab="summary"]'))).toEqual(['#i-chart']);
-    expect(iconsIn(q(el, '[data-tab="reviews"]'))).toEqual(['#i-reviews']);
+    expect(el.querySelectorAll('.ic').length).toBeGreaterThan(0);
+    expect(iconsIn(q(el, '[data-action="next-day"]'))).toEqual(['i-next-day']);
+    expect(iconsIn(q(el, '[data-tab="summary"]'))).toEqual(['i-chart']);
+    expect(iconsIn(q(el, '[data-tab="reviews"]'))).toEqual(['i-reviews']);
   });
 
   it('"Đang tổng kết" shows a busy status and skeleton, no emoji', () => {
@@ -325,7 +325,7 @@ describe('no emoji', () => {
     const busy = q(el, '[data-block="busy"]');
     expect(busy.getAttribute('role')).toBe('status');
     expect(busy.textContent).toContain('Đang tổng kết ngày 3');
-    expect(iconsIn(busy)).toEqual(['#i-busy']);
+    expect(iconsIn(busy)).toEqual(['i-busy']);
     expect(el.querySelector('[data-result]')).toBeNull();
     expect(allText(view, el)).not.toMatch(EMOJI);
   });
@@ -335,10 +335,10 @@ describe('no emoji', () => {
     const save = q(el, '[data-save]');
     view.setSaveStatus({ day: 3, ok: false });
     expect(save.textContent).not.toMatch(EMOJI);
-    expect(iconsIn(save)).toEqual(['#i-warning', '#i-retry']);
+    expect(iconsIn(save)).toEqual(['i-warning', 'i-retry']);
     q<HTMLButtonElement>(save, '[data-action="retry-save"]').click();
     expect(save.textContent).not.toMatch(EMOJI);
-    expect(iconsIn(save)).toEqual(['#i-ok']);
+    expect(iconsIn(save)).toEqual(['i-ok']);
   });
 
   it('reviews panel and its empty state have no emoji', () => {
@@ -346,7 +346,7 @@ describe('no emoji', () => {
     document.body.append(body);
     const state = createNewGame('Quán Thử', 'normal', 1);
     const handle = renderReviewsPanel(body, { dispatch: () => true, getState: () => state, close: () => {} });
-    expect(iconsIn(q(body, '[data-empty="reviews"]'))).toEqual(['#i-reviews']);
+    expect(iconsIn(q(body, '[data-empty="reviews"]'))).toEqual(['i-reviews']);
     expect(body.textContent).not.toMatch(EMOJI);
     state.reviews = [...reviews];
     handle.update?.(state);

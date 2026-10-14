@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { dispatch } from '../../src/sim';
 import { createMemoryStorage } from '../../src/save/storage';
+import { iconCell, type IconCellId } from '../../src/ui/core/icons';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { registerPrepPanels } from '../../src/ui/panels';
 import { registerReviewsPanel } from '../../src/ui/report';
@@ -52,10 +53,22 @@ function button(root: ParentNode, text: string): HTMLButtonElement {
   return b;
 }
 
-/** Fails with the step name and the offending text. */
+/**
+ * Fails with the step name and the offending text. Also checks the icons
+ * that stand in for emoji: each is an empty, aria-hidden atlas box whose id
+ * has a cell, so the text and labels stay exactly the words.
+ */
 function expectNoEmoji(step: string): void {
   const text = document.body.textContent ?? '';
   expect(text.match(EMOJI)?.[0], `${step}: ${text.slice(0, 200)}`).toBeUndefined();
+  expect(document.body.querySelectorAll('svg use'), step).toHaveLength(0);
+  for (const el of document.body.querySelectorAll<HTMLElement>('.ic')) {
+    const id = el.dataset.icon ?? '';
+    expect(iconCell(id as IconCellId), `${step}: ${id}`).toBeDefined();
+    expect(el.getAttribute('aria-hidden'), `${step}: ${id}`).toBe('true');
+    expect(el.getAttribute('focusable'), `${step}: ${id}`).toBe('false');
+    expect(el.childNodes, `${step}: ${id}`).toHaveLength(0);
+  }
 }
 
 const offs: (() => void)[] = [];
@@ -76,6 +89,7 @@ describe('no emoji in a whole game day', () => {
     shell = createShell({ root, storage: createMemoryStorage(), settings: { ...DEFAULT_SETTINGS }, seed: () => 7 });
     const s = shell;
     expectNoEmoji('main menu');
+    expect(root.querySelectorAll('.ic').length).toBeGreaterThan(0);
 
     button(root, 'Ván mới').click();
     expectNoEmoji('new game');
