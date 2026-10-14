@@ -80,7 +80,8 @@ function findChrome() {
 
 /** Exports <ref> into a temp dir sharing this checkout's node_modules. */
 function checkoutRef(ref) {
-  const dir = mkdtempSync(join(tmpdir(), 'cst-base-'));
+  // macOS tmpdir() is under the /var -> /private/var symlink; vite needs the real path.
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'cst-base-')));
   const tar = spawnSync('git', ['archive', '--format=tar', ref], { maxBuffer: 1 << 30 });
   if (tar.status !== 0) throw new Error(`git archive ${ref} failed: ${tar.stderr}`);
   const file = join(dir, 'src.tar');
