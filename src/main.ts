@@ -1,3 +1,11 @@
+// Nunito, latin + vietnamese subsets only, 400 and 700 (600 and 800 render with
+// 700; 800 alone would add ~23 KB woff2). The @font-face rules use
+// font-display: swap and nothing is preloaded, so the menu paints with the
+// system font and swaps when ready.
+import '@fontsource/nunito/latin-400.css';
+import '@fontsource/nunito/vietnamese-400.css';
+import '@fontsource/nunito/latin-700.css';
+import '@fontsource/nunito/vietnamese-700.css';
 import './ui/styles/tokens.css';
 import './ui/styles/ui.css';
 import { createAudio } from './audio';
