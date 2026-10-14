@@ -5,7 +5,7 @@ Tài liệu giải thích (Diátaxis: explanation): vì sao giao diện đổi s
 | File | Nội dung |
 |---|---|
 | `design/t237-cartoon/index.html` | Nền tảng (màu, chữ, viền, bóng), thành phần đủ trạng thái, Main Menu (có / chưa có bản lưu), HUD lúc Cao điểm + biến thể Đóng cửa, bảng Kho (pha Chuẩn bị) + thiếu tiền / đã nhập / kho đủ, Daily Report (lãi) + lỗ / không khách / đang tổng kết / lỗi tự lưu, ghi chú chuyển động và hướng cảnh 3D |
-| `design/t237-cartoon/icons/index.html` | 101 icon cạnh nhau ở 48 px, theo nhóm, ở 3 cỡ 48/24/16, quy tắc vẽ, màu tô, nền thật |
+| `design/t237-cartoon/icons/index.html` | 105 icon cạnh nhau ở 48 px, theo nhóm, ở 3 cỡ 48/24/16, quy tắc vẽ, màu tô, nền thật |
 | `design/tokens.json` | Token mới (thay bộ P14), kèm `contrastPairs` |
 | `design/t237-cartoon/tokens.css` | Cùng token dạng biến CSS (tên giống `src/ui/styles/tokens.css`), bản giảm chuyển động, và class vẽ icon (`.ic`, `.fh`…) |
 
@@ -73,7 +73,10 @@ Tên biến ngữ nghĩa giữ nguyên `src/ui/styles/tokens.css` (`--text-*`, `
 | 🤖 | `i-auto` | Tự phân vai, Tự động |
 | ▲ ▼ = | `i-trend-up` / `i-trend-down` / `i-equal` | Lãi, Lỗ, Hòa vốn, sao tăng/giảm |
 | 💰 💵 | `i-coin` | Tiền HUD, Thu chi, slot lưu |
-| ★ ⭐ 🌟 | `i-star` / `i-star-empty` (+ `i-kol` cho Mời KOL) | Sao |
+| ★ ☆ ⭐ 🌟 | `i-star` / `i-star-empty` (+ `i-kol` cho Mời KOL) | Sao |
+| ⬜ | `i-todo` | Việc chưa làm trong panel Việc |
+| ● ○ | `i-dot` / `i-dot-empty` | Độ ưa chuộng 5 chấm trong panel Menu; ○ “Không có khách” trong báo cáo dùng `i-people` |
+| ▾ | `i-chevron-down` | Nút mở menu sổ (`panels/widgets.ts`) |
 | 📊 🏆 | `i-chart` / `i-trophy` | Tổng kết / Món bán chạy |
 | 👍 👎 | `i-thumb-up` / `i-thumb-down` | Lý do đánh giá |
 | 😠 💢 | `i-face-angry` | Khách bỏ đi (toast, nhãn 3D); thêm `i-face-happy/ok/worried` cho kiên nhẫn |
