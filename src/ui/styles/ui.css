@@ -763,8 +763,17 @@ legend {
   flex: 1 1 0;
 }
 
-/* HUD */
-#ui > .hud {
+/* HUD (design/t237-cartoon "HUD cao điểm"): cream pills with ink text over
+   the scene, panel dock at the bottom centre. The bar itself is transparent
+   and lets clicks through to the 3D scene; only the pills catch them. */
+#ui {
+  /* Room the dock takes at the bottom: button 68 + padding + outline + shadow + gap. */
+  --dock-space: calc(68px + 2 * var(--space-2) + 2 * var(--size-outline) + 6px + var(--space-3));
+}
+.hud-layer {
+  display: contents;
+}
+.hud {
   position: absolute;
   top: var(--space-3);
   left: var(--space-3);
@@ -772,34 +781,57 @@ legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-hud);
-  color: var(--text-inverse);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  gap: var(--space-2);
+  pointer-events: none;
 }
-.hud-group {
+/* Puts the note on its own line without stretching its pill. */
+.hud::after {
+  content: '';
+  flex-basis: 100%;
+  order: 1;
+}
+.hud-left,
+.hud-right {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  pointer-events: none;
 }
-.hud-spacer {
-  flex: 1 1 0;
+.hud-right {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.hud-left > *,
+.hud-right > *,
+.hud-note {
+  pointer-events: auto;
+}
+.hud-stat,
+.phases,
+.hud-note {
+  background: var(--surface-hud-solid);
+  color: var(--text-primary);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-pill);
 }
 .hud-stat {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-hud-pill);
+  padding: var(--space-1) var(--space-4);
+  box-shadow: var(--shadow-md);
   line-height: var(--line-height-tight);
-  min-width: var(--size-target);
 }
 .hud-stat small {
   font-size: var(--font-size-xs);
-  color: var(--text-inverse-muted);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
 }
 .hud-stat b {
   font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-heavy);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -809,100 +841,214 @@ legend {
   gap: var(--space-1);
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: var(--space-1);
+  box-shadow: var(--shadow-md);
 }
 .phases li {
-  font-size: var(--font-size-sm);
-  padding: var(--space-1) var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: var(--size-outline-sm) solid transparent;
   border-radius: var(--radius-pill);
-  color: var(--text-inverse-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
   white-space: nowrap;
 }
+.phases li.is-done {
+  color: var(--text-primary);
+}
 .phases li[aria-current='step'] {
-  background: var(--accent-mint-bright);
-  color: var(--text-on-bright);
-  font-weight: var(--font-weight-bold);
+  background: var(--accent-primary);
+  border-color: var(--border-outline);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-heavy);
+  box-shadow: var(--shadow-sm);
 }
-.phases li.is-peak[aria-current='step'] {
-  background: var(--color-warning-500);
-  animation: peak-pulse 1.6s var(--easing-standard) infinite;
-}
-@keyframes peak-pulse {
-  50% {
-    box-shadow: 0 0 0 4px rgba(242, 165, 22, 0.35);
-  }
+.ph-icon {
+  display: inline-flex;
 }
 .phase-count {
   display: none;
+  font-size: var(--font-size-xs);
 }
 .hud-btn {
-  min-width: var(--size-target);
-  min-height: var(--size-target);
+  min-width: var(--size-hud-pill);
+  min-height: var(--size-hud-pill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: var(--size-border-thin) solid var(--border-inverse);
-  background: transparent;
-  color: var(--text-inverse);
+  border-radius: var(--radius-pill);
+  border: var(--size-outline) solid var(--border-outline);
+  background: var(--surface-hud-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
   font: inherit;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color var(--duration-fast) var(--easing-standard);
+  transition:
+    transform var(--duration-fast) var(--easing-bounce),
+    box-shadow var(--duration-fast) var(--easing-standard);
 }
-.hud-btn:hover,
-.hud-btn:active {
-  background: var(--surface-hud-raised);
+@media (hover: hover) {
+  .hud-btn:not([aria-disabled='true'], :disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
 }
-.hud-btn:active {
-  transform: translateY(1px);
+.hud-btn:not([aria-disabled='true'], :disabled):active {
+  transform: translateY(2px);
+  box-shadow: var(--shadow-sm);
+  transition-duration: var(--duration-instant);
 }
 .hud-btn[aria-pressed='true'] {
-  background: var(--accent-mint-bright);
-  color: var(--text-on-bright);
-  border-color: var(--accent-mint-bright);
+  background: var(--accent-primary);
 }
+.hud-btn[aria-disabled='true'],
+.hud-btn:disabled {
+  background: var(--surface-disabled);
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+/* Phase action, level 1: Mở cửa mint, Sang ngày mới honey. */
 .hud-btn-cta {
-  background: var(--accent-mint-bright);
-  color: var(--text-on-bright);
-  border-color: var(--accent-mint-bright);
-  font-size: var(--font-size-md);
   padding: 0 var(--space-4);
+  font-size: var(--font-size-md);
+  color: var(--text-on-accent);
 }
-.hud-btn-cta:hover {
-  background: var(--color-mint-100);
+.hud-btn-cta.is-mint {
+  background: var(--accent-mint);
 }
+.hud-btn-cta.is-honey {
+  background: var(--accent-primary);
+}
+/* Speed: ghost buttons in a .seg frame; selected turns into a honey sticker. */
 .speed {
+  border-radius: var(--radius-pill);
+  flex-wrap: nowrap;
+}
+.seg button {
   display: inline-flex;
+  align-items: center;
   gap: var(--space-1);
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  padding: 0 var(--space-3);
+  border: var(--size-outline-sm) solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-heavy);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+@media (hover: hover) {
+  .seg button:not([aria-pressed='true']):hover {
+    background: var(--surface-sunken);
+  }
+}
+.seg button:active {
+  transform: translateY(1px) scale(0.96);
+  transition-duration: var(--duration-instant);
+}
+.seg button[aria-pressed='true'] {
+  background: var(--accent-primary);
+  border-color: var(--border-outline);
+  box-shadow: var(--shadow-sm);
 }
 .hud-note {
-  flex-basis: 100%;
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  box-shadow: var(--shadow-sm);
   font-size: var(--font-size-sm);
-  color: var(--text-inverse-muted);
-  border-top: var(--size-border-thin) solid var(--surface-hud-raised);
-  padding-top: var(--space-2);
-}
-.hud-note:empty {
-  display: none;
+  font-weight: var(--font-weight-bold);
 }
 
-/* Side panel */
+/* Dock: the seven panel buttons, bottom centre. Ghost buttons in one frame. */
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--size-group-gap);
+  padding: var(--space-2);
+  max-width: calc(100% - 2 * var(--space-3));
+  background: var(--surface-hud-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+.dock-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 76px;
+  min-height: 68px;
+  padding: var(--space-1) var(--space-2);
+  border: var(--size-outline) solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce);
+}
+@media (hover: hover) {
+  .dock-btn:not([aria-pressed='true']):hover {
+    background: var(--surface-sunken);
+  }
+}
+.dock-btn:active {
+  transform: translateY(1px) scale(0.96);
+  transition-duration: var(--duration-instant);
+}
+.dock-btn[aria-pressed='true'] {
+  background: var(--accent-primary);
+  border-color: var(--border-outline);
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 1023px) {
+  .dock-btn {
+    min-width: 64px;
+  }
+}
+
+/* Side panel: right edge, ends above the dock so it never covers it. */
 #ui > .panel {
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--dock-space);
   width: min(var(--size-panel), 42vw);
   display: flex;
   flex-direction: column;
-  background: var(--surface-panel);
-  backdrop-filter: blur(6px);
+  background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-width: 0 0 var(--size-outline) var(--size-outline);
+  border-radius: 0 0 0 var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
   animation: panel-in var(--duration-slow) var(--easing-standard);
 }
 @keyframes panel-in {
@@ -921,6 +1067,9 @@ legend {
 }
 .panel-head h2 {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-lg);
 }
 .panel-body {
@@ -933,7 +1082,8 @@ legend {
 #ui > .toasts {
   position: absolute;
   left: var(--space-3);
-  bottom: var(--space-3);
+  /* Above the dock (WCAG 2.4.11): a toast never hides a focused dock button. */
+  bottom: var(--dock-space);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -1041,20 +1191,22 @@ legend {
 .btn,
 .input,
 .choice,
-.toggle-track {
+.toggle-track,
+.hud-btn,
+.dock-btn {
   --bw: var(--size-outline);
 }
 .icon-btn,
-.seg-opt span {
+.seg-opt span,
+.seg button {
   --bw: var(--size-outline-sm);
-}
-.hud-btn {
-  --bw: var(--size-border-thin);
 }
 .btn:focus-visible,
 .input:focus-visible,
 .icon-btn:focus-visible,
 .hud-btn:focus-visible,
+.seg button:focus-visible,
+.dock-btn:focus-visible,
 .choice:has(input:focus-visible),
 .seg-opt input:focus-visible + span,
 .toggle:focus-visible .toggle-track {
@@ -1086,23 +1238,41 @@ legend {
   .phase-count {
     display: inline;
   }
-  #ui > .hud {
-    gap: var(--space-2) var(--space-3);
+  .hud-stat {
+    padding: var(--space-1) var(--space-3);
+  }
+  .hud-stat small {
+    display: none;
   }
   .hud-stat b {
     font-size: var(--font-size-md);
   }
-  .hud-spacer {
-    display: none;
-  }
   .hud-btn .lbl-long {
     display: none;
+  }
+  /* Dock: a 4-column grid across the bottom (two rows of 68px). */
+  #ui {
+    --dock-space: calc(2 * 68px + var(--size-group-gap) + 2 * var(--space-2) + 2 * var(--size-outline) + 6px + var(--space-3));
+  }
+  .dock {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    left: var(--space-3);
+    right: var(--space-3);
+    max-width: none;
+    transform: none;
+    border-radius: var(--radius-lg);
+  }
+  .dock-btn {
+    min-width: 0;
+    font-size: var(--font-size-xs);
   }
   #ui > .panel {
     top: auto;
     left: 0;
     width: auto;
     max-height: 60%;
+    border-width: var(--size-outline) 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 }
@@ -1120,6 +1290,9 @@ legend {
   .choice,
   .icon-btn,
   .seg-opt span,
+  .seg button,
+  .hud-btn,
+  .dock-btn,
   .toggle-thumb {
     transform: none !important;
   }

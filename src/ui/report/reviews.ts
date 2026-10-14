@@ -97,7 +97,7 @@ export function fillReviews(el: HTMLElement, reviews: readonly Review[], emptyAc
   );
 }
 
-/** HUD panel "💬 Đánh giá": every kept review, newest first. */
+/** Dock panel "Đánh giá": every kept review, newest first. */
 export function renderReviewsPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const list = h('div', { class: 'rpt-reviews' });
   const w = new Watcher<GameState>().watch(
@@ -114,7 +114,7 @@ export function renderReviewsPanel(body: HTMLElement, ctx: PanelContext): PanelH
 
 export const REVIEWS_PANEL_ID = 'reviews';
 
-/** Adds the Reviews button to the HUD. Returns a function that removes it. */
+/** Adds the Reviews button to the dock. Returns a function that removes it. */
 export function registerReviewsPanel(): () => void {
-  return registerPanel(REVIEWS_PANEL_ID, '💬 Đánh giá', renderReviewsPanel);
+  return registerPanel(REVIEWS_PANEL_ID, 'Đánh giá', 'i-reviews', renderReviewsPanel);
 }
