@@ -532,6 +532,8 @@ describe('HUD', () => {
       expect(panelRules[0]).toMatch(/top:\s*calc\(var\(--hud-h\b/);
       expect(panelRules[0]).toMatch(/bottom:\s*calc\(var\(--dock-h\b/);
       expect(panelRules[0]).toMatch(/flex-direction:\s*column/);
+      // Not a scroll container, so focusing a body control cannot scroll the head away.
+      expect(panelRules[0]).toMatch(/overflow:\s*clip/);
       for (const body of panelRules) expect(body).not.toMatch(/\b(top|bottom):\s*(0|auto)\b|max-height/);
       // .panel-body is the one scroll area; the foot sticks at its bottom with no negative margin.
       const bodyRule = cssBodies(UI_CSS, '.panel-body').join('');
