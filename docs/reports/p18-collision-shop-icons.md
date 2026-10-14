@@ -72,7 +72,7 @@ Hai ảnh cùng góc máy. Bên P17, vòng đặt ở chỗ đứng sim P17: hà
 
 ### Main Menu
 
-Bên P18 khoanh chi tiết mới: mái hiên, biển tên, cửa kính, chậu cây hai bên cửa, khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả. P17 chưa có các chi tiết này; cả hai bên khoanh icon nút menu (SVG phẳng → 3D).
+Bên P18 khoanh chi tiết mới còn thấy được quanh thẻ menu: khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả. P17 chưa có các chi tiết này. Mặt tiền (mái hiên, biển tên, cửa kính, chậu cây) nằm sau thẻ menu ở góc máy này; xem ở ảnh giờ cao điểm. Cả hai bên khoanh icon nút menu (SVG phẳng → 3D).
 
 ![Main Menu P17 và P18, khoanh chi tiết mặt tiền, nội thất và icon](../media/main-menu-p17-p18.png)
 

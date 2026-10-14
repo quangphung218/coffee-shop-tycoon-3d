@@ -45,7 +45,7 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `demo.gif` | Một vòng ngày, dùng ở đầu README. Tự giảm khổ và fps cho tới khi dưới 5 MB. |
 | `demo.mp4` | Cùng đoạn đó, 1280×720 H.264, để đăng nơi khác. |
 | `main-menu.png` | Main Menu. |
-| `main-menu-p17-p18.png` | Main Menu P17 cạnh P18; khoanh mặt tiền, chậu cây, khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả và icon nút menu. |
+| `main-menu-p17-p18.png` | Main Menu P17 cạnh P18; khoanh mặt tiền, chậu cây, khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả (chỗ nào không bị thẻ menu che) và icon nút menu. |
 | `menu-icons.png` | Pha chuẩn bị, bảng Menu với icon 3D. |
 | `prep-inventory.png` | Pha chuẩn bị, bảng Kho. |
 | `prep-inventory-p17-p18.png` | Bảng Kho P17 cạnh P18; khoanh icon trên dock, HUD và trong bảng. |
