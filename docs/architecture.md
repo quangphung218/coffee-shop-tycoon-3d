@@ -153,12 +153,12 @@ Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (18
 
 Thời gian tính từ lúc mở trang, bản build qua `vite preview`, Chrome headless không cache trên Apple M2 (ANGLE Metal), trung vị 3 lần:
 
-| Cấu hình | Bản | Màn chờ hiện | Main Menu hiện | Cảnh 3D hiện |
+| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu hiện | Cảnh 3D hiện |
 | --- | --- | --- | --- | --- |
-| Máy bàn, không giới hạn | Một chunk | Không có (trang trống tới khi menu hiện) | 121 ms | 121 ms |
-| Máy bàn, không giới hạn | Tách chunk + màn chờ | 76 ms | 84 ms | 155 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Một chunk | Không có (trang trống tới khi menu hiện) | 1584 ms | 1584 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Tách chunk + màn chờ | 620 ms | 746 ms | 1891 ms |
+| Máy bàn, không giới hạn | Một chunk, không màn chờ | 140 ms (menu) | 127 ms | 127 ms |
+| Máy bàn, không giới hạn | Tách chunk + màn chờ | 64 ms (màn chờ) | 81 ms | 179 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Một chunk, không màn chờ | 1580 ms (menu) | 1582 ms | 1582 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Tách chunk + màn chờ | 584 ms (màn chờ) | 743 ms | 1840 ms |
 
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 
