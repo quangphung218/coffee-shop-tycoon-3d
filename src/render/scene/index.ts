@@ -1,5 +1,5 @@
 import { Raycaster, Vector2 } from 'three';
-import type { CameraKeys, Quality } from '../../save/settings';
+import type { CameraKeys, CameraRotateSpeed, Quality } from '../../save/settings';
 import type { Command, GameState } from '../../sim/types';
 import { createActors } from '../actors';
 import { createStreet } from '../street';
@@ -12,6 +12,7 @@ import { ShopView } from './shop';
 export interface WorldOptions {
   quality?: Quality;
   cameraKeys?: CameraKeys;
+  cameraRotateSpeed?: CameraRotateSpeed;
   edgePan?: boolean;
 }
 
@@ -29,6 +30,7 @@ export interface World {
   prepare(state: GameState): Promise<void>;
   setQuality(quality: Quality): void;
   setCameraKeys(mode: CameraKeys): void;
+  setCameraRotateSpeed(speed: CameraRotateSpeed): void;
   setEdgePan(enabled: boolean): void;
   resetCamera(): void;
   /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
@@ -56,6 +58,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
 
   const camera = new CameraController(canvas, {
     cameraKeys: options.cameraKeys,
+    rotateSpeed: options.cameraRotateSpeed,
     edgePan: options.edgePan,
     onClick: (x, y) => {
       if (!lastState || handlers.size === 0) return;
@@ -106,6 +109,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       actors.setQuality(q);
     },
     setCameraKeys: (mode) => camera.setCameraKeys(mode),
+    setCameraRotateSpeed: (speed) => camera.setRotateSpeed(speed),
     setEdgePan: (enabled) => {
       camera.edgePan = enabled;
     },
