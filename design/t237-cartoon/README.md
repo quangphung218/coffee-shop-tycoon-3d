@@ -17,7 +17,7 @@ Anh muốn game “sinh động, hoạt họa hơn, đẹp hơn, icon đồng nh
 
 - Người chơi trên trình duyệt máy tính, chuột + bàn phím; màn hẹp 390 px vẫn dùng được.
 - Chữ tiếng Việt có dấu chồng, tiền `25.000đ`, số thập phân `4,2`.
-- Ràng buộc: thao tác nhỏ sửa tại chỗ hoặc menu sổ, không modal; chỉ font hệ thống; song song có task tối ưu tải trang (nên không thêm webfont, không thêm ảnh bitmap).
+- Ràng buộc: thao tác nhỏ sửa tại chỗ hoặc menu sổ, không modal; không thêm ảnh bitmap. Font: anh đã chốt Nunito subset latin + tiếng Việt (~30 KB, `font-display: swap`, tải không chặn menu; giữ chunk split và màn chờ CSS của T236). Font hệ thống bo tròn chỉ còn là dự phòng lúc Nunito đang tải.
 
 ## Luồng (không đổi so với P14)
 
@@ -25,22 +25,33 @@ Main Menu → Chuẩn bị (dock: Việc, Menu, Kho, Nhân viên, Marketing, Nâ
 
 ## Quyết định chính và lý do
 
-1. **Ngôn ngữ “sticker”**: mọi khối có viền mực 3 px (`size.outline`, màu `color.neutral.900` #3a2216) và bóng cứng không nhòe (`shadow.md` 0 4 px). Nút nhấc 2 px khi rê, lún khi bấm. Đây là thứ tạo cảm giác hoạt hình rõ nhất mà không cần font hay ảnh mới.
-2. **Màu vui trên nền kem, chữ luôn là mực**: honey (nút chính, đang chọn), mint (hành động của pha: Mở cửa), berry (nguy hiểm), sky (thông tin, focus). Nền nút sáng nên chữ trên nút đổi từ trắng sang mực (`text.on-accent`), tương phản 6–9:1 thay vì phải dùng màu tối kém vui.
+1. **Ngôn ngữ “sticker”**: mọi khối có viền mực 3 px (`size.outline`, màu `color.neutral.900` #3a2216) và bóng cứng không nhòe (`shadow.md` 0 4 px). Nút nhấc 2 px khi rê, lún khi bấm. Đây là thứ tạo cảm giác hoạt hình rõ nhất mà không cần ảnh mới.
+2. **Màu vui trên nền kem, chữ luôn là mực**: honey (nút chính, đang chọn), mint (hành động của pha: Mở cửa), berry (nguy hiểm), sky (thông tin). Focus dùng màu quế #7a3000 (P17, xem mục Focus). Nền nút sáng nên chữ trên nút đổi từ trắng sang mực (`text.on-accent`), tương phản 6–9:1 thay vì phải dùng màu tối kém vui.
 3. **HUD thành các viên kẹo nổi trên cảnh**, bỏ thanh nâu tối: trái là Ngày / Giờ / pha, phải là Tiền / sao / tốc độ / Dừng / camera / Cài đặt. Trời và quán lộ ra nhiều hơn, quán nhìn “sáng” hơn.
-4. **Bảng quản lý chuyển xuống dock dưới giữa** (icon 32 + chữ, đích 76 × 64 px). Lý do: hàng HUD cũ quá dài ở 1440 px khi thêm icon to; dock là mẫu quen thuộc của game quản lý (Jakob), đích to gần vùng chuột (Fitts), và giữa màn vẫn là quán. Panel vẫn trượt từ phải; ở ≤ 640 px panel thành tấm full chiều ngang, dock thành lưới 4 cột.
+4. **Bảng quản lý chuyển xuống dock dưới giữa** (icon 32 + chữ, đích 76 × 68 px sau P17). Lý do: hàng HUD cũ quá dài ở 1440 px khi thêm icon to; dock là mẫu quen thuộc của game quản lý (Jakob), đích to gần vùng chuột (Fitts), và giữa màn vẫn là quán. Panel vẫn trượt từ phải; ở ≤ 640 px panel thành tấm full chiều ngang, dock thành lưới 4 cột.
 5. **Một bộ icon, một ngữ pháp** (xem trang icons): lưới 24, vùng an toàn 2–22, nét 2 px tròn, viền mực, tô phẳng tối đa 2 màu trong 10 màu `color.icon.fill-*`, bo góc mọi hình chữ nhật. Màu được đổi qua biến CSS nên cả bộ đổi được theo theme mà không sửa symbol. Avatar nhân viên là một hình, đổi da/tóc bằng `--av-skin` / `--av-hair`.
 6. **Không truyền đạt chỉ bằng màu**: kiên nhẫn = độ dài thanh + mặt khác hình (miệng, lông mày, giọt mồ hôi) + %; tồn kho = icon + chữ (Đủ / Sắp hết / Hết); lãi/lỗ = tam giác lên/xuống + chữ + dấu; tốc độ = 1/2/3 tam giác; tab và nút dock đang chọn có thêm viền + bóng, không chỉ đổi nền.
 7. **Dấu tiếng Việt**: `line-height.tight` nâng 1.2 → 1.25; không chữ hoa toàn bộ, không giãn chữ, không viền chữ (text-stroke) vì làm dính dấu; chữ nhỏ nhất 12 px luôn đậm.
 8. **Không modal cho thao tác nhỏ**: nhập hàng dùng stepper tại chỗ, gợi ý điền thẳng vào dòng, lỗi thiếu tiền hiện ngay dưới nút. Chỉ Daily Report (và Tạm dừng) là lớp phủ, như P14.
+
+## Focus và trạng thái (sửa trong P17)
+
+Bản T237 vẽ focus bằng `outline` 3 px màu sky-700 cách 3 px bên ngoài viền mực và bóng; trong nhóm tốc độ và dock (khe 4 px) vòng đè lên viền nhóm và nút bên cạnh, và màu xanh lạc khỏi bảng màu ấm. Quy tắc thay thế nằm ở `design/p17-states/README.md` (bảng trạng thái × thành phần, chồng lớp, khoảng cách, phân cấp, WCAG) và trang so sánh `design/p17-states/index.html`. Tóm tắt:
+
+- Mỗi trạng thái đổi một kênh: hover/nhấn = nâng (vị trí + bóng), đang chọn/vô hiệu = nền, focus = viền, vô hiệu = nội dung. Hover không còn đổi nền nút có màu, nút ma (dock, tốc độ, tab) khi rê chỉ đổi nền, không hiện viền mực.
+- Chỉ `:focus-visible`: viền đổi sang `--focus-ring` (quế #7a3000) và thêm vòng 3 px BÊN TRONG viền bằng `outline-offset: calc(-1 * (viền + --size-focus-width))`. Không có gì vẽ ra ngoài viền mực.
+- `size.focus-offset` 3 → 0 (bỏ dùng); thêm `size.focus-clearance` 4, `size.group-gap`, `size.group-padding`. Nút dock cao 64 → 68 px để vòng không chạm icon/chữ.
+
+Mockup `index.html` này đã đổi rule theo quy tắc mới.
 
 ## Token và ánh xạ sang code
 
 Tên biến ngữ nghĩa giữ nguyên `src/ui/styles/tokens.css` (`--text-*`, `--surface-*`, `--border-*`, `--accent-*`, `--data-*`, `--patience-*`, `--rating-*`, `--focus-ring*`, `--font-*`, `--space-*`, `--radius-*`, `--shadow-*`, `--duration-*`, `--size-*`), nên đa số chỉ cần thay giá trị. Thay đổi FE cần biết:
 
 - Bảng màu gốc mới: `ink` dùng `neutral.900`; thêm `honey`, `berry`, `sky`, `leaf`, `tangerine`, `skin`, `hair`. Bỏ `mint.700/800`, `neutral.500`, `text.danger-inverse` (không còn nền tối cho chữ đỏ). `ok/warning/danger.100` giờ trỏ vào mint/honey/berry.100.
-- Mới: `border.outline`, `border.disabled`, `surface.ink`, `surface.info`, `accent.danger*`, `accent.info`, `color.icon.*` (`--icon-ink`, `--icon-fill-*`), `font.weight.heavy`, `font.size.4xl`, `size.outline(-sm)`, `size.icon-*`, `size.hud-pill`, `shadow.soft`, `shadow.card`, `duration.instant/pop/float/count/idle-bob`, `easing.bounce/out`, `color.scene.sky-dawn/dusk`.
-- `surface.hud*` giờ là kem; chữ trên HUD đổi sang `text.primary`. `size.panel` 360 → 380, `size.dialog` 720 → 760, `size.focus-offset` 2 → 3, `radius` 6/10/16 → 8/12/20 (+ `xl` 28).
+- Mới: `border.outline`, `border.disabled`, `surface.ink`, `surface.info`, `accent.danger*`, `accent.info`, `color.icon.*` (`--icon-ink`, `--icon-fill-*`), `color.cinnamon.700` (P17), `font.weight.heavy`, `font.size.4xl`, `size.outline(-sm)`, `size.icon-*`, `size.hud-pill`, `size.focus-clearance`, `size.group-gap`, `size.group-padding` (P17), `shadow.soft`, `shadow.card`, `duration.instant/pop/float/count/idle-bob`, `easing.bounce/out`, `color.scene.sky-dawn/dusk`.
+- `surface.hud*` giờ là kem; chữ trên HUD đổi sang `text.primary`. `size.panel` 360 → 380, `size.dialog` 720 → 760, `radius` 6/10/16 → 8/12/20 (+ `xl` 28). Focus (P17): `color.focus.500` sky-700 → cinnamon-700, `size.focus-offset` → 0 (bỏ dùng).
+- Font: `font.family.base` bắt đầu bằng `"Nunito"` (gói subset latin + vietnamese, weight 400/700/800), sau đó mới tới `ui-rounded` và font hệ thống.
 - Icon: đưa sprite trong `icons/index.html` vào một module (vd `src/ui/core/icons.ts` trả `<svg><use>`); đổi trường `icon` trong `src/sim/data/*` từ emoji sang id icon (`'i-latte'`). Nhãn khách trong `src/render/actors/labels.ts` vẽ SVG đó lên canvas thay emoji (cùng sprite nên UI và cảnh 3D giống nhau).
 
 ## Bảng thay emoji
@@ -106,9 +117,9 @@ Nút 4 loại × mặc định / hover / focus / nhấn / vô hiệu; nút HUD, 
 
 **WCAG 2.2 AA**
 
-- Tương phản (1.4.3, 1.4.11): khai 62 cặp trong `tokens.json`. Tự tính trước: mực trên kem ≈ 12–14:1; mực trên honey ≈ 9:1, mint ≈ 8:1, berry ≈ 6,4:1, sky ≈ 9:1, honey-500 ≈ 7,2:1, berry-500 ≈ 5,1:1; chữ phụ #6e4f3c trên kem ≈ 6–7:1, trên cream-200 ≈ 5,1:1; ok #17663a trên mint-100 ≈ 6,1:1 (đã thay #1e7a46 cũ vì chỉ ≈ 4,4:1 trên kem mới); warning trên honey-100 ≈ 6,6:1; danger trên berry-100 ≈ 5,4:1; viền mực trên trời/cỏ/sàn ≥ 9:1; vòng focus #1a5fd0 trên kem ≈ 4,8–5,6:1, trên trời ≈ 4,4:1, cỏ ≈ 3,9:1, trời chiều ≈ 3,2:1; thanh kiên nhẫn trên rãnh mực ≥ 6,4:1. Nền nút sáng so với nền app thấp (≈ 1,3:1) nên ranh giới do viền mực 3 px gánh; thanh dữ liệu honey trên rãnh cream-200 cũng vậy (mép mực 2 px). `coffee.700` không dùng dưới nét mực.
-- Đích bấm (2.5.8): nút, tab, stepper, nút tốc độ ≥ 44 px; nút HUD 48 px; dock 76 × 64 px (64 px ở ≤ 1023).
-- Focus (2.4.7, 2.4.11): viền 3 px cách 3 px màu sky-700 trên mọi nền sáng; HUD, dock và toast không đè lên phần tử đang focus (toast ở trên dock, panel ở phải).
+- Tương phản (1.4.3, 1.4.11): khai 62 cặp trong `tokens.json`. Tự tính trước: mực trên kem ≈ 12–14:1; mực trên honey ≈ 9:1, mint ≈ 8:1, berry ≈ 6,4:1, sky ≈ 9:1, honey-500 ≈ 7,2:1, berry-500 ≈ 5,1:1; chữ phụ #6e4f3c trên kem ≈ 6–7:1, trên cream-200 ≈ 5,1:1; ok #17663a trên mint-100 ≈ 6,1:1 (đã thay #1e7a46 cũ vì chỉ ≈ 4,4:1 trên kem mới); warning trên honey-100 ≈ 6,6:1; danger trên berry-100 ≈ 5,4:1; viền mực trên trời/cỏ/sàn ≥ 9:1; vòng focus (P17, quế #7a3000, vẽ trong viền) trên nền nút từ 3,2:1 (berry 500) tới 9,0:1 (kem), viền quế trên trời/cỏ/trời chiều 5,1–7,0:1; thanh kiên nhẫn trên rãnh mực ≥ 6,4:1. Nền nút sáng so với nền app thấp (≈ 1,3:1) nên ranh giới do viền mực 3 px gánh; thanh dữ liệu honey trên rãnh cream-200 cũng vậy (mép mực 2 px). `coffee.700` không dùng dưới nét mực.
+- Đích bấm (2.5.8): nút, tab, stepper, nút tốc độ ≥ 44 px; nút HUD 48 px; dock 76 × 68 px (rộng 64 px ở ≤ 1023).
+- Focus (2.4.7, 2.4.11): từ P17, chỉ `:focus-visible`, viền đổi màu quế + vòng 3 px bên trong viền, không vẽ ra ngoài nên không đè nhóm hay nút bên cạnh; HUD, dock và toast không đè lên phần tử đang focus (toast ở trên dock, panel ở phải, `scroll-padding` theo chiều cao dock/HUD). Chi tiết ở `design/p17-states/README.md`.
 - Reflow 320 px (1.4.10): HUD xuống dòng, chú thích “Ngày/Giờ/Tiền” và nhãn pha chưa tới ẩn còn icon (vẫn đọc được qua chữ ẩn và `aria-label`), dock lưới 4 cột, panel và report 1 cột; không có chiều rộng cố định lớn hơn 320 px ngoài `min()`/`max-width`.
 - Không chỉ bằng màu (1.4.1): xem quyết định 6.
 - Nhãn trường nhập (3.3.2): mọi ô số có `<label for>`; nút − + có `aria-label` kèm tên nguyên liệu.
@@ -130,7 +141,7 @@ Nút 4 loại × mặc định / hover / focus / nhấn / vô hiệu; nút HUD, 
 
 ## Giả định
 
-- Giữ font hệ thống (bo tròn trên Safari/macOS qua `ui-rounded`, nơi khác là system-ui đậm 800); cảm giác hoạt hình đến từ viền, bóng, màu, icon.
+- (Đã thay) Giả định “chỉ font hệ thống” của T237 không còn đúng: anh đã chốt Nunito subset tiếng Việt (~30 KB, tải không chặn menu). Mockup không nhúng font (file tĩnh không tải tài nguyên ngoài) nên ảnh chụp hiện font dự phòng `ui-rounded`/system-ui.
 - Tên quán “Gió Chiều”, số tiền, review là dữ liệu minh họa; giá nhập/gói lấy đúng `ingredients.ts` (vd sữa 40.000đ/gói 1000 ml).
 - Ngưỡng mặt khách ≥ 60% / 30–59% / dưới 30% là đề xuất; sim quyết số thật.
 
