@@ -236,12 +236,17 @@ async function checkKhoShift(page, results, viewport) {
     const now = await footBoxes(page);
     const d = start && now ? footMoved(start, now) : Infinity;
     moved = Math.max(moved, d);
-    const sources = [...new Set(shifts.flatMap((s) => s.sources))].join(', ');
-    notes.push(`${name}: CLS ${own.toFixed(4)}, sau thao tác ${input.toFixed(4)}${sources ? ` (${sources})` : ''}; foot/danh sách lệch ${d.toFixed(1)} px`);
+    const from = (list) => {
+      const names = [...new Set(list.flatMap((s) => s.sources))].join(', ');
+      return names ? ` (${names})` : '';
+    };
+    notes.push(
+      `${name}: CLS ${own.toFixed(6)}${from(shifts.filter((s) => !s.input))}, sau thao tác ${input.toFixed(4)}${from(shifts.filter((s) => s.input))}; foot/danh sách lệch ${d.toFixed(1)} px`,
+    );
   }
   const short = await page.locator('#ui > .panel:not([hidden]) .foot-hint.reason-danger').count();
   const fails = [];
-  if (cls > 0) fails.push(`CLS ${cls.toFixed(4)} > 0`);
+  if (cls > 0) fails.push(`CLS ${cls.toFixed(6)} > 0`);
   if (!start) fails.push('.panel-foot or .stack not found');
   else if (moved > EPS) fails.push(`the foot, one of its rows or the stock list moved by ${moved.toFixed(1)} px`);
   if (short === 0) fails.push('the over-budget step did not show the short-of-money hint');
@@ -249,7 +254,7 @@ async function checkKhoShift(page, results, viewport) {
     viewport,
     screen: 'Kho: đổi số gói',
     pass: fails.length === 0,
-    detail: `CLS ${cls.toFixed(4)}; foot cao ${start ? start.foot[1].toFixed(1) : '?'} px; foot/danh sách lệch tối đa ${moved.toFixed(1)} px; shift ngay sau thao tác ${afterInput.toFixed(4)}`,
+    detail: `CLS ${cls.toFixed(6)}; foot cao ${start ? start.foot[1].toFixed(1) : '?'} px; foot/danh sách lệch tối đa ${moved.toFixed(1)} px; shift ngay sau thao tác ${afterInput.toFixed(4)}`,
     fails,
     notes,
   });
