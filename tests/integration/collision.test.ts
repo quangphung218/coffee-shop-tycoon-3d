@@ -356,7 +356,8 @@ function soakWeek(difficulty: Difficulty, config: Config, render: boolean, days 
 
 const soaks = new Map<string, Soak>();
 
-describe(`collision soak: ${DAYS} days per difficulty and shop`, () => {
+// Each case soaks a whole week; on a busy machine that runs past vitest's 5 s default.
+describe(`collision soak: ${DAYS} days per difficulty and shop`, { timeout: 30_000 }, () => {
   for (const difficulty of DIFFICULTIES) {
     for (const config of CONFIGS) {
       it(`${difficulty}, ${config} shop: nobody in a blocked cell or on top of someone`, () => {

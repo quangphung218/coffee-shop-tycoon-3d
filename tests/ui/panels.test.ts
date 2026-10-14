@@ -129,6 +129,10 @@ describe('inventory panel', () => {
       const packs = line.qty / getIngredient(line.id).packSize;
       expect(q<HTMLInputElement>(body, `.stepper[data-ingredient="${line.id}"] input`).value).toBe(String(packs));
       expect(q(body, `li[data-ingredient="${line.id}"]`).classList.contains('is-suggested')).toBe(true);
+      // The tag is switched on in place; it is never removed from layout.
+      const tag = q(body, `li[data-ingredient="${line.id}"] .sug`);
+      expect(tag.hidden).toBe(false);
+      expect(tag.classList.contains('is-off')).toBe(false);
     }
     const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBeNull();
@@ -138,6 +142,29 @@ describe('inventory panel', () => {
       suggestion.items.map((l) => ({ type: 'buy_ingredient', ingredientId: l.id, packs: l.qty / getIngredient(l.id).packSize })),
     );
     expect(state.money).toBe(1000);
+    for (const line of suggestion.items) {
+      expect(q(body, `li[data-ingredient="${line.id}"] .sug`).classList.contains('is-off')).toBe(true);
+    }
+  });
+
+  it('shows the intro, then each result, in the same note above the list', () => {
+    const state = game();
+    state.money = autoRestockSuggestion(state).totalCost + 1000;
+    const { body } = mount(renderInventoryPanel, state);
+    const notes = body.querySelectorAll<HTMLElement>('.kho-note');
+    expect(notes).toHaveLength(1);
+    const note = notes[0]!;
+    expect(note.hidden).toBe(false);
+    expect(note.classList.contains('is-idle')).toBe(true);
+    expect(note.textContent).toContain('20% dự phòng');
+
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    expect(body.querySelector('.kho-note')).toBe(note);
+    expect(note.classList.contains('is-idle')).toBe(false);
+    expect(note.textContent).toContain('Đã điền gợi ý');
+
+    q<HTMLButtonElement>(body, '[data-action="buy"]').click();
+    expect(note.textContent).toContain('Đã nhập');
   });
 
   it('dims the buy button with the shortfall when money is short', () => {

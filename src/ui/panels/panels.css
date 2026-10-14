@@ -211,6 +211,12 @@
   font-weight: var(--font-weight-heavy);
   color: var(--text-warning);
 }
+/* The tag keeps its room while off, so the row never reflows when a
+   suggestion is filled or edited away. visibility also drops it from the
+   accessibility tree. */
+.sug.is-off {
+  visibility: hidden;
+}
 .badge-warn {
   background: var(--surface-warning);
   color: var(--text-warning);
@@ -572,6 +578,21 @@
 }
 .foot-hint .ic {
   flex: none;
+}
+/* Kho note under "Gợi ý": the intro first (muted, plain), then the result of
+   Gợi ý / Nhập hàng (info fill) in the same box. Three lines tall either way,
+   so the stock list under it never moves. */
+.kho-note {
+  min-height: calc(3lh + 2 * var(--space-2) + 2 * var(--size-outline-sm));
+}
+.kho-note .ic {
+  flex: none;
+}
+.kho-note.is-idle {
+  font-weight: var(--font-weight-regular);
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
 }
 /* Kho badge: a short pop when the level changes (Đủ → Sắp hết → Hết). */
 .badge.is-level-changed {
