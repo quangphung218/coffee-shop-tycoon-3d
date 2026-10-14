@@ -86,6 +86,13 @@ async function main() {
       const e = out.encodings[scale];
       console.log(`@${scale}x: WebP quality ${e.quality}, ${e.alphaLevels} alpha levels, ${e.bytes} bytes`);
     }
+    // Weakest small cell for each legibility measure (tests/icons holds them to SMALL_QUALITY).
+    const quality = Object.entries(out.manifest.smallQuality);
+    for (const [key, worst] of [['edgeInk', Math.min], ['edgeContrast', Math.min], ['creamShare', Math.max]]) {
+      const value = worst(...quality.map(([, q]) => q[key]));
+      const ids = quality.filter(([, q]) => q[key] === value).map(([id]) => id);
+      console.log(`24 px ${key}: weakest ${value} (${ids.join(', ')})`);
+    }
     const written = [join(OUT, 'atlas@1x.webp'), join(OUT, 'atlas@2x.webp'), join(OUT, 'atlas.json'), join(OUT, 'svg.json'), ...(sheet ? [SHEET] : [])];
     for (const path of written) {
       console.log(`${(statSync(path).size / 1024).toFixed(1)} KB ${path.slice(ROOT.length + 1)}`);

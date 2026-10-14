@@ -63,6 +63,83 @@ export interface AtlasManifest {
   small: SmallGrid;
   /** Same ids as `icons`, small cells. */
   smallIcons: Record<string, AtlasCell>;
+  /** How each small cell reads on the cream HUD, measured on the encoded @1x image by the build. */
+  smallQuality?: Record<string, CellQuality>;
+}
+
+/**
+ * Legibility of one cell, from its pixels. Edge pixels are the opaque ones
+ * (alpha ≥ 128) next to a see-through one or the cell border.
+ * `edgeInk`: share of edge pixels dark as ink (at least INK_CONTRAST against
+ * the background; lightness, since lossy WebP blurs hue across 2 px).
+ * `edgeContrast`: WCAG contrast of the edge pixels' mean colour, laid on the
+ * background, against the background. `creamShare`: share of opaque pixels
+ * that, laid on the background, are within 1.25:1 of it (body melting into it).
+ */
+export interface CellQuality {
+  edgeInk: number;
+  edgeContrast: number;
+  creamShare: number;
+}
+
+/** Minimums the small cells are held to (tests/icons): mostly ink edge, 3:1 for graphics (WCAG 1.4.11), at most half cream-like. */
+export const SMALL_QUALITY = { edgeInk: 0.6, edgeContrast: 3, creamShare: 0.5 } as const;
+
+/** Contrast with the cream background from which a pixel counts as ink: half of ink's own (≈ 14:1). */
+export const INK_CONTRAST = 7;
+
+export type Rgb = readonly [number, number, number];
+
+export function hexRgb(hex: string): Rgb {
+  const n = Number.parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** WCAG relative luminance of an sRGB colour (0–255 channels). */
+function luminance([r, g, b]: Rgb): number {
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/** WCAG contrast ratio, 1 to 21. */
+export function contrastRatio(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+const round3 = (v: number) => Math.round(v * 1000) / 1000;
+
+/** CellQuality of cell `c` in RGBA pixels `px` of an image `stride` px wide, against background `bg`. */
+export function measureCell(px: ArrayLike<number>, stride: number, c: AtlasCell, bg: Rgb): CellQuality {
+  const alpha = (x: number, y: number) => (x < 0 || y < 0 || x >= c.w || y >= c.h ? 0 : px[((c.y + y) * stride + c.x + x) * 4 + 3]!);
+  const onBg = (i: number): Rgb => {
+    const a = px[i + 3]! / 255;
+    return [0, 1, 2].map((k) => px[i + k]! * a + bg[k]! * (1 - a)) as unknown as Rgb;
+  };
+  let opaque = 0;
+  let creamy = 0;
+  let edges = 0;
+  let inky = 0;
+  const sum = [0, 0, 0];
+  for (let y = 0; y < c.h; y++) {
+    for (let x = 0; x < c.w; x++) {
+      if (alpha(x, y) < 128) continue;
+      const i = ((c.y + y) * stride + c.x + x) * 4;
+      const color = onBg(i);
+      opaque++;
+      if (contrastRatio(color, bg) < 1.25) creamy++;
+      if (alpha(x - 1, y) >= 128 && alpha(x + 1, y) >= 128 && alpha(x, y - 1) >= 128 && alpha(x, y + 1) >= 128) continue;
+      edges++;
+      if (contrastRatio([px[i]!, px[i + 1]!, px[i + 2]!], bg) >= INK_CONTRAST) inky++;
+      for (const k of [0, 1, 2]) sum[k] = sum[k]! + color[k]!;
+    }
+  }
+  if (edges === 0) return { edgeInk: 0, edgeContrast: 1, creamShare: opaque ? round3(creamy / opaque) : 1 };
+  const mean = sum.map((v) => v / edges) as unknown as Rgb;
+  return { edgeInk: round3(inky / edges), edgeContrast: round3(contrastRatio(mean, bg)), creamShare: round3(creamy / opaque) };
 }
 
 /**

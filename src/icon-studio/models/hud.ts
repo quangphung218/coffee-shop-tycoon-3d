@@ -143,7 +143,7 @@ export function camera(): Group {
 }
 
 /** Gear outline: `teeth` square teeth between radius `r0` and `r1`. */
-function gear(teeth: number, r0: number, r1: number): Shape {
+export function gear(teeth: number, r0: number, r1: number): Shape {
   const pts: (readonly [number, number])[] = [];
   for (let i = 0; i < teeth; i++) {
     const a = (i * 2 * Math.PI) / teeth;

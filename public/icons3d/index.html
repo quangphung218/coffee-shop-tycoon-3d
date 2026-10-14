@@ -5,72 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Icon 3D – Coffee Shop Tycoon 3D</title>
     <style>
+      /* Values copied from src/ui/styles/tokens.css (this page is static, outside the Vite build). */
       :root {
-        --ink: #3a2216;
-        --cream: #fffaf2;
-        color: var(--ink);
-        font: 14px/1.4 Nunito, ui-rounded, system-ui, sans-serif;
+        --text-primary: #3a2216;
+        --text-inverse: #fffaf2;
+        --text-danger: #b3261e;
+        --surface-app: #f6e7d2;
+        --surface-hud-solid: #fffaf2;
+        --surface-ink: #3a2216;
+        --surface-danger: #ffe3de;
+        --border-strong: #3a2216;
+        --font-family-base: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-size-xs: 12px;
+        --font-size-sm: 14px;
+        --font-size-lg: 20px;
+        --font-weight-bold: 700;
+        --line-height-base: 1.5;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --radius-md: 12px;
+        color: var(--text-primary);
+        font: var(--font-size-sm) / var(--line-height-base) var(--font-family-base);
       }
       body {
         margin: 0;
-        padding: 16px;
-        background: #f6e7d2;
+        padding: var(--space-4);
+        background: var(--surface-app);
       }
       h1 {
-        font-size: 20px;
-        margin: 0 0 4px;
+        font-size: var(--font-size-lg);
+        margin: 0 0 var(--space-1);
       }
       p {
-        margin: 0 0 16px;
+        margin: 0 0 var(--space-4);
       }
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+        gap: var(--space-3);
       }
       .card {
-        border: 2px solid var(--ink);
-        border-radius: 12px;
+        min-width: 0;
+        border: 2px solid var(--border-strong);
+        border-radius: var(--radius-md);
         overflow: hidden;
-        background: var(--cream);
+        background: var(--surface-hud-solid);
       }
       .card code {
         display: block;
         padding: 6px 10px;
-        font-weight: 700;
-        border-bottom: 2px solid var(--ink);
+        font-weight: var(--font-weight-bold);
+        border-bottom: 2px solid var(--border-strong);
       }
       .cols,
       .bg {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
       .cols {
-        font-size: 12px;
-        font-weight: 700;
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
       }
       .cols > span {
-        padding: 4px 10px 0;
+        padding: var(--space-1) var(--space-2) 0;
       }
       .bg > span {
         display: flex;
+        flex-wrap: wrap;
         align-items: flex-end;
-        gap: 10px;
-        padding: 10px;
+        gap: var(--space-2);
+        padding: var(--space-2);
       }
       .bg > span + span {
         border-left: 2px dashed currentColor;
       }
       .bg.dark {
-        background: var(--ink);
-        color: var(--cream);
+        background: var(--surface-ink);
+        color: var(--text-inverse);
       }
       .flat {
         display: block;
         flex: none;
       }
       .none {
-        font-size: 12px;
+        font-size: var(--font-size-xs);
       }
       .ic3d {
         display: block;
@@ -80,7 +100,12 @@
         background-image: image-set(url('atlas@1x.webp') 1x, url('atlas@2x.webp') 2x);
       }
       .error {
-        color: #b3261e;
+        padding: var(--space-2) var(--space-3);
+        border: 2px solid var(--text-danger);
+        border-radius: var(--radius-md);
+        background: var(--surface-danger);
+        color: var(--text-danger);
+        font-weight: var(--font-weight-bold);
       }
     </style>
   </head>
@@ -129,7 +154,16 @@
           throw new Error(`${url}: HTTP ${r.status}`);
         });
 
-      Promise.all([json('atlas.json'), json('svg.json', true).catch(() => ({}))])
+      /** Resolves when `url` loads as an image, rejects with its name otherwise. */
+      const image = (url) =>
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = resolve;
+          img.onerror = () => reject(new Error(`${url} hỏng hoặc không tìm thấy`));
+          img.src = url;
+        });
+
+      Promise.all([json('atlas.json'), json('svg.json', true).catch(() => ({})), image('atlas@1x.webp'), image('atlas@2x.webp')])
         .then(([manifest, svgs]) => {
           const ids = Object.keys(manifest.icons);
           const cells = manifest.small ? `ô ${manifest.cell} px và ô ${manifest.small.cell} px` : `ô ${manifest.cell} px`;
@@ -158,7 +192,8 @@
         .catch((err) => {
           const meta = document.getElementById('meta');
           meta.className = 'error';
-          meta.textContent = `Không tải được atlas: ${err.message}. Chạy npm run icons để tạo.`;
+          meta.setAttribute('role', 'alert');
+          meta.textContent = `Không tải được atlas: ${err.message}. Chạy npm run icons để tạo lại.`;
         });
     </script>
   </body>

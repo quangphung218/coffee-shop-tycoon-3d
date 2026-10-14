@@ -100,11 +100,11 @@ Lệnh mở Vite dev server cho `src/icon-studio/`, Chromium headless vẽ mỗi
 | --- | --- |
 | `public/icons3d/atlas@1x.webp` | Atlas: lưới ô 48 px, dưới nó lưới ô 24 px. |
 | `public/icons3d/atlas@2x.webp` | Cùng atlas, gấp đôi. |
-| `public/icons3d/atlas.json` | Id → ô `{x, y, w, h}` theo px @1x: `icons` (48 px), `smallIcons` (24 px), cùng số đo hai lưới (`small`) và kích thước atlas. |
+| `public/icons3d/atlas.json` | Id → ô `{x, y, w, h}` theo px @1x: `icons` (48 px), `smallIcons` (24 px), cùng số đo hai lưới (`small`) và kích thước atlas; `smallQuality`: số đo độ rõ của từng ô 24 px (tỉ lệ mực ở mép, tương phản với nền kem). |
 | `public/icons3d/svg.json` | Id → SVG phẳng cũ, cho trang xem icon. |
 | `docs/reports/p18-icons-sample.png` | Chỉ khi có `--sheet`. Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px (16, 24 lấy ô 24 px; 48 lấy ô 48 px; chụp ở tỉ lệ điểm ảnh 2) cho các nút chỉ có icon (`ICON_ONLY_IDS`) và một hai icon mỗi nhóm (`SHEET_IDS` trong `src/icon-studio/atlas.ts`). |
 
-Cuối cùng lệnh in số icon và dung lượng từng file.
+Cuối cùng lệnh in số icon, ô 24 px yếu nhất theo từng số đo độ rõ và dung lượng từng file.
 
 ### Xem icon
 
@@ -117,5 +117,5 @@ Cuối cùng lệnh in số icon và dung lượng từng file.
 2. Viết hàm dựng mô hình trong file theo nhóm ở `src/icon-studio/models/` (`hud.ts`, `glyphs.ts`, `items.ts`, `shop.ts`, `people.ts`) bằng `part(geometry, màu)` của `style.ts` và các khối chung trong `shapes.ts` (`stroke`, `lathe`, `steam`, `iceCube`, `saucer`, `badgeBase`…); mô hình đứng trên `y = 0`, mặt trước hướng `+Z`.
 3. Chọn tư thế camera bằng `posed(tư thế, mô hình)`: `object` (mặc định, đồ vật), `glyph` (ký hiệu, nhìn thẳng, dựng trong mặt phẳng XY), `top` (vật dẹt nằm trên bàn, nhìn từ trên).
 4. Khai hàm vào `ICON_MODELS` trong `src/icon-studio/models/index.ts`; thiếu id nào thì `tsc` báo lỗi.
-5. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm đủ id, màu trong bảng màu, kích thước và dung lượng atlas; `tests/ui/icons.test.ts` kiểm mọi id có ô 48 px và ô 24 px). Xem ô 24 px trên trang xem icon; chi tiết nào mất ở 24 px mà cần giữ thì làm nó to hơn trong mô hình.
+5. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm đủ id, màu trong bảng màu, kích thước và dung lượng atlas, viền mực và tương phản của ô 24 px theo `SMALL_QUALITY`; `tests/ui/icons.test.ts` kiểm mọi id có ô 48 px và ô 24 px). Xem ô 24 px trên trang xem icon; chi tiết nào mất ở 24 px mà cần giữ thì làm nó to hơn trong mô hình, hoặc dựng mô hình riêng cho ô 24 px trong `models/small.ts` và khai vào `SMALL_MODELS`.
 6. Dùng icon trong UI bằng `icon('<id>')`, hoặc nối id của sim trong `src/ui/core/iconMap.ts`.

@@ -11,11 +11,11 @@ type Pt = readonly [number, number];
 
 const DEPTH = 0.36;
 
-function slab(shape: Shape, color: PaletteKey, depth = DEPTH): Object3D {
+export function slab(shape: Shape, color: PaletteKey, depth = DEPTH): Object3D {
   return part(extrude(shape, depth, 0.07), color);
 }
 
-const glyph = (...parts: Object3D[]) => posed('glyph', group(...parts));
+export const glyph =(...parts: Object3D[]) => posed('glyph', group(...parts));
 
 /** Arrow head (triangle) at (x, y) pointing along angle `a`. */
 function head(x: number, y: number, a: number, color: PaletteKey): Object3D {

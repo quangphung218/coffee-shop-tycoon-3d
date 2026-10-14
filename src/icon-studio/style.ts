@@ -90,18 +90,23 @@ export const OUTLINE = 0.035;
 
 /**
  * How a cell is drawn. `regular`: the 48 px cell. `small`: the 24 px cell,
- * read at 16–24 px: thicker ink (about 1.6 px at 24 px), less margin, no
- * contact shadow, and parts narrower than `minPart` of the frame (about
- * 1.4 px at 24 px) left out, since at that size they only blur the outline.
- * `contrast` and `saturate` are CSS filter amounts applied when the render
- * is shrunk to the cell.
+ * read at 16–24 px: a thinner hull (it only draws ink between parts) plus a
+ * flat ink `ring` round the whole silhouette, drawn on the render (about
+ * 1.8 px at 24 px, 1.2 px at 16 px), less margin, no contact shadow, and
+ * parts narrower than `minPart` of the frame (about 1.4 px at 24 px) left
+ * out, since at that size they only blur the outline. `outline`, `ring` and
+ * `margin` are shares of the frame. `contrast` and `saturate` are CSS filter
+ * amounts applied when the render is shrunk to the cell.
  */
 export const LOOKS = {
-  regular: { margin: MARGIN, outline: OUTLINE, shadow: true, minPart: 0, contrast: 1, saturate: 1 },
-  small: { margin: 0.04, outline: 0.065, shadow: false, minPart: 0.06, contrast: 1.2, saturate: 1.15 },
+  regular: { margin: MARGIN, outline: OUTLINE, ring: 0, shadow: true, minPart: 0, contrast: 1, saturate: 1 },
+  small: { margin: 0.03, outline: 0.04, ring: 0.075, shadow: false, minPart: 0.06, contrast: 1.25, saturate: 1.2 },
 } as const;
 
 export type Look = keyof typeof LOOKS;
+
+/** Share of the frame on each side kept free of the model: margin, hull and ring. */
+const inset = (rules: (typeof LOOKS)[Look]) => rules.margin + rules.outline + rules.ring;
 
 const materials = new Map<PaletteKey, MeshLambertMaterial>();
 
@@ -167,6 +172,37 @@ function shadowTexture(): CanvasTexture {
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
   return tex;
+}
+
+/**
+ * A copy of `src` with a flat ink band `radius` px wide round its silhouette:
+ * the silhouette in ink is stamped at offsets on three circles (a cheap
+ * dilation), then `src` goes on top.
+ */
+export function inkRing(src: HTMLCanvasElement, radius: number): HTMLCanvasElement {
+  const make = () => {
+    const c = document.createElement('canvas');
+    c.width = src.width;
+    c.height = src.height;
+    return c;
+  };
+  const silhouette = make();
+  const s = silhouette.getContext('2d')!;
+  s.drawImage(src, 0, 0);
+  s.globalCompositeOperation = 'source-in';
+  s.fillStyle = PALETTE.ink;
+  s.fillRect(0, 0, silhouette.width, silhouette.height);
+  const out = make();
+  const ctx = out.getContext('2d')!;
+  const steps = 32;
+  for (const r of [radius, (radius * 2) / 3, radius / 3]) {
+    for (let i = 0; i < steps; i++) {
+      const a = (i * 2 * Math.PI) / steps;
+      ctx.drawImage(silhouette, Math.cos(a) * r, Math.sin(a) * r);
+    }
+  }
+  ctx.drawImage(src, 0, 0);
+  return out;
 }
 
 interface Bounds {
@@ -278,14 +314,14 @@ export function createStage(): Stage {
     if (rules.minPart <= 0) return meshes;
     const boxes = meshes.map((m) => grow(emptyBounds(), meshPoints(m)));
     const whole = boxes.reduce((acc, b) => grow(acc, [new Vector3(b.minX, b.minY), new Vector3(b.maxX, b.maxY)]), emptyBounds());
-    const frameSize = Math.max(whole.maxX - whole.minX, whole.maxY - whole.minY) / (1 - 2 * rules.margin - 2 * rules.outline);
+    const frameSize = Math.max(whole.maxX - whole.minX, whole.maxY - whole.minY) / (1 - 2 * inset(rules));
     const keep = meshes.filter((_, i) => Math.max(boxes[i]!.maxX - boxes[i]!.minX, boxes[i]!.maxY - boxes[i]!.minY) >= rules.minPart * frameSize);
     if (keep.length === 0) return meshes;
     for (const m of meshes) if (!keep.includes(m)) m.visible = false;
     return keep;
   }
 
-  /** Square ortho frustum around everything on screen, with the look's margin on each side and room for the outline. */
+  /** Square ortho frustum around everything on screen, with the look's margin on each side and room for hull and ring. */
   function frame(meshes: Mesh[], ground: Mesh | null, rules: (typeof LOOKS)[Look]): void {
     const b = emptyBounds();
     for (const m of meshes) grow(b, meshPoints(m));
@@ -298,7 +334,7 @@ export function createStage(): Stage {
       grow(b, corners);
     }
     const extent = Math.max(b.maxX - b.minX, b.maxY - b.minY);
-    const half = extent / (1 - 2 * rules.margin - 2 * rules.outline) / 2;
+    const half = extent / (1 - 2 * inset(rules)) / 2;
     const cx = (b.minX + b.maxX) / 2;
     const cy = (b.minY + b.maxY) / 2;
     camera.left = cx - half;

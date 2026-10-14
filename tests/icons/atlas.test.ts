@@ -7,14 +7,19 @@ import {
   BUDGET,
   CELL,
   checkManifest,
+  contrastRatio,
   GAP,
+  hexRgb,
   ICON_ONLY_IDS,
+  INK_CONTRAST,
+  measureCell,
   orderIds,
   packAtlas,
   SHEET_IDS,
   SMALL_CELL,
+  SMALL_QUALITY,
 } from '../../src/icon-studio/atlas';
-import { MODELS } from '../../src/icon-studio/models';
+import { MODELS, SMALL_MODELS } from '../../src/icon-studio/models';
 import { LOOKS, mat, PALETTE, type PaletteKey, POSES } from '../../src/icon-studio/style';
 import { AVATAR_LOOKS } from '../../src/ui/core/iconMap';
 import { ICON_IDS } from '../../src/ui/core/icons';
@@ -102,15 +107,108 @@ describe('checkManifest', () => {
 });
 
 describe('small look', () => {
-  it('draws thicker ink, less margin, no contact shadow and drops fine parts', () => {
-    expect(LOOKS.small.outline / SMALL_CELL).toBeGreaterThan(LOOKS.regular.outline / CELL);
-    // About 1.6 px of ink at 24 px, against 1.7 px at 48 px.
-    expect(LOOKS.small.outline * SMALL_CELL).toBeGreaterThanOrEqual(1.5);
+  it('rings the silhouette in 1.5–2 px of flat ink, less margin, no contact shadow and drops fine parts', () => {
+    expect(LOOKS.regular.ring).toBe(0);
+    expect(LOOKS.small.ring * SMALL_CELL).toBeGreaterThanOrEqual(1.5);
+    expect(LOOKS.small.ring * SMALL_CELL).toBeLessThanOrEqual(2);
+    expect((LOOKS.small.outline + LOOKS.small.ring) / SMALL_CELL).toBeGreaterThan(LOOKS.regular.outline / CELL);
     expect(LOOKS.small.margin).toBeLessThan(LOOKS.regular.margin);
     expect(LOOKS.small.shadow).toBe(false);
     expect(LOOKS.small.minPart).toBeGreaterThan(0);
     expect(LOOKS.small.contrast).toBeGreaterThan(1);
     expect(LOOKS.regular).toMatchObject({ shadow: true, minPart: 0, contrast: 1, saturate: 1 });
+  });
+});
+
+describe('measureCell', () => {
+  const ink = hexRgb(PALETTE.ink);
+  const cream = hexRgb(PALETTE.cream);
+  /** A `w`-px-wide RGBA image with a 10 px cell at (2, 2): a disc of `body`, ringed by `edge` when given. */
+  function image(body: readonly [number, number, number], edge?: readonly [number, number, number]) {
+    const w = 14;
+    const px = new Uint8ClampedArray(w * w * 4);
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const d = Math.hypot(x - 4.5, y - 4.5);
+        if (d > 4.6) continue;
+        const color = edge && d > 3.2 ? edge : body;
+        px.set([...color, 255], ((2 + y) * w + 2 + x) * 4);
+      }
+    }
+    return { px, w, cell: { x: 2, y: 2, w: 10, h: 10 } };
+  }
+
+  it('scores an ink-ringed body as fully inked, high contrast and not cream', () => {
+    const { px, w, cell } = image(hexRgb(PALETTE.honey), ink);
+    const q = measureCell(px, w, cell, cream);
+    expect(q.edgeInk).toBe(1);
+    expect(q.edgeContrast).toBeGreaterThan(10);
+    expect(q.creamShare).toBe(0);
+  });
+
+  it('flags a cream body without ink, the old 16 px i-close', () => {
+    const { px, w, cell } = image(cream);
+    const q = measureCell(px, w, cell, cream);
+    expect(q.edgeInk).toBe(0);
+    expect(q.edgeContrast).toBeLessThan(SMALL_QUALITY.edgeContrast);
+    expect(q.creamShare).toBeGreaterThan(SMALL_QUALITY.creamShare);
+  });
+
+  it('counts contrast with the WCAG formula, ink well past INK_CONTRAST and the body colours below it', () => {
+    expect(contrastRatio([0, 0, 0], [255, 255, 255])).toBeCloseTo(21, 5);
+    expect(contrastRatio(ink, cream)).toBeGreaterThan(2 * INK_CONTRAST - 1);
+    for (const key of ['honey', 'mint', 'sky', 'coral', 'latte'] as const) expect(contrastRatio(hexRgb(PALETTE[key]), cream), key).toBeLessThan(INK_CONTRAST);
+  });
+});
+
+describe('small models', () => {
+  it('replace the 24 px cell of icon-only HUD buttons and the coin, straight on, never in cream', () => {
+    expect(Object.keys(SMALL_MODELS).sort()).toEqual(['i-camera', 'i-close', 'i-coin', 'i-pause', 'i-settings', 'i-speed-4']);
+    for (const [id, build] of Object.entries(SMALL_MODELS)) {
+      const model = build();
+      expect(model.userData.pose, id).toBe('glyph');
+      const meshes: Mesh[] = [];
+      model.traverse((o) => {
+        if (o instanceof Mesh) meshes.push(o);
+      });
+      // The largest part (the body) is not HUD cream.
+      const size = (m: Mesh) => new Box3().setFromObject(m).getSize(new Vector3()).lengthSq();
+      const body = meshes.reduce((a, b) => (size(b) > size(a) ? b : a));
+      expect(body.material, id).not.toBe(mat('cream'));
+    }
+    const close = SMALL_MODELS['i-close']!();
+    close.traverse((o) => {
+      if (o instanceof Mesh) expect(o.material).toBe(mat('coral'));
+    });
+  });
+});
+
+describe('viewer page', () => {
+  const html = fs.readFileSync('public/icons3d/index.html', 'utf8');
+
+  it('never lets a card column be wider than the screen (390 px phones)', () => {
+    expect(html).toContain('minmax(min(100%, 360px), 1fr)');
+    expect(html).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)');
+  });
+
+  it('takes colours and type sizes from token values only', () => {
+    const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+    const tokens = fs.readFileSync('src/ui/styles/tokens.css', 'utf8');
+    const declared = [...css.matchAll(/(--[\w-]+): ([^;]+);/g)];
+    expect(declared.length).toBeGreaterThan(10);
+    for (const [, name, value] of declared) {
+      // Hex colours are copies of a palette value; the rest keep the token's name and value.
+      if (value!.startsWith('#')) expect(tokens, name).toContain(value);
+      else if (!name!.startsWith('--font-family')) expect(tokens, name).toContain(`${name}: ${value}`);
+    }
+    // Outside :root, no raw hex colours.
+    expect(css.slice(css.indexOf('}')).match(/#[0-9a-f]{3,6}\b/gi)).toBeNull();
+  });
+
+  it('shows an alert when atlas.json or a WebP fails to load', () => {
+    expect(html).toContain("image('atlas@1x.webp'), image('atlas@2x.webp')");
+    expect(html).toContain('img.onerror');
+    expect(html).toContain("meta.setAttribute('role', 'alert')");
   });
 });
 
@@ -177,7 +275,17 @@ describe.skipIf(!fs.existsSync(ATLAS))('committed atlas', () => {
       expect(m.icons[id], id).toMatchObject({ w: CELL, h: CELL });
       expect(m.smallIcons[id], id).toMatchObject({ w: SMALL_CELL, h: SMALL_CELL });
     }
-    expect(m).toEqual(packAtlas(ATLAS_IDS));
+    // toEqual skips undefined keys, so this compares the layout without the measures.
+    expect({ ...m, smallQuality: undefined }).toEqual(packAtlas(ATLAS_IDS));
+  });
+
+  it('measured every 24 px cell as ink-edged and clear of the cream HUD', () => {
+    expect(Object.keys(m.smallQuality ?? {})).toEqual([...ATLAS_IDS]);
+    for (const [id, q] of Object.entries(m.smallQuality ?? {})) {
+      expect(q.edgeInk, id).toBeGreaterThanOrEqual(SMALL_QUALITY.edgeInk);
+      expect(q.edgeContrast, id).toBeGreaterThanOrEqual(SMALL_QUALITY.edgeContrast);
+    }
+    for (const id of [...ICON_ONLY_IDS, 'i-coin']) expect(m.smallQuality?.[id]?.creamShare, id).toBeLessThanOrEqual(SMALL_QUALITY.creamShare);
   });
 
   it('has WebP images at 1x and 2x the manifest size', () => {
