@@ -25,10 +25,12 @@ import INDEX_HTML from '../../index.html?raw';
 // types, so read the files through a dynamically named node:fs import.
 const FS_MODULE = 'node:fs';
 const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
-  readFileSync(path: URL, encoding: 'utf8'): string;
+  readFileSync(path: string, encoding: 'utf8'): string;
 };
-const UI_CSS = readFileSync(new URL('../../src/ui/styles/ui.css', import.meta.url), 'utf8');
-const PANELS_CSS = readFileSync(new URL('../../src/ui/panels/panels.css', import.meta.url), 'utf8');
+// Under jsdom the global URL is jsdom's, which node:fs rejects; pass a plain path.
+const readCss = (rel: string): string => readFileSync(decodeURIComponent(new URL(rel, import.meta.url).pathname), 'utf8');
+const UI_CSS = readCss('../../src/ui/styles/ui.css');
+const PANELS_CSS = readCss('../../src/ui/panels/panels.css');
 
 /** Bodies of every `selector { … }` block (comments dropped, @media included). */
 function cssBodies(css: string, selector: string): string[] {
