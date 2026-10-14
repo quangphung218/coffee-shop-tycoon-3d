@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
-import { buildNavGrid, isWalkable } from '../../src/sim/nav';
+import { dispatch, step } from '../../src/sim';
+import { CHAIR_OFFSET, buildNavGrid, isWalkable } from '../../src/sim/nav';
 import { createNewGame, tablePosition } from '../../src/sim/state';
 import type { Customer, Vec2 } from '../../src/sim/types';
 import { getShopLayout } from '../../src/sim/upgrades';
@@ -155,6 +156,55 @@ describe('migrate', () => {
     for (const p of [moved!.pos, stayed!.pos, r.value.staff[0]!.pos]) expect(isWalkable(grid, p), `${p.x},${p.z}`).toBe(true);
     expect(Math.hypot(moved!.pos.x - oldSpot.x, moved!.pos.z - oldSpot.z)).toBeLessThan(1);
     expect(stayed!.pos).toEqual(fine);
+  });
+
+  it('keeps people loaded from inside furniture on free floor as the day goes on', () => {
+    const s = sampleState();
+    for (let i = s.tables.length; i < 8; i++) {
+      s.tables.push({ id: s.nextId++, seats: 2, cash: 0, trash: 0, pos: tablePosition(i), occupants: [] });
+    }
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    const grid = buildNavGrid(getShopLayout(s));
+    // One saved on the old line between the chairs of the back row, one on a chair heading into a table.
+    const inChairs = { x: 0, z: -1 + 5 * 0.8 };
+    const onChair = { x: s.tables[1]!.pos.x + CHAIR_OFFSET, z: s.tables[1]!.pos.z };
+    const table = s.tables[0]!.pos;
+    for (const p of [inChairs, onChair, table]) expect(isWalkable(grid, p), `${p.x},${p.z}`).toBe(false);
+    const customer = (id: number, state: Customer['state'], pos: Vec2, target: Vec2): Customer => ({
+      id,
+      state,
+      pos: { ...pos },
+      target: { ...target },
+      patience: 30,
+      maxPatience: 40,
+      order: 'latte',
+      tableId: null,
+      timer: 1,
+      look: 0,
+    });
+    s.customers.push(customer(s.nextId++, 'queueing', inChairs, inChairs), customer(s.nextId++, 'entering', onChair, table));
+    s.staff.push({ ...s.candidates[0]!, role: 'none', pos: { x: 0, z: -3.8 } });
+
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: s }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const game = r.value;
+    const loaded = game.customers.map((c) => c.id);
+    const arrived = new Set<number>();
+    for (let t = 1; t <= 40; t++) {
+      step(game, 1);
+      for (const p of [...game.customers, ...game.staff]) {
+        expect(isWalkable(grid, p.pos), `tick ${t}: #${p.id} at ${p.pos.x},${p.pos.z}`).toBe(true);
+      }
+      for (const c of game.customers) {
+        const at = c.target;
+        if (loaded.includes(c.id) && at && isWalkable(grid, at) && Math.hypot(c.pos.x - at.x, c.pos.z - at.z) < 1e-6) arrived.add(c.id);
+      }
+    }
+    // Each one reached a free spot the sim gave them, or has walked out of the shop.
+    for (const id of loaded) expect(arrived.has(id) || !game.customers.some((c) => c.id === id), `customer #${id}`).toBe(true);
   });
 });
 

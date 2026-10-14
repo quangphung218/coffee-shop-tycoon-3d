@@ -62,13 +62,25 @@ Quầy có 4 pha chế (1 nhận order, 1 pha, 2 rảnh) và 2 phục vụ (1 r�
 
 ## Ảnh trong game trước/sau
 
-Ảnh P17 chụp bằng `npm run media` ở `07439cf`; ảnh P18 chụp bằng cùng lệnh, cùng seed, mức đồ họa Cao.
+Ảnh P17 chụp bằng `npm run media` ở `07439cf`; ảnh P18 chụp bằng cùng lệnh, cùng seed, mức đồ họa Cao. Mỗi hình đặt ảnh P17 (trái) cạnh ảnh P18 (phải). Vòng nét đứt đỏ: chỗ có lỗi ở P17. Vòng nét liền xanh: chỗ đã sửa hay chi tiết mới ở P18. Toạ độ vòng lấy từ camera của khung hình (chỗ đứng sim chiếu lên ảnh) và khung DOM, không vẽ tay.
 
-| Trước (P17) | Sau (P18) | Đã đổi |
-| --- | --- | --- |
-| ![Main Menu P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/main-menu.png) | ![Main Menu P18](../media/main-menu.png) | Mặt tiền có mái hiên, biển tên, cửa kính, khung cửa sổ, chậu cây hai bên cửa; quạt trần, kệ lọ hạt, đèn thả. |
-| ![Cao điểm P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/peak.png) | ![Cao điểm P18](../media/peak.png) | Hàng chờ đi theo lối trống giữa các bàn; khách mang đi và nhân viên không đứng chồng. |
-| ![Bảng Kho P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/prep-inventory.png) | ![Bảng Kho P18](../media/prep-inventory.png) | Icon SVG phẳng thay bằng icon 3D từ atlas; chữ và nhãn giữ nguyên. |
+### Giờ cao điểm
+
+Hai ảnh cùng góc máy. Bên P17, vòng đặt ở chỗ đứng sim P17: hàng chờ thẳng ở x = 0 chạm ghế, mọi khách mang đi chung một điểm, nhân viên đứng trong quầy và chồng nhau. Bên P18, vòng khoanh từng người đang đứng ở chỗ sim giao: hàng chờ theo lối trống, mỗi khách mang đi một ô, nhân viên tách rời; cùng mặt tiền mới và icon 3D trên dock.
+
+![Cao điểm P17 và P18, khoanh hàng chờ, khách mang đi, nhân viên, mặt tiền, dock](../media/peak-p17-p18.png)
+
+### Main Menu
+
+Bên P18 khoanh chi tiết mới còn thấy được quanh thẻ menu: khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả. P17 chưa có các chi tiết này. Mặt tiền (mái hiên, biển tên, cửa kính, chậu cây) nằm sau thẻ menu ở góc máy này; xem ở ảnh giờ cao điểm. Cả hai bên khoanh icon nút menu (SVG phẳng → 3D).
+
+![Main Menu P17 và P18, khoanh chi tiết mặt tiền, nội thất và icon](../media/main-menu-p17-p18.png)
+
+### Bảng Kho
+
+Icon SVG phẳng trên dock, HUD và trong bảng thay bằng icon 3D từ atlas; chữ và nhãn giữ nguyên.
+
+![Bảng Kho P17 và P18, khoanh icon trên dock, HUD và bảng](../media/prep-inventory-p17-p18.png)
 
 Ảnh mới của P18:
 
