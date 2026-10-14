@@ -1,22 +1,16 @@
 import {
-  BoxGeometry,
-  BufferAttribute,
   type BufferGeometry,
-  Color,
   ConeGeometry,
-  CylinderGeometry,
   Group,
   IcosahedronGeometry,
   InstancedMesh,
   type Material,
   Mesh,
-  MeshBasicMaterial,
-  MeshLambertMaterial,
   Object3D,
   PlaneGeometry,
   type Scene,
 } from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { Quality } from '../../save/settings';
 import { UPGRADES } from '../../sim/data/upgrades';
 import {
   BACK_COUNTER_DEPTH,
@@ -28,14 +22,6 @@ import {
   COUNTER_DEPTH,
   COUNTER_TOP_DEPTH,
   COUNTER_TOP_EXTRA,
-  DOOR_FRAME_DEPTH,
-  DOOR_LEAF_THICKNESS,
-  DOOR_LEAF_WIDTH,
-  DOOR_LEAF_X,
-  DOOR_LEAF_YAW,
-  DOOR_LEAF_Z,
-  DOOR_POST_WIDTH,
-  DOOR_WIDTH,
   MACHINE_SIZE,
   PARASOL_POLE_RADIUS,
   PLANT_RADIUS,
@@ -46,35 +32,18 @@ import {
 } from '../../sim/nav/footprints';
 import { getShopLayout, type Area, type LayoutMachine, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
+import { FacadeView, doorGeometry } from './facade';
+import { GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+
+export { SHARED_MATERIAL };
 
 /**
  * Low-poly shop built from getShopLayout(state). All furniture shares one
  * flat-shaded vertex-colour Lambert material; repeated pieces (tables, chairs,
  * parasols, coins, cups, decor) are InstancedMesh. When the layout changes
- * only the affected meshes are refreshed.
+ * only the affected meshes are refreshed. Windows, awning, sign and the other
+ * architectural details come from FacadeView (facade.ts).
  */
-
-const PALETTE = {
-  ground: 0xb9de9a,
-  floor: 0xe9cfa8,
-  patio: 0xdcd3c4,
-  wall: 0xf6e3c6,
-  wood: 0xa0704c,
-  woodDark: 0x5c3a26,
-  woodLight: 0xc98b5a,
-  cream: 0xfff9f0,
-  mint: 0x2fb898,
-  coral: 0xe07a5f,
-  gold: 0xf2c14e,
-  plant: 0x3fa66b,
-  plantDark: 0x2f8a56,
-  pot: 0xc8693f,
-  cup: 0xf7f3ea,
-  coffee: 0x6b4226,
-  steel: 0x9aa3ab,
-  steelDark: 0x4a4f55,
-  bulb: 0xffe7a3,
-} as const;
 
 /** Body and accent colours of the espresso machine per better_machine level. */
 const MACHINE_TIERS: readonly (readonly [number, number])[] = [
@@ -84,8 +53,6 @@ const MACHINE_TIERS: readonly (readonly [number, number])[] = [
   [PALETTE.gold, 0x3b2418],
 ];
 
-const WALL_HEIGHT = 2.2;
-const WALL_LOW = 0.35;
 const COUNTER_HEIGHT = 1;
 const BACK_COUNTER_HEIGHT = 0.9;
 const TABLE_TOP_Y = 0.78;
@@ -101,48 +68,6 @@ const WALL_FACING_DOT = 0.25;
 const WALL_DAMPING = 8;
 
 const UPGRADE_IDS: readonly UpgradeId[] = UPGRADES.map((u) => u.id);
-
-export const SHARED_MATERIAL = new MeshLambertMaterial({ vertexColors: true, flatShading: true });
-const GLOW_MATERIAL = new MeshBasicMaterial({ color: PALETTE.bulb });
-
-const tmpColor = new Color();
-
-/** Bakes a transform and a flat colour into a primitive so parts can be merged. */
-function part(geo: BufferGeometry, color: number, x = 0, y = 0, z = 0, ry = 0, rx = 0, rz = 0): BufferGeometry {
-  const g = geo.index ? geo.toNonIndexed() : geo;
-  if (g !== geo) geo.dispose();
-  if (rx) g.rotateX(rx);
-  if (rz) g.rotateZ(rz);
-  if (ry) g.rotateY(ry);
-  g.translate(x, y, z);
-  tmpColor.set(color);
-  const count = g.getAttribute('position').count;
-  const colors = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    colors[i * 3] = tmpColor.r;
-    colors[i * 3 + 1] = tmpColor.g;
-    colors[i * 3 + 2] = tmpColor.b;
-  }
-  g.setAttribute('color', new BufferAttribute(colors, 3));
-  g.deleteAttribute('uv');
-  return g;
-}
-
-function merge(parts: BufferGeometry[]): BufferGeometry {
-  const merged = mergeGeometries(parts);
-  for (const p of parts) p.dispose();
-  if (!merged) throw new Error('shop: could not merge geometry');
-  merged.computeBoundingSphere();
-  return merged;
-}
-
-function box(w: number, h: number, d: number): BoxGeometry {
-  return new BoxGeometry(w, h, d);
-}
-
-function cyl(rTop: number, rBottom: number, h: number, segments = 8): CylinderGeometry {
-  return new CylinderGeometry(rTop, rBottom, h, segments);
-}
 
 // ---------- Geometry builders (built once, or on layout change) ----------
 
@@ -275,22 +200,6 @@ function backCounterGeometry(minX: number, maxX: number): BufferGeometry {
   ]);
 }
 
-function doorGeometry(): BufferGeometry {
-  const half = DOOR_WIDTH / 2;
-  return merge([
-    part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, -half, WALL_HEIGHT / 2, 0),
-    part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, half, WALL_HEIGHT / 2, 0),
-    part(box(DOOR_WIDTH + DOOR_POST_WIDTH, 0.18, DOOR_FRAME_DEPTH), PALETTE.woodDark, 0, WALL_HEIGHT - 0.09, 0),
-    // Door leaf swung open inward.
-    part(box(DOOR_LEAF_WIDTH, 1.95, DOOR_LEAF_THICKNESS), PALETTE.mint, -half + DOOR_LEAF_X, 0.99, DOOR_LEAF_Z, DOOR_LEAF_YAW),
-    // Awning over the entrance.
-    part(box(DOOR_WIDTH + 1.4, 0.08, 1.1), PALETTE.coral, 0, WALL_HEIGHT + 0.05, 0.55, 0, 0.3),
-    part(box(DOOR_WIDTH + 1.4, 0.2, 0.04), PALETTE.cream, 0, WALL_HEIGHT - 0.18, 1.07),
-    // Doormat.
-    part(box(1.3, 0.02, 0.7), PALETTE.coral, 0, 0.01, 0.55),
-  ]);
-}
-
 // ---------- Scene objects ----------
 
 export type SceneHit =
@@ -391,7 +300,10 @@ export class ShopView {
   private readonly lamps: InstancedMesh;
   private readonly bulbs: InstancedMesh;
 
-  constructor(scene: Scene) {
+  /** Windows, awning, sign, planters and interior details. */
+  readonly facade: FacadeView;
+
+  constructor(scene: Scene, quality: Quality = 'medium') {
     const ground = new Mesh(part(new PlaneGeometry(160, 160), PALETTE.ground, 0, 0, 0, 0, -Math.PI / 2), SHARED_MATERIAL);
     ground.position.y = -0.06;
     ground.receiveShadow = true;
@@ -434,6 +346,9 @@ export class ShopView {
     this.bulbs = instanced(this.geo.bulb, GLOW_MATERIAL, DECOR_CAPACITY, false);
     this.root.add(this.plants, this.paintings, this.lamps, this.bulbs);
 
+    this.facade = new FacadeView(quality);
+    this.root.add(this.facade.root);
+
     this.allocTables(16);
     scene.add(this.root);
   }
@@ -450,9 +365,16 @@ export class ShopView {
       this.key = key;
       this.applyLayout(getShopLayout(state));
     }
+    this.facade.setShopName(state.shopName);
     this.updateIcons(state, time);
     this.updateWalls(dt, cameraYaw);
     return changed;
+  }
+
+  /** Rebuilds the facade details for a graphics quality (low drops the small ones). */
+  setQuality(quality: Quality): void {
+    this.facade.setQuality(quality);
+    this.syncFacadeWalls();
   }
 
   /** Maps a raycast hit back to the shop element it belongs to. */
@@ -499,6 +421,7 @@ export class ShopView {
     });
     for (const g of Object.values(this.geo)) g.dispose();
     this.machines.clear();
+    this.facade.dispose();
   }
 
   // ---------- layout ----------
@@ -514,6 +437,12 @@ export class ShopView {
     this.buildTables(layout);
     this.buildDecor(layout);
     this.pickupMat.position.set(layout.pickup.x, 0.01, layout.pickup.z);
+    this.facade.build(layout);
+    this.syncFacadeWalls();
+  }
+
+  private syncFacadeWalls(): void {
+    for (let i = 0; i < this.walls.length; i++) this.facade.syncWall(i, this.walls[i]!.height);
   }
 
   private floorMesh(geo: BufferGeometry): Mesh {
@@ -745,6 +674,7 @@ export class ShopView {
       wall.height += (goal - wall.height) * k;
       wall.mesh.scale.y = wall.height;
       wall.mesh.position.y = wall.height / 2;
+      this.facade.syncWall(i, wall.height);
     }
   }
 }

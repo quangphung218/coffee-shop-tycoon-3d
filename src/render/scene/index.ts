@@ -43,7 +43,7 @@ const MAX_FRAME_DT = 0.1;
 /** Builds the three.js world on the #scene canvas. The caller owns the frame loop and dispatching. */
 export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {}): World {
   const view = createRenderer(canvas, options.quality ?? 'medium');
-  const shop = new ShopView(view.scene);
+  const shop = new ShopView(view.scene, options.quality ?? 'medium');
   const actors = createActors(view.scene, { quality: options.quality ?? 'medium' });
   const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
   const ray = new Raycaster();
@@ -97,6 +97,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     },
     setQuality: (q) => {
       view.setQuality(q);
+      shop.setQuality(q);
       street.setQuality(q);
       actors.setQuality(q);
     },
