@@ -48,7 +48,7 @@ async function main() {
     root: ROOT,
     configFile: false,
     logLevel: 'error',
-    server: { host: '127.0.0.1', port: PORT, strictPort: true },
+    server: { host: '127.0.0.1', port: PORT, strictPort: true, hmr: false },
   });
   await server.listen();
   const browser = await chromium.launch({
@@ -66,20 +66,20 @@ async function main() {
     const render = only ?? all;
     const previous = only ? readPrevious() : undefined;
     const out = await page.evaluate((input) => window.iconStudio.build(input), { render, previous });
-
-    mkdirSync(OUT, { recursive: true });
-    writeFileSync(join(OUT, 'atlas@1x.webp'), fromDataUrl(out.images[1]));
-    writeFileSync(join(OUT, 'atlas@2x.webp'), fromDataUrl(out.images[2]));
-    writeFileSync(join(OUT, 'atlas.json'), `${JSON.stringify(out.manifest, null, 2)}\n`);
     // The old flat SVGs, for the side-by-side column of public/icons3d/index.html.
     const svgs = await page.evaluate(() => window.iconStudio.flatSvgs());
-    writeFileSync(join(OUT, 'svg.json'), `${JSON.stringify(svgs, null, 2)}\n`);
-
     if (sheet) {
       await page.evaluate((o) => window.iconStudio.showSheet(o), out);
       mkdirSync(join(ROOT, 'docs', 'reports'), { recursive: true });
       await page.locator('#sheet').screenshot({ path: SHEET });
     }
+
+    // Written last: the studio imports atlas.json, so a change to it reloads the page.
+    mkdirSync(OUT, { recursive: true });
+    writeFileSync(join(OUT, 'atlas@1x.webp'), fromDataUrl(out.images[1]));
+    writeFileSync(join(OUT, 'atlas@2x.webp'), fromDataUrl(out.images[2]));
+    writeFileSync(join(OUT, 'atlas.json'), `${JSON.stringify(out.manifest, null, 2)}\n`);
+    writeFileSync(join(OUT, 'svg.json'), `${JSON.stringify(svgs, null, 2)}\n`);
 
     console.log(`${Object.keys(out.manifest.icons).length} icons (${render.length} rendered), atlas ${out.manifest.width}x${out.manifest.height} @1x`);
     for (const scale of [1, 2]) {
