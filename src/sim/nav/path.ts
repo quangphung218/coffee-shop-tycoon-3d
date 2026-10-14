@@ -5,7 +5,8 @@ import { NAV_CELL, cellAt, cellCenter, type NavGrid } from './grid';
  * A* over a NavGrid: 8 directions, no cutting past a blocked corner, ties
  * broken by cell index so the same grid and endpoints always give the same
  * route. The cell path is then shortened to the corners that are needed
- * (line of sight) and kept in a small LRU cache.
+ * (line of sight) and kept in a small LRU cache. The sim's per-tick walk
+ * uses cached distance fields instead (walkToward), not a search per step.
  */
 
 const PATH_CACHE_SIZE = 128;
@@ -77,7 +78,7 @@ export function nearestFree(grid: NavGrid, p: Vec2): Vec2 | null {
 /** Binary min-heap of cell indices ordered by (f, index). */
 class OpenSet {
   private readonly items: number[] = [];
-  constructor(private readonly f: Float64Array) {}
+  constructor(private readonly f: Float64Array | Float32Array) {}
 
   get size(): number {
     return this.items.length;
@@ -229,6 +230,8 @@ function smooth(grid: NavGrid, cells: number[]): number[] {
 }
 
 const pathCache = new Map<string, number[] | null>();
+/** Routes and distance fields worked out since the caches were last cleared. */
+const searches = { paths: 0, fields: 0 };
 
 function cachedCells(grid: NavGrid, start: number, goal: number): number[] | null {
   const key = `${grid.key}|${start}|${goal}`;
@@ -238,6 +241,7 @@ function cachedCells(grid: NavGrid, start: number, goal: number): number[] | nul
     pathCache.set(key, hit);
     return hit;
   }
+  searches.paths++;
   const raw = astar(grid, start, goal);
   const cells = raw && smooth(grid, raw);
   pathCache.set(key, cells);
@@ -266,7 +270,138 @@ export function findPath(grid: NavGrid, from: Vec2, to: Vec2): Vec2[] | null {
   return out;
 }
 
-/** Empties the path cache (tests). */
+/**
+ * Distance fields: for one goal cell, the walking distance from every cell
+ * to it (8 directions, no cutting past a blocked corner, Infinity where the
+ * goal cannot be reached). Someone walking only looks up the neighbour
+ * closest to the goal, so the sim never searches a route per tick. Fields
+ * are cached per goal cell for the current floor plan and dropped when the
+ * plan changes.
+ */
+const FIELD_CACHE_SIZE = 96;
+const fieldCache = new Map<number, Float32Array>();
+let fieldGridKey = -1;
+
+function buildField(grid: NavGrid, goal: number): Float32Array {
+  const n = grid.cols * grid.rows;
+  const dist = new Float32Array(n).fill(Infinity);
+  const open = new OpenSet(dist);
+  dist[goal] = 0;
+  open.push(goal);
+  const done = new Uint8Array(n);
+  while (open.size > 0) {
+    const i = open.pop();
+    if (done[i]) continue;
+    done[i] = 1;
+    const c = i % grid.cols;
+    const r = (i - c) / grid.cols;
+    for (const [dc, dr] of DIRS) {
+      const nc = c + dc;
+      const nr = r + dr;
+      if (!free(grid, nc, nr)) continue;
+      if (dc !== 0 && dr !== 0 && (!free(grid, c + dc, r) || !free(grid, c, r + dr))) continue;
+      const j = nr * grid.cols + nc;
+      if (done[j]) continue;
+      const cost = Math.fround(dist[i]! + (dc !== 0 && dr !== 0 ? SQRT2 : 1));
+      if (cost < dist[j]!) {
+        dist[j] = cost;
+        open.push(j);
+      }
+    }
+  }
+  return dist;
+}
+
+function distanceField(grid: NavGrid, goal: number): Float32Array {
+  if (grid.key !== fieldGridKey) {
+    fieldCache.clear();
+    fieldGridKey = grid.key;
+  }
+  const hit = fieldCache.get(goal);
+  if (hit) {
+    fieldCache.delete(goal);
+    fieldCache.set(goal, hit);
+    return hit;
+  }
+  searches.fields++;
+  const field = buildField(grid, goal);
+  fieldCache.set(goal, field);
+  if (fieldCache.size > FIELD_CACHE_SIZE) fieldCache.delete(fieldCache.keys().next().value!);
+  return field;
+}
+
+/** The neighbour of cell i one step closer to the goal (ties: first in DIRS), or -1 at the goal. */
+function downhill(grid: NavGrid, field: Float32Array, i: number): number {
+  const c = i % grid.cols;
+  const r = (i - c) / grid.cols;
+  let best = -1;
+  let bestDist = field[i]!;
+  for (const [dc, dr] of DIRS) {
+    const nc = c + dc;
+    const nr = r + dr;
+    if (!free(grid, nc, nr)) continue;
+    if (dc !== 0 && dr !== 0 && (!free(grid, c + dc, r) || !free(grid, c, r + dr))) continue;
+    const j = nr * grid.cols + nc;
+    if (field[j]! < bestDist) {
+      bestDist = field[j]!;
+      best = j;
+    }
+  }
+  return best;
+}
+
+/**
+ * Where someone at `from` gets to after walking `distance` toward `to`
+ * around everything on the floor, along the cached distance field of the
+ * goal cell. They first step to the centre of their cell (out of an obstacle
+ * onto the nearest free cell), then follow the field cell by cell, cutting
+ * corners only where the line of sight is clear, and finish on `to` itself
+ * (or the nearest free point to it). Only the stretch they can cover this
+ * step is looked at. Null when no free cell can be reached at all.
+ */
+export function walkToward(grid: NavGrid, from: Vec2, to: Vec2, distance: number): Vec2 | null {
+  const startFree = nearestFree(grid, from);
+  const goalFree = nearestFree(grid, to);
+  if (!startFree || !goalFree) return null;
+  const goal = cellAt(grid, goalFree);
+  const field = distanceField(grid, goal);
+  const start = cellAt(grid, startFree);
+  if (!(field[start]! < Infinity)) return null;
+
+  // Enough of the route that the corner-cut version is still longer than this step.
+  const cells = [start];
+  let length = 0;
+  for (let i = start; i !== goal && length < 2 * distance + NAV_CELL; ) {
+    const j = downhill(grid, field, i);
+    if (j < 0) break;
+    length += field[i]! - field[j]!;
+    cells.push(j);
+    i = j;
+  }
+  const waypoints: Vec2[] = smooth(grid, cells).map((i) => cellCenter(grid, i));
+  if (cells[cells.length - 1] === goal) waypoints.push(goalFree);
+
+  let pos = from;
+  let left = distance;
+  for (const p of waypoints) {
+    const d = Math.hypot(p.x - pos.x, p.z - pos.z);
+    if (d > left) return { x: pos.x + ((p.x - pos.x) * left) / d, z: pos.z + ((p.z - pos.z) * left) / d };
+    pos = { x: p.x, z: p.z };
+    left -= d;
+  }
+  return pos;
+}
+
+/** Routes searched (A*) and distance fields built since the caches were last cleared. */
+export function navSearchCount(): { paths: number; fields: number } {
+  return { ...searches };
+}
+
+/** Empties the path and distance-field caches and their counts (tests). */
 export function clearPathCache(): void {
   pathCache.clear();
+  fieldCache.clear();
+  fieldGridKey = -1;
+  searches.paths = 0;
+  searches.fields = 0;
 }
