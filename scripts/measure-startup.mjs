@@ -27,10 +27,20 @@ const PROBE = `window.__cst = new Promise((resolve) => {
   const painted = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
   const finish = () => {
     if (t.menu === undefined || t.world === undefined) return;
-    const fcp = performance.getEntriesByName('first-contentful-paint')[0];
-    t.fcp = fcp ? fcp.startTime : null;
     observer.disconnect();
-    resolve(t);
+    // The paint entry can be reported a little after the frame it describes.
+    const done = (fcp) => {
+      t.fcp = fcp;
+      resolve(t);
+    };
+    const timer = setTimeout(() => done(null), 3000);
+    new PerformanceObserver((list, po) => {
+      const e = list.getEntriesByName('first-contentful-paint')[0];
+      if (!e) return;
+      po.disconnect();
+      clearTimeout(timer);
+      done(e.startTime);
+    }).observe({ type: 'paint', buffered: true });
   };
   const observer = new MutationObserver(() => {
     if (document.getElementById('boot')) t.boot = true;
@@ -220,7 +230,7 @@ const median = (xs) => {
   const v = xs.filter((x) => typeof x === 'number').sort((a, b) => a - b);
   return v.length ? v[Math.floor(v.length / 2)] : null;
 };
-const ms = (x) => (x === null ? 'timeout' : `${Math.round(x)} ms`);
+const ms = (x) => (x === null ? 'n/a' : `${Math.round(x)} ms`);
 const kb = (n) => `${(n / 1000).toFixed(1)} kB`;
 
 async function main() {
@@ -271,9 +281,14 @@ async function main() {
     }
   } finally {
     cdp?.close();
-    chrome?.proc.kill();
+    if (chrome && chrome.proc.exitCode === null) {
+      // Chrome keeps writing its profile until it exits.
+      const exited = new Promise((r) => chrome.proc.once('exit', r));
+      chrome.proc.kill();
+      await exited;
+    }
     for (const s of servers) await s.close();
-    for (const t of temps) rmSync(t, { recursive: true, force: true });
+    for (const t of temps) rmSync(t, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 }
 
