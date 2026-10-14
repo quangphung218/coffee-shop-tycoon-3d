@@ -1,7 +1,8 @@
-// Renders the 3D icon atlas from src/icon-studio. Run through `npm run icons`
-// (all models) or `npm run icons -- --only i-menu,i-close` (re-render those,
-// keep the rest of the current atlas). Needs Playwright with Chromium; see
-// docs/media.md.
+// Renders the 3D icon atlas (48 px and 24 px cells) from src/icon-studio. Run
+// through `npm run icons` (all models) or `npm run icons -- --only i-menu,i-close`
+// (re-render those, keep the rest of the current atlas). `--sheet` also writes
+// the SVG vs 3D comparison to docs/reports/p18-icons-sample.png. Needs
+// Playwright with Chromium; see docs/media.md.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,12 +41,14 @@ function readPrevious() {
 }
 
 async function main() {
-  const only = parseOnly(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const only = parseOnly(argv);
+  const sheet = argv.includes('--sheet');
   const server = await createServer({
     root: ROOT,
     configFile: false,
     logLevel: 'error',
-    server: { host: '127.0.0.1', port: PORT, strictPort: true },
+    server: { host: '127.0.0.1', port: PORT, strictPort: true, hmr: false },
   });
   await server.listen();
   const browser = await chromium.launch({
@@ -63,18 +66,28 @@ async function main() {
     const render = only ?? all;
     const previous = only ? readPrevious() : undefined;
     const out = await page.evaluate((input) => window.iconStudio.build(input), { render, previous });
+    // The old flat SVGs, for the side-by-side column of public/icons3d/index.html.
+    const svgs = await page.evaluate(() => window.iconStudio.flatSvgs());
+    if (sheet) {
+      await page.evaluate((o) => window.iconStudio.showSheet(o), out);
+      mkdirSync(join(ROOT, 'docs', 'reports'), { recursive: true });
+      await page.locator('#sheet').screenshot({ path: SHEET });
+    }
 
+    // Written last: the studio imports atlas.json, so a change to it reloads the page.
     mkdirSync(OUT, { recursive: true });
     writeFileSync(join(OUT, 'atlas@1x.webp'), fromDataUrl(out.images[1]));
     writeFileSync(join(OUT, 'atlas@2x.webp'), fromDataUrl(out.images[2]));
     writeFileSync(join(OUT, 'atlas.json'), `${JSON.stringify(out.manifest, null, 2)}\n`);
-
-    await page.evaluate((o) => window.iconStudio.showSheet(o), out);
-    mkdirSync(join(ROOT, 'docs', 'reports'), { recursive: true });
-    await page.locator('#sheet').screenshot({ path: SHEET });
+    writeFileSync(join(OUT, 'svg.json'), `${JSON.stringify(svgs, null, 2)}\n`);
 
     console.log(`${Object.keys(out.manifest.icons).length} icons (${render.length} rendered), atlas ${out.manifest.width}x${out.manifest.height} @1x`);
-    for (const path of [join(OUT, 'atlas@1x.webp'), join(OUT, 'atlas@2x.webp'), join(OUT, 'atlas.json'), SHEET]) {
+    for (const scale of [1, 2]) {
+      const e = out.encodings[scale];
+      console.log(`@${scale}x: WebP quality ${e.quality}, ${e.alphaLevels} alpha levels, ${e.bytes} bytes`);
+    }
+    const written = [join(OUT, 'atlas@1x.webp'), join(OUT, 'atlas@2x.webp'), join(OUT, 'atlas.json'), join(OUT, 'svg.json'), ...(sheet ? [SHEET] : [])];
+    for (const path of written) {
       console.log(`${(statSync(path).size / 1024).toFixed(1)} KB ${path.slice(ROOT.length + 1)}`);
     }
   } finally {

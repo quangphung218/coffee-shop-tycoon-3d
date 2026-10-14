@@ -19,7 +19,7 @@ import {
   ROLE_ICONS,
   UPGRADE_ICONS,
 } from '../../src/ui/core/iconMap';
-import { AVATAR_CELLS as AVATAR_CELL_COUNT, drawIcon, ICON_ATLAS_URLS, ICON_IDS, icon, iconCell, isIconId, mountIconSprite } from '../../src/ui/core/icons';
+import { AVATAR_CELLS as AVATAR_CELL_COUNT, drawIcon, ICON_ATLAS_URLS, ICON_IDS, icon, iconCell, isIconId } from '../../src/ui/core/icons';
 import { ICON_SYMBOLS, iconSvgMarkup } from '../../src/ui/core/iconSvg';
 
 /** id → body of every <symbol> in a markup string. */
@@ -37,25 +37,29 @@ afterEach(() => {
 });
 
 describe('icon atlas', () => {
-  it('has a cell for every icon and every avatar look, in atlas order', () => {
+  it('has a 48 px and a 24 px cell for every icon and every avatar look, in atlas order', () => {
     expect(ICON_IDS).toHaveLength(105);
     expect(Object.keys(ATLAS.icons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
+    expect(Object.keys(ATLAS.smallIcons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
     expect(AVATAR_CELL_COUNT).toBe(AVATAR_LOOKS.length);
     const table = ATLAS.icons as Record<string, unknown>;
-    for (const id of [...ICON_IDS, ...AVATAR_CELLS]) expect(iconCell(id), id).toEqual(table[id]);
+    const small = ATLAS.smallIcons as Record<string, unknown>;
+    for (const id of [...ICON_IDS, ...AVATAR_CELLS]) {
+      expect(iconCell(id), id).toEqual(table[id]);
+      expect(iconCell(id, 48), id).toEqual(table[id]);
+      expect(iconCell(id, 32), id).toEqual(table[id]);
+      expect(iconCell(id, 24), id).toEqual(small[id]);
+      expect(iconCell(id, 16), id).toEqual(small[id]);
+    }
     expect(iconCell(`i-avatar-${AVATAR_LOOKS.length}`)).toBeUndefined();
     expect(iconCell('i-avatar-99')).toBeUndefined();
+    expect(iconCell('i-avatar-99', 16)).toBeUndefined();
   });
 
   it('loads its images relative to the page, so base ./ holds', () => {
     for (const url of Object.values(ICON_ATLAS_URLS)) {
       expect(url).toMatch(/^icons3d\/atlas@[12]x\.webp$/);
     }
-  });
-
-  it('mountIconSprite() is a no-op kept for old callers', () => {
-    mountIconSprite(document);
-    expect(document.body.childElementCount).toBe(0);
   });
 });
 
@@ -77,17 +81,32 @@ describe('icon()', () => {
     expect(icon('i-coin', { size: 48, class: 'hud-ic' }).getAttribute('class')).toBe('ic ic-xl hud-ic');
   });
 
-  it('places every cell with % background values that fit any box size', () => {
+  it('places every cell with % background values that fit any box size, the small cell at 16 and 24 px', () => {
     for (const id of ICON_IDS) {
-      const el = icon(id, { size: 48 });
-      const c = iconCell(id)!;
-      const size = el.style.getPropertyValue('--ic-size').split(' ').map((v) => parseFloat(v));
-      expect(size[0]! * c.w, id).toBeCloseTo(ATLAS.width * 100, 1);
-      expect(size[1]! * c.h, id).toBeCloseTo(ATLAS.height * 100, 1);
-      const [x, y] = el.style.getPropertyValue('--ic-pos').split(' ').map((v) => parseFloat(v));
-      // % position p puts the cell's left edge at p × (atlas − cell) px of the scaled atlas.
-      expect((x! / 100) * (ATLAS.width - c.w), id).toBeCloseTo(c.x, 3);
-      expect((y! / 100) * (ATLAS.height - c.h), id).toBeCloseTo(c.y, 3);
+      for (const px of [16, 24, 32, 48] as const) {
+        const el = icon(id, { size: px });
+        const c = (px <= 24 ? ATLAS.smallIcons : ATLAS.icons)[id];
+        expect(c.w, `${id} ${px}`).toBe(px <= 24 ? 24 : 48);
+        const size = el.style.getPropertyValue('--ic-size').split(' ').map((v) => parseFloat(v));
+        expect(size[0]! * c.w, `${id} ${px}`).toBeCloseTo(ATLAS.width * 100, 1);
+        expect(size[1]! * c.h, `${id} ${px}`).toBeCloseTo(ATLAS.height * 100, 1);
+        const [x, y] = el.style.getPropertyValue('--ic-pos').split(' ').map((v) => parseFloat(v));
+        // % position p puts the cell's left edge at p × (atlas − cell) px of the scaled atlas.
+        expect((x! / 100) * (ATLAS.width - c.w), `${id} ${px}`).toBeCloseTo(c.x, 3);
+        expect((y! / 100) * (ATLAS.height - c.h), `${id} ${px}`).toBeCloseTo(c.y, 3);
+      }
+    }
+  });
+
+  it('gives the icon-only buttons (camera, settings, close, pause, speeds) the small cell at the default size', () => {
+    const ids = ['i-camera', 'i-settings', 'i-close', 'i-pause', 'i-speed-1', 'i-speed-2', 'i-speed-4', 'i-check'] as const;
+    for (const id of ids) {
+      for (const el of [icon(id), icon(id, { size: 16 })]) {
+        expect(el.getAttribute('aria-hidden'), id).toBe('true');
+        const width = parseFloat(el.style.getPropertyValue('--ic-size'));
+        expect(width, id).toBeCloseTo((ATLAS.width / ATLAS.smallIcons[id].w) * 100, 3);
+      }
+      expect(parseFloat(icon(id, { size: 32 }).style.getPropertyValue('--ic-size')), id).toBeCloseTo((ATLAS.width / 48) * 100, 3);
     }
   });
 

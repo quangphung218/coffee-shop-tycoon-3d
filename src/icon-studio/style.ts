@@ -88,6 +88,21 @@ export const MARGIN = 0.08;
 /** Ink outline width, as a share of the frame (about 1.7 px at 48 px). */
 export const OUTLINE = 0.035;
 
+/**
+ * How a cell is drawn. `regular`: the 48 px cell. `small`: the 24 px cell,
+ * read at 16–24 px: thicker ink (about 1.6 px at 24 px), less margin, no
+ * contact shadow, and parts narrower than `minPart` of the frame (about
+ * 1.4 px at 24 px) left out, since at that size they only blur the outline.
+ * `contrast` and `saturate` are CSS filter amounts applied when the render
+ * is shrunk to the cell.
+ */
+export const LOOKS = {
+  regular: { margin: MARGIN, outline: OUTLINE, shadow: true, minPart: 0, contrast: 1, saturate: 1 },
+  small: { margin: 0.04, outline: 0.065, shadow: false, minPart: 0.06, contrast: 1.2, saturate: 1.15 },
+} as const;
+
+export type Look = keyof typeof LOOKS;
+
 const materials = new Map<PaletteKey, MeshLambertMaterial>();
 
 /** Flat-shaded Lambert in a palette colour, like the game scene (src/render/scene/shop.ts). */
@@ -154,11 +169,20 @@ function shadowTexture(): CanvasTexture {
   return tex;
 }
 
+interface Bounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+const emptyBounds = (): Bounds => ({ minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+
 export interface Stage {
   scene: Scene;
   camera: OrthographicCamera;
-  /** Replaces the current model, adds outline and shadow, and frames it. */
-  show(model: Object3D): void;
+  /** Replaces the current model, adds outline and shadow as `look` says, and frames it. */
+  show(model: Object3D, look?: Look): void;
 }
 
 export function createStage(): Stage {
@@ -195,67 +219,94 @@ export function createStage(): Stage {
   shadow.renderOrder = -1;
   let current: Group | null = null;
 
-  function show(model: Object3D): void {
+  function show(model: Object3D, look: Look = 'regular'): void {
+    const rules = LOOKS[look];
     if (current) scene.remove(current);
     aim((model.userData.pose as Pose | undefined) ?? 'object');
     current = new Group();
     current.add(model);
     current.updateMatrixWorld(true);
 
-    const meshes: Mesh[] = [];
+    const all: Mesh[] = [];
     model.traverse((o) => {
-      if (o instanceof Mesh) meshes.push(o);
+      if (o instanceof Mesh) all.push(o);
     });
+    const meshes = dropDetails(all, rules);
     for (const m of meshes) {
       if (m.userData.outline === false) continue;
       const hull = new Mesh(hullGeometry(m.geometry), outline);
       m.add(hull);
     }
 
-    // Contact shadow: an ellipse under the footprint, on the lowest point.
-    const box = new Box3().setFromObject(model);
-    const size = box.getSize(new Vector3());
-    shadow.scale.set(size.x * 1.25 + 0.2, 1, size.z * 1.25 + 0.2);
-    shadow.position.set((box.min.x + box.max.x) / 2, box.min.y + 0.005, (box.min.z + box.max.z) / 2);
-    current.add(shadow);
+    if (rules.shadow) {
+      // Contact shadow: an ellipse under the footprint, on the lowest point.
+      const box = new Box3().setFromObject(model);
+      const size = box.getSize(new Vector3());
+      shadow.scale.set(size.x * 1.25 + 0.2, 1, size.z * 1.25 + 0.2);
+      shadow.position.set((box.min.x + box.max.x) / 2, box.min.y + 0.005, (box.min.z + box.max.z) / 2);
+      current.add(shadow);
+    } else shadow.removeFromParent();
     current.updateMatrixWorld(true);
     scene.add(current);
 
-    frame(meshes, shadow);
+    frame(meshes, rules.shadow ? shadow : null, rules);
   }
 
-  /** Square ortho frustum around everything on screen, with MARGIN on each side and room for the outline. */
-  function frame(meshes: Mesh[], ground: Mesh): void {
+  /** Screen-space (view) bounds of `points`, grown into `into`. */
+  function grow(into: Bounds, points: Iterable<Vector3>): Bounds {
+    for (const p of points) {
+      into.minX = Math.min(into.minX, p.x);
+      into.maxX = Math.max(into.maxX, p.x);
+      into.minY = Math.min(into.minY, p.y);
+      into.maxY = Math.max(into.maxY, p.y);
+    }
+    return into;
+  }
+
+  function* meshPoints(m: Mesh): Generator<Vector3> {
     const view = camera.matrixWorldInverse;
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
+    const pos = m.geometry.getAttribute('position');
     const v = new Vector3();
-    const add = (p: Vector3) => {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-    };
-    for (const m of meshes) {
-      const pos = m.geometry.getAttribute('position');
-      for (let i = 0; i < pos.count; i++) add(v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).applyMatrix4(view));
+    for (let i = 0; i < pos.count; i++) yield v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).applyMatrix4(view);
+  }
+
+  /**
+   * Hides the meshes narrower than `minPart` of the frame (both sides) and
+   * returns the rest; keeps everything when that would leave nothing.
+   */
+  function dropDetails(meshes: Mesh[], rules: (typeof LOOKS)[Look]): Mesh[] {
+    if (rules.minPart <= 0) return meshes;
+    const boxes = meshes.map((m) => grow(emptyBounds(), meshPoints(m)));
+    const whole = boxes.reduce((acc, b) => grow(acc, [new Vector3(b.minX, b.minY), new Vector3(b.maxX, b.maxY)]), emptyBounds());
+    const frameSize = Math.max(whole.maxX - whole.minX, whole.maxY - whole.minY) / (1 - 2 * rules.margin - 2 * rules.outline);
+    const keep = meshes.filter((_, i) => Math.max(boxes[i]!.maxX - boxes[i]!.minX, boxes[i]!.maxY - boxes[i]!.minY) >= rules.minPart * frameSize);
+    if (keep.length === 0) return meshes;
+    for (const m of meshes) if (!keep.includes(m)) m.visible = false;
+    return keep;
+  }
+
+  /** Square ortho frustum around everything on screen, with the look's margin on each side and room for the outline. */
+  function frame(meshes: Mesh[], ground: Mesh | null, rules: (typeof LOOKS)[Look]): void {
+    const b = emptyBounds();
+    for (const m of meshes) grow(b, meshPoints(m));
+    if (ground) {
+      // The shadow's visible part is roughly the inner 70% of the plane.
+      const view = camera.matrixWorldInverse;
+      const corners = ([[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]] as const).map(([x, z]) =>
+        new Vector3(x, 0, z).applyMatrix4(ground.matrixWorld).applyMatrix4(view),
+      );
+      grow(b, corners);
     }
-    // The shadow's visible part is roughly the inner 70% of the plane.
-    for (const [x, z] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]] as const) {
-      add(v.set(x, 0, z).applyMatrix4(ground.matrixWorld).applyMatrix4(view));
-    }
-    const extent = Math.max(maxX - minX, maxY - minY);
-    const half = extent / (1 - 2 * MARGIN - 2 * OUTLINE) / 2;
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
+    const extent = Math.max(b.maxX - b.minX, b.maxY - b.minY);
+    const half = extent / (1 - 2 * rules.margin - 2 * rules.outline) / 2;
+    const cx = (b.minX + b.maxX) / 2;
+    const cy = (b.minY + b.maxY) / 2;
     camera.left = cx - half;
     camera.right = cx + half;
     camera.top = cy + half;
     camera.bottom = cy - half;
     camera.updateProjectionMatrix();
-    outline.uniforms.thickness!.value = half * 2 * OUTLINE;
+    outline.uniforms.thickness!.value = half * 2 * rules.outline;
   }
 
   return { scene, camera, show };

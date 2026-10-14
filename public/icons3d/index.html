@@ -25,7 +25,7 @@
       }
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
         gap: 12px;
       }
       .card {
@@ -40,14 +40,37 @@
         font-weight: 700;
         border-bottom: 2px solid var(--ink);
       }
+      .cols,
       .bg {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .cols {
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .cols > span {
+        padding: 4px 10px 0;
+      }
+      .bg > span {
         display: flex;
         align-items: flex-end;
-        gap: 12px;
+        gap: 10px;
         padding: 10px;
+      }
+      .bg > span + span {
+        border-left: 2px dashed currentColor;
       }
       .bg.dark {
         background: var(--ink);
+        color: var(--cream);
+      }
+      .flat {
+        display: block;
+        flex: none;
+      }
+      .none {
+        font-size: 12px;
       }
       .ic3d {
         display: block;
@@ -68,37 +91,65 @@
     <script>
       const SIZES = [16, 24, 32, 48];
 
-      function sprite(manifest, cell, size) {
-        const k = size / manifest.cell;
+      /** The game's rule (src/ui/core/icons.ts): sizes up to the small cell use it, larger sizes the 48 px cell. */
+      function sprite(manifest, id, size) {
+        const small = manifest.small && manifest.smallIcons?.[id] && size <= manifest.small.cell;
+        const cell = small ? manifest.smallIcons[id] : manifest.icons[id];
+        const k = size / cell.w;
         const el = document.createElement('i');
         el.className = 'ic3d';
         el.style.width = el.style.height = `${size}px`;
         el.style.backgroundSize = `${manifest.width * k}px ${manifest.height * k}px`;
         el.style.backgroundPosition = `${-cell.x * k}px ${-cell.y * k}px`;
-        el.title = `${size} px`;
+        el.title = `${size} px, ô ${cell.w} px`;
         return el;
       }
 
-      fetch('atlas.json')
-        .then((r) => {
-          if (!r.ok) throw new Error(`atlas.json: HTTP ${r.status}`);
-          return r.json();
-        })
-        .then((manifest) => {
+      /** The old flat SVG as an image, so symbol ids of different icons never clash. */
+      function flat(markup, size) {
+        const img = document.createElement('img');
+        img.className = 'flat';
+        img.width = img.height = size;
+        img.alt = '';
+        img.title = `${size} px`;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+        return img;
+      }
+
+      function column(children) {
+        const span = document.createElement('span');
+        span.append(...children);
+        return span;
+      }
+
+      const json = (url, optional) =>
+        fetch(url).then((r) => {
+          if (r.ok) return r.json();
+          if (optional) return {};
+          throw new Error(`${url}: HTTP ${r.status}`);
+        });
+
+      Promise.all([json('atlas.json'), json('svg.json', true).catch(() => ({}))])
+        .then(([manifest, svgs]) => {
           const ids = Object.keys(manifest.icons);
+          const cells = manifest.small ? `ô ${manifest.cell} px và ô ${manifest.small.cell} px` : `ô ${manifest.cell} px`;
           document.getElementById('meta').textContent =
-            `${ids.length} icon, ô ${manifest.cell} px, atlas ${manifest.width}×${manifest.height} px @1x. Cỡ: ${SIZES.join(' / ')} px.`;
+            `${ids.length} icon, ${cells}, atlas ${manifest.width}×${manifest.height} px @1x. Cỡ: ${SIZES.join(' / ')} px. Trái: SVG cũ, phải: 3D.`;
           const grid = document.getElementById('grid');
           for (const id of ids) {
             const card = document.createElement('section');
             card.className = 'card';
             const name = document.createElement('code');
             name.textContent = id;
-            card.append(name);
+            const head = document.createElement('div');
+            head.className = 'cols';
+            head.append(column(['SVG cũ']), column(['3D']));
+            card.append(name, head);
             for (const tone of ['light', 'dark']) {
               const row = document.createElement('div');
               row.className = `bg ${tone}`;
-              row.append(...SIZES.map((size) => sprite(manifest, manifest.icons[id], size)));
+              const old = svgs[id] ? SIZES.map((size) => flat(svgs[id], size)) : [Object.assign(document.createElement('span'), { className: 'none', textContent: 'Không có SVG' })];
+              row.append(column(old), column(SIZES.map((size) => sprite(manifest, id, size))));
               card.append(row);
             }
             grid.append(card);

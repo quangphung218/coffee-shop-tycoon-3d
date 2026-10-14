@@ -76,9 +76,9 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 
 ## Icon 3D
 
-`npm run icons` dựng từng icon thành mô hình low-poly Three.js và đóng gói thành atlas WebP. Atlas có mọi id trong `src/ui/core/icons.ts` cộng một ô avatar cho mỗi mục `AVATAR_LOOKS` (`src/ui/core/iconMap.ts`): `i-avatar-0` là `AVATAR_LOOKS[0]`. Mô hình nằm trong `src/icon-studio/models/`; camera, đèn, bảng màu, viền mực và bóng chung nằm trong `src/icon-studio/style.ts`.
+`npm run icons` dựng từng icon thành mô hình low-poly Three.js và đóng gói thành atlas WebP. Atlas có mọi id trong `src/ui/core/icons.ts` cộng một ô avatar cho mỗi mục `AVATAR_LOOKS` (`src/ui/core/iconMap.ts`): `i-avatar-0` là `AVATAR_LOOKS[0]`. Mô hình nằm trong `src/icon-studio/models/`; camera, đèn, bảng màu, viền mực và bóng chung nằm trong `src/icon-studio/style.ts`, cách vẽ ô 48 px và ô 24 px trong `LOOKS` của file đó.
 
-Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiểm): `atlas@1x.webp` ≤ 120 kB, `atlas@2x.webp` ≤ 300 kB.
+Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiểm), tính cả ô 24 px: `atlas@1x.webp` ≤ 120 kB, `atlas@2x.webp` ≤ 300 kB. Lệnh thử lần lượt các cách nén trong `ENCODINGS` (`src/icon-studio/main.ts`): chất lượng WebP 0,85, rồi giảm số mức alpha và chất lượng dần tới 8 mức alpha và 0,6, lấy cách đầu tiên vừa ngân sách và in ra cách đã chọn. Không cách nào vừa thì lệnh báo lỗi kèm dung lượng từng lần thử.
 
 ### Yêu cầu
 
@@ -90,23 +90,25 @@ Ngân sách dung lượng (`BUDGET` trong `src/icon-studio/atlas.ts`, test kiể
 ```sh
 npm run icons                          # dựng mọi icon có mô hình
 npm run icons -- --only i-menu,i-close # dựng lại vài icon, giữ các icon khác trong atlas hiện có
+npm run icons -- --sheet               # như trên, và chụp lại bảng so sánh vào docs/reports/
 ```
 
-Lệnh mở Vite dev server cho `src/icon-studio/`, Chromium headless vẽ mỗi icon ở ô 96 px (@2x) và 48 px (@1x), rồi ghi đè:
+Lệnh mở Vite dev server cho `src/icon-studio/`, Chromium headless vẽ mỗi icon hai lần: ô 48 px (96 px @2x) và ô 24 px (48 px @2x), rồi ghi đè:
 
 | File | Nội dung |
 | --- | --- |
-| `public/icons3d/atlas@1x.webp` | Atlas ô 48 px. |
-| `public/icons3d/atlas@2x.webp` | Cùng atlas, ô 96 px. |
-| `public/icons3d/atlas.json` | Id → ô `{x, y, w, h}` theo px @1x, cùng kích thước atlas. |
-| `docs/reports/p18-icons-sample.png` | Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px (chụp ở tỉ lệ điểm ảnh 2). |
+| `public/icons3d/atlas@1x.webp` | Atlas: lưới ô 48 px, dưới nó lưới ô 24 px. |
+| `public/icons3d/atlas@2x.webp` | Cùng atlas, gấp đôi. |
+| `public/icons3d/atlas.json` | Id → ô `{x, y, w, h}` theo px @1x: `icons` (48 px), `smallIcons` (24 px), cùng số đo hai lưới (`small`) và kích thước atlas. |
+| `public/icons3d/svg.json` | Id → SVG phẳng cũ, cho trang xem icon. |
+| `docs/reports/p18-icons-sample.png` | Chỉ khi có `--sheet`. Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px (16, 24 lấy ô 24 px; 48 lấy ô 48 px; chụp ở tỉ lệ điểm ảnh 2) cho các nút chỉ có icon (`ICON_ONLY_IDS`) và một hai icon mỗi nhóm (`SHEET_IDS` trong `src/icon-studio/atlas.ts`). |
 
 Cuối cùng lệnh in số icon và dung lượng từng file.
 
 ### Xem icon
 
-- Trang `public/icons3d/index.html` liệt kê mọi icon trong `atlas.json` ở 16/24/32/48 px trên nền sáng và tối. Mở bằng `npm run dev` rồi vào `/icons3d/`; bản build có ở `icons3d/` cạnh `index.html`.
-- Khi sửa mô hình: `npm run dev` rồi vào `/src/icon-studio/` để xem mọi mô hình ở 96 px, tải lại trang sau mỗi lần sửa.
+- Trang `public/icons3d/index.html` liệt kê mọi icon trong `atlas.json` ở 16/24/32/48 px trên nền sáng và tối: cột trái là SVG cũ (từ `svg.json`), cột phải là icon 3D (16, 24 px lấy ô 24 px như trong game). Mở bằng `npm run dev` rồi vào `/icons3d/`; bản build có ở `icons3d/` cạnh `index.html`.
+- Khi sửa mô hình: `npm run dev` rồi vào `/src/icon-studio/` để xem mọi mô hình ở 96 px, cạnh ô 24 px phóng lên 48 px; tải lại trang sau mỗi lần sửa.
 
 ### Thêm icon
 
@@ -114,5 +116,5 @@ Cuối cùng lệnh in số icon và dung lượng từng file.
 2. Viết hàm dựng mô hình trong file theo nhóm ở `src/icon-studio/models/` (`hud.ts`, `glyphs.ts`, `items.ts`, `shop.ts`, `people.ts`) bằng `part(geometry, màu)` của `style.ts` và các khối chung trong `shapes.ts` (`stroke`, `lathe`, `steam`, `iceCube`, `saucer`, `badgeBase`…); mô hình đứng trên `y = 0`, mặt trước hướng `+Z`.
 3. Chọn tư thế camera bằng `posed(tư thế, mô hình)`: `object` (mặc định, đồ vật), `glyph` (ký hiệu, nhìn thẳng, dựng trong mặt phẳng XY), `top` (vật dẹt nằm trên bàn, nhìn từ trên).
 4. Khai hàm vào `ICON_MODELS` trong `src/icon-studio/models/index.ts`; thiếu id nào thì `tsc` báo lỗi.
-5. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm đủ id, màu trong bảng màu, kích thước và dung lượng atlas; `tests/ui/icons.test.ts` kiểm mọi id có ô).
+5. Chạy `npm run icons -- --only <id>` và `npm test` (test `tests/icons/atlas.test.ts` kiểm đủ id, màu trong bảng màu, kích thước và dung lượng atlas; `tests/ui/icons.test.ts` kiểm mọi id có ô 48 px và ô 24 px). Xem ô 24 px trên trang xem icon; chi tiết nào mất ở 24 px mà cần giữ thì làm nó to hơn trong mô hình.
 6. Dùng icon trong UI bằng `icon('<id>')`, hoặc nối id của sim trong `src/ui/core/iconMap.ts`.
