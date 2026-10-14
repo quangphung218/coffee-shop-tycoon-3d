@@ -1,4 +1,7 @@
-/* Preparation panels (design/prep.html). Shared tokens come from src/ui/styles. */
+/* Preparation panels, after the Kho mockup in design/t237-cartoon and the
+   state rules in design/p17-states: ink outlines, hard sticker shadows, one
+   channel per state, focus drawn INSIDE each control so it never leaves its
+   row. Shared tokens and .btn/.toggle/.badge come from src/ui/styles. */
 .prep {
   display: flex;
   flex-direction: column;
@@ -12,39 +15,57 @@
 .prep .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 .intro {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
+.intro-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.prep .section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+}
 .prep .panel-foot {
   position: sticky;
   bottom: calc(-1 * var(--space-4));
   margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  background: var(--surface-panel-solid);
-  border-top: var(--size-border-thin) solid var(--border-subtle);
+  background: var(--surface-sunken);
+  border-top: var(--size-outline) solid var(--border-outline);
 }
 .foot-sum {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
   font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;
 }
 .foot-sum b {
   font-size: var(--font-size-md);
+  font-weight: var(--font-weight-heavy);
 }
 .btn-sm {
   min-height: var(--size-target);
   padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
 }
+
+/* Link to another panel: ghost text, level 4. Hover thickens the underline;
+   focus is the inset ring inside the 44px target. */
 .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   min-height: var(--size-target);
   padding: 0 var(--space-2);
   margin-left: calc(-1 * var(--space-2));
@@ -52,51 +73,63 @@
   background: transparent;
   font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--accent-primary);
+  font-weight: var(--font-weight-heavy);
+  color: var(--text-primary);
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 }
+@media (hover: hover) {
+  .link-btn:hover {
+    text-decoration-thickness: 3px;
+  }
+}
 .link-btn:focus-visible {
   outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: 0;
+  outline-offset: calc(-1 * var(--size-focus-width));
 }
+
 .status-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-ok);
-  background: var(--surface-ok);
-  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  background: var(--surface-info);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
-}
-.status-ok[hidden],
-.prep [hidden] {
-  display: none;
 }
 
 /* Item card: menu, stock, marketing, upgrades */
 .item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   gap: var(--space-2) var(--space-3);
   align-items: center;
   padding: var(--space-3);
   background: var(--surface-panel-solid);
-  border: var(--size-border-thin) solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
 }
 .item-icon {
-  font-size: var(--font-size-xl);
-  width: var(--space-12);
-  height: var(--space-12);
   display: grid;
   place-items: center;
+  width: 48px;
+  height: 48px;
   background: var(--surface-sunken);
-  border-radius: var(--radius-sm);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
 }
 .item-title {
-  font-weight: var(--font-weight-semibold);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
 .item-meta {
@@ -104,18 +137,32 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.dots {
+  display: inline-flex;
+  gap: 2px;
+}
 .item-side {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-heavy);
+}
+.item-cost {
+  margin-left: auto;
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
 }
 .item-actions {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-3);
   align-items: center;
-  justify-content: space-between;
 }
 .item-actions:empty {
   display: none;
@@ -126,29 +173,49 @@
 .item.is-locked {
   background: var(--surface-sunken);
   border-style: dashed;
-  border-color: var(--border-strong);
+  border-color: var(--border-disabled);
 }
 .item.is-suggested {
-  border-color: var(--accent-mint);
-  box-shadow: inset var(--size-border-thick) 0 0 var(--accent-mint);
+  background: var(--surface-selected);
 }
 .sug {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--accent-mint);
+  font-weight: var(--font-weight-heavy);
+  color: var(--text-warning);
 }
 .badge-warn {
   background: var(--surface-warning);
   color: var(--text-warning);
 }
+.prep .badge {
+  border: var(--size-outline-sm) solid var(--border-outline);
+}
+.prep .reason {
+  align-items: center;
+}
 .prep .confirm {
   grid-column: 1 / -1;
   background: var(--surface-sunken);
-  border-color: var(--border-strong);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
 }
 .prep .confirm p {
   flex: 1 1 160px;
   font-size: var(--font-size-sm);
+}
+@media (max-width: 640px) {
+  .item {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .item > .badge,
+  .item > .item-side,
+  .item > .toggle {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 /* Task Board */
@@ -158,15 +225,16 @@
   gap: 0 var(--space-3);
   padding: var(--space-3);
   background: var(--surface-panel-solid);
-  border: var(--size-border-thin) solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
 }
 .task-icon {
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-tight);
+  display: grid;
+  place-items: start center;
+  padding-top: 2px;
 }
 .task-title {
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
 .task.is-done .task-title {
@@ -174,13 +242,14 @@
   text-decoration: line-through;
 }
 .task.is-warn {
-  border-color: var(--text-warning);
+  background: var(--surface-warning);
 }
 .progress {
   display: block;
-  height: var(--space-2);
+  height: var(--space-3);
   border-radius: var(--radius-pill);
   background: var(--data-track);
+  border: var(--size-outline-sm) solid var(--border-outline);
   overflow: hidden;
 }
 .progress > span {
@@ -199,66 +268,65 @@
   width: var(--space-16);
 }
 
-/* Stepper */
+/* Stepper: three separate controls in a group with a 4px gap, so each one
+   owns its border and the focus ring stays inside it. */
 .stepper-label {
-  font-size: var(--font-size-sm);
+  flex: 1 1 100%;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
 .stepper {
   display: inline-flex;
-  align-items: stretch;
-  border: var(--size-border-thin) solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--surface-panel-solid);
+  align-items: center;
+  gap: var(--size-group-gap);
 }
-.stepper button {
+.step-btn,
+.step-input {
+  --bw: var(--size-outline);
+  height: var(--size-target);
+  font: inherit;
+  font-weight: var(--font-weight-heavy);
+  color: var(--text-primary);
+  background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-md);
+}
+.step-btn {
+  display: grid;
+  place-items: center;
   width: var(--size-target);
-  min-height: var(--size-target);
-  border: 0;
-  background: var(--surface-sunken);
-  font: inherit;
+  padding: 0;
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
+  transition: transform var(--duration-fast) var(--easing-bounce);
 }
-.stepper button:hover {
-  background: var(--surface-disabled);
-}
-.stepper input {
-  width: var(--space-12);
-  border: 0;
+.step-input {
+  width: 56px;
   text-align: center;
-  font: inherit;
-  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
-  background: transparent;
-  color: var(--text-primary);
 }
-.stepper button:focus-visible,
-.stepper input:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--size-focus-width));
+@media (hover: hover) {
+  .step-btn:not([aria-disabled='true']):hover {
+    background: var(--surface-sunken);
+  }
 }
-.stepper button[aria-disabled='true'] {
+.step-btn:not([aria-disabled='true']):active {
+  transform: translateY(2px);
+  box-shadow: none;
+  transition-duration: var(--duration-instant);
+}
+.step-btn[aria-disabled='true'] {
+  background: var(--surface-disabled);
   color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+  box-shadow: none;
   cursor: not-allowed;
-  background: var(--surface-panel-solid);
 }
 
-/* Toggle, disabled */
-.toggle[aria-disabled='true'] {
-  cursor: not-allowed;
-  color: var(--text-muted);
-}
-.toggle[aria-disabled='true'] .toggle-track {
-  border-style: dashed;
-  background: var(--surface-sunken);
-}
-.toggle[aria-disabled='true'] .toggle-thumb {
-  background: var(--border-subtle);
-}
+/* Settings row (Tự phân vai) */
 .setting {
   display: flex;
   flex-wrap: wrap;
@@ -267,52 +335,73 @@
   gap: var(--space-2);
   padding: var(--space-3);
   background: var(--surface-panel-solid);
-  border: var(--size-border-thin) solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
 }
 .setting-text {
   flex: 1 1 180px;
 }
+.setting .item-title {
+  flex-wrap: nowrap;
+}
 
-/* Dropdown (menu sổ) */
+/* Dropdown (menu sổ): a level-4 control like the stepper buttons. */
 .dd {
   position: relative;
   display: inline-flex;
   flex-direction: column;
 }
 .dd-btn {
+  --bw: var(--size-outline);
   min-height: var(--size-target);
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-width: 168px;
+  min-width: 184px;
   padding: 0 var(--space-3);
-  border: var(--size-border-thin) solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-md);
   background: var(--surface-panel-solid);
+  box-shadow: var(--shadow-sm);
   font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-heavy);
   color: var(--text-primary);
   cursor: pointer;
 }
-.dd-btn:hover {
-  background: var(--surface-sunken);
+.dd-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
-.dd-btn:focus-visible {
-  outline: var(--size-focus-width) solid var(--focus-ring);
-  outline-offset: var(--size-focus-offset);
+.dd-chevron {
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+.dd-btn[aria-expanded='true'] .dd-chevron {
+  transform: rotate(180deg);
+}
+@media (hover: hover) {
+  .dd-btn:not([aria-disabled='true']):hover {
+    background: var(--surface-sunken);
+  }
+}
+.dd-btn:not([aria-disabled='true']):active {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 .dd-btn[aria-disabled='true'] {
   border-style: dashed;
+  border-color: var(--border-disabled);
   color: var(--text-muted);
-  background: var(--surface-sunken);
+  background: var(--surface-disabled);
+  box-shadow: none;
   cursor: not-allowed;
 }
+/* Unassigned role: a status, shown in the content channel (warning icon + colour). */
 .dd-btn.is-warn {
-  border-color: var(--text-warning);
   color: var(--text-warning);
+  background: var(--surface-warning);
 }
 .dd-list {
   position: absolute;
@@ -322,7 +411,7 @@
   margin-top: var(--space-1);
   padding: var(--space-1);
   background: var(--surface-panel-solid);
-  border: var(--size-border-thin) solid var(--border-strong);
+  border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   min-width: 240px;
@@ -353,12 +442,13 @@
   font-size: var(--font-size-xs);
 }
 .dd-opt[aria-selected='true'] {
-  font-weight: var(--font-weight-bold);
-}
-.dd-opt.is-active {
+  font-weight: var(--font-weight-heavy);
   background: var(--surface-selected);
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+}
+/* The active option is the list's keyboard focus: same inset ring. */
+.dd-opt.is-active {
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--size-focus-width));
 }
 
 /* Staff */
@@ -368,20 +458,20 @@
   gap: var(--space-2) var(--space-3);
   padding: var(--space-3);
   background: var(--surface-panel-solid);
-  border: var(--size-border-thin) solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
 }
 .staff-av {
-  font-size: var(--font-size-xl);
-  width: var(--space-12);
-  height: var(--space-12);
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   background: var(--surface-sunken);
+  border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: 50%;
 }
 .staff-name {
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-heavy);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -405,9 +495,27 @@
   text-align: center;
   gap: var(--space-2);
   padding: var(--space-8) var(--space-4);
-  border: 2px dashed var(--border-strong);
-  border-radius: var(--radius-md);
+  border: var(--size-outline-sm) dashed var(--border-strong);
+  border-radius: var(--radius-lg);
 }
-.empty-icon {
-  font-size: var(--font-size-3xl);
+
+/* Focus (design/p17-states): border turns --focus-ring and a ring is drawn
+   just inside it. After the disabled rules so a dashed border recolours too. */
+.step-btn:focus-visible,
+.step-input:focus-visible,
+.dd-btn:focus-visible {
+  border-color: var(--focus-ring);
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}
+.step-input:focus-visible {
+  caret-color: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-btn,
+  .dd-btn,
+  .dd-chevron {
+    transform: none !important;
+  }
 }

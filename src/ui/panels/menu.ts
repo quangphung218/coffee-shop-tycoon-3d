@@ -4,8 +4,10 @@ import { stockOf } from '../../sim/inventory';
 import type { GameState, MenuItemDef } from '../../sim/types';
 import { h, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { MENU_ICONS } from '../core/iconMap';
+import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { openOtherPanel, reasonLine, sender, setReason, toggle } from './widgets';
+import { linkBtn, reasonLine, sender, setReason, toggle, withIcon } from './widgets';
 
 /** Why an item cannot be made from the stock, or null when it can. */
 export function lockReason(state: GameState, item: MenuItemDef): string | null {
@@ -15,13 +17,13 @@ export function lockReason(state: GameState, item: MenuItemDef): string | null {
     const def = getIngredient(need.id);
     return `${def.name}: cần ${need.qty} ${def.unit}/ly, còn ${stockOf(state, need.id)} ${def.unit}`;
   });
-  return `🔒 Thiếu ${parts.join('; ')}.`;
+  return `Thiếu ${parts.join('; ')}.`;
 }
 
-/** 0..1 popularity as five dots, e.g. ●●●○○. */
-function popularityDots(p: number): string {
+/** 0..1 popularity as five dot icons, filled then empty. */
+function popularityDots(p: number): HTMLElement {
   const n = Math.max(1, Math.min(5, Math.round(p * 5)));
-  return '●'.repeat(n) + '○'.repeat(5 - n);
+  return h('span', { class: 'dots', attrs: { 'aria-hidden': 'true' } }, ...[0, 1, 2, 3, 4].map((i) => icon(i < n ? 'i-dot' : 'i-dot-empty', { size: 16 })));
 }
 
 /**
@@ -38,13 +40,14 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   const rows = MENU.map((item) => {
     const why = reasonLine();
     const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }));
-    const lockBadge = h('span', { class: 'badge badge-danger', hidden: true, text: '🔒 Khóa' });
+    const lockBadge = h('span', { class: 'badge badge-danger', hidden: true }, ...withIcon('i-lock', 'Khóa'));
     const meta = h('p', { class: 'item-meta' });
-    const toStock = h('button', { class: 'link-btn', hidden: true, attrs: { type: 'button' }, on: { click: () => openOtherPanel('inventory') } }, 'Nhập ở Kho →');
+    const toStock = linkBtn('Nhập ở Kho', 'inventory');
+    toStock.hidden = true;
     const li = h(
       'li',
       { class: 'item', attrs: { 'data-item': item.id } },
-      h('span', { class: 'item-icon', attrs: { 'aria-hidden': 'true' }, text: item.icon }),
+      h('span', { class: 'item-icon' }, icon(MENU_ICONS[item.id], { size: 32 })),
       h(
         'div',
         {},
@@ -52,10 +55,10 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         meta,
         h(
           'p',
-          { class: 'item-meta' },
-          item.temperature === 'hot' ? '🔥 Nóng' : '🧊 Lạnh',
+          { class: 'item-meta item-tags' },
+          ...withIcon(item.temperature === 'hot' ? 'i-cup-hot' : 'i-cold', item.temperature === 'hot' ? 'Nóng' : 'Lạnh'),
           ' · Phổ biến ',
-          h('span', { attrs: { 'aria-hidden': 'true' }, text: popularityDots(item.popularity) }),
+          popularityDots(item.popularity),
           h('span', { class: 'sr-only', text: `${Math.round(item.popularity * 5)}/5` }),
         ),
       ),
@@ -77,7 +80,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         lockBadge.hidden = !locked;
         toStock.hidden = !locked;
         sw.set(enabled, !!locked && !enabled);
-        setReason(why, sw.el, locked);
+        setReason(why, sw.el, locked, 'i-lock');
       },
     );
     return li;

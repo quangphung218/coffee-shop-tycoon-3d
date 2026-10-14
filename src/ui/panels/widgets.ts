@@ -1,12 +1,24 @@
 /**
- * Small controls shared by the preparation panels, after design/prep.html:
- * switch, quantity stepper, select-only dropdown (menu sổ), in-place confirm.
- * Disabled controls use aria-disabled so they stay focusable and their reason
- * stays readable.
+ * Small controls shared by the preparation panels, after design/t237-cartoon
+ * (Kho) and design/p17-states: switch, quantity stepper, select-only dropdown
+ * (menu sổ), in-place confirm. Disabled controls use aria-disabled so they
+ * stay focusable and their reason stays readable.
  */
 import type { Command, GameState } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
+import { h, isAriaDisabled, setAriaDisabled, setChildren, uid } from '../core/dom';
+import { icon, type IconId } from '../core/icons';
 import type { PanelContext } from '../hud/panels';
+
+/** Small icon + text, e.g. a badge or button label. */
+export function withIcon(id: IconId, text: string, size: 16 | 24 = 16): (SVGSVGElement | string)[] {
+  return [icon(id, { size }), text];
+}
+
+/** Sets `el` to [icon] text. */
+export function setIconText(el: HTMLElement, id: IconId | null, text: string, size: 16 | 24 = 16): void {
+  if (id) setChildren(el, ...withIcon(id, text, size));
+  else el.textContent = text;
+}
 
 export interface Toggle {
   el: HTMLButtonElement;
@@ -50,13 +62,17 @@ export interface Stepper {
   set(value: number): void;
 }
 
-/** − [n] + with a typed-in field; ↑ ↓ in the field also step. Values are whole numbers in [min, max]. */
-export function stepper(label: string, min: number, max: number, onChange: (value: number) => void): Stepper {
+/**
+ * − [n] + with a typed-in field; ↑ ↓ in the field also step. Values are whole
+ * numbers in [min, max]. `label` names the field ("Số gói Sữa tươi"); `name`
+ * goes into the −/+ labels ("Thêm 1 gói Sữa tươi").
+ */
+export function stepper(label: string, min: number, max: number, onChange: (value: number) => void, name = label): Stepper {
   let value = min;
-  const dec = h('button', { attrs: { type: 'button', 'aria-label': `Bớt 1 · ${label}` }, text: '−' });
-  const inc = h('button', { attrs: { type: 'button', 'aria-label': `Thêm 1 · ${label}` }, text: '+' });
+  const dec = h('button', { class: 'step-btn', attrs: { type: 'button', 'aria-label': `Bớt 1 gói ${name}` }, text: '−' });
+  const inc = h('button', { class: 'step-btn', attrs: { type: 'button', 'aria-label': `Thêm 1 gói ${name}` }, text: '+' });
   const id = uid('step');
-  const input = h('input', { id, attrs: { type: 'text', inputmode: 'numeric', autocomplete: 'off' }, props: { value: String(min) } });
+  const input = h('input', { id, class: 'step-input', attrs: { type: 'text', inputmode: 'numeric', autocomplete: 'off' }, props: { value: String(min) } });
 
   function set(next: number, notify: boolean): void {
     const v = Math.min(max, Math.max(min, Math.round(Number.isFinite(next) ? next : min)));
@@ -103,14 +119,20 @@ export function stepper(label: string, min: number, max: number, onChange: (valu
 export interface DropdownOption<T extends string> {
   value: T;
   label: string;
+  icon?: IconId;
   note?: string;
+}
+
+export interface DropdownDisplay {
+  text: string;
+  icon?: IconId;
 }
 
 export interface Dropdown<T extends string> {
   el: HTMLElement;
   button: HTMLButtonElement;
-  /** Shows `value`; `display` overrides the button text (e.g. "🤖 Tự động: Pha chế"). */
-  set(value: T, opts?: { disabled?: boolean; warn?: boolean; display?: string; describedBy?: string }): void;
+  /** Shows `value`; `display` overrides the button content (e.g. i-auto "Tự động: Pha chế"). */
+  set(value: T, opts?: { disabled?: boolean; warn?: boolean; display?: DropdownDisplay; describedBy?: string }): void;
   setNotes(notes: Partial<Record<T, string>>): void;
   readonly open: boolean;
   close(): void;
@@ -124,12 +146,12 @@ export function dropdown<T extends string>(label: string, options: readonly Drop
   let current: T = options[0]!.value;
   let active = 0;
   const listId = uid('dd');
-  const text = h('span');
+  const text = h('span', { class: 'dd-text' });
   const button = h(
     'button',
     { class: 'dd-btn', attrs: { type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': label } },
     text,
-    h('span', { attrs: { 'aria-hidden': 'true' }, text: '▾' }),
+    icon('i-chevron-down', { size: 16, class: 'dd-chevron' }),
   );
   const noteEls: HTMLElement[] = [];
   const optEls = options.map((o, i) => {
@@ -146,6 +168,7 @@ export function dropdown<T extends string>(label: string, options: readonly Drop
           mousemove: () => setActive(i),
         },
       },
+      o.icon ? icon(o.icon, { size: 16 }) : null,
       o.label,
       note,
     );
@@ -227,7 +250,8 @@ export function dropdown<T extends string>(label: string, options: readonly Drop
     set(value, opts = {}) {
       current = value;
       const o = options.find((x) => x.value === value);
-      text.textContent = opts.display ?? o?.label ?? value;
+      const shown = opts.display ?? { text: o?.label ?? value, icon: o?.icon };
+      setIconText(text, shown.icon ?? null, shown.text);
       optEls.forEach((li, i) => li.setAttribute('aria-selected', String(options[i]!.value === value)));
       setAriaDisabled(button, !!opts.disabled);
       button.classList.toggle('is-warn', !!opts.warn);
@@ -274,15 +298,19 @@ export function inlineConfirm(question: string, okText: string, okClass: string,
   return el;
 }
 
-/** "🔒 reason" line wired to a control through aria-describedby. */
+/** Reason line ([i-lock] text) wired to a control through aria-describedby. */
 export function reasonLine(danger = true): HTMLElement {
   return h('p', { class: danger ? 'reason reason-danger' : 'reason', id: uid('why'), hidden: true });
 }
 
-/** Shows or hides a reason line and points `control` at it. */
-export function setReason(line: HTMLElement, control: HTMLElement, text: string | null): void {
+/**
+ * Shows or hides a reason line and points `control` at it. The icon defaults
+ * to i-lock while the control is aria-disabled, so call this after
+ * setAriaDisabled; pass `ic` for other lines (info, done).
+ */
+export function setReason(line: HTMLElement, control: HTMLElement, text: string | null, ic: IconId | null = isAriaDisabled(control) ? 'i-lock' : null): void {
   line.hidden = !text;
-  line.textContent = text ?? '';
+  setIconText(line, text ? ic : null, text ?? '');
   if (text) control.setAttribute('aria-describedby', line.id);
   else if (control.getAttribute('aria-describedby') === line.id) control.removeAttribute('aria-describedby');
 }
@@ -336,12 +364,17 @@ export function keepFocus(row: HTMLElement, scope: HTMLElement, update: () => vo
   scope.focus();
 }
 
-/** Clicks the HUD button of another panel (Task Board links "Mở Kho →"). */
+/** Clicks the dock button of another panel (Task Board links "Mở Kho"). */
 export function openOtherPanel(id: string): void {
-  document.querySelector<HTMLButtonElement>(`.hud [data-panel="${id}"]`)?.click();
+  document.querySelector<HTMLButtonElement>(`.dock [data-panel="${id}"]`)?.click();
+}
+
+/** Text link to another panel: "Mở Kho" + forward arrow icon. */
+export function linkBtn(text: string, panel: string): HTMLButtonElement {
+  return h('button', { class: 'link-btn', attrs: { type: 'button', 'data-goto': panel }, on: { click: () => openOtherPanel(panel) } }, text, icon('i-forward', { size: 16 }));
 }
 
 /** "Thiếu 110.000đ (cần 1.850.000đ, có 1.740.000đ)." */
 export function shortOfMoney(need: number, have: number, fmt: (n: number) => string): string {
-  return `🔒 Thiếu ${fmt(need - have)} (cần ${fmt(need)}, có ${fmt(have)}).`;
+  return `Thiếu ${fmt(need - have)} (cần ${fmt(need)}, có ${fmt(have)}).`;
 }

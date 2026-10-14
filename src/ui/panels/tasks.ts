@@ -4,8 +4,9 @@ import { getMenuItem } from '../../sim/data/menu';
 import { autoRestockSuggestion, canMake } from '../../sim/inventory';
 import type { GameState, SuggestionKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
+import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { openOtherPanel, reasonLine, sender, setReason } from './widgets';
+import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
 export interface DayTask {
   id: 'menu' | 'restock' | 'staff' | 'marketing';
@@ -40,7 +41,7 @@ export function dayTasks(state: GameState): DayTask[] {
             ? `${names(locked.map((m) => getMenuItem(m.id).name))} đang bán nhưng thiếu nguyên liệu.`
             : `Xong · ${enabled.length} món đang bán.`,
       panel: 'menu',
-      link: 'Mở Menu →',
+      link: 'Mở Menu',
     },
     {
       id: 'restock',
@@ -49,7 +50,7 @@ export function dayTasks(state: GameState): DayTask[] {
       warn: locked.length > 0,
       detail: restock.length === 0 ? 'Xong · kho đủ cho lượng khách dự kiến.' : `Nên nhập thêm: ${names(restock.map((l) => getIngredient(l.id).name))}.`,
       panel: 'inventory',
-      link: 'Mở Kho →',
+      link: 'Mở Kho',
     },
     {
       id: 'staff',
@@ -65,7 +66,7 @@ export function dayTasks(state: GameState): DayTask[] {
               ? `Xong · Tự phân vai đang bật cho ${state.staff.length} người.`
               : `Xong · ${state.staff.length} người đã có vai.`,
       panel: 'staff',
-      link: 'Mở Nhân viên →',
+      link: 'Mở Nhân viên',
     },
     {
       id: 'marketing',
@@ -77,23 +78,19 @@ export function dayTasks(state: GameState): DayTask[] {
           ? `Đang chạy: ${campaigns.map((c) => `${getCampaign(c.id).name} (còn ${c.daysLeft} ngày)`).join(', ')}.`
           : 'Kéo thêm khách từ hôm nay.',
       panel: 'marketing',
-      link: 'Mở Marketing →',
+      link: 'Mở Marketing',
     },
   ];
 }
 
 const SUGGESTION_PANEL: Record<SuggestionKind, { panel: string; link: string }> = {
-  restock: { panel: 'inventory', link: 'Mở Kho →' },
-  hire_barista: { panel: 'staff', link: 'Mở Nhân viên →' },
-  hire_server: { panel: 'staff', link: 'Mở Nhân viên →' },
-  hire_cleaner: { panel: 'staff', link: 'Mở Nhân viên →' },
-  marketing: { panel: 'marketing', link: 'Mở Marketing →' },
-  upgrade: { panel: 'upgrades', link: 'Mở Nâng cấp →' },
+  restock: { panel: 'inventory', link: 'Mở Kho' },
+  hire_barista: { panel: 'staff', link: 'Mở Nhân viên' },
+  hire_server: { panel: 'staff', link: 'Mở Nhân viên' },
+  hire_cleaner: { panel: 'staff', link: 'Mở Nhân viên' },
+  marketing: { panel: 'marketing', link: 'Mở Marketing' },
+  upgrade: { panel: 'upgrades', link: 'Mở Nâng cấp' },
 };
-
-function linkBtn(text: string, panel: string): HTMLButtonElement {
-  return h('button', { class: 'link-btn', attrs: { type: 'button', 'data-goto': panel }, on: { click: () => openOtherPanel(panel) } }, text);
-}
 
 /**
  * Task Board: today's checklist with done/not-done state, yesterday's report
@@ -106,9 +103,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const summary = h('span');
   const bar = h('span');
   const list = h('ul', { class: 'stack', attrs: { 'aria-label': 'Việc trong ngày' } });
-  const sugTitle = h('h3', { class: 'section-title', text: '💡 Gợi ý từ báo cáo hôm qua' });
+  const sugTitle = h('h3', { class: 'section-title' }, ...withIcon('i-tip', 'Gợi ý từ báo cáo hôm qua', 24));
   const sugList = h('ul', { class: 'stack' });
-  const openBtn = h('button', { class: 'btn btn-accent btn-block', attrs: { type: 'button', 'data-action': 'open' }, text: '🔔 Mở cửa' });
+  const openBtn = h('button', { class: 'btn btn-accent btn-lg btn-block', attrs: { type: 'button', 'data-action': 'open' } }, icon('i-open'), 'Mở cửa');
   const why = reasonLine(false);
   openBtn.addEventListener('click', () => {
     if (!isAriaDisabled(openBtn)) send({ type: 'start_day' });
@@ -127,7 +124,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
           h(
             'li',
             { class: `task${t.done ? ' is-done' : ''}${!t.done && t.warn ? ' is-warn' : ''}`, attrs: { 'data-task': t.id, 'data-done': String(t.done) } },
-            h('span', { class: 'task-icon', attrs: { 'aria-hidden': 'true' }, text: t.done ? '✅' : t.warn ? '⚠️' : '⬜' }),
+            h('span', { class: 'task-icon' }, icon(t.done ? 'i-ok' : t.warn ? 'i-warning' : 'i-todo')),
             h(
               'div',
               {},
@@ -141,7 +138,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       const open = s.phase === 'preparation';
       const left = tasks.filter((t) => !t.done).length;
       setAriaDisabled(openBtn, !open);
-      setReason(why, openBtn, !open ? 'Quán đã mở cửa hôm nay.' : left > 0 ? `Còn ${left} việc nên làm. Vẫn mở cửa được.` : 'Mọi việc đã xong. Sẵn sàng đón khách!');
+      if (!open) setReason(why, openBtn, 'Quán đã mở cửa hôm nay.');
+      else if (left > 0) setReason(why, openBtn, `Còn ${left} việc nên làm. Vẫn mở cửa được.`, 'i-info');
+      else setReason(why, openBtn, 'Mọi việc đã xong. Sẵn sàng đón khách!', 'i-ok');
     },
   );
   w.watch(
@@ -152,7 +151,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       setChildren(
         sugList,
         ...items.map((sug) =>
-          h('li', { class: 'task' }, h('span', { class: 'task-icon', attrs: { 'aria-hidden': 'true' }, text: '💡' }), h('div', {}, h('p', { class: 'item-meta', text: sug.text }), linkBtn(SUGGESTION_PANEL[sug.kind].link, SUGGESTION_PANEL[sug.kind].panel))),
+          h('li', { class: 'task' }, h('span', { class: 'task-icon' }, icon('i-tip')), h('div', {},h('p', { class: 'item-meta', text: sug.text }), linkBtn(SUGGESTION_PANEL[sug.kind].link, SUGGESTION_PANEL[sug.kind].panel))),
         ),
       );
     },
