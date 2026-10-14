@@ -3,6 +3,17 @@
  * the page) and public/icons3d/index.html (which reads atlas.json).
  * Pure: no DOM, no three.js.
  */
+import { ICON_IDS } from '../ui/core/icons';
+import { AVATAR_LOOKS } from '../ui/core/iconMap';
+
+/** One atlas cell per AVATAR_LOOKS entry, same index: `i-avatar-0` is AVATAR_LOOKS[0]. */
+export const AVATAR_IDS: readonly string[] = AVATAR_LOOKS.map((_, i) => `i-avatar-${i}`);
+
+/** Every cell of the full atlas, in atlas order: the icons, then the avatar looks. */
+export const ATLAS_IDS: readonly string[] = [...ICON_IDS, ...AVATAR_IDS];
+
+/** Size limits of the committed atlas images, in bytes (120 kB and 300 kB). */
+export const BUDGET = { 1: 120_000, 2: 300_000 } as const;
 
 /** Cell size in px of atlas@1x.webp; atlas@2x.webp doubles every number. */
 export const CELL = 48;

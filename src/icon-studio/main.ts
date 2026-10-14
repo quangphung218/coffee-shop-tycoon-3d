@@ -6,14 +6,16 @@
  * every model at 96 px.
  */
 import { NoToneMapping, SRGBColorSpace, WebGLRenderer } from 'three';
-import { ICON_IDS, iconSvgMarkup, isIconId, type IconId } from '../ui/core/icons';
-import { type AtlasManifest, CELL, orderIds, packAtlas } from './atlas';
+import { AVATAR_LOOKS } from '../ui/core/iconMap';
+import { iconSvgMarkup, isIconId } from '../ui/core/icons';
+import { ATLAS_IDS, type AtlasManifest, AVATAR_IDS, CELL, orderIds, packAtlas } from './atlas';
 import { MODELS } from './models';
 import { createStage } from './style';
 
 /** Each icon is drawn this many times larger than its @2x cell, then halved step by step. */
 const SUPERSAMPLE = 4;
-const WEBP_QUALITY = 0.92;
+/** Lossy WebP; 0.85 keeps the full set inside the atlas budget (BUDGET in atlas.ts). */
+const WEBP_QUALITY = 0.85;
 /** Sizes compared on the report sheet, CSS px. */
 const SHEET_SIZES = [16, 24, 48] as const;
 
@@ -49,12 +51,12 @@ function shrink(src: HTMLCanvasElement, px: number): HTMLCanvasElement {
   return out;
 }
 
-function hasModel(id: string): id is IconId {
-  return isIconId(id) && MODELS[id] !== undefined;
+function hasModel(id: string): boolean {
+  return ATLAS_IDS.includes(id) && Object.hasOwn(MODELS, id);
 }
 
 /** The icon at @2x and @1x cell size. */
-function renderIcon(id: IconId): { 1: HTMLCanvasElement; 2: HTMLCanvasElement } {
+function renderIcon(id: string): { 1: HTMLCanvasElement; 2: HTMLCanvasElement } {
   const build = MODELS[id];
   if (!build) throw new Error(`No model for ${id}`);
   stage.show(build());
@@ -92,9 +94,9 @@ async function build(input: BuildInput): Promise<BuildOutput> {
   if (missing.length) throw new Error(`No model for: ${missing.join(', ')}`);
   const prev = input.previous?.manifest.cell === CELL ? input.previous : undefined;
   const keep = prev ? Object.keys(prev.manifest.icons).filter((id) => hasModel(id) && !input.render.includes(id)) : [];
-  const ids = orderIds([...keep, ...input.render], ICON_IDS);
+  const ids = orderIds([...keep, ...input.render], ATLAS_IDS);
   const manifest = packAtlas(ids);
-  const rendered = new Map(orderIds(input.render, ICON_IDS).map((id) => [id, renderIcon(id as IconId)]));
+  const rendered = new Map(orderIds(input.render, ATLAS_IDS).map((id) => [id, renderIcon(id)]));
   const images = { 1: '', 2: '' };
   for (const scale of [1, 2] as const) {
     const atlas = document.createElement('canvas');
@@ -137,13 +139,16 @@ async function showSheet(out: BuildOutput): Promise<void> {
   sheet.append(head);
   await loadImage(out.images[2]);
   for (const id of Object.keys(out.manifest.icons)) {
-    if (!isIconId(id)) continue;
+    const look = AVATAR_LOOKS[AVATAR_IDS.indexOf(id)];
+    if (!isIconId(id) && !look) continue;
     const row = document.createElement('div');
     row.className = 'row';
     const name = document.createElement('code');
     name.textContent = id;
     const svg = document.createElement('span');
-    svg.innerHTML = SHEET_SIZES.map((size) => iconSvgMarkup(id, { size })).join('');
+    const markup = (size: number) =>
+      look ? iconSvgMarkup('i-avatar', { size, skin: look.skin, hair: look.hair }) : isIconId(id) ? iconSvgMarkup(id, { size }) : '';
+    svg.innerHTML = SHEET_SIZES.map(markup).join('');
     const solid = document.createElement('span');
     solid.append(...SHEET_SIZES.map((size) => sprite(out.manifest, out.images[2], id, size)));
     row.append(name, svg, solid);
@@ -154,7 +159,7 @@ async function showSheet(out: BuildOutput): Promise<void> {
 /** Every model at 96 px, for working on models by hand. */
 function showPreview(): void {
   const preview = document.getElementById('preview')!;
-  for (const id of ICON_IDS) {
+  for (const id of ATLAS_IDS) {
     if (!hasModel(id)) continue;
     const fig = document.createElement('figure');
     const cap = document.createElement('figcaption');
@@ -175,5 +180,5 @@ declare global {
   }
 }
 
-window.iconStudio = { ids: ICON_IDS.filter(hasModel), build, showSheet };
+window.iconStudio = { ids: ATLAS_IDS.filter(hasModel), build, showSheet };
 if (!new URLSearchParams(location.search).has('headless')) showPreview();
