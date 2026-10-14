@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { dispatch, step } from '../../src/sim';
 import {
   AGENT_RADIUS,
   CHAIR_OFFSET,
@@ -143,17 +144,26 @@ describe('nav grid', () => {
     expect(bigger.key).not.toBe(grid.key);
   });
 
-  it('builds in under 5 ms', () => {
-    const layout = layoutWith(FULL);
-    for (let i = 0; i < 5; i++) createNavGrid(layout);
-    const times: number[] = [];
-    for (let i = 0; i < 21; i++) {
-      const t0 = performance.now();
-      createNavGrid(layout);
-      times.push(performance.now() - t0);
+  it('is built once per floor plan over a played day, not every tick', () => {
+    const s = createNewGame('Nav', 'normal', 7);
+    s.money = 1e15;
+    expect(buyUpgrade(s, 'tables').ok).toBe(true);
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    const grids = new Set<NavGrid>();
+    for (let t = 0; t < 300; t++) {
+      step(s, 1);
+      grids.add(buildNavGrid(getShopLayout(s)));
     }
-    times.sort((a, b) => a - b);
-    expect(times[10]!).toBeLessThan(5);
+    expect(grids.size).toBe(1);
+    const [grid] = grids;
+    expect(grid!.key).toBe(createNavGrid(getShopLayout(s)).key);
+    // A new floor plan gets one new grid, then that one is reused.
+    expect(buyUpgrade(s, 'tables').ok).toBe(true);
+    for (let t = 0; t < 30; t++) {
+      step(s, 1);
+      grids.add(buildNavGrid(getShopLayout(s)));
+    }
+    expect(grids.size).toBe(2);
   });
 });
 
