@@ -65,16 +65,16 @@ Quầy có 4 pha chế (1 nhận order, 1 pha, 2 rảnh) và 2 phục vụ (1 r�
 
 | Trước (P17) | Sau (P18) | Đã đổi |
 | --- | --- | --- |
-| ![Main Menu P17](p18-before-main-menu.png) | ![Main Menu P18](../media/main-menu.png) | Mặt tiền có mái hiên, biển tên, cửa kính, khung cửa sổ, chậu cây hai bên cửa; quạt trần, kệ lọ hạt, đèn thả. |
-| ![Cao điểm P17](p18-before-peak.png) | ![Cao điểm P18](../media/peak.png) | Hàng chờ đi theo lối trống giữa các bàn; khách mang đi và nhân viên không đứng chồng. |
-| ![Bảng Kho P17](p18-before-prep-inventory.png) | ![Bảng Kho P18](../media/prep-inventory.png) | Icon SVG phẳng thay bằng icon 3D từ atlas; chữ và nhãn giữ nguyên. |
+| ![Main Menu P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/main-menu.png) | ![Main Menu P18](../media/main-menu.png) | Mặt tiền có mái hiên, biển tên, cửa kính, khung cửa sổ, chậu cây hai bên cửa; quạt trần, kệ lọ hạt, đèn thả. |
+| ![Cao điểm P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/peak.png) | ![Cao điểm P18](../media/peak.png) | Hàng chờ đi theo lối trống giữa các bàn; khách mang đi và nhân viên không đứng chồng. |
+| ![Bảng Kho P17](https://github.com/quangphung218/coffee-shop-tycoon-3d/raw/07439cf/docs/media/prep-inventory.png) | ![Bảng Kho P18](../media/prep-inventory.png) | Icon SVG phẳng thay bằng icon 3D từ atlas; chữ và nhãn giữ nguyên. |
 
 Ảnh mới của P18:
 
 | Ảnh | Nội dung |
 | --- | --- |
-| ![Mặt tiền ban ngày](../media/facade-day.png) | Mặt tiền 10:00: mái hiên, biển tên, cửa kính, chậu cây. |
-| ![Mặt tiền chiều tối](../media/facade-evening.png) | Mặt tiền khoảng 19:25: cửa sổ và cửa kính phát sáng ấm, đèn thả và biển hiệu sáng hơn. |
+| ![Mặt tiền ban ngày](../media/facade-day.png) | Mặt tiền 10:21: mái hiên, biển tên, cửa kính, chậu cây. |
+| ![Mặt tiền chiều tối](../media/facade-evening.png) | Mặt tiền 19:27: cửa sổ và cửa kính phát sáng ấm, đèn thả và biển hiệu sáng hơn. |
 | ![Hàng chờ giờ cao điểm](../media/queue.png) | Cao điểm trưa, gần quầy: hàng chờ dọc lối đi, không đè ghế. |
 | ![Bảng Menu](../media/menu-icons.png) | Bảng Menu với icon 3D của từng món. |
 
