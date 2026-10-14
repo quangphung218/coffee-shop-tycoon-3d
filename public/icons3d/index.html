@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Icon 3D – Coffee Shop Tycoon 3D</title>
+    <style>
+      :root {
+        --ink: #3a2216;
+        --cream: #fffaf2;
+        color: var(--ink);
+        font: 14px/1.4 Nunito, ui-rounded, system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #f6e7d2;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0 0 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        border: 2px solid var(--ink);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--cream);
+      }
+      .card code {
+        display: block;
+        padding: 6px 10px;
+        font-weight: 700;
+        border-bottom: 2px solid var(--ink);
+      }
+      .bg {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        padding: 10px;
+      }
+      .bg.dark {
+        background: var(--ink);
+      }
+      .ic3d {
+        display: block;
+        flex: none;
+        background-repeat: no-repeat;
+        background-image: url('atlas@1x.webp');
+        background-image: image-set(url('atlas@1x.webp') 1x, url('atlas@2x.webp') 2x);
+      }
+      .error {
+        color: #b3261e;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Icon 3D</h1>
+    <p id="meta">Đang tải atlas.json…</p>
+    <div class="grid" id="grid"></div>
+    <script>
+      const SIZES = [16, 24, 32, 48];
+
+      function sprite(manifest, cell, size) {
+        const k = size / manifest.cell;
+        const el = document.createElement('i');
+        el.className = 'ic3d';
+        el.style.width = el.style.height = `${size}px`;
+        el.style.backgroundSize = `${manifest.width * k}px ${manifest.height * k}px`;
+        el.style.backgroundPosition = `${-cell.x * k}px ${-cell.y * k}px`;
+        el.title = `${size} px`;
+        return el;
+      }
+
+      fetch('atlas.json')
+        .then((r) => {
+          if (!r.ok) throw new Error(`atlas.json: HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((manifest) => {
+          const ids = Object.keys(manifest.icons);
+          document.getElementById('meta').textContent =
+            `${ids.length} icon, ô ${manifest.cell} px, atlas ${manifest.width}×${manifest.height} px @1x. Cỡ: ${SIZES.join(' / ')} px.`;
+          const grid = document.getElementById('grid');
+          for (const id of ids) {
+            const card = document.createElement('section');
+            card.className = 'card';
+            const name = document.createElement('code');
+            name.textContent = id;
+            card.append(name);
+            for (const tone of ['light', 'dark']) {
+              const row = document.createElement('div');
+              row.className = `bg ${tone}`;
+              row.append(...SIZES.map((size) => sprite(manifest, manifest.icons[id], size)));
+              card.append(row);
+            }
+            grid.append(card);
+          }
+        })
+        .catch((err) => {
+          const meta = document.getElementById('meta');
+          meta.className = 'error';
+          meta.textContent = `Không tải được atlas: ${err.message}. Chạy npm run icons để tạo.`;
+        });
+    </script>
+  </body>
+</html>
