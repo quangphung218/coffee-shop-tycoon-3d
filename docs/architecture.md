@@ -40,7 +40,7 @@ UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D lo
 
 | Module | Nội dung |
 | --- | --- |
-| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`) và vị trí ô (import `atlas.json`). `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô. `loadIconAtlas()` tải ảnh @2x một lần, `drawIcon()` chép một ô lên canvas. `mountIconSprite()` không còn làm gì. |
+| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`, theo thứ tự ô trong atlas). `iconCell(id)` tính vị trí ô từ số đo lưới trong `atlas.json`; test so từng ô với bảng `icons` của file đó. `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô. `loadIconAtlas()` tải ảnh @2x một lần, `drawIcon()` chép một ô lên canvas. `mountIconSprite()` không còn làm gì. |
 | `src/ui/core/iconMap.ts` | Ánh xạ id của sim (món, nguyên liệu, marketing, nâng cấp, pha, vai, lý do review) sang icon. `avatarIcon(staffId)` trả ô `i-avatar-<n>` theo `AVATAR_LOOKS`. Trường `icon` emoji trong `src/sim/data` giữ nguyên nhưng không còn được hiển thị. |
 | `src/ui/styles/ui.css` (`.ic`) | Kích thước ô theo class: `.ic` 24 px, `.ic-sm` 16, `.ic-lg` 32, `.ic-xl` 48. Nền `image-set(@1x 1x, @2x 2x)`; `icon()` đặt `--ic-size`, `--ic-pos` theo %, nên ô to nhỏ bao nhiêu cũng vừa. Icon trong nút nảy, nghiêng khi hover và co lại khi nhấn; tắt khi `prefers-reduced-motion`. |
 | `src/render/actors/labels.ts` | Nhãn món và mặt cảm xúc trên đầu khách trong cảnh 3D: vẽ bong bóng, rồi `drawIcon()` từ atlas @2x khi ảnh tải xong. |
@@ -197,10 +197,10 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính, gồm `atlas.json`) | 133,5 kB | 45,3 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 51,9 kB | 8,1 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 58,0 kB | 21,9 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 495,1 kB | 123,9 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 128,2 kB | 44,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 54,8 kB | 8,8 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 59,7 kB | 22,6 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 495,1 kB | 124,2 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `icons3d/atlas@1x.webp` hoặc `atlas@2x.webp` (một trong hai, theo mật độ điểm ảnh) | 102,3 kB / 224,1 kB | (đã nén) | Khi icon đầu tiên hiện; không chặn Main Menu |
 
