@@ -78,7 +78,7 @@ async function playDay(page, videoStart) {
   const shot = (name) => page.screenshot({ path: join(OUT, name), style: '.toasts { display: none !important; }' });
 
   await page.goto(URL_BASE);
-  const newGame = page.getByRole('button', { name: '✨ Ván mới' });
+  const newGame = page.getByRole('button', { name: 'Ván mới', exact: true });
   await newGame.waitFor();
   // The menu comes up before the 3D scene; wait for the loading screen to go and the scene to fade in.
   await page.locator('#boot').waitFor({ state: 'detached' });
@@ -89,24 +89,25 @@ async function playDay(page, videoStart) {
 
   await newGame.click();
   await page.locator('label.choice', { has: page.locator('input[value="easy"]') }).click();
-  await page.getByRole('button', { name: 'Bắt đầu ngày 1 →' }).click();
+  await page.getByRole('button', { name: 'Bắt đầu ngày 1', exact: true }).click();
   await page.locator('[data-action="open"]').waitFor();
 
-  await page.locator('[data-panel="staff"]').click();
+  // Panels open and close from the dock at the bottom centre.
+  await page.locator('.dock [data-panel="staff"]').click();
   for (let i = 0; i < 3; i++) {
     await page.locator('[data-action="hire"]').first().click();
     await sleep(300);
   }
   // Stock up so the day ends with served customers rather than "Hết món" reviews.
-  await page.locator('[data-panel="inventory"]').click();
+  await page.locator('.dock [data-panel="inventory"]').click();
   await page.locator('[data-action="suggest"]').click();
   for (const [name, packs] of EXTRA_PACKS) {
-    for (let i = 0; i < packs; i++) await page.getByRole('button', { name: `Thêm 1 · Số gói ${name}`, exact: true }).click();
+    for (let i = 0; i < packs; i++) await page.getByRole('button', { name: `Thêm 1 gói ${name}`, exact: true }).click();
   }
   await sleep(800);
   await shot('prep-inventory.png');
   await page.locator('[data-action="buy"]').click();
-  await page.locator('[data-panel="inventory"]').click();
+  await page.locator('.dock [data-panel="inventory"]').click();
   // Closer camera so customers and staff are readable in the clip.
   await page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height / 2 + 40);
   await page.mouse.wheel(0, ZOOM_WHEEL);

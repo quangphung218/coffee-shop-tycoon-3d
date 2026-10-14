@@ -4,10 +4,10 @@ Trang này hướng dẫn tạo lại ảnh chụp màn hình và đoạn demo d
 
 ## Yêu cầu
 
-- Playwright và Chromium của nó:
+- Playwright (có sẵn trong `devDependencies`) và Chromium của nó:
 
   ```sh
-  npm install -D playwright
+  npm ci
   npx playwright install chromium
   ```
 
@@ -23,7 +23,7 @@ npm run media
 Lệnh build bản tĩnh, mở `vite preview` ở `127.0.0.1:4173`, rồi Chromium headless chơi ngày 1:
 
 1. Chụp Main Menu (quán chạy nền phía sau).
-2. **Ván mới** độ khó Dễ, tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
+2. **Ván mới** độ khó Dễ, mở bảng Nhân viên ở dock và tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
 3. Zoom camera gần hơn, bấm **Mở cửa**, chọn tốc độ 4x, chụp lúc 12:00 trong giờ cao điểm.
 4. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
 
@@ -61,7 +61,8 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 
 | Triệu chứng | Cách xử lý |
 | --- | --- |
-| `Cannot find package 'playwright'` | Chạy `npm install -D playwright`. |
+| `Cannot find package 'playwright'` | Chạy `npm ci`. |
 | `Executable doesn't exist` | Chạy `npx playwright install chromium`. |
 | `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng hoặc đặt `MEDIA_PORT=4180`. |
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
+| Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |

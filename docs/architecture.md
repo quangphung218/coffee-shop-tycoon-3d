@@ -33,6 +33,20 @@ flowchart LR
 
 `GameState` là JSON thuần (không class, Map hay hàm) nên lưu, so sánh và nhân bản trực tiếp được. Bộ sinh số ngẫu nhiên mulberry32 giữ trạng thái trong `state.rngState`: cùng state cộng cùng chuỗi lệnh cho ra cùng một ngày. Tiền là số nguyên đồng (`25000` = 25.000đ); thời gian là phút game tính từ nửa đêm (`420` = 07:00).
 
+### Icon và font
+
+UI và cảnh 3D không hiển thị emoji; mọi biểu tượng lấy từ bộ icon SVG vẽ trong `design/t237-cartoon/icons/index.html`.
+
+| Module | Nội dung |
+| --- | --- |
+| `src/ui/core/icons.ts` | Bộ icon (khung 24×24). `mountIconSprite()` chèn một sprite ẩn vào `<body>`; `icon(id)` trả `<svg><use>` trang trí (`aria-hidden`); `iconSvgMarkup(id)` trả SVG tự đủ, màu đã đổi sang hex, để vẽ lên canvas. |
+| `src/ui/core/iconMap.ts` | Ánh xạ id của sim (món, nguyên liệu, marketing, nâng cấp, pha, vai, lý do review) sang icon, cộng ngoại hình avatar nhân viên. Trường `icon` emoji trong `src/sim/data` giữ nguyên nhưng không còn được hiển thị. |
+| `src/render/actors/labels.ts` | Nhãn món trên đầu khách trong cảnh 3D, vẽ từ `iconSvgMarkup` và `MENU_ICONS`. |
+
+Thêm icon: chép thân `<symbol>` từ file thiết kế vào bảng `SYMBOLS` trong `icons.ts`, rồi nối id của sim trong `iconMap.ts`.
+
+Font chữ là Nunito từ `@fontsource/nunito`, import trong `src/main.ts`: chỉ subset `latin` và `vietnamese`, weight 400 và 700 (600 và 800 hiển thị bằng 700). `@font-face` dùng `font-display: swap` và không preload, nên Main Menu vẽ bằng font hệ thống rồi đổi sang Nunito khi tải xong. Token `--font-family-base` nằm ở `src/ui/styles/tokens.css`.
+
 ## Vòng khung hình
 
 `src/main.ts` chạy mỗi `requestAnimationFrame`:
@@ -84,7 +98,7 @@ stateDiagram-v2
 
 | Pha | Đồng hồ | Việc chính |
 | --- | --- | --- |
-| `preparation` | Dừng ở 07:00 | Bảng chuẩn bị trên HUD; nút **Mở cửa**. |
+| `preparation` | Dừng ở 07:00 | Bảng chuẩn bị ở dock giữa đáy; nút **Mở cửa** trên HUD. |
 | `opening` | Chạy | Khách đến theo tốc độ cơ bản. |
 | `peak` | Chạy | Khách đến nhiều hơn. |
 | `closing` | Chạy | Không nhận khách mới. |
@@ -144,12 +158,13 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính) | 107,7 kB | 36,8 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 36,1 kB | 5,9 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 51,5 kB | 19,5 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 495,1 kB | 124,2 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính, gồm bộ icon SVG) | 133,5 kB | 45,3 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 51,9 kB | 8,1 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 58,0 kB | 21,9 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 495,1 kB | 123,9 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 
-Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 36,8 kB gzip.
+Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 45,3 kB gzip.
 
 Thời gian tính từ lúc mở trang, bản build qua `vite preview`, Chrome headless không cache trên Apple M2 (ANGLE Metal), trung vị 3 lần:
 
@@ -159,6 +174,10 @@ Thời gian tính từ lúc mở trang, bản build qua `vite preview`, Chrome h
 | Máy bàn, không giới hạn | Tách chunk + màn chờ | 64 ms (màn chờ) | 81 ms | 179 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Một chunk, không màn chờ | 1580 ms (menu) | 1582 ms | 1582 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Tách chunk + màn chờ | 584 ms (màn chờ) | 743 ms | 1840 ms |
+| Máy bàn, không giới hạn | Tách chunk + giao diện hoạt hình (icon SVG, Nunito) | 52 ms (màn chờ) | 146 ms | 249 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Tách chunk + giao diện hoạt hình (icon SVG, Nunito) | 624 ms (màn chờ) | 812 ms | 2153 ms |
+
+Trong cùng lượt đo, bản tách chunk trước giao diện hoạt hình (`56ce5ca`) cho Main Menu 101 ms trên máy bàn và 757 ms trên di động.
 
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 

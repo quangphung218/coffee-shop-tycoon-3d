@@ -30,7 +30,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng ở dock giữa đáy màn hình (Việc, Menu, Kho, Nhân viên, Marketing, Nâng cấp) để bật/tắt món, nhập hàng, tuyển và phân vai nhân viên. Bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món. Bấm khách, quầy hay bàn trong cảnh để tự nhận order, pha, mang đồ, thu tiền, dọn bàn khi chưa đủ nhân viên.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
-5. **Daily Report**: lãi/lỗ, thu chi, khách, món bán chạy, món hết nguyên liệu, rating, review và gợi ý cho ngày mai. Game tự lưu trước khi báo cáo hiện ra. Bấm **☀️ Ngày tiếp theo** để sang ngày mới.
+5. **Daily Report**: lãi/lỗ, thu chi, khách, món bán chạy, món hết nguyên liệu, rating, review và gợi ý cho ngày mai. Game tự lưu trước khi báo cáo hiện ra. Bấm **Ngày tiếp theo** để sang ngày mới.
 
 Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ lúc nào.
 
@@ -49,8 +49,9 @@ Tạo lại ảnh và GIF: `npm run media` (xem [docs/media.md](docs/media.md)).
 | Xoay camera | Kéo chuột trái; giữ `Q` / `E` |
 | Zoom | Cuộn chuột |
 | Di chuyển (pan) | `W` `A` `S` `D`, phím mũi tên, hoặc đưa chuột sát mép màn hình |
-| Đặt lại camera | Nút **🎥 Đặt lại camera** trên HUD hoặc `Home` |
-| Tạm dừng / tiếp tục | `Space` hoặc nút **⏸ Dừng** |
+| Đặt lại camera | Nút camera trên HUD hoặc `Home` |
+| Tạm dừng / tiếp tục | `Space` hoặc nút **Dừng** trên HUD |
+| Mở bảng quản lý | Nút ở dock giữa đáy màn hình (Việc, Menu, Kho, Nhân viên, Marketing, Nâng cấp, Đánh giá); bấm lại để đóng |
 | Tốc độ 1x / 2x / 4x | `1` / `2` / `3` |
 | Đóng bảng, mở menu tạm dừng | `Esc` |
 
@@ -68,7 +69,7 @@ Tắt **Cài đặt → Di chuyển camera bằng WASD** để xoay bằng `Q`/`
 | `src/sim/` | Lõi mô phỏng thuần TypeScript, tất định: giờ, pha, khách, đơn, kho, nhân viên, kinh tế, rating, review, báo cáo ngày. Không dùng DOM hay Three.js. |
 | `src/sim/data/` | Bảng dữ liệu: menu, nguyên liệu, nâng cấp, marketing, độ khó. |
 | `src/render/` | Three.js: `scene/` (renderer, camera, quán, chọn đối tượng), `actors/` (nhân vật và animation), `street/` (phố, xe, người đi đường). |
-| `src/ui/` | Lớp phủ HTML/CSS: `screens/` (menu, cài đặt, tạm dừng), `hud/`, `panels/` (bảng chuẩn bị), `report/` (Daily Report, Đánh giá), `styles/` (token CSS). |
+| `src/ui/` | Lớp phủ HTML/CSS: `core/` (DOM, icon SVG dùng chung UI và 3D), `screens/` (menu, cài đặt, tạm dừng), `hud/`, `panels/` (bảng chuẩn bị), `report/` (Daily Report, Đánh giá), `styles/` (token CSS). |
 | `src/audio/` | Âm thanh tổng hợp bằng Web Audio. |
 | `src/save/` | Lưu/tải game và cài đặt. |
 | `tests/` | Test Vitest theo cùng cấu trúc, cộng `integration/` chạy cả ngày chơi. |
