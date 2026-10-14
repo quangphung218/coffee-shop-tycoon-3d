@@ -11,9 +11,11 @@ import {
   findPath,
   isWalkable,
   layoutFootprints,
+  navSearchCount,
   nearestFree,
   shapeDistance,
   validateLayout,
+  walkToward,
   type NavGrid,
 } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
@@ -219,9 +221,85 @@ describe('findPath', () => {
   });
 });
 
+/** Steps from `from` toward `to` until arriving (or `max` steps); every position along the way. */
+function walkAll(grid: NavGrid, from: Vec2, to: Vec2, step = 4, max = 40): Vec2[] {
+  const trail = [from];
+  let pos = from;
+  for (let k = 0; k < max && (pos.x !== to.x || pos.z !== to.z); k++) {
+    const next = walkToward(grid, pos, to, step);
+    expect(next).not.toBeNull();
+    pos = next!;
+    trail.push(pos);
+  }
+  return trail;
+}
+
+describe('walkToward', () => {
+  it('walks from the sidewalk to every chair and behind the counter through free floor only', () => {
+    const layout = layoutWith(FULL);
+    const grid = buildNavGrid(layout);
+    const back = { x: layout.counter.pos.x, z: layout.counter.pos.z - 0.75 };
+    const goals = [back, ...layout.tables.map((t) => nearestFree(grid, { x: t.pos.x - CHAIR_OFFSET, z: t.pos.z })!)];
+    for (const goal of goals) {
+      const trail = walkAll(grid, OUTSIDE, goal);
+      expect(trail.at(-1), JSON.stringify(goal)).toEqual(goal);
+      // Between two steps the walk follows the field's corner-cut route, so check the line in between too.
+      for (let k = 1; k < trail.length; k++) {
+        for (const p of samples(trail[k - 1]!, [trail[k]!])) expect(hits(layout, p), `at ${p.x.toFixed(2)},${p.z.toFixed(2)}`).toEqual([]);
+      }
+    }
+  });
+
+  it('steps out of an obstacle first, and goes the same way in small steps as in big ones', () => {
+    const layout = layoutWith({ tables: 2 });
+    const grid = buildNavGrid(layout);
+    const table = layout.tables[0]!.pos;
+    const first = walkToward(grid, table, OUTSIDE, 0.1)!;
+    expect(isWalkable(grid, first)).toBe(true);
+    expect(walkAll(grid, table, OUTSIDE, 0.25, 200).at(-1)).toEqual(OUTSIDE);
+    expect(walkAll(grid, table, OUTSIDE, 4).at(-1)).toEqual(OUTSIDE);
+  });
+
+  it('gives the same steps with cold caches', () => {
+    const run = (): Vec2[] => {
+      clearNavGridCache();
+      clearPathCache();
+      const layout = layoutWith(FULL);
+      const grid = buildNavGrid(layout);
+      return layout.tables.flatMap((t) => walkAll(grid, OUTSIDE, nearestFree(grid, { x: t.pos.x + CHAIR_OFFSET, z: t.pos.z })!));
+    };
+    expect(run()).toEqual(run());
+  });
+
+  it('builds one distance field per goal cell and drops them when the floor plan changes', () => {
+    const small = buildNavGrid(layoutWith({ tables: 2 }));
+    const big = buildNavGrid(layoutWith({ tables: 3 }));
+    const starts: Vec2[] = [OUTSIDE, { x: -3, z: 4 }, { x: 3, z: -1 }, { x: 0, z: 5 }];
+    for (const s of starts) walkAll(small, s, { x: 0, z: -1 });
+    expect(navSearchCount()).toEqual({ paths: 0, fields: 1 });
+    walkAll(small, OUTSIDE, { x: 2.5, z: -1 });
+    expect(navSearchCount().fields).toBe(2);
+    walkAll(big, OUTSIDE, { x: 0, z: -1 });
+    expect(navSearchCount().fields).toBe(3);
+    // Back on the first plan: its fields were dropped with the change.
+    walkAll(small, OUTSIDE, { x: 0, z: -1 });
+    expect(navSearchCount().fields).toBe(4);
+  });
+});
+
+/** better_machine, paintings and lights levels: things that stand on no floor. */
+const OFF_FLOOR: Levels[] = [];
+for (let machine = 0; machine <= 3; machine++) {
+  for (let paintings = 0; paintings <= 3; paintings++) {
+    for (let lights = 0; lights <= 2; lights++) OFF_FLOOR.push({ better_machine: machine, paintings, lights });
+  }
+}
+
 describe('validateLayout', () => {
   it('finds nothing wrong with any combination of upgrades', () => {
     const problems: string[] = [];
+    const used = new Set<number>();
+    let n = 0;
     // tables and window_bar both add indoor tables at the next free spot, so only their sum matters.
     for (let indoor = 0; indoor <= 8; indoor++) {
       for (let expand = 0; expand <= 2; expand++) {
@@ -229,6 +307,10 @@ describe('validateLayout', () => {
           for (let counter = 0; counter <= 2; counter++) {
             for (let fast = 0; fast <= 3; fast++) {
               for (let plants = 0; plants <= 3; plants++) {
+                // Every floor combination, each with one of the off-floor combinations in turn; the
+                // next test shows those never change what validateLayout looks at.
+                const k = (n++ * 7 + indoor + expand + outdoor) % OFF_FLOOR.length;
+                used.add(k);
                 const levels: Levels = {
                   tables: Math.min(indoor, 6),
                   window_bar: Math.max(0, indoor - 6),
@@ -237,8 +319,7 @@ describe('validateLayout', () => {
                   big_counter: counter,
                   fast_machine: fast,
                   plants,
-                  paintings: 3,
-                  lights: 2,
+                  ...OFF_FLOOR[k],
                 };
                 const issues = validateLayout(layoutWith(levels));
                 if (issues.length > 0) problems.push(`${JSON.stringify(levels)}: ${JSON.stringify(issues)}`);
@@ -249,7 +330,25 @@ describe('validateLayout', () => {
       }
     }
     expect(problems.slice(0, 5)).toEqual([]);
+    expect(used.size).toBe(OFF_FLOOR.length);
   }, 60_000);
+
+  it('gets the same footprints, free floor and verdict whatever the machine quality, paintings and lights', () => {
+    const floors: Levels[] = [{}, { tables: 6, window_bar: 2, plants: 3 }, { expand_area: 2, outdoor_seating: 2, big_counter: 2, fast_machine: 3 }];
+    for (const floor of floors) {
+      const plain = layoutWith(floor);
+      const fps = layoutFootprints(plain);
+      const blocked = createNavGrid(plain).blocked;
+      const verdict = validateLayout(plain);
+      for (const extra of OFF_FLOOR) {
+        const layout = layoutWith({ ...floor, ...extra });
+        const name = JSON.stringify({ ...floor, ...extra });
+        expect(layoutFootprints(layout), name).toEqual(fps);
+        expect(createNavGrid(layout).blocked, name).toEqual(blocked);
+        expect(validateLayout(layout), name).toEqual(verdict);
+      }
+    }
+  });
 
   it('reports furniture standing on furniture', () => {
     const layout = layoutWith({ plants: 1 });
