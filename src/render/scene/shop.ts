@@ -32,8 +32,8 @@ import {
 } from '../../sim/nav/footprints';
 import { getShopLayout, type Area, type LayoutMachine, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
-import { FacadeView, doorGeometry } from './facade';
-import { GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
+import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
 
 export { SHARED_MATERIAL };
 
@@ -268,6 +268,7 @@ export class ShopView {
     lamp: lampGeometry(),
     bulb: new IcosahedronGeometry(0.1, 0),
     door: doorGeometry(),
+    doorGlass: doorGlassGeometry(),
   };
 
   private readonly indoorFloor: Mesh;
@@ -295,7 +296,8 @@ export class ShopView {
   private coinTableIds: number[] = [];
   private cupTableIds: number[] = [];
 
-  private readonly plants: InstancedMesh;
+  /** Potted plants, one instance per 'plant' decor item in layout order; ambient.ts sways them. */
+  readonly plants: InstancedMesh;
   private readonly paintings: InstancedMesh;
   private readonly lamps: InstancedMesh;
   private readonly bulbs: InstancedMesh;
@@ -331,6 +333,7 @@ export class ShopView {
 
     this.door = new Mesh(this.geo.door, SHARED_MATERIAL);
     this.door.castShadow = true;
+    this.door.add(new Mesh(this.geo.doorGlass, GLASS_MATERIAL));
     this.root.add(this.door);
 
     this.pickupMat = new Mesh(part(box(1, 0.02, 0.8), PALETTE.mint), SHARED_MATERIAL);
@@ -369,6 +372,11 @@ export class ShopView {
     this.updateIcons(state, time);
     this.updateWalls(dt, cameraYaw);
     return changed;
+  }
+
+  /** Layout of the current build (a new object after every rebuild), or null before the first update. */
+  get current(): ShopLayout | null {
+    return this.layout;
   }
 
   /** Rebuilds the facade details for a graphics quality (low drops the small ones). */

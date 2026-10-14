@@ -34,6 +34,8 @@ export const WALL_LOW = 0.35;
 
 export const SHARED_MATERIAL = new MeshLambertMaterial({ vertexColors: true, flatShading: true });
 export const GLOW_MATERIAL = new MeshBasicMaterial({ color: PALETTE.bulb });
+/** Window and door glass; ambient.ts raises its warm emissive in the evening. */
+export const GLASS_MATERIAL = new MeshLambertMaterial({ vertexColors: true, flatShading: true, emissive: 0xffb45e, emissiveIntensity: 0 });
 
 const tmpColor = new Color();
 

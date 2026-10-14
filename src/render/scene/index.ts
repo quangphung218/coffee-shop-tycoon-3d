@@ -3,6 +3,7 @@ import type { CameraKeys, Quality } from '../../save/settings';
 import type { Command, GameState } from '../../sim/types';
 import { createActors } from '../actors';
 import { createStreet } from '../street';
+import { AmbientView } from './ambient';
 import { CameraController } from './camera';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
@@ -46,6 +47,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const shop = new ShopView(view.scene, options.quality ?? 'medium');
   const actors = createActors(view.scene, { quality: options.quality ?? 'medium' });
   const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
+  const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium' });
   const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
@@ -82,6 +84,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       if (firstLayout) camera.reset(true);
       firstLayout = false;
     }
+    ambient.update(state, alpha, dt);
     actors.update(state, alpha);
     street.update(state, alpha, dt);
   }
@@ -98,6 +101,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     setQuality: (q) => {
       view.setQuality(q);
       shop.setQuality(q);
+      ambient.setQuality(q);
       street.setQuality(q);
       actors.setQuality(q);
     },
@@ -116,6 +120,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       camera.dispose();
       street.dispose();
       actors.dispose();
+      ambient.dispose();
       shop.dispose();
       view.dispose();
     },

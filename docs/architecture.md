@@ -234,12 +234,13 @@ Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless 
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.
 - Chất lượng đồ họa:
 
-| Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố | Chi tiết quán |
-| --- | --- | --- | --- | --- |
-| Thấp | 1 | Tắt | Thấp | Bỏ lọ hạt, đèn thả, diềm mái hiên, song cửa sổ |
-| Vừa | 1,5 | Tắt | Vừa | Đủ, trừ hộp hoa dưới cửa sổ |
-| Cao | 2 | Bật | Cao | Đủ |
+| Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố | Chi tiết quán | Chuyển động nhẹ | Đèn điểm trong quán |
+| --- | --- | --- | --- | --- | --- | --- |
+| Thấp | 1 | Tắt | Thấp | Bỏ lọ hạt, đèn thả, diềm mái hiên, song cửa sổ | Tắt | 0 |
+| Vừa | 1,5 | Tắt | Vừa | Đủ, trừ hộp hoa dưới cửa sổ | Bật | 0 |
+| Cao | 2 | Bật | Cao | Đủ | Bật | 2 |
 
 - Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`): `facadePlan(layout, quality)` đặt cửa sổ, cửa kính, mái hiên, biển tên quán (`state.shopName` vẽ lên canvas), chậu cây, bậc thềm, kệ lọ hạt, bảng menu, đèn thả, thảm cửa, quạt trần; `FacadeView` gộp thành vài mesh, chỉ dựng lại khi `layoutKey` hoặc mức đồ họa đổi. Đồ gắn tường co và ẩn theo tường khi tường hạ; khung cửa, mái hiên và biển đứng riêng nên vẫn thấy khi tường trước hạ.
+- Đèn ấm và chuyển động (`src/render/scene/ambient.ts`): `warmGlow(minute, weather)` lấy hệ số `lamps` của `lightingAt` (0 ban ngày, tăng từ 16:00, đủ 1 sau 19:30; trời mưa giữ tối thiểu 0,4). Hệ số này làm kính cửa sổ và cửa phát sáng (`GLASS_MATERIAL` emissive), bóng đèn sáng hơn và biển hiệu ấm lên; mức Cao thêm 2 `PointLight` ấm không đổ bóng, tạo theo mức đồ họa chứ không theo giờ. Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn, dừng khi game tạm dừng, tắt ở Thấp và khi trình duyệt bật `prefers-reduced-motion`.
 
 - Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
