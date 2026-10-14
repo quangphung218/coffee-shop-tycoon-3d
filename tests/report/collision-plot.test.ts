@@ -160,10 +160,11 @@ function stacked(side: Side): number {
 function summary(layout: ShopLayout, side: Side, ignore: readonly string[]): string {
   const counts = new Map<FootprintKind, number>();
   for (const h of bodyHits(layout, side, ignore)) counts.set(h.fp.kind, (counts.get(h.fp.kind) ?? 0) + 1);
-  const parts = [...counts].map(([kind, n]) => `${n} ${KIND_NAME[kind]}`);
+  const parts: string[] = [];
+  if (counts.size > 0) parts.push(`người chạm ${[...counts].map(([kind, n]) => `${n} ${KIND_NAME[kind]}`).join(', ')}`);
   const overlap = stacked(side);
-  if (overlap > 0) parts.push(`${overlap} người đứng chồng`);
-  return parts.length > 0 ? `người chạm ${parts.join(', ')}` : 'không chạm đồ vật, không ai đứng chồng';
+  if (overlap > 0) parts.push(`${overlap} người đứng chồng lên người khác`);
+  return parts.length > 0 ? parts.join('; ') : 'không chạm đồ vật, không ai đứng chồng';
 }
 
 const num = (v: number): string => String(Math.round(v * 10) / 10);
