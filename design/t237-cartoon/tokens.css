@@ -40,7 +40,8 @@
   --color-danger-400: var(--color-berry-400);
   --color-danger-100: var(--color-berry-100);
   --color-star-500: var(--color-honey-400);
-  --color-focus-500: var(--color-sky-700);
+  --color-cinnamon-700: #7a3000;
+  --color-focus-500: var(--color-cinnamon-700);
   --color-focus-300: #ffd166;
   --color-skin-1: #ffdcbf;
   --color-skin-2: #f0b98d;
@@ -130,7 +131,7 @@
   --icon-fill-empty: var(--color-cream-200);
 
   /* Font */
-  --font-family-base: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-base: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -166,8 +167,15 @@
   --size-outline-sm: 2px;
   --size-border-thin: 2px;
   --size-border-thick: 4px;
+  /* Focus (P17, design/p17-states): the ink border turns --focus-ring and a
+     ring of --size-focus-width is drawn INSIDE it with
+     outline-offset: calc(-1 * (border width + --size-focus-width)).
+     Nothing is drawn outside the ink outline. */
   --size-focus-width: 3px;
-  --size-focus-offset: 3px;
+  --size-focus-offset: 0px; /* deprecated: kept at 0 so old outline-offset rules stay inside */
+  --size-focus-clearance: 4px; /* min padding inside the border so the ring never touches content */
+  --size-group-gap: var(--space-1);
+  --size-group-padding: var(--space-1); /* dock uses --space-2 */
   --size-icon-sm: 16px;
   --size-icon-md: 24px;
   --size-icon-lg: 32px;

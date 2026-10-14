@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee Shop Tycoon 3D · Hệ trạng thái và focus (P17)</title>
+<style>
+:root {
+  /* Palette (design/tokens.json → color.*) */
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
+  --color-mint-400: #5fd3a8;
+  --color-mint-500: #3dbd8f;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-sky-700: #1a5fd0;
+  --color-cinnamon-700: #7a3000;
+  --color-coffee-300: #d9a877;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-scene-sky: #bfe6f5;
+  --color-scene-sky-dusk: #f5b08c;
+  --color-scene-ground: #b9de9a;
+
+  /* Semantic */
+  --text-primary: var(--color-neutral-900);
+  --text-muted: var(--color-neutral-700);
+  --text-inverse: var(--color-cream-50);
+  --surface-app: var(--color-cream-100);
+  --surface-panel-solid: var(--color-cream-50);
+  --surface-sunken: var(--color-cream-100);
+  --surface-hud-solid: var(--color-cream-50);
+  --surface-ink: var(--color-neutral-900);
+  --surface-disabled: var(--color-cream-200);
+  --surface-selected: var(--color-honey-100);
+  --surface-danger: var(--color-berry-100);
+  --surface-info: var(--color-sky-100);
+  --border-outline: var(--color-neutral-900);
+  --border-subtle: var(--color-cream-200);
+  --border-disabled: var(--color-neutral-700);
+  --accent-primary: var(--color-honey-400);
+  --accent-primary-hover: var(--color-honey-500);
+  --accent-mint: var(--color-mint-400);
+  --accent-mint-hover: var(--color-mint-500);
+  --accent-danger: var(--color-berry-400);
+  --accent-danger-hover: var(--color-berry-500);
+  --accent-info: var(--color-sky-400);
+  --focus-ring: var(--color-cinnamon-700);
+  --icon-ink: var(--color-neutral-900);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-orange: var(--color-tangerine-400);
+
+  /* T237 values, used ONLY to draw the "Trước" column */
+  --t237-focus-ring: var(--color-sky-700);
+  --t237-focus-offset: 3px;
+
+  --font-family-base: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+
+  --size-target: 44px;
+  --size-target-lg: 56px;
+  --size-hud-pill: 48px;
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-focus-width: 3px;
+  --size-focus-offset: 0px;
+  --size-focus-clearance: 4px;
+  --size-group-gap: var(--space-1);
+  --size-group-padding: var(--space-1);
+  --size-icon-sm: 16px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 32px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-app); color: var(--text-primary); font-family: var(--font-family-base); font-size: var(--font-size-md); line-height: var(--line-height-base); }
+h1, h2, h3, h4, p, figure { margin: 0; }
+code { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.ic { width: var(--size-icon-md); height: var(--size-icon-md); fill: none; stroke: var(--icon-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; overflow: visible; vertical-align: middle; }
+.ic-sm { width: var(--size-icon-sm); height: var(--size-icon-sm); }
+.fh { fill: var(--icon-fill-honey); } .fm { fill: var(--icon-fill-mint); } .fb { fill: var(--icon-fill-berry); }
+.fs { fill: var(--icon-fill-sky); } .fk { fill: var(--icon-fill-cream); } .fc { fill: var(--icon-fill-latte); }
+.fi { fill: var(--icon-ink); } .ns { stroke: none; }
+
+/* Document */
+.page { max-width: 1360px; margin: 0 auto; padding: var(--space-8) var(--space-4) var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+.doc-head h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.lead { color: var(--text-muted); margin-top: var(--space-2); max-width: 860px; }
+.sec-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.sec-lead { color: var(--text-muted); margin: var(--space-2) 0 var(--space-6); max-width: 860px; }
+.sub-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); margin: var(--space-8) 0 var(--space-3); }
+.sheet { background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: var(--space-6); }
+
+/* Before / after */
+.cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: var(--space-6); }
+.col-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.tag { display: inline-flex; align-items: center; min-height: 28px; padding: 0 var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); }
+.tag-old { background: var(--surface-danger); }
+.tag-new { background: var(--surface-selected); }
+.stage { container-type: inline-size; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-4); padding: var(--space-8) var(--space-6); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.bg-cream { background: var(--surface-app); }
+.bg-scene { background: linear-gradient(var(--color-scene-sky) 0 58%, var(--color-scene-ground) 58% 100%); }
+.bg-dusk { background: linear-gradient(var(--color-scene-sky-dusk) 0 58%, var(--color-scene-ground) 58% 100%); }
+.stage-cap { flex: 1 1 100%; font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); }
+.stage-cap span { display: inline-block; padding: var(--space-1) var(--space-2); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); }
+
+/* Numbered callouts: same number in Trước and Sau = same spot */
+.pin { position: absolute; top: -14px; right: -14px; z-index: 3; display: grid; place-items: center; width: var(--size-icon-md); height: var(--size-icon-md); background: var(--surface-ink); color: var(--text-inverse); border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); line-height: 1; pointer-events: none; }
+.pin-l { right: auto; left: -14px; }
+.pin-b { top: auto; bottom: -14px; }
+.notes { list-style: none; margin: var(--space-6) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: var(--space-3) var(--space-6); }
+.notes li { display: grid; grid-template-columns: var(--size-icon-md) 1fr; gap: var(--space-3); align-items: start; font-size: var(--font-size-sm); }
+.notes .pin { position: static; }
+.notes b { font-weight: var(--font-weight-heavy); }
+
+/* ---------- Components: rest state (shared by both columns) ---------- */
+.btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--size-target); padding: 0 var(--space-4);
+  font: inherit; font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); color: var(--text-primary);
+  background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md); cursor: pointer;
+}
+.btn-primary { background: var(--accent-primary); }
+.btn-accent { background: var(--accent-mint); }
+.btn-danger { background: var(--accent-danger); }
+.btn-lg { min-height: var(--size-target-lg); padding: 0 var(--space-6); font-size: var(--font-size-lg); border-radius: var(--radius-lg); }
+.btn[aria-disabled="true"] { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; cursor: not-allowed; }
+
+.hud-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--size-hud-pill); min-width: var(--size-hud-pill); padding: 0 var(--space-3);
+  font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary);
+  background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md); cursor: pointer;
+}
+.seg { position: relative; display: inline-flex; gap: var(--size-group-gap); padding: var(--size-group-padding); background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
+.seg button { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--size-target); min-width: var(--size-target); padding: 0 var(--space-3); font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: transparent; border: var(--size-outline-sm) solid transparent; border-radius: var(--radius-pill); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+
+.dock { display: flex; gap: var(--size-group-gap); padding: var(--space-2); background: var(--surface-hud-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
+.dock-btn {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1);
+  min-width: 76px; min-height: 64px; padding: var(--space-1) var(--space-2);
+  font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); color: var(--text-primary);
+  background: transparent; border: var(--size-outline) solid transparent; border-radius: var(--radius-lg); cursor: pointer;
+}
+.dock-btn .ic { width: var(--size-icon-lg); height: var(--size-icon-lg); }
+.dock-btn[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+.dock-badge { position: absolute; top: var(--space-1); right: var(--space-2); display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 var(--space-1); background: var(--accent-danger); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); z-index: 1; }
+
+.rpt-head { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-4); background: var(--surface-selected); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-lg); }
+.rpt-head h4 { font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.tabs { display: flex; gap: var(--space-2); margin-left: auto; }
+.tab { position: relative; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--size-target); padding: 0 var(--space-4); font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: transparent; border: var(--size-outline) solid transparent; border-radius: var(--radius-pill); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent-primary); border-color: var(--border-outline); box-shadow: var(--shadow-sm); }
+
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.stepper { position: relative; display: inline-flex; align-items: center; gap: var(--size-group-gap); }
+.step-btn { position: relative; display: grid; place-items: center; width: var(--size-target); height: var(--size-target); padding: 0; font: inherit; font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); color: var(--text-primary); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; }
+.step-btn[aria-disabled="true"] { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; }
+.step-input { width: 56px; height: var(--size-target); text-align: center; font: inherit; font-weight: var(--font-weight-heavy); color: var(--text-primary); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); }
+.mk { position: relative; display: inline-flex; }
+
+/* ---------- TRƯỚC: T237 rules, verbatim (only inside .v-old) ---------- */
+.v-old .btn.is-hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); background: var(--surface-sunken); }
+.v-old .btn-primary.is-hover { background: var(--accent-primary-hover); }
+.v-old .btn-danger.is-hover { background: var(--accent-danger-hover); }
+.v-old .btn.is-focus,
+.v-old .hud-btn.is-focus,
+.v-old .seg button.is-focus,
+.v-old .dock-btn.is-focus,
+.v-old .tab.is-focus,
+.v-old .step-btn.is-focus,
+.v-old .step-input.is-focus { outline: var(--size-focus-width) solid var(--t237-focus-ring); outline-offset: var(--t237-focus-offset); }
+.v-old .seg button.is-hover { background: var(--surface-sunken); border-color: var(--border-outline); }
+.v-old .dock-btn.is-hover { background: var(--surface-sunken); border-color: var(--border-outline); transform: translateY(-3px); }
+.v-old .tab.is-hover { border-color: var(--border-outline); background: var(--surface-panel-solid); }
+
+/* ---------- SAU: P17 state system ----------
+   Channels: elevation = hover/press; fill = selected/disabled;
+   outline = focus (border colour + inset ring); content = disabled (lock + muted). */
+.v-new .dock-btn { min-height: 68px; }
+
+/* Elevation channel */
+.v-new .btn.is-hover, .v-new .hud-btn.is-hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.v-new .btn.is-active, .v-new .hud-btn.is-active { transform: translateY(2px); box-shadow: var(--shadow-sm); }
+.v-new .seg button.is-active, .v-new .dock-btn.is-active, .v-new .tab.is-active { transform: translateY(1px) scale(0.96); }
+.v-new .step-btn.is-active { transform: translateY(2px); box-shadow: none; }
+/* Ghost items (no own elevation at rest): hover only shows a fill, never a border */
+.v-new .seg button.is-hover, .v-new .dock-btn.is-hover { background: var(--surface-sunken); }
+.v-new .tab.is-hover { background: var(--surface-panel-solid); }
+.v-new .step-btn.is-hover { background: var(--surface-sunken); }
+/* Disabled cancels the elevation channel */
+.v-new .btn[aria-disabled="true"], .v-new .step-btn[aria-disabled="true"] { transform: none; box-shadow: none; }
+
+/* Outline channel: the one shared focus rule. Real :focus-visible uses it everywhere on this page. */
+.btn, .hud-btn, .dock-btn, .tab, .step-btn, .step-input { --bw: var(--size-outline); }
+.seg button { --bw: var(--size-outline-sm); }
+.btn:focus-visible, .hud-btn:focus-visible, .seg button:focus-visible, .dock-btn:focus-visible, .tab:focus-visible, .step-btn:focus-visible, .step-input:focus-visible,
+.v-new .is-focus, .v-new .seg button.is-focus {
+  border-color: var(--focus-ring);
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}
+.step-input:focus-visible, .v-new .step-input.is-focus { caret-color: var(--focus-ring); }
+
+/* Dock collapses to 4 columns when its column is narrow */
+@container (max-width: 700px) {
+  .dock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-lg); }
+  .dock-btn { min-width: 0; font-size: var(--font-size-xs); }
+}
+
+/* State grid (after) */
+.row-hd { font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); margin: var(--space-6) 0 var(--space-3); }
+.row-hd:first-child { margin-top: 0; }
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--space-6) var(--space-4); }
+.states figure { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.states figcaption { font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-muted); }
+
+/* Channel legend */
+.channels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-4); }
+.channel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface-panel-solid); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-lg); }
+.channel h3 { font-size: var(--font-size-md); font-weight: var(--font-weight-heavy); line-height: var(--line-height-tight); }
+.channel p { font-size: var(--font-size-sm); }
+.channel .owner { font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-muted); }
+
+/* Anatomy + contrast */
+.anat { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--space-6); align-items: start; }
+.spec { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-size-sm); }
+.spec li { display: grid; grid-template-columns: 112px 1fr; gap: var(--space-3); padding-bottom: var(--space-2); border-bottom: var(--size-outline-sm) dotted var(--border-subtle); }
+.spec b { font-weight: var(--font-weight-heavy); }
+pre { margin: 0; padding: var(--space-4); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-ink); color: var(--text-inverse); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--line-height-base); }
+pre code { font-size: inherit; font-weight: var(--font-weight-bold); }
+.ratios { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-3); }
+.ratio { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+.ratio-sw { display: grid; place-items: center; height: 56px; border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: calc(-2 * var(--size-focus-width)); font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); }
+.ratio-sw.is-low { border-style: dashed; }
+
+@media (max-width: 640px) {
+  .page { padding: var(--space-6) var(--space-3) var(--space-12); gap: var(--space-8); }
+  .sheet { padding: var(--space-4); }
+  .stage { padding: var(--space-6) var(--space-4); }
+  .tabs { margin-left: 0; }
+  .spec li { grid-template-columns: 1fr; gap: var(--space-1); }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<symbol id="i-tasks" viewBox="0 0 24 24"><rect class="fk" x="4.5" y="4" width="15" height="17.5" rx="2.5"/><rect class="fh" x="8.5" y="2.5" width="7" height="4" rx="1.5"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="5.2"/><circle class="fk" cx="12" cy="12" r="2.6"/><path d="M3.5 3.5v5a1.5 1.5 0 0 0 3 0v-5M5 10v10.5M20.5 20.5V3.5c-1.6.8-2.5 2.8-2.5 6V12h2.5"/></symbol>
+<symbol id="i-inventory" viewBox="0 0 24 24"><path class="fc" d="M3.5 7.5 12 3.5l8.5 4V17L12 21l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5V21M7.8 5.5l8.4 4"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle class="fs" cx="16.5" cy="7.5" r="3"/><path class="fs" d="M12.5 18.5a4.5 4.5 0 0 1 9 0z"/><circle class="fh" cx="9" cy="8.5" r="3.5"/><path class="fh" d="M3 20.5a6 6 0 0 1 12 0z"/></symbol>
+<symbol id="i-marketing" viewBox="0 0 24 24"><path class="fb" d="M3.5 10.5A1.5 1.5 0 0 1 5 9h2.5L16 4.5v15L7.5 15H5a1.5 1.5 0 0 1-1.5-1.5z"/><path class="fk" d="M7.5 15 9 19.5h2.5L10.5 15z"/><path d="M19 9c1.3 1.6 1.3 4.4 0 6"/></symbol>
+<symbol id="i-upgrades" viewBox="0 0 24 24"><rect class="fc" x="10.5" y="9.5" width="3" height="12" rx="1.5"/><path class="fs" d="M4.5 5.5A1.5 1.5 0 0 1 6 4h10l3.5 3v2a1 1 0 0 1-1 1H6a1.5 1.5 0 0 1-1.5-1.5z"/></symbol>
+<symbol id="i-reviews" viewBox="0 0 24 24"><path class="fs" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/><circle class="fi ns" cx="8.5" cy="10" r="1.3"/><circle class="fi ns" cx="12" cy="10" r="1.3"/><circle class="fi ns" cx="15.5" cy="10" r="1.3"/></symbol>
+<symbol id="i-open" viewBox="0 0 24 24"><path class="fh" d="M5.5 17v-6a6.5 6.5 0 0 1 13 0v6l1.5 1.5H4z"/><path d="M10 21h4M12 2.5v2"/></symbol>
+<symbol id="i-next-day" viewBox="0 0 24 24"><circle class="fh" cx="12" cy="12" r="4.5"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><rect class="fs" x="2.5" y="7" width="13" height="10" rx="2.5"/><path class="fs" d="M15.5 10.5 21 7.5v9l-5.5-3z"/><circle class="fk" cx="7.5" cy="12" r="2"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect class="fh" x="6" y="4.5" width="4" height="15" rx="1.5"/><rect class="fh" x="14" y="4.5" width="4" height="15" rx="1.5"/></symbol>
+<symbol id="i-speed-1" viewBox="0 0 24 24"><path class="fm" d="M7 5.5v13a1 1 0 0 0 1.5.9L19 12.9a1 1 0 0 0 0-1.8L8.5 4.6A1 1 0 0 0 7 5.5z"/></symbol>
+<symbol id="i-speed-2" viewBox="0 0 24 24"><path class="fm" d="M3 6.5v11L11 12z"/><path class="fm" d="M12.5 6.5v11l8-5.5z"/></symbol>
+<symbol id="i-speed-4" viewBox="0 0 24 24"><path class="fm" d="M1.5 7v10L8 12z"/><path class="fm" d="M8.5 7v10L15 12z"/><path class="fm" d="M15.5 7v10l6.5-5z"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect class="fh" x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path class="fh" d="M11 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path class="fh" d="M18.5 15c.3 1.7 1 2.4 2.5 2.7-1.5.3-2.2 1-2.5 2.7-.3-1.7-1-2.4-2.5-2.7 1.5-.3 2.2-1 2.5-2.7z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><rect class="fk" x="3" y="3.5" width="18" height="17" rx="2.5"/><rect class="fm" x="6.5" y="12" width="3" height="5" rx="1"/><rect class="fh" x="10.5" y="7.5" width="3" height="9.5" rx="1"/><rect class="fb" x="14.5" y="10" width="3" height="7" rx="1"/></symbol>
+</defs>
+</svg>
+
+<main class="page">
+  <header class="doc-head">
+    <h1>Hệ trạng thái và focus · P17</h1>
+    <p class="lead">So sánh quy tắc focus của T237 (cột “Trước”) với hệ trạng thái mới (cột “Sau”). Số trong chấm tròn đen chỉ đúng chỗ đã sửa; cùng số ở hai cột là cùng một vị trí. Mockup tĩnh: lớp <code>is-hover</code>, <code>is-focus</code>, <code>is-active</code> chỉ để vẽ trạng thái; trong game focus chỉ hiện với <code>:focus-visible</code> (bàn phím).</p>
+  </header>
+
+  <!-- ============ 0. Principle ============ -->
+  <section aria-labelledby="h-rule">
+    <h2 class="sec-title" id="h-rule">Nguyên tắc: mỗi trạng thái giữ một kênh</h2>
+    <p class="sec-lead">Lỗi “style đè nhau” đến từ việc focus dùng chung chỗ vẽ với viền mực và bóng sticker, rồi tràn ra ngoài. Giờ mỗi trạng thái chỉ được đổi đúng một kênh, nên hai trạng thái cùng lúc (vd đang chọn + focus) cộng lại mà không giẫm lên nhau.</p>
+    <div class="channels">
+      <div class="channel"><h3>1. Kênh nâng (vị trí + bóng)</h3><p>Rê chuột: nhấc 2 px, bóng 4 → 6 px. Nhấn: lún 2 px, bóng 2 px. Nút “ma” (dock, tốc độ, tab): co 96%.</p><span class="owner">Của: hover, nhấn</span></div>
+      <div class="channel"><h3>2. Kênh nền</h3><p>Đang chọn: thành sticker honey (nền + viền mực + bóng nhỏ). Vô hiệu: nền cream 200. Nút ma khi rê: nền kem đậm, không thêm viền.</p><span class="owner">Của: đang chọn, vô hiệu (và hover của nút ma)</span></div>
+      <div class="channel"><h3>3. Kênh viền</h3><p>Focus: viền đổi màu quế #7a3000 và có thêm vòng 3 px nằm BÊN TRONG viền. Không vẽ gì ra ngoài viền mực.</p><span class="owner">Của: focus (chỉ focus)</span></div>
+      <div class="channel"><h3>4. Kênh nội dung</h3><p>Vô hiệu: chữ mờ, icon khóa, viền gạch; vẫn focus được để đọc lý do.</p><span class="owner">Của: vô hiệu</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 1. Buttons ============ -->
+  <section aria-labelledby="h-btn">
+    <h2 class="sec-title" id="h-btn">1. Nút đơn</h2>
+    <p class="sec-lead">Trên nền kem của panel và trên cảnh trời/cỏ. Bóng sticker và viền mực giữ nguyên; chỉ chỗ vẽ focus đổi.</p>
+    <div class="sheet">
+      <div class="cmp">
+        <div class="v-old">
+          <p class="col-head"><span class="tag tag-old">Trước</span>T237: outline xanh 3 px, cách 3 px</p>
+          <div class="stage bg-cream">
+            <button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo<span class="pin" aria-hidden="true">1</span></button>
+            <button class="btn is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập<span class="pin" aria-hidden="true">2</span></button>
+            <button class="btn btn-danger is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc<span class="pin" aria-hidden="true">3</span></button>
+            <button class="btn is-focus" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Tải game<span class="pin" aria-hidden="true">4</span></button>
+            <p class="stage-cap"><span>Nền kem (panel)</span></p>
+          </div>
+          <div class="stage bg-scene" style="margin-top: var(--space-4)">
+            <button class="btn btn-accent is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa<span class="pin" aria-hidden="true">1</span></button>
+            <button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+            <p class="stage-cap"><span>Trên cảnh trời/cỏ</span></p>
+          </div>
+        </div>
+        <div class="v-new">
+          <p class="col-head"><span class="tag tag-new">Sau</span>P17: viền quế + vòng trong</p>
+          <div class="stage bg-cream">
+            <button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo<span class="pin" aria-hidden="true">1</span></button>
+            <button class="btn is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập<span class="pin" aria-hidden="true">2</span></button>
+            <button class="btn btn-danger is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc<span class="pin" aria-hidden="true">3</span></button>
+            <button class="btn is-focus" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Tải game<span class="pin" aria-hidden="true">4</span></button>
+            <p class="stage-cap"><span>Nền kem (panel)</span></p>
+          </div>
+          <div class="stage bg-scene" style="margin-top: var(--space-4)">
+            <button class="btn btn-accent is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa<span class="pin" aria-hidden="true">1</span></button>
+            <button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+            <p class="stage-cap"><span>Trên cảnh trời/cỏ</span></p>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="pin" aria-hidden="true">1</span><span><b>Hết hai viền chồng nhau.</b> Trước: vòng xanh nằm ngoài viền mực 3 px và bóng 4 px, thành 3 lớp lồng nhau. Sau: chính viền mực đổi màu quế và dày vào trong thêm 3 px; bên ngoài nút không có gì mới.</span></li>
+        <li><span class="pin" aria-hidden="true">2</span><span><b>Màu focus về bảng màu ấm.</b> Xanh #1a5fd0 thay bằng quế #7a3000. Tương phản của vòng với nền nút: kem 9,0:1, honey 5,8:1, mint 5,1:1, berry 4,1:1 (thấp nhất berry khi rê: 3,2:1).</span></li>
+        <li><span class="pin" aria-hidden="true">3</span><span><b>Rê chuột chỉ nhấc nút.</b> Trước: đổi nền sang berry 500 + nhấc + bóng to (3 tín hiệu). Sau: chỉ nhấc 2 px và bóng 6 px; màu nền để dành cho “đang chọn”.</span></li>
+        <li><span class="pin" aria-hidden="true">4</span><span><b>Vô hiệu vẫn focus được.</b> Viền gạch đổi màu quế, thêm vòng trong; nền, chữ mờ, icon khóa giữ nguyên nên vẫn đọc ra “đang khóa”.</span></li>
+      </ul>
+
+      <h3 class="sub-title">Sau: đủ trạng thái và tổ hợp</h3>
+      <div class="v-new">
+        <p class="row-hd">Chính (honey)</p>
+        <div class="states">
+          <figure><button class="btn btn-primary" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button><figcaption>Mặc định</figcaption></figure>
+          <figure><button class="btn btn-primary is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button><figcaption>Hover: nhấc 2 px</figcaption></figure>
+          <figure><button class="btn btn-primary is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button><figcaption>Focus: viền quế + vòng trong</figcaption></figure>
+          <figure><button class="btn btn-primary is-hover is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button><figcaption>Hover + focus</figcaption></figure>
+          <figure><button class="btn btn-primary is-active is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button><figcaption>Nhấn + focus: lún 2 px</figcaption></figure>
+          <figure><button class="btn btn-primary" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Nhập hàng</button><figcaption>Vô hiệu</figcaption></figure>
+          <figure><button class="btn btn-primary is-focus" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Nhập hàng</button><figcaption>Vô hiệu + focus</figcaption></figure>
+        </div>
+        <p class="row-hd">Hành động pha (mint)</p>
+        <div class="states">
+          <figure><button class="btn btn-accent" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button><figcaption>Mặc định</figcaption></figure>
+          <figure><button class="btn btn-accent is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button><figcaption>Hover</figcaption></figure>
+          <figure><button class="btn btn-accent is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button><figcaption>Focus</figcaption></figure>
+          <figure><button class="btn btn-accent is-hover is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button><figcaption>Hover + focus</figcaption></figure>
+          <figure><button class="btn btn-accent is-active is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-open"/></svg>Mở cửa</button><figcaption>Nhấn + focus</figcaption></figure>
+          <figure><button class="btn btn-accent" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Mở cửa</button><figcaption>Vô hiệu</figcaption></figure>
+        </div>
+        <p class="row-hd">Phụ (kem)</p>
+        <div class="states">
+          <figure><button class="btn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button><figcaption>Mặc định</figcaption></figure>
+          <figure><button class="btn is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button><figcaption>Hover</figcaption></figure>
+          <figure><button class="btn is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button><figcaption>Focus</figcaption></figure>
+          <figure><button class="btn is-active is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>Gợi ý nhập</button><figcaption>Nhấn + focus</figcaption></figure>
+          <figure><button class="btn is-focus" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Tải game</button><figcaption>Vô hiệu + focus</figcaption></figure>
+        </div>
+        <p class="row-hd">Nguy hiểm (berry)</p>
+        <div class="states">
+          <figure><button class="btn btn-danger" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button><figcaption>Mặc định</figcaption></figure>
+          <figure><button class="btn btn-danger is-hover" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button><figcaption>Hover</figcaption></figure>
+          <figure><button class="btn btn-danger is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button><figcaption>Focus</figcaption></figure>
+          <figure><button class="btn btn-danger is-active is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>Cho nghỉ việc</button><figcaption>Nhấn + focus</figcaption></figure>
+          <figure><button class="btn btn-danger" type="button" aria-disabled="true"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Cho nghỉ việc</button><figcaption>Vô hiệu</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. HUD + speed group ============ -->
+  <section aria-labelledby="h-seg">
+    <h2 class="sec-title" id="h-seg">2. Nút HUD và nhóm tốc độ 1x / 2x / 4x</h2>
+    <p class="sec-lead">Nhóm có viền mực 3 px, đệm 4 px, khe 4 px. Trước đây vòng focus (3 px + cách 3 px = 6 px) lớn hơn khe nên luôn tràn qua viền nhóm và nút bên cạnh.</p>
+    <div class="sheet">
+      <div class="cmp">
+        <div class="v-old">
+          <p class="col-head"><span class="tag tag-old">Trước</span>T237</p>
+          <div class="stage bg-scene">
+            <button class="hud-btn is-focus" type="button" aria-label="Tạm dừng (Space)"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Dừng<span class="pin" aria-hidden="true">8</span></button>
+            <div class="seg" role="group" aria-label="Tốc độ game">
+              <button type="button" class="is-hover" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x<span class="pin pin-l" aria-hidden="true">7</span></button>
+              <button type="button" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button>
+              <button type="button" class="is-focus" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x<span class="pin" aria-hidden="true">5</span></button>
+            </div>
+            <div class="seg" role="group" aria-label="Tốc độ game, focus trên nút đang chọn">
+              <button type="button" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button>
+              <button type="button" class="is-focus" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x<span class="pin" aria-hidden="true">6</span></button>
+              <button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button>
+            </div>
+            <p class="stage-cap"><span>HUD trên cảnh trời/cỏ</span></p>
+          </div>
+        </div>
+        <div class="v-new">
+          <p class="col-head"><span class="tag tag-new">Sau</span>P17</p>
+          <div class="stage bg-scene">
+            <button class="hud-btn is-focus" type="button" aria-label="Tạm dừng (Space)"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg>Dừng<span class="pin" aria-hidden="true">8</span></button>
+            <div class="seg" role="group" aria-label="Tốc độ game">
+              <button type="button" class="is-hover" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x<span class="pin pin-l" aria-hidden="true">7</span></button>
+              <button type="button" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button>
+              <button type="button" class="is-focus" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x<span class="pin" aria-hidden="true">5</span></button>
+            </div>
+            <div class="seg" role="group" aria-label="Tốc độ game, focus trên nút đang chọn">
+              <button type="button" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button>
+              <button type="button" class="is-focus" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x<span class="pin" aria-hidden="true">6</span></button>
+              <button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button>
+            </div>
+            <p class="stage-cap"><span>HUD trên cảnh trời/cỏ</span></p>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="pin" aria-hidden="true">5</span><span><b>Focus nằm trong biên nút 4x.</b> Trước: vòng xanh đè lên viền nhóm và chạm nút 2x. Sau: viền 2 px của nút đổi quế + vòng 3 px bên trong; khe 4 px và viền nhóm còn nguyên.</span></li>
+        <li><span class="pin" aria-hidden="true">6</span><span><b>Đang chọn + focus đọc được cả hai.</b> Nền honey và bóng nhỏ (đang chọn) giữ nguyên, chỉ viền đổi quế và có vòng (focus). Trước: vòng xanh bao ngoài cả nhóm, không rõ đang chọn hay focus.</span></li>
+        <li><span class="pin" aria-hidden="true">7</span><span><b>Rê chuột không giống “đang chọn”.</b> Trước: rê vào 1x hiện viền mực, giống hệt nút 2x đang chọn. Sau: chỉ nền kem đậm, không viền, không bóng.</span></li>
+        <li><span class="pin" aria-hidden="true">8</span><span><b>Nút HUD.</b> Cùng quy tắc với nút đơn; trên trời/cỏ vòng quế vẫn rõ vì nằm trên nền kem của chính nút (9,0:1).</span></li>
+      </ul>
+
+      <h3 class="sub-title">Sau: trạng thái của nhóm tốc độ (nền kem HUD)</h3>
+      <div class="v-new">
+        <div class="states">
+          <figure><div class="seg" role="group" aria-label="Mặc định"><button type="button" aria-pressed="true" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button></div><figcaption>Mặc định (1x đang chọn)</figcaption></figure>
+          <figure><div class="seg" role="group" aria-label="Rê chuột"><button type="button" aria-pressed="true" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button><button type="button" class="is-hover" aria-pressed="false" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button></div><figcaption>Hover 2x: chỉ nền</figcaption></figure>
+          <figure><div class="seg" role="group" aria-label="Focus"><button type="button" aria-pressed="true" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button><button type="button" class="is-focus" aria-pressed="false" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button></div><figcaption>Focus 2x</figcaption></figure>
+          <figure><div class="seg" role="group" aria-label="Nhấn"><button type="button" aria-pressed="true" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button><button type="button" class="is-active is-focus" aria-pressed="false" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button></div><figcaption>Nhấn 2x: co 96%</figcaption></figure>
+          <figure><div class="seg" role="group" aria-label="Đã chọn"><button type="button" aria-pressed="false" aria-label="Tốc độ 1x"><svg class="ic" aria-hidden="true"><use href="#i-speed-1"/></svg>1x</button><button type="button" class="is-focus" aria-pressed="true" aria-label="Tốc độ 2x"><svg class="ic" aria-hidden="true"><use href="#i-speed-2"/></svg>2x</button><button type="button" aria-pressed="false" aria-label="Tốc độ 4x"><svg class="ic" aria-hidden="true"><use href="#i-speed-4"/></svg>4x</button></div><figcaption>Sau khi bấm: 2x đang chọn + focus</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. Dock ============ -->
+  <section aria-labelledby="h-dock">
+    <h2 class="sec-title" id="h-dock">3. Dock bảng quản lý</h2>
+    <p class="sec-lead">Kho đang mở, focus bàn phím ở Nhân viên ngay bên cạnh: đúng tình huống trong ảnh anh gửi.</p>
+    <div class="sheet">
+      <div class="cmp">
+        <div class="v-old">
+          <p class="col-head"><span class="tag tag-old">Trước</span>T237</p>
+          <div class="stage bg-scene">
+            <nav class="dock" aria-label="Bảng quản lý (trước)">
+              <button class="dock-btn" type="button" aria-pressed="false" aria-label="Việc, 2 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Việc<span class="dock-badge" aria-hidden="true">2</span></button>
+              <button class="dock-btn is-hover" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Menu<span class="pin pin-l" aria-hidden="true">11</span></button>
+              <button class="dock-btn" type="button" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Kho</button>
+              <button class="dock-btn is-focus" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Nhân viên<span class="pin" aria-hidden="true">9</span><span class="pin pin-b" aria-hidden="true">10</span></button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Marketing</button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg>Nâng cấp</button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+            </nav>
+            <p class="stage-cap"><span>Dock trên cảnh, Kho đang mở</span></p>
+          </div>
+        </div>
+        <div class="v-new">
+          <p class="col-head"><span class="tag tag-new">Sau</span>P17</p>
+          <div class="stage bg-scene">
+            <nav class="dock" aria-label="Bảng quản lý (sau)">
+              <button class="dock-btn" type="button" aria-pressed="false" aria-label="Việc, 2 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Việc<span class="dock-badge" aria-hidden="true">2</span></button>
+              <button class="dock-btn is-hover" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Menu<span class="pin pin-l" aria-hidden="true">11</span></button>
+              <button class="dock-btn" type="button" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Kho</button>
+              <button class="dock-btn is-focus" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Nhân viên<span class="pin" aria-hidden="true">9</span><span class="pin pin-b" aria-hidden="true">10</span></button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Marketing</button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg>Nâng cấp</button>
+              <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+            </nav>
+            <p class="stage-cap"><span>Dock trên cảnh, Kho đang mở</span></p>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="pin" aria-hidden="true">9</span><span><b>Focus không đè nút Kho đang mở.</b> Trước: khe 4 px, vòng tràn 6 px nên phủ lên viền Kho và viền dock. Sau: vòng nằm trong nút Nhân viên, giữa hai nút vẫn còn khe 4 px trống.</span></li>
+        <li><span class="pin" aria-hidden="true">10</span><span><b>Nút dock cao 64 → 68 px.</b> Viền 3 + vòng 3 ăn vào trong 6 px; thêm 4 px để vòng cách icon và chữ ít nhất 4 px (<code>size.focus-clearance</code>), chữ 2 dòng ở 390 px không bị cắt.</span></li>
+        <li><span class="pin" aria-hidden="true">11</span><span><b>Rê chuột trên dock chỉ đổi nền.</b> Trước: nền + viền mực + nhấc 3 px, trông như một nút “đang mở” thứ hai. Sau: chỉ nền kem đậm; viền mực và bóng là dấu hiệu riêng của bảng đang mở.</span></li>
+      </ul>
+
+      <h3 class="sub-title">Sau: trạng thái dock trên nền kem</h3>
+      <div class="v-new">
+        <div class="stage bg-cream">
+          <nav class="dock" aria-label="Bảng quản lý (mẫu trạng thái)">
+            <button class="dock-btn" type="button" aria-pressed="false" aria-label="Việc, 2 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-tasks"/></svg>Có badge<span class="dock-badge" aria-hidden="true">2</span></button>
+            <button class="dock-btn is-hover" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>Hover</button>
+            <button class="dock-btn is-focus" type="button" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-inventory"/></svg>Mở + focus</button>
+            <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-people"/></svg>Mặc định</button>
+            <button class="dock-btn is-active is-focus" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-marketing"/></svg>Nhấn</button>
+            <button class="dock-btn is-focus" type="button" aria-pressed="false" aria-label="Nâng cấp, 1 việc cần làm"><svg class="ic" aria-hidden="true"><use href="#i-upgrades"/></svg>Focus<span class="dock-badge" aria-hidden="true">1</span></button>
+            <button class="dock-btn" type="button" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+          </nav>
+          <p class="stage-cap"><span>Badge nằm trong biên nút và có z-index trên vòng focus, nên số việc vẫn đọc được khi nút đang focus.</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. Tabs ============ -->
+  <section aria-labelledby="h-tab">
+    <h2 class="sec-title" id="h-tab">4. Tab trong Daily Report</h2>
+    <div class="sheet">
+      <div class="cmp">
+        <div class="v-old">
+          <p class="col-head"><span class="tag tag-old">Trước</span>T237</p>
+          <div class="stage bg-cream">
+            <div class="rpt-head">
+              <h4>Hết ngày 3</h4>
+              <div class="tabs" role="tablist" aria-label="Báo cáo (trước)">
+                <button class="tab" type="button" role="tab" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+                <button class="tab is-focus" type="button" role="tab" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá<span class="pin" aria-hidden="true">12</span></button>
+              </div>
+            </div>
+            <div class="rpt-head">
+              <h4>Hết ngày 3</h4>
+              <div class="tabs" role="tablist" aria-label="Báo cáo, rê chuột (trước)">
+                <button class="tab" type="button" role="tab" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+                <button class="tab is-hover" type="button" role="tab" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá<span class="pin" aria-hidden="true">13</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="v-new">
+          <p class="col-head"><span class="tag tag-new">Sau</span>P17</p>
+          <div class="stage bg-cream">
+            <div class="rpt-head">
+              <h4>Hết ngày 3</h4>
+              <div class="tabs" role="tablist" aria-label="Báo cáo (sau)">
+                <button class="tab" type="button" role="tab" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+                <button class="tab is-focus" type="button" role="tab" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá<span class="pin" aria-hidden="true">12</span></button>
+              </div>
+            </div>
+            <div class="rpt-head">
+              <h4>Hết ngày 3</h4>
+              <div class="tabs" role="tablist" aria-label="Báo cáo, rê chuột (sau)">
+                <button class="tab" type="button" role="tab" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+                <button class="tab is-hover" type="button" role="tab" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá<span class="pin" aria-hidden="true">13</span></button>
+              </div>
+            </div>
+            <div class="rpt-head">
+              <h4>Hết ngày 3</h4>
+              <div class="tabs" role="tablist" aria-label="Báo cáo, focus trên tab đang chọn (sau)">
+                <button class="tab is-focus" type="button" role="tab" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg>Tổng kết</button>
+                <button class="tab" type="button" role="tab" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-reviews"/></svg>Đánh giá</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="pin" aria-hidden="true">12</span><span><b>Tab chưa chọn có focus.</b> Trước: vòng xanh cách 6 px, đè lên viền dưới của đầu báo cáo. Sau: viền trong suốt của tab hiện màu quế + vòng trong; tab trông “được nhắm tới” nhưng không giống tab đang chọn (không nền honey, không bóng).</span></li>
+        <li><span class="pin" aria-hidden="true">13</span><span><b>Rê chuột trên tab.</b> Trước: hiện viền mực (lẫn với tab đang chọn). Sau: chỉ nền kem sáng. Dòng thứ ba: focus trên tab đang chọn, honey + viền quế.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ 5. Stepper ============ -->
+  <section aria-labelledby="h-step">
+    <h2 class="sec-title" id="h-step">5. Stepper và ô nhập số (bảng Kho)</h2>
+    <div class="sheet">
+      <div class="cmp">
+        <div class="v-old">
+          <p class="col-head"><span class="tag tag-old">Trước</span>T237</p>
+          <div class="stage bg-cream">
+            <div class="field">
+              <label class="field-label" for="o-milk">Nhập thêm Sữa tươi (gói 1000 ml)</label>
+              <div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Sữa tươi">−</button><input class="step-input" id="o-milk" type="text" inputmode="numeric" value="2"><button class="step-btn is-focus" type="button" aria-label="Thêm 1 gói Sữa tươi">+<span class="pin" aria-hidden="true">14</span></button></div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="o-sugar">Nhập thêm Đường (gói 1 kg)</label>
+              <div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Đường (đã ở 0)">−</button><span class="mk"><input class="step-input is-focus" id="o-sugar" type="text" inputmode="numeric" value="12"><span class="pin" aria-hidden="true">15</span></span><button class="step-btn" type="button" aria-label="Thêm 1 gói Đường">+</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="v-new">
+          <p class="col-head"><span class="tag tag-new">Sau</span>P17</p>
+          <div class="stage bg-cream">
+            <div class="field">
+              <label class="field-label" for="n-milk">Nhập thêm Sữa tươi (gói 1000 ml)</label>
+              <div class="stepper"><button class="step-btn" type="button" aria-label="Bớt 1 gói Sữa tươi">−</button><input class="step-input" id="n-milk" type="text" inputmode="numeric" value="2"><button class="step-btn is-focus" type="button" aria-label="Thêm 1 gói Sữa tươi">+<span class="pin" aria-hidden="true">14</span></button></div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="n-sugar">Nhập thêm Đường (gói 1 kg)</label>
+              <div class="stepper"><button class="step-btn" type="button" aria-disabled="true" aria-label="Bớt 1 gói Đường (đã ở 0)">−</button><span class="mk"><input class="step-input is-focus" id="n-sugar" type="text" inputmode="numeric" value="12"><span class="pin" aria-hidden="true">15</span></span><button class="step-btn" type="button" aria-label="Thêm 1 gói Đường">+</button></div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="n-ice">Nhập thêm Đá viên (túi 5 kg)</label>
+              <div class="stepper"><button class="step-btn is-focus" type="button" aria-disabled="true" aria-label="Bớt 1 túi Đá viên (đã ở 0)">−</button><input class="step-input" id="n-ice" type="text" inputmode="numeric" value="0"><button class="step-btn is-hover" type="button" aria-label="Thêm 1 túi Đá viên">+</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="pin" aria-hidden="true">14</span><span><b>Nút + có focus không đè ô số.</b> Trước: khe 4 px giữa ô và nút nhỏ hơn 6 px của vòng nên vòng xanh cắt vào ô số. Sau: vòng nằm trong nút 44 px.</span></li>
+        <li><span class="pin" aria-hidden="true">15</span><span><b>Ô nhập đang gõ cùng ngôn ngữ.</b> Viền quế + vòng trong + con trỏ màu quế. Không cần một kiểu focus riêng cho ô nhập. Dòng thứ ba (sau): nút − vô hiệu có focus và nút + khi rê chuột.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ 6. Anatomy, spacing, contrast ============ -->
+  <section aria-labelledby="h-anat">
+    <h2 class="sec-title" id="h-anat">6. Chồng lớp, khoảng cách và tương phản</h2>
+    <div class="sheet">
+      <div class="anat">
+        <div class="v-new">
+          <div class="stage bg-cream">
+            <button class="btn btn-primary btn-lg is-focus" type="button"><svg class="ic" aria-hidden="true"><use href="#i-next-day"/></svg>Ngày tiếp theo</button>
+          </div>
+        </div>
+        <ul class="spec">
+          <li><b>Lớp 1 · nền</b><span>Fill của trạng thái (kem / honey / mint / berry / cream 200). Chỉ đổi khi đang chọn hoặc vô hiệu.</span></li>
+          <li><b>Lớp 2 · viền</b><span>3 px mực (2 px cho nút trong nhóm tốc độ, icon-btn). Focus đổi màu viền sang quế, không đổi độ dày.</span></li>
+          <li><b>Lớp 3 · vòng focus</b><span>3 px quế, vẽ bằng <code>outline</code> với offset âm = −(viền + 3), nằm sát mép trong viền. Không bao giờ ra ngoài.</span></li>
+          <li><b>Lớp 4 · nội dung</b><span>Icon và chữ cách mép trong viền ít nhất 4 px (<code>size.focus-clearance</code>), nên không chạm vòng.</span></li>
+          <li><b>Lớp 5 · bóng</b><span>Bóng sticker 2/4/6 px dưới đáy, chỉ kênh nâng được đổi. Focus không chạm vào <code>box-shadow</code>.</span></li>
+          <li><b>Nhóm</b><span>Đệm nhóm ≥ 4 px, khe ≥ 4 px (dock: đệm 8 px). Vì focus ở trong nút, khe chỉ cần đủ để hai viền không dính nhau.</span></li>
+        </ul>
+      </div>
+
+      <h3 class="sub-title">Một quy tắc dùng chung (đặt một lần trong ui.css)</h3>
+<pre><code>:where(.btn, .hud-btn, .dock-btn, .tab, .step-btn, .step-input) { --bw: var(--size-outline); }
+:where(.seg button, .icon-btn) { --bw: var(--size-outline-sm); }
+
+:where(.btn, .hud-btn, .seg button, .dock-btn, .tab, .icon-btn, .step-btn, .step-input):focus-visible {
+  border-color: var(--focus-ring);
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}</code></pre>
+
+      <h3 class="sub-title">Vòng quế trên các nền nút (yêu cầu ≥ 3:1)</h3>
+      <ul class="ratios">
+        <li class="ratio"><span class="ratio-sw" style="background: var(--surface-panel-solid)">9,0</span>cream 50 · nút phụ, HUD, dock</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--surface-app)">7,7</span>cream 100 · nền app, hover nút ma</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--surface-disabled)">6,5</span>cream 200 · vô hiệu</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-primary)">5,8</span>honey 400 · chính, đang chọn</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-info)">5,7</span>sky 400 · thông tin</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-mint)">5,1</span>mint 400 · Mở cửa</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-primary-hover)">4,6</span>honey 500</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-danger)">4,1</span>berry 400 · nguy hiểm</li>
+        <li class="ratio"><span class="ratio-sw" style="background: var(--accent-mint-hover)">3,9</span>mint 500</li>
+        <li class="ratio"><span class="ratio-sw is-low" style="background: var(--accent-danger-hover)">3,2</span>berry 500 · thấp nhất, vẫn đạt</li>
+      </ul>
+    </div>
+  </section>
+</main>
+</body>
+</html>
