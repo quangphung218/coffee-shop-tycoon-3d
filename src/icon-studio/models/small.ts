@@ -29,15 +29,15 @@ export function camera(): Object3D {
   return glyph(body, hood, lens, pupil);
 }
 
-/** i-close: fat ink X, so it never melts into the cream HUD. */
+/** i-close: coral X inside the ink band, so it never melts into the cream HUD (an ink body merged with the band into a blob). */
 export function close(): Object3D {
-  const w = 0.27;
+  const w = 0.22;
   const l = 0.85;
   const cross = polygon([
     [w, l], [w, w], [l, w], [l, -w], [w, -w], [w, -l],
     [-w, -l], [-w, -w], [-l, -w], [-l, w], [-w, w], [-w, l],
   ]);
-  return glyph(at(slab(cross, 'ink'), 0, 0, 0, Math.PI / 4));
+  return glyph(at(slab(cross, 'coral'), 0, 0, 0, Math.PI / 4));
 }
 
 /** i-settings: six fat teeth straight on, an ink hole in the middle. */

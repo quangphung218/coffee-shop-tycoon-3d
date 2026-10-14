@@ -178,7 +178,7 @@ describe('small models', () => {
     }
     const close = SMALL_MODELS['i-close']!();
     close.traverse((o) => {
-      if (o instanceof Mesh) expect(o.material).toBe(mat('ink'));
+      if (o instanceof Mesh) expect(o.material).toBe(mat('coral'));
     });
   });
 });

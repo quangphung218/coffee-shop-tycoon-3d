@@ -30,7 +30,7 @@ Atlas có **113 icon**: 105 icon của `src/ui/core/icons.ts` và 8 avatar theo 
 |---|---|
 | `i-coin` | Đồng xu vàng nhìn thẳng, vòng và vạch màu mực như SVG |
 | `i-camera` | Thân và loa che màu sky, một ống kính kem to có tròng mực |
-| `i-close` | Dấu X dày màu mực, không trùng nền kem của HUD |
+| `i-close` | Dấu X thân coral viền mực, không trùng nền kem của HUD |
 | `i-settings` | Bánh răng 6 răng to, lỗ giữa màu mực |
 | `i-pause` | Hai thanh cách xa hơn để thấy mực ở giữa |
 | `i-speed-4` | Ba đầu mũi tên cao hơn |
