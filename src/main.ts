@@ -8,6 +8,7 @@ import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/vietnamese-700.css';
 import './ui/styles/tokens.css';
 import './ui/styles/ui.css';
+import './ui/styles/scrollbar.css';
 import { createAudio } from './audio';
 import type { World } from './render/scene';
 import { loadSettings } from './save/settings';
