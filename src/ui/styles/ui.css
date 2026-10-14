@@ -1154,10 +1154,10 @@ legend {
   width: min(360px, calc(100% - var(--space-6)));
   pointer-events: none;
 }
-/* Phone, panel open across the width (bottom sheet, up to 60% tall): the
+/* Phone, panel open (its dock button is pressed) across the width (bottom sheet, up to 60% tall): the
    stack moves above the sheet's tallest extent so it never covers the panel. */
 @media (max-width: 640px) {
-  #ui:has(> .panel:not([hidden])) > .toasts {
+  #ui:has(.dock-btn[aria-pressed='true']) > .toasts {
     bottom: calc(var(--dock-space) + 60%);
   }
 }
