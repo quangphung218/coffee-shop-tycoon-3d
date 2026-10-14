@@ -23,6 +23,16 @@ const DAY_CLIP_S = 12;
 /** Real-time lead-in before "Mở cửa" and hold on the Daily Report, seconds. */
 const INTRO_S = 1.5;
 const REPORT_HOLD_S = 3.5;
+/** Packs added on top of the Auto-restock suggestion, by ingredient name in the Kho panel. */
+const EXTRA_PACKS = [
+  ['Cà phê hạt', 3],
+  ['Sữa tươi', 3],
+  ['Chanh', 4],
+  ['Trà', 1],
+  ['Ly', 3],
+];
+/** Wheel delta for a ~1.25x zoom (camera zoom = exp(-deltaY * 0.0015)). */
+const ZOOM_WHEEL = -150;
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
 const DAY_TIMEOUT_MS = 8 * 60_000;
 /** GIF tries, largest first, until one fits under MAX_BYTES. */
@@ -64,7 +74,8 @@ async function startPreview() {
 /** Plays day 1 on Easy with three hires, taking the five screenshots. Returns clip timestamps in seconds. */
 async function playDay(page, videoStart) {
   const at = () => (Date.now() - videoStart) / 1000;
-  const shot = (name) => page.screenshot({ path: join(OUT, name) });
+  // Toasts would cover the shop in still images; the clip keeps them.
+  const shot = (name) => page.screenshot({ path: join(OUT, name), style: '.toasts { display: none !important; }' });
 
   await page.goto(URL_BASE);
   const newGame = page.getByRole('button', { name: '✨ Ván mới' });
@@ -83,10 +94,19 @@ async function playDay(page, videoStart) {
     await page.locator('[data-action="hire"]').first().click();
     await sleep(300);
   }
+  // Stock up so the day ends with served customers rather than "Hết món" reviews.
   await page.locator('[data-panel="inventory"]').click();
+  await page.locator('[data-action="suggest"]').click();
+  for (const [name, packs] of EXTRA_PACKS) {
+    for (let i = 0; i < packs; i++) await page.getByRole('button', { name: `Thêm 1 · Số gói ${name}`, exact: true }).click();
+  }
   await sleep(800);
   await shot('prep-inventory.png');
+  await page.locator('[data-action="buy"]').click();
   await page.locator('[data-panel="inventory"]').click();
+  // Closer camera so customers and staff are readable in the clip.
+  await page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height / 2 + 40);
+  await page.mouse.wheel(0, ZOOM_WHEEL);
   await sleep(INTRO_S * 1000);
 
   const openAt = at() - INTRO_S;
@@ -111,6 +131,8 @@ async function playDay(page, videoStart) {
   await report.waitFor({ timeout: DAY_TIMEOUT_MS });
   const reportAt = at();
   await sleep(1500);
+  // Focus lands on "Ngày tiếp theo" at the bottom; show the profit summary instead.
+  await page.evaluate(() => document.querySelectorAll('.rpt-layer, .rpt-layer *').forEach((el) => (el.scrollTop = 0)));
   await shot('daily-report.png');
   await sleep((REPORT_HOLD_S - 1.5) * 1000);
   const endAt = at();
