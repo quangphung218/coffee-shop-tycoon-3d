@@ -21,6 +21,21 @@ import { createSettings } from '../../src/ui/screens/settings';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 import INDEX_HTML from '../../index.html?raw';
 
+// Vitest stubs .css imports (even ?raw) to '' and the project has no Node
+// types, so read the files through a dynamically named node:fs import.
+const FS_MODULE = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: URL, encoding: 'utf8'): string;
+};
+const UI_CSS = readFileSync(new URL('../../src/ui/styles/ui.css', import.meta.url), 'utf8');
+const PANELS_CSS = readFileSync(new URL('../../src/ui/panels/panels.css', import.meta.url), 'utf8');
+
+/** Bodies of every `selector { … }` block (comments dropped, @media included). */
+function cssBodies(css: string, selector: string): string[] {
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return [...src.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => m[1]!.trim() === selector).map((m) => m[2]!);
+}
+
 /** Emoji plus the text symbols the old screens used as icons. */
 const EMOJI = /\p{Extended_Pictographic}|[▶▲▼✓✕★↺＋←→]/u;
 
@@ -470,6 +485,67 @@ describe('HUD', () => {
       expect(buttons.every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true);
     } finally {
       offs.forEach((off) => off());
+    }
+  });
+
+  it('places the open panel between the measured HUD and dock, with only its body scrolling', () => {
+    const root = document.createElement('div');
+    root.id = 'ui';
+    document.body.append(root);
+    const state = game();
+    const hud = createHud({ dispatch: vi.fn(() => true), getState: () => state, onPause: vi.fn(), onSettings: vi.fn(), onResetCamera: vi.fn() });
+    root.append(hud.el, hud.panelEl);
+    hud.el.hidden = false;
+    hud.update(state);
+    const rect = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 390, width: 390, height: bottom - top, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this === root) return rect(0, 844);
+      if (this.classList.contains('hud')) return rect(12, 120);
+      if (this.classList.contains('dock')) return rect(660, 832);
+      return rect(0, 0);
+    });
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const off = registerPanel('inventory', 'Kho', 'i-inventory', (body) => {
+      body.append(Object.assign(document.createElement('button'), { textContent: 'Nhập hàng' }));
+    });
+    try {
+      q<HTMLButtonElement>(hud.el, '.dock [data-panel="inventory"]').click();
+      expect(hud.panelEl.hidden).toBe(false);
+      expect(root.style.getPropertyValue('--hud-h')).toBe('120px');
+      expect(root.style.getPropertyValue('--dock-h')).toBe('184px');
+      // Opening focuses the first control without scrolling the head away.
+      expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+
+      // Head after the Kho mockup: icon tile, title, a level-4 close button.
+      const head = q(hud.panelEl, '.panel-head');
+      expect(q(head, '.panel-head-icon use').getAttribute('href')).toBe('#i-inventory');
+      expect(q(head, 'h2').textContent).toBe('Kho');
+      const close = q<HTMLButtonElement>(head, 'button[aria-label="Đóng bảng (Esc)"]');
+      expect(close.className).toBe('icon-btn');
+      expect(q(close, 'use').getAttribute('href')).toBe('#i-close');
+
+      // ui.css: top and bottom come from the measured edges at every width;
+      // no rule pins the panel to the top or caps it as a bottom sheet.
+      const panelRules = cssBodies(UI_CSS, '#ui > .panel');
+      expect(panelRules[0]).toMatch(/top:\s*calc\(var\(--hud-h\b/);
+      expect(panelRules[0]).toMatch(/bottom:\s*calc\(var\(--dock-h\b/);
+      expect(panelRules[0]).toMatch(/flex-direction:\s*column/);
+      for (const body of panelRules) expect(body).not.toMatch(/\b(top|bottom):\s*(0|auto)\b|max-height/);
+      // .panel-body is the one scroll area; the foot sticks at its bottom with no negative margin.
+      const bodyRule = cssBodies(UI_CSS, '.panel-body').join('');
+      expect(bodyRule).toMatch(/overflow:\s*auto/);
+      expect(bodyRule).toMatch(/min-height:\s*0/);
+      expect(cssBodies(UI_CSS, '.panel-head').join('')).toMatch(/flex:\s*none/);
+      const foot = cssBodies(PANELS_CSS, '.prep .panel-foot').join('');
+      expect(foot).toMatch(/position:\s*sticky/);
+      expect(foot).toMatch(/bottom:\s*0;/);
+      expect(foot).not.toMatch(/-1 \*|margin:/);
+      // Ticks are masked i-check icons; the Nunito subset has no ✓ glyph.
+      expect(UI_CSS + PANELS_CSS).not.toContain('✓');
+    } finally {
+      off();
+      hud.dispose();
+      vi.restoreAllMocks();
     }
   });
 

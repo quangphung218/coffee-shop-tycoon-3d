@@ -343,6 +343,16 @@ describe('task board', () => {
     expect(body.querySelector('[data-goto="staff"]')).not.toBeNull();
   });
 
+  it('says "Cần chú ý" in words on a task that needs attention', () => {
+    const state = game();
+    for (const m of state.menu) m.enabled = false;
+    const { body } = mount(renderTasksPanel, state);
+    const menu = q(body, '[data-task="menu"]');
+    expect(menu.classList.contains('is-warn')).toBe(true);
+    expect(q(menu, '.task-title').textContent).toContain('Cần chú ý');
+    expect(q(body, '[data-task="staff"]').textContent).not.toContain('Cần chú ý');
+  });
+
   it('updates in place on later frames', () => {
     const state = game();
     const { body, handle } = mount(renderTasksPanel, state);
