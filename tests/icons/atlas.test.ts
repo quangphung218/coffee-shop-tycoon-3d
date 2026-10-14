@@ -1,6 +1,19 @@
+import { Box3, Mesh, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { type AtlasManifest, CELL, checkManifest, GAP, orderIds, packAtlas } from '../../src/icon-studio/atlas';
+import {
+  ATLAS_IDS,
+  type AtlasManifest,
+  AVATAR_IDS,
+  BUDGET,
+  CELL,
+  checkManifest,
+  GAP,
+  orderIds,
+  packAtlas,
+} from '../../src/icon-studio/atlas';
 import { MODELS } from '../../src/icon-studio/models';
+import { mat, PALETTE, type PaletteKey, POSES } from '../../src/icon-studio/style';
+import { AVATAR_LOOKS } from '../../src/ui/core/iconMap';
 import { ICON_IDS } from '../../src/ui/core/icons';
 
 // The project has no Node types, so node:fs comes in through a dynamically
@@ -66,16 +79,31 @@ describe('checkManifest', () => {
 });
 
 describe('icon models', () => {
-  it('are keyed by real icon ids and include the eight samples plus the avatar', () => {
-    const ids = Object.keys(MODELS);
-    expect(orderIds(ids, ICON_IDS)).toHaveLength(ids.length);
-    expect(ids).toEqual(
-      expect.arrayContaining(['i-menu', 'i-inventory', 'i-upgrades', 'i-reviews', 'i-pause', 'i-close', 'i-latte', 'i-beans', 'i-avatar']),
-    );
+  it('cover every icon id and one avatar per AVATAR_LOOKS entry, nothing else', () => {
+    expect(ICON_IDS).toHaveLength(105);
+    expect(AVATAR_IDS).toHaveLength(AVATAR_LOOKS.length);
+    expect(Object.keys(MODELS).sort()).toEqual([...ATLAS_IDS].sort());
+  });
+
+  it('each build into finite geometry in palette colours and a known pose', () => {
+    const palette = new Set<unknown>((Object.keys(PALETTE) as PaletteKey[]).map(mat));
+    for (const [id, build] of Object.entries(MODELS)) {
+      const model = build();
+      const meshes: Mesh[] = [];
+      model.traverse((o) => {
+        if (o instanceof Mesh) meshes.push(o);
+      });
+      expect(meshes.length, id).toBeGreaterThan(0);
+      for (const m of meshes) expect(palette.has(m.material), id).toBe(true);
+      const size = new Box3().setFromObject(model).getSize(new Vector3());
+      expect([size.x, size.y, size.z].every((v) => Number.isFinite(v) && v > 0), id).toBe(true);
+      expect(Object.keys(POSES), id).toContain(model.userData.pose ?? 'object');
+    }
   });
 
   it('orderIds follows the app order and rejects unknown ids', () => {
     expect(orderIds(['i-close', 'i-menu'], ICON_IDS)).toEqual(['i-menu', 'i-close']);
+    expect(orderIds(['i-avatar-1', 'i-close'], ATLAS_IDS)).toEqual(['i-close', 'i-avatar-1']);
     expect(() => orderIds(['i-nope'], ICON_IDS)).toThrow('i-nope');
   });
 });
@@ -85,15 +113,19 @@ const ATLAS = 'public/icons3d/atlas.json';
 describe.skipIf(!fs.existsSync(ATLAS))('committed atlas', () => {
   const m = JSON.parse(fs.existsSync(ATLAS) ? fs.readFileSync(ATLAS, 'utf8') : '{}') as AtlasManifest;
 
-  it('matches the packer for its ids and only holds icons that have a model', () => {
-    const ids = Object.keys(m.icons);
-    expect(checkManifest(m, ICON_IDS)).toEqual([]);
-    expect(m).toEqual(packAtlas(orderIds(ids, ICON_IDS)));
-    for (const id of ids) expect(MODELS[id as keyof typeof MODELS]).toBeDefined();
+  it('holds every icon id and every avatar look, laid out by the packer', () => {
+    expect(checkManifest(m, ATLAS_IDS)).toEqual([]);
+    expect(Object.keys(m.icons)).toEqual([...ATLAS_IDS]);
+    expect(m).toEqual(packAtlas(ATLAS_IDS));
   });
 
   it('has WebP images at 1x and 2x the manifest size', () => {
     expect(webpSize(fs.readFileSync('public/icons3d/atlas@1x.webp'))).toEqual({ width: m.width, height: m.height });
     expect(webpSize(fs.readFileSync('public/icons3d/atlas@2x.webp'))).toEqual({ width: m.width * 2, height: m.height * 2 });
+  });
+
+  it('stays inside the size budget (120 kB @1x, 300 kB @2x)', () => {
+    expect(fs.readFileSync('public/icons3d/atlas@1x.webp').length).toBeLessThanOrEqual(BUDGET[1]);
+    expect(fs.readFileSync('public/icons3d/atlas@2x.webp').length).toBeLessThanOrEqual(BUDGET[2]);
   });
 });
