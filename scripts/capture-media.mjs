@@ -2,7 +2,7 @@
 // Run through `npm run media` (builds first). Needs Playwright with Chromium
 // and ffmpeg; see docs/media.md.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -59,6 +59,39 @@ const GLOW_RECHECK_MS = 2000;
 const HIDE_UI = '.hud-layer, .toasts { display: none !important; }';
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
 const DAY_TIMEOUT_MS = 8 * 60_000;
+/** Commit of the P17 screenshots the before/after pairs compare against (read with git show). */
+const P17_COMMIT = '07439cf';
+/**
+ * Where P17 put people (07439cf src/sim/customers.ts queueSlot and
+ * PICKUP_POS, src/sim/staff.ts MACHINE_FRONT, COUNTER_FRONT and STATIONS).
+ * The P17 and P18 peak shots use the same camera (Home, ZOOM_WHEEL), so these
+ * are projected onto the P17 frame with the camera of the P18 one.
+ */
+const P17_SPOTS = {
+  queue: Array.from({ length: 6 }, (_, i) => ({ x: 0, z: -1 + i * 0.8 })),
+  pickup: [{ x: 2.5, z: -1 }],
+  staff: [
+    { x: -1, z: -2.9 },
+    { x: 0, z: -1.6 },
+    { x: -1, z: -2.7 },
+    { x: 2.5, z: -1.8 },
+  ],
+};
+/** Top of a character's head (src/render/actors/rig.ts HEAD_TOP_Y) and the body's half width, world units. */
+const PERSON_TOP = 1.35;
+const PERSON_HALF = 0.3;
+/** A person counts as standing on a sim spot within this distance. */
+const ON_SPOT = 0.3;
+/** Sizes from src/render/scene/facade.ts (FAN_Y, FAN_BLADE, SHELF_WIDTH, PENDANT_Y, WINDOW_*, AWNING_*). */
+const FACADE_SIZE = { fanY: 2.6, fanBlade: 0.62, shelfHalf: 0.75, pendantY: 2.3, windowHalf: 0.6, windowSill: 0.95, windowHeight: 0.95, awningHalf: 1.2, awningDepth: 0.95 };
+/** DOM boxes measured with the frames; each is the union of the visible matches. */
+const DOM_MARKS = {
+  dock: '.dock',
+  hud: '.hud .hud-stat, .hud .phases',
+  panel: '.panel:not([hidden])',
+  menuCard: '.w-menu',
+  menuList: '.w-menu .menu-list',
+};
 /** GIF tries, largest first, until one fits under MAX_BYTES. */
 const GIF_TRIES = [
   { width: 720, fps: 12 },
@@ -132,6 +165,217 @@ async function cameraFacade(page) {
   await sleep(1000);
 }
 
+/**
+ * Runs in the page before its scripts. three.js announces each WebGLRenderer
+ * to window.__THREE_DEVTOOLS__; the one drawing #scene gets its render()
+ * wrapped so the last scene and camera drawn are kept for sceneSnapshot().
+ */
+function observeThree() {
+  const hook = new EventTarget();
+  hook.addEventListener('observe', (e) => {
+    const renderer = e.detail;
+    if (!renderer?.isWebGLRenderer || renderer.domElement?.id !== 'scene') return;
+    // After the constructor has finished setting up render().
+    queueMicrotask(() => {
+      const render = renderer.render;
+      renderer.render = function (scene, camera) {
+        window.__mediaScene = scene;
+        window.__mediaCamera = camera;
+        return render.call(this, scene, camera);
+      };
+    });
+  });
+  window.__THREE_DEVTOOLS__ = hook;
+}
+
+/**
+ * Stops the page's frame loop after its next frame, so a screenshot and the
+ * positions read with it show the same instant. thaw() starts it again.
+ */
+function freeze(page) {
+  return page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const raf = window.requestAnimationFrame;
+        const held = [];
+        window.__mediaThaw = () => {
+          window.requestAnimationFrame = raf;
+          for (const cb of held.splice(0)) raf.call(window, cb);
+        };
+        window.requestAnimationFrame = (cb) => {
+          held.push(cb);
+          return 0;
+        };
+        const t0 = performance.now();
+        const wait = () => (held.length > 0 || performance.now() - t0 > 3000 ? setTimeout(resolve, 100) : setTimeout(wait, 20));
+        wait();
+      }),
+  );
+}
+
+function thaw(page) {
+  return page.evaluate(() => window.__mediaThaw?.());
+}
+
+/** Camera matrices of the last frame of #scene and the feet of everyone drawn in it. */
+async function sceneSnapshot(page) {
+  const snap = await page.evaluate(() => {
+    const camera = window.__mediaCamera;
+    const scene = window.__mediaScene;
+    if (!camera || !scene) return null;
+    const r = document.getElementById('scene').getBoundingClientRect();
+    const people = [];
+    for (const o of scene.getObjectByName('actors')?.children ?? []) {
+      if (o.visible && o.name !== 'coins') people.push({ x: o.position.x, z: o.position.z });
+    }
+    return {
+      view: Array.from(camera.matrixWorldInverse.elements),
+      proj: Array.from(camera.projectionMatrix.elements),
+      rect: { x: r.left, y: r.top, w: r.width, h: r.height },
+      people,
+    };
+  });
+  if (!snap) throw new Error('no three.js camera seen on #scene (window.__THREE_DEVTOOLS__ hook)');
+  return snap;
+}
+
+/** Viewport box of each DOM_MARKS selector (union of its visible matches), or null. */
+function domSnapshot(page) {
+  return page.evaluate((selectors) => {
+    const out = {};
+    for (const [key, sel] of Object.entries(selectors)) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const el of document.querySelectorAll(sel)) {
+        const r = el.getBoundingClientRect();
+        const left = Math.max(0, r.left);
+        const top = Math.max(0, r.top);
+        const right = Math.min(innerWidth, r.right);
+        const bottom = Math.min(innerHeight, r.bottom);
+        if (right <= left || bottom <= top) continue;
+        x0 = Math.min(x0, left); y0 = Math.min(y0, top); x1 = Math.max(x1, right); y1 = Math.max(y1, bottom);
+      }
+      out[key] = x0 < x1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+    }
+    return out;
+  }, DOM_MARKS);
+}
+
+/** Screen position (CSS px) of world point (x, y, z) through the snapshot's camera. */
+function project(snap, x, y, z) {
+  const v = snap.view;
+  const p = snap.proj;
+  const e = [0, 1, 2, 3].map((r) => v[r] * x + v[4 + r] * y + v[8 + r] * z + v[12 + r]);
+  const c = [0, 1, 3].map((r) => p[r] * e[0] + p[4 + r] * e[1] + p[8 + r] * e[2] + p[12 + r] * e[3]);
+  return { x: snap.rect.x + ((c[0] / c[2] + 1) / 2) * snap.rect.w, y: snap.rect.y + ((1 - c[1] / c[2]) / 2) * snap.rect.h };
+}
+
+/** Screen box around world points [x, y, z], or null when it is off screen. */
+function worldBox(snap, points, pad = 4) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y, z] of points) {
+    const s = project(snap, x, y, z);
+    x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y);
+  }
+  const box = { x: x0 - pad, y: y0 - pad, w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad };
+  const { x, y, w, h } = snap.rect;
+  return box.x < x + w && box.x + box.w > x && box.y < y + h && box.y + box.h > y ? box : null;
+}
+
+/** World box corners: x0..x1, y0..y1, z0..z1. */
+function cuboid(x0, x1, y0, y1, z0, z1) {
+  const out = [];
+  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) out.push([x, y, z]);
+  return out;
+}
+
+/** One ring per person standing at `feet`, head included. */
+function personBoxes(snap, feet, top = PERSON_TOP, half = PERSON_HALF) {
+  return feet.map((p) => worldBox(snap, cuboid(p.x - half, p.x + half, 0, top, p.z - half, p.z + half))).filter(Boolean);
+}
+
+/** People in the snapshot standing on one of `spots`; the spots themselves when nobody does. */
+function onSpots(snap, spots) {
+  const hit = snap.people.filter((p) => spots.some((s) => Math.hypot(s.x - p.x, s.z - p.z) <= ON_SPOT));
+  return hit.length > 0 ? hit : spots;
+}
+
+/** Door, awning and name sign, from facadePlan(). */
+function facadeBoxes(snap, plan) {
+  const f = FACADE_SIZE;
+  const { door, sign, frontZ } = plan;
+  return [worldBox(snap, cuboid(door.x - f.awningHalf, door.x + f.awningHalf, 0, sign.y + 0.35, frontZ - 0.2, frontZ + f.awningDepth))].filter(Boolean);
+}
+
+/**
+ * Rings for the peak pair. P17: the old line, takeaway point and staff spots
+ * (P17_SPOTS) through the same camera. P18: the people standing on the sim's
+ * line and takeaway spots and behind the counter, the shop front and the dock.
+ */
+function peakMarks({ scene, dom }, sim) {
+  const staff = scene.people.filter((p) => p.z < sim.counter.pos.z - 0.4);
+  return [
+    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.queue), label: 'Hàng chờ thẳng x = 0, đè ghế' },
+    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.pickup, PERSON_TOP, 0.45), label: 'Khách mang đi chồng một điểm' },
+    { side: 'before', boxes: personBoxes(scene, P17_SPOTS.staff), label: 'Nhân viên chồng nhau, trong quầy' },
+    { side: 'before', boxes: [dom.dock], label: 'Icon SVG phẳng' },
+    { side: 'after', boxes: personBoxes(scene, onSpots(scene, sim.queue)), label: 'Hàng chờ đi lối giữa, không đè ghế' },
+    { side: 'after', boxes: personBoxes(scene, onSpots(scene, sim.pickup)), label: 'Khách mang đi: mỗi người một ô' },
+    { side: 'after', boxes: personBoxes(scene, staff), label: 'Nhân viên không chồng' },
+    { side: 'after', boxes: facadeBoxes(scene, sim.facade), label: 'Mặt tiền mới' },
+    { side: 'after', boxes: [dom.dock], label: 'Icon 3D' },
+  ];
+}
+
+/** Rings for the main menu pair: new facade and interior details on the P18 side; menu icons on both. */
+function menuMarks({ scene, dom }, sim) {
+  const f = FACADE_SIZE;
+  const plan = sim.facade;
+  const card = dom.menuCard;
+  // Details behind the menu card would be ringed on top of it.
+  const clear = (b) => !card || !(b.x + b.w / 2 > card.x && b.x + b.w / 2 < card.x + card.w && b.y + b.h / 2 > card.y && b.y + b.h / 2 < card.y + card.h);
+  const boxes = (points) => points.map((p) => worldBox(scene, p)).filter((b) => b && clear(b));
+  const left = plan.windows.filter((w) => w.wall === 1);
+  return [
+    { side: 'before', boxes: [dom.menuList], label: 'Icon SVG phẳng' },
+    { side: 'after', boxes: [dom.menuList], label: 'Icon 3D' },
+    { side: 'after', boxes: facadeBoxes(scene, plan).filter(clear), label: 'Mái hiên, biển tên, cửa kính' },
+    { side: 'after', boxes: personBoxes(scene, plan.planters, 1.2, 0.45).filter(clear), label: 'Chậu cây' },
+    {
+      side: 'after',
+      boxes: boxes(left.map((w) => cuboid(w.x, w.x, f.windowSill, f.windowSill + f.windowHeight, w.z - f.windowHalf, w.z + f.windowHalf))),
+      label: 'Khung cửa sổ',
+    },
+    { side: 'after', boxes: boxes(plan.fans.map((p) => cuboid(p.x - f.fanBlade, p.x + f.fanBlade, f.fanY - 0.1, f.fanY + 0.1, p.z - f.fanBlade, p.z + f.fanBlade))), label: 'Quạt trần' },
+    {
+      side: 'after',
+      boxes: boxes([cuboid(plan.shelves.x - f.shelfHalf, plan.shelves.x + f.shelfHalf, plan.shelves.levels[0] - 0.1, plan.shelves.levels.at(-1) + 0.3, plan.shelves.z, plan.shelves.z + 0.26)]),
+      label: 'Kệ lọ hạt',
+    },
+    { side: 'after', boxes: boxes(plan.pendants.map((p) => cuboid(p.x - 0.2, p.x + 0.2, f.pendantY - 0.35, f.pendantY + 0.1, p.z - 0.2, p.z + 0.2))), label: 'Đèn thả' },
+  ];
+}
+
+/** Rings for the Kho pair: the dock, the HUD and the panel, where flat SVG icons became 3D ones. */
+function prepMarks({ dom }) {
+  const marks = [];
+  for (const [key, name] of [['dock', 'Dock'], ['hud', 'HUD'], ['panel', 'Bảng Kho']]) {
+    marks.push({ side: 'before', boxes: [dom[key]], label: `${name}: icon SVG phẳng` });
+    marks.push({ side: 'after', boxes: [dom[key]], label: `${name}: icon 3D` });
+  }
+  return marks;
+}
+
+/** Freezes the frame loop, takes `shoot()` and reads the camera, people and DOM boxes of that frame. */
+async function measured(page, shoot) {
+  await freeze(page);
+  try {
+    await shoot();
+    return { scene: await sceneSnapshot(page), dom: await domSnapshot(page) };
+  } finally {
+    await thaw(page);
+  }
+}
+
 /** Plays day 1 on Easy with three hires, taking the screenshots. Returns clip timestamps in seconds. */
 async function playDay(page, videoStart) {
   const at = () => (Date.now() - videoStart) / 1000;
@@ -146,7 +390,9 @@ async function playDay(page, videoStart) {
   await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
   // The menu backdrop is a busy lunchtime shop; give the first customers time to walk in.
   await sleep(4000);
-  await shot('main-menu.png');
+  // Each frame of a before/after pair is measured as it is taken (camera, people, DOM boxes).
+  const marks = {};
+  marks.menu = await measured(page, () => shot('main-menu.png'));
 
   await newGame.click();
   await page.locator('label.choice', { has: page.locator('input[value="easy"]') }).click();
@@ -171,6 +417,7 @@ async function playDay(page, videoStart) {
   }
   await sleep(800);
   await shot('prep-inventory.png');
+  marks.prep = { dom: await domSnapshot(page) };
   await page.locator('[data-action="buy"]').click();
   await page.locator('.dock [data-panel="inventory"]').click();
   // Closer camera so customers and staff are readable in the clip.
@@ -193,7 +440,7 @@ async function playDay(page, videoStart) {
   });
   // About an hour of game time into the lunch peak, when the queue is longest.
   await clockAt(page, '12:00');
-  await shot('peak.png');
+  marks.peak = await measured(page, () => shot('peak.png'));
   // Closer on the counter: the line follows the free aisle between the tables.
   await cameraHome(page, QUEUE_WHEEL);
   await shot('queue.png');
@@ -234,7 +481,7 @@ async function playDay(page, videoStart) {
   await page.locator('[data-tab="reviews"]').click();
   await sleep(600);
   await shot('reviews.png');
-  return { times: { openAt, reportAt, endAt }, glow };
+  return { times: { openAt, reportAt, endAt }, glow, marks };
 }
 
 /**
@@ -459,6 +706,167 @@ async function makeGlowPair(browser, glow, out) {
   }
 }
 
+/**
+ * Loads the sim and facadePlan() with Vite (TypeScript as is) and works out
+ * the day-1 shop: counter, line and takeaway spots, and where the facade
+ * details stand. The main menu and day 1 both have the starting layout.
+ */
+async function simPlan() {
+  const { createServer } = await import('vite');
+  const vite = await createServer({ root: ROOT, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
+  try {
+    const load = (path) => vite.ssrLoadModule(path);
+    const [{ createNewGame }, { getShopLayout }, { floorSpots }, { facadePlan }] = await Promise.all(
+      ['/src/sim/state.ts', '/src/sim/upgrades.ts', '/src/sim/customers.ts', '/src/render/scene/facade.ts'].map(load),
+    );
+    const layout = getShopLayout(createNewGame('Coffee Shop', 'easy', FIXED_NOW >>> 0));
+    const spots = floorSpots(layout);
+    return JSON.parse(JSON.stringify({ counter: layout.counter, queue: spots.queue, pickup: spots.pickup, facade: facadePlan(layout, 'high') }));
+  } finally {
+    await vite.close();
+  }
+}
+
+/**
+ * Runs in the browser. Draws the P17 and P18 frames side by side, rings each
+ * mark's boxes (P17 dashed coral, P18 solid mint) and puts its label next to
+ * them, with a legend below.
+ */
+async function drawMarkedPair({ before, after, beforeTitle, afterTitle, marks, note }) {
+  const INK = '#2b1d14';
+  const COLOR = { before: '#e07a5f', after: '#2fb898' };
+  const load = async (b64) => createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+  const [beforeImg, afterImg] = await Promise.all([before, after].map(load));
+  const SCALE = 0.75;
+  const PAD = 24;
+  const TITLE = 44;
+  const FOOT = 60;
+  const pw = Math.round(afterImg.width * SCALE);
+  const ph = Math.round(afterImg.height * SCALE);
+  const canvas = document.createElement('canvas');
+  canvas.width = PAD * 3 + pw * 2;
+  canvas.height = PAD + TITLE + ph + FOOT;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff9f0';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textBaseline = 'middle';
+  const top = PAD + TITLE;
+  const panels = {
+    before: { img: beforeImg, x: PAD, title: beforeTitle },
+    after: { img: afterImg, x: PAD * 2 + pw, title: afterTitle },
+  };
+  for (const p of Object.values(panels)) {
+    ctx.font = '700 22px Nunito, system-ui, sans-serif';
+    ctx.fillStyle = INK;
+    ctx.fillText(p.title, p.x, PAD + TITLE / 2 - 4);
+    ctx.drawImage(p.img, p.x, top, pw, ph);
+  }
+
+  // Rings, clipped to their panel.
+  for (const m of marks) {
+    const p = panels[m.side];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(p.x, top, pw, ph);
+    ctx.clip();
+    ctx.setLineDash(m.side === 'before' ? [8, 6] : []);
+    for (const b of m.boxes) {
+      ctx.beginPath();
+      ctx.roundRect(p.x + b.x * SCALE, top + b.y * SCALE, b.w * SCALE, b.h * SCALE, 10);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = COLOR[m.side];
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.setLineDash([]);
+  for (const p of Object.values(panels)) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.strokeRect(p.x, top, pw, ph);
+  }
+
+  // One label per mark, above its rings, else below, else stacked further away; never on another label.
+  ctx.font = '700 16px Nunito, system-ui, sans-serif';
+  const placed = [];
+  const clash = (a) => placed.some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h);
+  for (const m of marks) {
+    const p = panels[m.side];
+    const x0 = Math.min(...m.boxes.map((b) => b.x)) * SCALE;
+    const x1 = Math.max(...m.boxes.map((b) => b.x + b.w)) * SCALE;
+    const y0 = Math.min(...m.boxes.map((b) => b.y)) * SCALE;
+    const y1 = Math.max(...m.boxes.map((b) => b.y + b.h)) * SCALE;
+    const tw = ctx.measureText(m.label).width + 18;
+    const lx = Math.min(p.x + pw - tw - 4, Math.max(p.x + 4, p.x + (x0 + x1) / 2 - tw / 2));
+    const at = (y) => ({ x: lx, y: Math.min(top + ph - 30, Math.max(top + 4, y)), w: tw, h: 26 });
+    const tries = [];
+    for (let k = 0; k < 6; k++) tries.push(at(top + y0 - 32 - k * 30), at(top + y1 + 6 + k * 30));
+    const spot = tries.find((t) => !clash(t)) ?? tries[0];
+    placed.push(spot);
+    ctx.beginPath();
+    ctx.roundRect(spot.x, spot.y, tw, 26, 13);
+    ctx.fillStyle = COLOR[m.side];
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.fillText(m.label, spot.x + 9, spot.y + 14);
+  }
+
+  // Legend: what the two ring styles mean.
+  const fy = top + ph + FOOT / 2;
+  ctx.font = '600 17px Nunito, system-ui, sans-serif';
+  let x = PAD;
+  for (const [side, text] of [['before', 'Nét đứt: P17'], ['after', 'Nét liền: P18']]) {
+    ctx.beginPath();
+    ctx.roundRect(x, fy - 10, 34, 20, 8);
+    ctx.setLineDash(side === 'before' ? [6, 4] : []);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = COLOR[side];
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = INK;
+    ctx.fillText(text, x + 44, fy);
+    x += 44 + ctx.measureText(text).width + 28;
+  }
+  if (note) ctx.fillText(note, x, fy);
+  return canvas.toDataURL('image/png').split(',')[1];
+}
+
+/** The P17 screenshot `name` from P17_COMMIT. */
+function p17Frame(name) {
+  const r = spawnSync('git', ['show', `${P17_COMMIT}:docs/media/${name}`], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+  if (r.status !== 0) throw new Error(`git show ${P17_COMMIT}:docs/media/${name} failed (shallow clone?): ${r.stderr}`);
+  return r.stdout;
+}
+
+/** Writes docs/media/<name>-p17-p18.png: the P17 frame and the new one, ringed and labelled. */
+async function makeMarkedPair(browser, { name, title, marks, note }) {
+  const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) })).filter((m) => m.boxes.length > 0);
+  const out = `${name}-p17-p18.png`;
+  const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
+  try {
+    const png = await page.evaluate(drawMarkedPair, {
+      before: p17Frame(`${name}.png`).toString('base64'),
+      after: readFileSync(join(OUT, `${name}.png`)).toString('base64'),
+      beforeTitle: `${title} P17 (${P17_COMMIT})`,
+      afterTitle: `${title} P18`,
+      marks: kept,
+      note,
+    });
+    writeFileSync(join(OUT, out), Buffer.from(png, 'base64'));
+  } finally {
+    await page.close();
+  }
+  console.log(`${out}: ${kept.map((m) => `${m.side} "${m.label}" ×${m.boxes.length}`).join(', ')}`);
+  const missing = marks.filter((m) => !m.boxes.some(Boolean));
+  if (missing.length > 0) console.warn(`!! ${out}: nothing to ring for ${missing.map((m) => `"${m.label}"`).join(', ')}`);
+}
+
 /** Lead-in at 1x, the open day squeezed into DAY_CLIP_S, then the report at 1x. */
 function makeMp4(video, { openAt, reportAt, endAt }, out) {
   const startDay = openAt + INTRO_S;
@@ -488,6 +896,7 @@ async function main() {
     console.warn('ffmpeg not found: taking screenshots only. Install it (macOS: brew install ffmpeg; Debian/Ubuntu: sudo apt install ffmpeg) and run again for demo.gif and demo.mp4.');
   }
   mkdirSync(OUT, { recursive: true });
+  const sim = await simPlan();
   const tmp = mkdtempSync(join(tmpdir(), 'cst3d-media-'));
   const server = await startPreview();
   const browser = await chromium.launch({
@@ -508,12 +917,16 @@ async function main() {
       },
       { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'high', gameSpeed: 1, cameraKeys: 'qe-wasd' } },
     );
+    await context.addInitScript(observeThree);
     const page = await context.newPage();
     const videoStart = Date.now();
-    const { times, glow } = await playDay(page, videoStart);
+    const { times, glow, marks } = await playDay(page, videoStart);
     const video = page.video();
     await context.close();
     await makeGlowPair(browser, glow, join(OUT, 'facade-day-evening.png'));
+    await makeMarkedPair(browser, { name: 'main-menu', title: 'Main Menu', marks: menuMarks(marks.menu, sim), note: 'P17 chưa có các chi tiết khoanh bên P18.' });
+    await makeMarkedPair(browser, { name: 'peak', title: 'Cao điểm', marks: peakMarks(marks.peak, sim), note: 'Vòng P17: chỗ đứng sim P17 cho cùng góc máy.' });
+    await makeMarkedPair(browser, { name: 'prep-inventory', title: 'Bảng Kho', marks: prepMarks(marks.prep) });
 
     if (withVideo && video) {
       const raw = await video.path();
@@ -529,10 +942,13 @@ async function main() {
 
   const files = [
     'main-menu.png',
+    'main-menu-p17-p18.png',
     'menu-icons.png',
     'prep-inventory.png',
+    'prep-inventory-p17-p18.png',
     'facade-day.png',
     'peak.png',
+    'peak-p17-p18.png',
     'queue.png',
     'facade-evening.png',
     'facade-day-evening.png',

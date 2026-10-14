@@ -32,6 +32,8 @@ Lệnh build bản tĩnh, mở `vite preview` ở `127.0.0.1:4173`, rồi Chromi
 
 Ảnh chụp ẩn toast; đoạn quay vẫn giữ.
 
+Lúc chụp Main Menu và giờ cao điểm, lệnh dừng vòng khung hình của trang, đọc camera Three.js (qua `window.__THREE_DEVTOOLS__`), chỗ đứng của từng người và khung DOM của dock, HUD, bảng, rồi chạy tiếp. Cuối lệnh, mỗi ảnh Main Menu, Kho, cao điểm được ghép cạnh ảnh cùng tên ở commit P17 `07439cf` (đọc bằng `git show`, cần lịch sử git đầy đủ) và khoanh chỗ đã đổi: chỗ đứng sim P17 và P18 chiếu qua camera, chi tiết mặt tiền theo `facadePlan()`, icon theo khung DOM. Lệnh in số vòng khoanh của từng nhãn, và cảnh báo `!!` khi một nhãn không có gì để khoanh.
+
 Cả ngày được quay lại; ffmpeg nén phần mở cửa → báo cáo còn khoảng 17 giây. Cuối cùng lệnh in dung lượng từng file; file nào trên 5 MB được đánh dấu `!!` và lệnh trả mã lỗi 1.
 
 ## File tạo ra
@@ -43,10 +45,13 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `demo.gif` | Một vòng ngày, dùng ở đầu README. Tự giảm khổ và fps cho tới khi dưới 5 MB. |
 | `demo.mp4` | Cùng đoạn đó, 1280×720 H.264, để đăng nơi khác. |
 | `main-menu.png` | Main Menu. |
+| `main-menu-p17-p18.png` | Main Menu P17 cạnh P18; khoanh mặt tiền, chậu cây, khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả và icon nút menu. |
 | `menu-icons.png` | Pha chuẩn bị, bảng Menu với icon 3D. |
 | `prep-inventory.png` | Pha chuẩn bị, bảng Kho. |
+| `prep-inventory-p17-p18.png` | Bảng Kho P17 cạnh P18; khoanh icon trên dock, HUD và trong bảng. |
 | `facade-day.png` | Mặt tiền quán lúc 10:00. |
 | `peak.png` | Quán giờ cao điểm. |
+| `peak-p17-p18.png` | Giờ cao điểm P17 cạnh P18; khoanh hàng chờ, khách mang đi, nhân viên, mặt tiền và dock. |
 | `queue.png` | Gần quầy giờ cao điểm: hàng chờ. |
 | `facade-evening.png` | Mặt tiền quán từ 19:30 tới 20:00, đèn sáng đầy. |
 | `facade-day-evening.png` | Mặt tiền cùng góc máy lúc khoảng 15:30 và sau 19:30, cạnh nhau; khoanh và ghi tên chỗ phát sáng ấm (cửa sổ, cửa kính, biển hiệu, đèn thả). Lệnh tìm chỗ phát sáng bằng cách so điểm ảnh hai ảnh tối với ảnh ngày, và trả mã lỗi 1 khi không thấy biển hiệu hay kính. |
@@ -71,6 +76,8 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | --- | --- |
 | `Cannot find package 'playwright'` | Chạy `npm ci`. |
 | `Executable doesn't exist` | Chạy `npx playwright install chromium`. |
+| `git show 07439cf:docs/media/… failed` | Bản clone nông thiếu commit P17; chạy `git fetch --unshallow`. |
+| `no three.js camera seen on #scene` | Three.js không còn gọi `__THREE_DEVTOOLS__`; sửa `observeThree()` trong `scripts/capture-media.mjs`. |
 | `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng hoặc đặt `MEDIA_PORT=4180`. |
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
