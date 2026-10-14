@@ -15,15 +15,16 @@ So sánh bản P17 (commit `07439cf`) với bản P18: các ca đi xuyên đã s
 
 | Ca | Trước (P17) | Sau (P18) | Test giữ |
 | --- | --- | --- | --- |
-| Khách xuyên bàn | Đi thẳng tới đích, cắt qua bàn và ghế trên đường | Đi theo `findPath` (A* trên lưới 0,25) vòng quanh đồ vật | `tests/integration/collision.test.ts` › customer vs table |
+| Khách xuyên bàn | Đi thẳng tới đích, cắt qua bàn và ghế trên đường | Đi theo trường khoảng cách (flow field) trên lưới 0,25 vòng quanh đồ vật: mỗi ô đích dựng một trường một lần, lưu cache (96 trường) tới khi bố cục đổi; mỗi bước đi thẳng tới góc xa nhất còn thấy được | `tests/integration/collision.test.ts` › customer vs table; nav cost |
 | Khách ngồi lệch ghế | Chỗ ngồi ở tâm bàn ± 0,5, ghế vẽ ở ± 0,75: khách ngồi ở mép bàn | Chỗ ngồi đúng tâm ghế (`CHAIR_OFFSET`), bước cuối lên ghế không qua đồ khác | collision › customer vs chair |
 | Hàng chờ đè ghế | 6 chỗ thẳng hàng ở x = 0, chạm ghế hai bàn giữa (x = ± 0,25) | 6 chỗ dọc lối đi trống từ quầy ra cửa (`floorSpots`) | collision › customer vs chair; `tests/sim/customers.test.ts` › no longer stands the line on the chairs of the middle tables |
 | Đi xuyên quầy | Nhân viên nhận order đứng trong quầy, đi thẳng qua quầy | Đứng sau quầy, đi vòng quầy | collision › customer vs counter |
 | Xuyên tường | Khách ra bàn ngoài hiên đi thẳng qua tường trước | Đi qua cửa | collision › customer vs wall |
 | Xuyên khung cửa | Không có khung cửa và cánh cửa trong sim | Khung và cánh cửa có footprint, người đi giữa hai trụ | collision › customer vs door |
 | Khách mang đi đứng chồng | Mọi khách mang đi đứng đúng một điểm `PICKUP_POS` | 12 ô riêng quanh chỗ lấy đồ, khách giữ ô của mình | collision › person vs person; customers › gives four takeaway customers four separate spots |
+| Khách mang đi tràn ô | Không có | Hết 12 ô quanh chỗ lấy đồ thì khách nhận ô dự phòng riêng: 4 ô ở lối đi trong cửa, rồi trên vỉa hè trước quán, đủ cho mọi khách quán nhận; lối cửa luôn trống | customers › places the overflow in the aisle by the door, then on the sidewalk; collision soak › maxed shop with drinks stalled |
 | Nhân viên chồng nhau, đè khách | Nhân viên cùng vai đứng cùng một trạm; người phục vụ đứng đúng chỗ khách | `staffSpots` giữ ô riêng cho từng người, cách nhau ít nhất 0,5 | collision › person vs person; `tests/sim/staff.test.ts` › where staff stand |
-| Nhân viên dịch chuyển tức thời | Sim đặt nhân viên ngay vào chỗ mới; không có đường né đồ vật | Render đi theo `findPath`, đẩy nhẹ người đi gần nhau | `tests/render/actors.test.ts`; collision soak (phát lại khung hình) |
+| Nhân viên dịch chuyển tức thời | Sim đặt nhân viên ngay vào chỗ mới; không có đường né đồ vật | Render đi theo `findPath` (A* trên lưới nav), đẩy nhẹ người đi gần nhau | `tests/render/actors.test.ts`; collision soak (phát lại khung hình) |
 | Người đi đường chồng nhau | Không giữ khoảng cách giữa người ngoài phố | Chia làn, cùng làn cùng tốc độ | collision › pedestrian vs pedestrian |
 | Đồ trang trí đặt chồng | Không kiểm | `validateLayout` báo footprint chồng nhau; mọi thứ tự mua nâng cấp đều sạch | collision › decor vs furniture |
 | Save cũ có người trong vật cản | Không xử lý | `settleActors()` dời ra ô trống gần nhất khi tải | `tests/save/save.test.ts` › moves people saved inside furniture out to the nearest free floor |
@@ -74,20 +75,25 @@ Quầy có 4 pha chế (1 nhận order, 1 pha, 2 rảnh) và 2 phục vụ (1 r�
 | Ảnh | Nội dung |
 | --- | --- |
 | ![Mặt tiền ban ngày](../media/facade-day.png) | Mặt tiền 10:21: mái hiên, biển tên, cửa kính, chậu cây. |
-| ![Mặt tiền chiều tối](../media/facade-evening.png) | Mặt tiền 19:27: cửa sổ và cửa kính phát sáng ấm, đèn thả và biển hiệu sáng hơn. |
+| ![Mặt tiền buổi tối](../media/facade-evening.png) | Mặt tiền sau 19:30, đèn sáng đầy: cửa sổ và cửa kính phát sáng ấm, đèn thả và biển hiệu sáng hơn. |
+| ![Mặt tiền ngày và tối cạnh nhau, khoanh chỗ phát sáng](../media/facade-day-evening.png) | Cùng góc máy lúc khoảng 15:30 và sau 19:30. Vòng liền khoanh chỗ phát sáng ấm lúc tối (cửa sổ, cửa kính, biển hiệu, đèn thả); vòng nét đứt là cùng chỗ đó ban ngày. |
 | ![Hàng chờ giờ cao điểm](../media/queue.png) | Cao điểm trưa, gần quầy: hàng chờ dọc lối đi, không đè ghế. |
 | ![Bảng Menu](../media/menu-icons.png) | Bảng Menu với icon 3D của từng món. |
 
 ## Atlas icon 3D
 
-113 ô (105 icon và 8 avatar), ô 48 px ở @1x, 96 px ở @2x. Trình duyệt chỉ tải một trong hai file, theo mật độ điểm ảnh, sau khi Main Menu đã hiện.
+113 icon (105 icon và 8 avatar), mỗi icon vẽ hai ô: ô 48 px cho chỗ hiện ở 32 và 48 px, ô 24 px vẽ riêng cho chỗ hiện ở 16 và 24 px. @2x gấp đôi mọi số đo. Trình duyệt chỉ tải một trong hai file, theo mật độ điểm ảnh, sau khi Main Menu đã hiện.
 
 | File | Dung lượng | Ngân sách (`BUDGET` trong `src/icon-studio/atlas.ts`) |
 | --- | --- | --- |
-| `public/icons3d/atlas@1x.webp` | 102,3 kB | 120 kB |
-| `public/icons3d/atlas@2x.webp` | 224,1 kB | 300 kB |
+| `public/icons3d/atlas@1x.webp` | 100,8 kB | 120 kB |
+| `public/icons3d/atlas@2x.webp` | 280,9 kB | 300 kB |
 
-Bảng so sánh SVG cũ và icon 3D ở 16/24/48 px: [p18-icons-sample.png](p18-icons-sample.png). Trang xem mọi icon: `icons3d/` trong bản build (xem [media.md](../media.md#xem-icon)).
+SVG cũ và icon 3D cạnh nhau ở 16/24/48 px (16 và 24 px lấy ô 24 px, 48 px lấy ô 48 px), cho các nút chỉ có icon và một hai icon mỗi nhóm:
+
+![SVG cũ và icon 3D ở 16, 24, 48 px](p18-icons-sample.png)
+
+Trang xem mọi icon: `icons3d/` trong bản build, cột SVG cũ cạnh cột icon 3D (xem [media.md](../media.md#xem-icon)).
 
 ## Khởi động và chunk
 
@@ -117,5 +123,5 @@ Mặt tiền, đèn ấm và chuyển động nằm trong chunk `src/render`, t�
 | --- | --- |
 | Sơ đồ `p18-collision-*.svg` | `npx vitest run tests/report -u` (test `tests/report/collision-plot.test.ts` vẽ từ code nav thật và báo lỗi khi sơ đồ đã commit lệch code) |
 | Ảnh trong game | `npm run media` (xem [media.md](../media.md)) |
-| Atlas icon | `npm run icons` |
+| Atlas icon và bảng so sánh `p18-icons-sample.png` | `npm run icons -- --sheet` |
 | Số đo khởi động | `node scripts/measure-startup.mjs --base 07439cf --runs 3` |
