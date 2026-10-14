@@ -1127,7 +1127,9 @@ legend {
 /* Side panel: right edge, between the HUD and the dock so it covers neither
    (WCAG 2.4.11). hud.ts measures both into --hud-h (HUD bottom edge from the
    top of #ui) and --dock-h (dock top edge from the bottom), so a HUD that
-   wraps onto more lines still pushes the panel down. Only .panel-body scrolls. */
+   wraps onto more lines still pushes the panel down. Only .panel-body scrolls;
+   clip (not hidden) so focus or scrollIntoView on a body control cannot scroll
+   the panel itself and push the head out of view. */
 #ui > .panel {
   position: absolute;
   top: calc(var(--hud-h, 72px) + var(--space-2));
@@ -1140,7 +1142,7 @@ legend {
   border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  overflow: hidden;
+  overflow: clip;
   animation: panel-in var(--duration-slow) var(--easing-standard);
 }
 @keyframes panel-in {
