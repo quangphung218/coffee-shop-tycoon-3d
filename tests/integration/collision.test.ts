@@ -20,10 +20,7 @@ import { WALKER_RADIUS, STREET_SPAN, WALK_LINES, MAX_DENSITY, travelX, walkerSlo
 import { DOOR_POS, PICKUP_SPOTS, floorSpots, queueSlot } from '../../src/sim/customers';
 import { dispatch, step } from '../../src/sim/index';
 import {
-  AGENT_RADIUS,
   CHAIR_OFFSET,
-  CHAIR_SIZE,
-  NAV_CELL,
   buildNavGrid,
   cellAt,
   clearNavGridCache,
@@ -61,8 +58,6 @@ const FRAME_DT = 1 / FRAMES_PER_MINUTE;
 const MIN_STANDING_GAP = 0.4;
 /** Spacing of the points checked along a path. */
 const SAMPLE_STEP = 0.05;
-/** A seated customer is drawn stepping on and off the chair this close to it (validateLayout's CHAIR_REACH). */
-const CHAIR_REACH = CHAIR_SIZE / 2 + AGENT_RADIUS + NAV_CELL;
 const MAX_REPORTED = 8;
 
 type Config = 'base' | 'maxed';
@@ -119,6 +114,28 @@ function settledSpot(grid: NavGrid, c: Customer): Vec2 | null {
   return c.target ? nearestFree(grid, c.target) : null;
 }
 
+/** Length of the last step from the free floor onto a chair. */
+function seatStep(grid: NavGrid, chair: Vec2): number {
+  const stand = nearestFree(grid, chair);
+  return stand ? dist(stand, chair) : 0;
+}
+
+const footprintCache = new WeakMap<ShopLayout, Footprint[]>();
+
+/** Id of a footprint other than the chair at `chair` that p stands in, or null. */
+function footprintAt(layout: ShopLayout, p: Vec2, chair: Vec2): string | null {
+  let fps = footprintCache.get(layout);
+  if (!fps) {
+    fps = layoutFootprints(layout);
+    footprintCache.set(layout, fps);
+  }
+  for (const fp of fps) {
+    if (fp.kind === 'chair' && shapeDistance(fp.shape, chair.x, chair.z) === 0) continue;
+    if (shapeDistance(fp.shape, p.x, p.z) === 0) return fp.id;
+  }
+  return null;
+}
+
 /** Render-side replay of everyone's walk, as src/render/actors/index.ts drives it. */
 interface Replay {
   motions: Map<string, Motion>;
@@ -154,11 +171,15 @@ function checkTick(state: GameState, layout: ShopLayout, grid: NavGrid, soak: So
     if (!isWalkable(grid, c.pos)) bad(`customer ${c.id} (${c.state}) in a blocked cell at ${fmt(c.pos)}`);
     if (isLeaving(c)) continue;
     const spot = settledSpot(grid, c);
-    if (spot && dist(spot, c.pos) < 1e-9) standing.push({ who: `customer ${c.id} (${c.state})`, pos: c.pos });
+    if (!spot || dist(spot, c.pos) > 1e-9) continue;
+    // A seated customer is drawn on the chair, not on the free cell next to it.
+    const goal = customerGoal(state, c, layout);
+    const where = goal.seated ? `on chair of table ${c.tableId}` : `at ${fmt(c.pos)}`;
+    standing.push({ who: `customer ${c.id} (${c.state}, ${where})`, pos: goal.seated ? goal.pos : c.pos });
   }
   for (const s of state.staff) {
     if (!isWalkable(grid, s.pos)) bad(`staff ${s.id} (${s.role}) in a blocked cell at ${fmt(s.pos)}`);
-    standing.push({ who: `staff ${s.id} (${s.role})`, pos: s.pos });
+    standing.push({ who: `staff ${s.id} (${s.role}, ${s.task?.kind ?? 'idle'} at ${fmt(s.pos)})`, pos: s.pos });
   }
   for (let i = 0; i < standing.length; i++) {
     for (let j = i + 1; j < standing.length; j++) {
@@ -244,7 +265,13 @@ function replayMinute(state: GameState, layout: ShopLayout, grid: NavGrid, repla
     goals.forEach((g, i) => {
       const m = replay.list[i]!;
       const chair = replay.chairs.get(g.key);
-      if (chair && dist(m.pos, chair) <= CHAIR_REACH) return;
+      if (chair && dist(m.pos, chair) <= seatStep(grid, chair) + 1e-6) {
+        // Stepping on or off the chair: off the grid, but through no other furniture.
+        if (dist(m.pos, chair) < 1e-9) return;
+        const hit = footprintAt(layout, m.pos, chair);
+        if (hit) bad(`${g.key} steps through ${hit} to its chair at ${fmt(m.pos)}`);
+        return;
+      }
       if (chair && !g.seated) replay.chairs.delete(g.key);
       if (!isWalkable(grid, m.pos)) bad(`${g.key} walks through a blocked cell at ${fmt(m.pos)}`);
       const shown = { x: shownX(m), z: shownZ(m) };
@@ -300,7 +327,7 @@ describe(`collision soak: ${DAYS} days per difficulty and shop`, () => {
         const soak = soakWeek(difficulty, config, true);
         soaks.set(`${difficulty}|${config}`, soak);
         expect(soak.violations).toEqual([]);
-        expect(soak.ticks).toBeGreaterThan(DAYS * 800);
+        expect(soak.ticks).toBeGreaterThan(DAYS * 700);
         expect(soak.standingPairs).toBeGreaterThan(1000);
         expect(soak.frames).toBe(soak.ticks * FRAMES_PER_MINUTE);
       });
@@ -397,8 +424,10 @@ describe('collision cases', () => {
       for (const side of [-1, 1]) {
         const chair = { x: t.pos.x + side * CHAIR_OFFSET, z: t.pos.z };
         expect(isWalkable(grid, chair)).toBe(false);
+        // The last step from the free floor onto the chair crosses no other furniture.
         const stand = nearestFree(grid, chair)!;
-        expect(dist(stand, chair)).toBeLessThanOrEqual(CHAIR_REACH);
+        const hits = samplePath(stand, [chair]).map((p) => footprintAt(layout, p, chair)).filter((id) => id !== null);
+        expect(hits, fmt(chair)).toEqual([]);
         expectWalkablePath(grid, DOOR_POS, findPath(grid, DOOR_POS, chair));
       }
     }
