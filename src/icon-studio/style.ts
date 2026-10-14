@@ -44,14 +44,45 @@ export const PALETTE = {
   coral: c.berry['400'].$value.hex,
   coralDeep: c.berry['500'].$value.hex,
   sky: c.sky['400'].$value.hex,
+  skyLight: c.sky['100'].$value.hex,
   leaf: c.leaf['400'].$value.hex,
+  tangerine: c.tangerine['400'].$value.hex,
   skin: c.skin['1'].$value.hex,
+  skin2: c.skin['2'].$value.hex,
+  skin3: c.skin['3'].$value.hex,
+  skin4: c.skin['4'].$value.hex,
+  /** hair-1 is ink and hair-2 is coffeeDark. */
+  hairCopper: c.hair['3'].$value.hex,
+  hairGold: c.hair['4'].$value.hex,
 } as const;
 
 export type PaletteKey = keyof typeof PALETTE;
 
-/** Camera: orthographic, 30° down, turned 35° to the right of the model's front (+Z). */
-export const CAMERA = { elevationDeg: 30, azimuthDeg: 35 } as const;
+/** The palette name of a token hex (e.g. an AVATAR_LOOKS colour); throws when it is not in PALETTE. */
+export function paletteKeyOf(hex: string): PaletteKey {
+  const key = (Object.keys(PALETTE) as PaletteKey[]).find((k) => PALETTE[k] === hex.toLowerCase());
+  if (!key) throw new Error(`Not a palette colour: ${hex}`);
+  return key;
+}
+
+/**
+ * Camera poses, orthographic. `object` (default): 30° down, turned 35° to the
+ * right of the model's front (+Z), for things. `glyph`: straight on, 12° down,
+ * for symbols. `top`: 58° down, for flat things lying on a table.
+ */
+export const POSES = {
+  object: { elevationDeg: 30, azimuthDeg: 35 },
+  glyph: { elevationDeg: 12, azimuthDeg: 0 },
+  top: { elevationDeg: 58, azimuthDeg: 25 },
+} as const;
+
+export type Pose = keyof typeof POSES;
+
+/** Marks `model` to be shot in `pose`; models without a mark use `object`. */
+export function posed<T extends Object3D>(pose: Pose, model: T): T {
+  model.userData.pose = pose;
+  return model;
+}
 /** Empty band on every side of the frame, as a share of the frame. */
 export const MARGIN = 0.08;
 /** Ink outline width, as a share of the frame (about 1.7 px at 48 px). */
@@ -133,25 +164,28 @@ export interface Stage {
 export function createStage(): Stage {
   const scene = new Scene();
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  const el = (CAMERA.elevationDeg * Math.PI) / 180;
-  const az = (CAMERA.azimuthDeg * Math.PI) / 180;
-  const toCamera = new Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-  camera.position.copy(toCamera).multiplyScalar(20);
-  camera.lookAt(0, 0, 0);
-  camera.updateMatrixWorld();
-
-  // Lights are placed in the camera's frame so "top-left" means top-left on screen.
-  const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-  const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-  const at = (r: number, u: number, f: number) => right.clone().multiplyScalar(r).addScaledVector(up, u).addScaledVector(toCamera, f);
   scene.add(new HemisphereLight(0xfff6e8, 0xd9c2a5, 1.5));
   const key = new DirectionalLight(0xffe2b8, 2.1);
-  key.position.copy(at(-1, 1.4, 1));
   const fill = new DirectionalLight(0xcfe6ff, 0.6);
-  fill.position.copy(at(1.2, -0.3, 0.8));
   const rim = new DirectionalLight(0xfff0d0, 1.1);
-  rim.position.copy(at(0.4, 0.8, -1.2));
   scene.add(key, fill, rim);
+
+  function aim(pose: Pose): void {
+    const el = (POSES[pose].elevationDeg * Math.PI) / 180;
+    const az = (POSES[pose].azimuthDeg * Math.PI) / 180;
+    const toCamera = new Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    camera.position.copy(toCamera).multiplyScalar(20);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    // Lights are placed in the camera's frame so "top-left" means top-left on screen.
+    const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+    const at = (r: number, u: number, f: number) => right.clone().multiplyScalar(r).addScaledVector(up, u).addScaledVector(toCamera, f);
+    key.position.copy(at(-1, 1.4, 1));
+    fill.position.copy(at(1.2, -0.3, 0.8));
+    rim.position.copy(at(0.4, 0.8, -1.2));
+  }
 
   const outline = outlineMaterial();
   const shadow = new Mesh(
@@ -163,6 +197,7 @@ export function createStage(): Stage {
 
   function show(model: Object3D): void {
     if (current) scene.remove(current);
+    aim((model.userData.pose as Pose | undefined) ?? 'object');
     current = new Group();
     current.add(model);
     current.updateMatrixWorld(true);
