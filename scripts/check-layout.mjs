@@ -154,8 +154,13 @@ function watchShifts(page) {
   return page.evaluate(() => {
     window.__shifts = [];
     const describe = (n) => (n instanceof Element ? `${n.tagName.toLowerCase()}${[...n.classList].slice(0, 2).map((c) => `.${c}`).join('')}` : String(n?.nodeName ?? 'removed'));
+    // A node gone by the time the entry is read is named by where it was.
+    const where = (s) => {
+      const r = s.previousRect;
+      return s.node ? describe(s.node) : `removed@${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}×${Math.round(r.height)}`;
+    };
     window.__keepShifts = (entries) => {
-      for (const e of entries) window.__shifts.push({ value: e.value, input: e.hadRecentInput, sources: e.sources.map((s) => describe(s.node)) });
+      for (const e of entries) window.__shifts.push({ value: e.value, input: e.hadRecentInput, sources: e.sources.map(where) });
     };
     window.__shiftObserver = new PerformanceObserver((list) => window.__keepShifts(list.getEntries()));
     window.__shiftObserver.observe({ type: 'layout-shift' });
@@ -223,6 +228,9 @@ async function checkKhoShift(page, results, viewport) {
       },
     ],
   ];
+  // Toasts close on a timer and are removed, which shifts the stack outside
+  // the panel with no input; hidden here so only the Kho panel is scored.
+  const hideToasts = await page.addStyleTag({ content: '#ui > .toasts { display: none !important; }' });
   await settle(page);
   await watchShifts(page);
   const start = await footBoxes(page);
@@ -248,6 +256,7 @@ async function checkKhoShift(page, results, viewport) {
       `${name}: CLS ${own.toFixed(6)}${from(shifts.filter((s) => !s.input))}, sau thao tác ${input.toFixed(4)}${from(shifts.filter((s) => s.input))}; foot/danh sách lệch ${d.toFixed(1)} px`,
     );
   }
+  await hideToasts.evaluate((el) => el.remove());
   const short = await page.locator('#ui > .panel:not([hidden]) .foot-hint.reason-danger').count();
   const fails = [];
   if (cls > 0) fails.push(`CLS ${cls.toFixed(6)} > 0`);
