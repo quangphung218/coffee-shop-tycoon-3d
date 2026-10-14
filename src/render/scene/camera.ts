@@ -1,5 +1,5 @@
 import { OrthographicCamera, Vector3 } from 'three';
-import type { CameraKeys } from '../../save/settings';
+import type { CameraKeys, CameraRotateSpeed } from '../../save/settings';
 
 /**
  * Isometric orbit camera around the shop. The pure helpers at the top hold all
@@ -25,12 +25,28 @@ const VIEW_HEIGHT = 22;
 const ORBIT_DISTANCE = 40;
 /** World units per second at zoom 1. */
 const PAN_SPEED = 12;
-/** Radians per second while a rotate key is held. */
-const KEY_ROTATE_SPEED = 1.8;
-/** Radians per CSS px of drag. */
-const DRAG_ROTATE_SPEED = 0.008;
-/** Exponential damping rate (1/s); higher snaps faster. */
-const DAMPING = 10;
+/** Radians per second while a rotate key is held, at the 'normal' speed. */
+const KEY_ROTATE_SPEED = 1.08;
+/** Radians per CSS px of drag, at the 'normal' speed. */
+const DRAG_ROTATE_SPEED = 0.0048;
+/** Multiplier on key and drag rotation for each Settings level. */
+export const ROTATE_SPEED_SCALE: Readonly<Record<CameraRotateSpeed, number>> = { slow: 0.6, normal: 1, fast: 1.5 };
+/** Exponential damping rates (1/s) of the rendered pose toward the target; higher snaps faster. */
+const ROTATE_DAMPING = 6;
+const ZOOM_DAMPING = 8;
+const PAN_DAMPING = 8;
+/** How fast held rotate and pan keys (and edge pan) ramp up to full speed and back down (1/s). */
+const KEY_RAMP = 6;
+/** Smoothing of the drag velocity estimate (1/s). */
+const DRAG_VELOCITY_SMOOTHING = 20;
+/** Decay of the spin left after a drag is released (1/s). */
+const INERTIA_DECAY = 4;
+/** Fastest spin a release may carry on, radians per second. */
+const MAX_INERTIA = 4;
+/** Velocities and ramped inputs below this count as stopped. */
+const REST = 1e-3;
+/** Longest step fed to update(), so a stalled frame does not jump the camera. */
+export const MAX_CAMERA_DT = 0.1;
 /** Extra room around the shop that the orbit centre may pan into. */
 const BOUNDS_MARGIN = 6;
 
@@ -54,6 +70,35 @@ export function clampPitch(pitch: number): number {
 /** Frame-rate independent exponential approach of `current` toward `target`. */
 export function damp(current: number, target: number, lambda: number, dt: number): number {
   return target + (current - target) * Math.exp(-lambda * dt);
+}
+
+/**
+ * damp() toward a target that moved from `from` to `to` at a steady rate during
+ * the step: the exact solution, so a turning or panning target trails by the
+ * same amount at any frame rate. Same as damp() when the target did not move.
+ */
+export function dampMoving(current: number, from: number, to: number, lambda: number, dt: number): number {
+  if (dt <= 0 || lambda <= 0) return damp(current, to, lambda, dt);
+  const lag = (to - from) / dt / lambda;
+  return to - lag + (current - from + lag) * Math.exp(-lambda * dt);
+}
+
+/** Velocity left after `dt` seconds of exponential decay at rate `k` (1/s). */
+export function decayVelocity(v: number, k: number, dt: number): number {
+  return v * Math.exp(-k * dt);
+}
+
+/**
+ * Distance covered over `dt` seconds by a velocity `v` decaying at rate `k`:
+ * the exact integral of decayVelocity, so many small steps add up to one big one.
+ */
+export function decayDistance(v: number, k: number, dt: number): number {
+  return k > 0 ? (v * (1 - Math.exp(-k * dt))) / k : v * dt;
+}
+
+/** Snaps `v` to `target` once it is within REST, so eased values come to a stop. */
+function settle(v: number, target: number): number {
+  return Math.abs(v - target) < REST ? target : v;
 }
 
 export interface PanVec {
@@ -189,7 +234,10 @@ export class DragTracker {
 
 export interface CameraOptions {
   cameraKeys?: CameraKeys;
+  rotateSpeed?: CameraRotateSpeed;
   edgePan?: boolean;
+  /** Asks whether the player wants less motion (no drift after a drag); defaults to the prefers-reduced-motion media query. */
+  reducedMotion?: () => boolean;
   /** Called with canvas-relative CSS px when a left press ends without dragging. */
   onClick?: (x: number, y: number) => void;
 }
@@ -227,13 +275,35 @@ export function shouldCameraHandleKey(e: CameraKeyEvent): boolean {
   return !t.isContentEditable && t.closest(UI_KEY_OWNERS) === null;
 }
 
-/** Orbit camera with drag-rotate, wheel zoom, key/edge pan and damping. */
+function mediaReducedMotion(): () => boolean {
+  const query = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  return () => query?.matches ?? false;
+}
+
+/**
+ * Orbit camera with drag-rotate (spin carries on briefly after release),
+ * wheel zoom, ramped key/edge pan and damping. All motion goes through
+ * damp/decay on the clamped frame step, so it looks the same at any frame rate.
+ */
 export class CameraController {
   readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
   cameraKeys: CameraKeys;
+  rotateSpeed: CameraRotateSpeed;
   edgePan: boolean;
+  private readonly reducedMotion: () => boolean;
+  /** Ramped key input: rotate in [-1, 1], pan right/forward. */
+  private keyRotate = 0;
+  private readonly panInput: EdgeInput = { right: 0, forward: 0 };
+  /** Rotation from pointer moves since the last update(), radians. */
+  private dragYaw = 0;
+  private dragPitch = 0;
+  /** Smoothed drag velocity while pressed, then the decaying spin after release (rad/s). */
+  private readonly spin = { yaw: 0, pitch: 0 };
+  private coasting = false;
   private readonly target: Pose;
   private readonly current: Pose;
+  /** Target at the end of the previous update(), for dampMoving. */
+  private readonly lastTarget: Pose;
   private readonly home = { x: 0, z: 0 };
   private readonly bounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
   private readonly held: Record<CameraAction, boolean> = {
@@ -260,9 +330,12 @@ export class CameraController {
     private readonly options: CameraOptions = {},
   ) {
     this.cameraKeys = options.cameraKeys ?? 'qe-wasd';
+    this.rotateSpeed = options.rotateSpeed ?? 'normal';
     this.edgePan = options.edgePan ?? true;
+    this.reducedMotion = options.reducedMotion ?? mediaReducedMotion();
     this.target = { x: 0, z: 0, yaw: DEFAULT_YAW, pitch: DEFAULT_PITCH, zoom: DEFAULT_ZOOM };
     this.current = { ...this.target };
+    this.lastTarget = { ...this.target };
     this.listen(canvas, 'pointerdown', this.onPointerDown);
     this.listen(canvas, 'pointermove', this.onPointerMove);
     this.listen(canvas, 'pointerup', this.onPointerUp);
@@ -294,14 +367,18 @@ export class CameraController {
   reset(snap = false): void {
     const t = this.target;
     // Rotate the short way back so the reset does not spin several turns.
-    this.current.yaw -= Math.round((this.current.yaw - DEFAULT_YAW) / (Math.PI * 2)) * Math.PI * 2;
+    const turns = Math.round((this.current.yaw - DEFAULT_YAW) / (Math.PI * 2)) * Math.PI * 2;
+    this.current.yaw -= turns;
+    this.lastTarget.yaw -= turns;
     t.yaw = DEFAULT_YAW;
     t.pitch = DEFAULT_PITCH;
     t.zoom = DEFAULT_ZOOM;
     t.x = this.home.x;
     t.z = this.home.z;
+    this.stopSpin();
     if (snap) {
       Object.assign(this.current, t);
+      Object.assign(this.lastTarget, t);
       this.apply();
     }
   }
@@ -316,6 +393,10 @@ export class CameraController {
     this.releaseKeys();
   }
 
+  setRotateSpeed(speed: CameraRotateSpeed): void {
+    this.rotateSpeed = speed;
+  }
+
   setAspect(aspect: number): void {
     this.aspect = aspect > 0 ? aspect : 1;
     this.apply();
@@ -326,12 +407,23 @@ export class CameraController {
     return this.current.yaw;
   }
 
-  /** Advances input and damping by `dt` seconds and updates the three camera. */
+  /** True while a released drag is still spinning the camera. */
+  get spinning(): boolean {
+    return this.coasting;
+  }
+
+  /** Advances input and damping by `dt` seconds (clamped to MAX_CAMERA_DT) and updates the three camera. */
   update(dt: number): void {
+    dt = clamp(dt, 0, MAX_CAMERA_DT);
     const t = this.target;
     const h = this.held;
+    const scale = ROTATE_SPEED_SCALE[this.rotateSpeed];
+
+    // Held rotate keys ease in and out; the yaw step is the exact integral of the ramp.
     const rot = (h.rotateRight ? 1 : 0) - (h.rotateLeft ? 1 : 0);
-    if (rot !== 0) t.yaw += rot * KEY_ROTATE_SPEED * dt;
+    const ramp = this.keyRotate - rot;
+    if (rot !== 0 || ramp !== 0) t.yaw += (rot * dt + decayDistance(ramp, KEY_RAMP, dt)) * KEY_ROTATE_SPEED * scale;
+    this.keyRotate = settle(rot + decayVelocity(ramp, KEY_RAMP, dt), rot);
 
     let right = (h.panRight ? 1 : 0) - (h.panLeft ? 1 : 0);
     let forward = (h.panForward ? 1 : 0) - (h.panBack ? 1 : 0);
@@ -340,25 +432,63 @@ export class CameraController {
       right += this.edge.right;
       forward += this.edge.forward;
     }
-    if (right !== 0 || forward !== 0) {
-      panVector(t.yaw, right, forward, this.pan);
+    const p = this.panInput;
+    p.right = settle(damp(p.right, right, KEY_RAMP, dt), right);
+    p.forward = settle(damp(p.forward, forward, KEY_RAMP, dt), forward);
+    if (p.right !== 0 || p.forward !== 0) {
+      panVector(t.yaw, p.right, p.forward, this.pan);
       const step = (PAN_SPEED / t.zoom) * dt;
       t.x = clamp(t.x + this.pan.x * step, this.bounds.minX, this.bounds.maxX);
       t.z = clamp(t.z + this.pan.z * step, this.bounds.minZ, this.bounds.maxZ);
     }
 
+    this.updateSpin(dt);
+
     const c = this.current;
-    c.x = damp(c.x, t.x, DAMPING, dt);
-    c.z = damp(c.z, t.z, DAMPING, dt);
-    c.yaw = damp(c.yaw, t.yaw, DAMPING, dt);
-    c.pitch = damp(c.pitch, t.pitch, DAMPING, dt);
-    c.zoom = damp(c.zoom, t.zoom, DAMPING, dt);
+    const f = this.lastTarget;
+    c.x = dampMoving(c.x, f.x, t.x, PAN_DAMPING, dt);
+    c.z = dampMoving(c.z, f.z, t.z, PAN_DAMPING, dt);
+    c.yaw = dampMoving(c.yaw, f.yaw, t.yaw, ROTATE_DAMPING, dt);
+    c.pitch = dampMoving(c.pitch, f.pitch, t.pitch, ROTATE_DAMPING, dt);
+    c.zoom = dampMoving(c.zoom, f.zoom, t.zoom, ZOOM_DAMPING, dt);
+    if (dt > 0) Object.assign(f, t);
     this.apply();
   }
 
   dispose(): void {
     for (const remove of this.removers) remove();
     this.removers.length = 0;
+  }
+
+  /**
+   * While dragging, turns the pointer rotation since the last frame into a
+   * smoothed velocity. After a release, keeps turning at that velocity as it
+   * decays, with the pitch still inside its limits.
+   */
+  private updateSpin(dt: number): void {
+    const s = this.spin;
+    if (this.drag.active && this.drag.dragging) {
+      if (dt > 0) {
+        s.yaw = damp(s.yaw, this.dragYaw / dt, DRAG_VELOCITY_SMOOTHING, dt);
+        s.pitch = damp(s.pitch, this.dragPitch / dt, DRAG_VELOCITY_SMOOTHING, dt);
+        this.dragYaw = this.dragPitch = 0;
+      }
+      return;
+    }
+    if (!this.coasting) return;
+    const t = this.target;
+    t.yaw += decayDistance(s.yaw, INERTIA_DECAY, dt);
+    const pitch = t.pitch + decayDistance(s.pitch, INERTIA_DECAY, dt);
+    t.pitch = clampPitch(pitch);
+    s.yaw = settle(decayVelocity(s.yaw, INERTIA_DECAY, dt), 0);
+    s.pitch = t.pitch !== pitch ? 0 : settle(decayVelocity(s.pitch, INERTIA_DECAY, dt), 0);
+    if (s.yaw === 0 && s.pitch === 0) this.coasting = false;
+  }
+
+  private stopSpin(): void {
+    this.spin.yaw = this.spin.pitch = 0;
+    this.dragYaw = this.dragPitch = 0;
+    this.coasting = false;
   }
 
   private apply(): void {
@@ -397,6 +527,8 @@ export class CameraController {
   private readonly onPointerDown = (e: PointerEvent): void => {
     this.trackPointer(e);
     if (e.button !== 0) return;
+    // Grabbing the scene stops a spin, so a click never drifts.
+    this.stopSpin();
     this.drag.down(e.clientX, e.clientY);
     this.canvas.setPointerCapture?.(e.pointerId);
   };
@@ -404,19 +536,35 @@ export class CameraController {
   private readonly onPointerMove = (e: PointerEvent): void => {
     this.trackPointer(e);
     if (!this.drag.move(e.clientX, e.clientY)) return;
-    this.target.yaw -= this.drag.dx * DRAG_ROTATE_SPEED;
-    this.target.pitch = clampPitch(this.target.pitch + this.drag.dy * DRAG_ROTATE_SPEED);
+    const t = this.target;
+    const k = DRAG_ROTATE_SPEED * ROTATE_SPEED_SCALE[this.rotateSpeed];
+    const dYaw = -this.drag.dx * k;
+    const pitch = clampPitch(t.pitch + this.drag.dy * k);
+    this.dragYaw += dYaw;
+    this.dragPitch += pitch - t.pitch;
+    t.yaw += dYaw;
+    t.pitch = pitch;
   };
 
   private readonly onPointerUp = (e: PointerEvent): void => {
     if (e.button !== 0) return;
     this.trackPointer(e);
-    if (this.drag.up(e.clientX, e.clientY) === 'click') this.options.onClick?.(this.pointerX, this.pointerY);
+    const result = this.drag.up(e.clientX, e.clientY);
+    if (result === 'click') this.options.onClick?.(this.pointerX, this.pointerY);
+    if (result === 'drag' && !this.reducedMotion()) {
+      this.spin.yaw = clamp(this.spin.yaw, -MAX_INERTIA, MAX_INERTIA);
+      this.spin.pitch = clamp(this.spin.pitch, -MAX_INERTIA, MAX_INERTIA);
+      this.dragYaw = this.dragPitch = 0;
+      this.coasting = true;
+    } else {
+      this.stopSpin();
+    }
     if (this.canvas.hasPointerCapture?.(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
   };
 
   private readonly onPointerCancel = (): void => {
     this.drag.cancel();
+    this.stopSpin();
   };
 
   private readonly onPointerLeave = (): void => {

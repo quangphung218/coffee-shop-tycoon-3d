@@ -1,6 +1,7 @@
 import { settleActors } from '../sim/index';
 import { createDayStats } from '../sim/state';
 import type { GameState } from '../sim/types';
+import { relayoutTables } from '../sim/upgrades';
 import { defaultStorage, type StorageLike } from './storage';
 
 export const SAVE_VERSION = 1;
@@ -92,6 +93,11 @@ export function migrate(raw: unknown): Result<SaveFile> {
     version = file.version as number;
   }
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
+  try {
+    relayoutTables(file.state);
+  } catch {
+    // Tables that cannot be read keep their saved spots.
+  }
   try {
     settleActors(file.state);
   } catch {

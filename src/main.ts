@@ -8,6 +8,7 @@ import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/vietnamese-700.css';
 import './ui/styles/tokens.css';
 import './ui/styles/ui.css';
+import './ui/styles/scrollbar.css';
 import { createAudio } from './audio';
 import type { World } from './render/scene';
 import { loadSettings } from './save/settings';
@@ -68,6 +69,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     onSettingsChange: (s) => {
       world?.setQuality(s.quality);
       world?.setCameraKeys(s.cameraKeys);
+      world?.setCameraRotateSpeed(s.cameraRotateSpeed);
       audio.setVolumes(s.musicVolume, s.sfxVolume);
     },
     onResetCamera: () => world?.resetCamera(),
@@ -113,7 +115,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   void Promise.all([worldModule, afterPaint()])
     .then(async ([{ createWorld }]) => {
       const s = shell.settings;
-      const w = createWorld(canvas, { quality: s.quality, cameraKeys: s.cameraKeys });
+      const w = createWorld(canvas, { quality: s.quality, cameraKeys: s.cameraKeys, cameraRotateSpeed: s.cameraRotateSpeed });
       // Clicks in the scene go through the same dispatch as the UI.
       w.onCommand((cmd) => shell.dispatch(cmd));
       await w.prepare(shell.state ?? menuScene);

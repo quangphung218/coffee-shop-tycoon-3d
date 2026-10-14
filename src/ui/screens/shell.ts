@@ -7,6 +7,7 @@ import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { ScreenManager } from '../core/screens';
+import { trackScrollActivity } from '../core/scrollActivity';
 import { Toasts } from '../core/toast';
 import { toastForEvent } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
@@ -251,6 +252,8 @@ export function createShell(options: ShellOptions): Shell {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   document.addEventListener('visibilitychange', onVisibility);
+  // Scroll areas show their thin bar while scrolling (scrollbar.css).
+  const stopScrollActivity = trackScrollActivity(root.ownerDocument);
 
   showMenu();
 
@@ -295,6 +298,7 @@ export function createShell(options: ShellOptions): Shell {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       document.removeEventListener('visibilitychange', onVisibility);
+      stopScrollActivity();
       hud.dispose();
       toasts.clear();
       root.replaceChildren();

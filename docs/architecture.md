@@ -85,6 +85,18 @@ Font chữ:
 
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên → khách → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
+### Camera
+
+`CameraController` (`src/render/scene/camera.ts`) giữ hai tư thế: `target` (đích của input) và `current` (đang vẽ). Mỗi khung `update(dt)`, `dt` bị chặn ở `MAX_CAMERA_DT` = 0,1 s:
+
+| Input | Cách chạy |
+| --- | --- |
+| Kéo chuột | Xoay `DRAG_ROTATE_SPEED` rad/px. Lúc kéo, vận tốc được làm mượt; thả ra thì camera trôi tiếp với vận tốc đó (tối đa `MAX_INERTIA` = 4 rad/s), giảm dần theo `INERTIA_DECAY`. Bấm vào cảnh dừng ngay. Không trôi khi `prefers-reduced-motion`. |
+| Phím xoay, phím pan, pan mép màn | Tăng tốc và giảm tốc theo `KEY_RAMP`, không bật tắt đột ngột. |
+| Bám đích | `current` đuổi theo `target` bằng `dampMoving` (`ROTATE_DAMPING`, `ZOOM_DAMPING`, `PAN_DAMPING`), nên chuyển động giống nhau ở mọi tốc độ khung hình. |
+
+Tốc độ xoay theo cài đặt `cameraRotateSpeed` (Cài đặt → Tốc độ xoay camera): `ROTATE_SPEED_SCALE` nhân `KEY_ROTATE_SPEED` và `DRAG_ROTATE_SPEED` với 0,6 (`slow`), 1 (`normal`) hay 1,5 (`fast`); `world.setCameraRotateSpeed()` đổi ngay khi chơi.
+
 ## Hợp đồng Command và GameEvent
 
 Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh không áp dụng được lúc đó (sai pha, sai id, thiếu tiền…); UI dùng giá trị này thay vì tự kiểm luật.
@@ -132,6 +144,18 @@ stateDiagram-v2
 
 Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history`, tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing và phân vai nhân viên cho ngày mới.
 
+### Trạng thái kho
+
+`stockOutlook(state)` (`src/sim/inventory.ts`) trả cho mỗi nguyên liệu `{ qty, need, level, cups }`:
+
+| Trường | Ý nghĩa |
+| --- | --- |
+| `need` | Lượng mà số bán dự kiến còn lại trong ngày sẽ dùng: `expectedDemand` (ngày gần nhất) nhân phần ngày còn lại (cả ngày khi chuẩn bị và báo cáo, 0 khi đóng cửa). |
+| `level` | `out` khi hết; `low` khi ít hơn `need` hoặc dưới ngưỡng cố định `lowStock`; còn lại `ok`. |
+| `cups` | Số ly của cơ cấu món hôm nay mà kho còn đủ; `null` khi menu không dùng nguyên liệu đó. |
+
+Kết quả cache theo state, chỉ tính lại khi tồn kho, menu, pha, ngày hay khung 15 phút game đổi, nên gọi mỗi khung được. Nhãn Đủ / Sắp hết / Hết trong bảng Kho, huy hiệu dock Kho (`lowStockCount`) và toast `low_stock` cùng đọc hàm này; bảng Kho đang mở cập nhật theo sim qua `Watcher`, không cần bấm Gợi ý.
+
 ## FSM khách
 
 ```mermaid
@@ -178,7 +202,9 @@ Sim giữ mọi người trên sàn trống: không xuyên tường, quầy, má
 | Hàng chờ và ô mang đi | `floorSpots(layout)` tính một lần cho mỗi bố cục: 6 chỗ hàng chờ (`MAX_QUEUE`) cách nhau 0,8 dọc lối đi từ trước quầy về phía cửa, 12 ô mang đi (`PICKUP_SPOTS`) quanh `layout.pickup`, rồi các ô dự phòng `overflow`: 4 ô ở lối đi trong cửa, còn lại trên vỉa hè trước quán, đủ cho mọi khách quán nhận (số ghế + hàng chờ, ít nhất 8 ô); lối cửa luôn để trống. Khách mang đi giữ ô của mình; khách mới lấy ô trống đầu tiên trong `takeaway` (ô quanh chỗ lấy đồ trước, rồi ô dự phòng). Không có hai khách chung một ô. |
 | Giữ chỗ đứng | `claimSpot(grid, wants, taken)` chọn ô đầu tiên trong `wants` còn mở, nếu không thì ô mở gần nhất. Ô mở là ô trống, tới được từ cửa, và không có ô đã giữ trong ô 3×3 quanh nó, nên hai người đứng yên cách nhau ít nhất 0,5. |
 | Chỗ đứng của nhân viên | `staffSpots(state)` giữ trước ô đích của khách, rồi xét nhân viên theo id: trạm của vai (nhiều người cùng vai tỏa ra ô kế bên), sau quầy khi nhận order, sau quầy trước máy khi pha, ô mở cạnh khách khi mang đồ, phía trước hoặc sau bàn (phía còn trống) khi dọn và thu tiền. Mỗi tick nhân viên được đặt lại sau khi khách nhận chỗ, nên không đứng lên ô mang đi vừa cấp. |
+| Bố cục bàn | `tablePosition(i)` (`src/sim/state.ts`): hai khối hai cột hai bên lối đi chính `x = 0` (cột `x` = ±1,5 rồi ±3,5, cách nhau `TABLE_PITCH` = 2), hàng từ `TABLE_ROW_Z` = 0,75 về phía cửa cách nhau `TABLE_ROW_PITCH` = 2, chừa lối ngang giữa hai hàng. Ghế hai bên bàn (`CHAIR_OFFSET` = 0,62, mép ghế dưới mặt bàn) quay vào bàn. Bàn khu mở rộng nằm trên cùng các hàng, bàn ngoài hiên theo cùng bước. Mọi tâm bàn nằm trên lưới điều hướng. |
 | Đi bộ trên màn hình | `src/render/actors/sync.ts`: khách đi tới `target` của sim, nhân viên tới `staff.pos`, người chơi tới `playerSpot()` (giữ chỗ bằng `claimSpot` sau khách và nhân viên). `setGoal` gọi `findPath` chỉ khi đích đổi, rồi bước nốt lên ghế với khách ngồi. Người đang đi gần nhau dưới 0,3 được `separate()` đẩy lệch phần vẽ (tối đa 0,3, không vào ô chặn); đứng yên thì về đúng chỗ. |
+| Dáng đi | Chỉ ở phía render; sim và kết quả tất định không đổi. `roundCorners()` thay mỗi góc của đường A* bằng cung Bézier bậc hai bán kính tối đa `CORNER_RADIUS` = 0,35 (không quá nửa mỗi cạnh), giữ góc nhọn khi cung đi qua ô chặn. `easedStep()` tăng tốc từ đứng yên trong `ACCEL_MINUTES` và giảm tốc trên `BRAKE_DISTANCE` = 0,6 cuối. Thân quay về điểm phía trước trên đường (`lookAhead`) bằng `turnToward()`, tối đa `MAX_TURN_SPEED` = 10 rad/s. Nhịp bước theo quãng đường (`strideCycles`: một bước `STRIDE` = 0,9, tối đa 3 bước/giây) nên chân không trượt; đổi giữa đứng và đi trộn tư thế bằng `blendPose`. |
 | Người đi bộ ngoài phố | `src/render/street/layout.ts`: `walkerSlots(n)` chia người đều trên 4 làn, cùng làn cùng tốc độ nên khoảng cách không đổi (`minWalkerGap`). Làn cách hàng cây/đèn ít nhất `PROP_CLEARANCE`; khách rời quán biến mất ở `exitPoint` trước làn gần nhất. |
 | Kiểm bố cục | `validateLayout(layout)` báo footprint chồng nhau, cửa bị chặn, chỗ trước/sau quầy hay chỗ lấy đồ không tới được, bàn không tới được ghế. |
 
@@ -190,7 +216,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 | --- | --- |
 | `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
-| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera. |
+| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`). |
 
 Mỗi slot là JSON:
 
@@ -200,7 +226,8 @@ Mỗi slot là JSON:
 
 - `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (1). Phiên bản 0 là `GameState` trần không có vỏ bọc.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
-- Sau khi nâng, `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
+- Sau khi nâng, `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
+- Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
 
 ## Mẹo hiệu năng

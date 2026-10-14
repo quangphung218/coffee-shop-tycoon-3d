@@ -99,7 +99,8 @@ function band(value: number, max: number): [number, number] {
   return [value * (1 - TOLERANCE), Math.min(max, value * (1 + TOLERANCE))];
 }
 
-describe('balance over seven days', () => {
+// Each case simulates whole weeks; on a busy machine that runs past vitest's 5 s default.
+describe('balance over seven days', { timeout: 30_000 }, () => {
   const runs = Object.fromEntries(DIFFICULTIES.map((d) => [d, simulateWeek(d, SAMPLE)])) as Record<Difficulty, Run>;
 
   it('follows the sample strategy on every difficulty', () => {

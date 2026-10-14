@@ -20,7 +20,7 @@ import { staffSpots } from '../../src/sim/staff';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, GameState, Order, Staff, StaffRole, StaffTask, Vec2 } from '../../src/sim/types';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { buyUpgrade, getShopLayout, nextUpgradeCost, type ShopLayout } from '../../src/sim/upgrades';
+import { buyUpgrade, getShopLayout, nextUpgradeCost, tableZone, type ShopLayout, type TableZone } from '../../src/sim/upgrades';
 
 /**
  * Top-down plans of the fully upgraded shop for docs/reports: the routes and
@@ -44,6 +44,28 @@ const OLD = {
   serverStation: { x: 2.5, z: -1.8 },
   counterFront: { x: 0, z: -1.6 },
   machineFront: { x: -1, z: -2.9 },
+} as const;
+
+/**
+ * The P18 floor plan the plots are drawn on, before P19 split the tables
+ * around a main aisle: four tables a row 2 apart, and the P18 plant spots.
+ */
+const P18_PLAN = {
+  table: (zone: TableZone, i: number): Vec2 => {
+    switch (zone) {
+      case 'indoor':
+        return { x: -3 + (i % 4) * 2, z: 1 + Math.floor(i / 4) * 2 };
+      case 'expansion':
+        return { x: 6 + Math.floor(i / 3) * 2, z: -1 + (i % 3) * 2.2 };
+      case 'outdoor':
+        return { x: [-2.5, 2.5, -4.5, 4.5][i % 4]!, z: 7.8 + Math.floor(i / 4) };
+    }
+  },
+  plants: [
+    { x: -4, z: -4 },
+    { x: 4, z: 5.4 },
+    { x: -4, z: 4 },
+  ],
 } as const;
 
 const INK = '#3a2216';
@@ -269,7 +291,20 @@ function maxedState(): GameState {
     }
   }
   state.events = [];
+  const count: Record<TableZone, number> = { indoor: 0, expansion: 0, outdoor: 0 };
+  for (const t of state.tables) {
+    const zone = tableZone(t.pos);
+    t.pos = P18_PLAN.table(zone, count[zone]++);
+  }
   return state;
+}
+
+/** Layout of a maxed state, with the plants on their P18 spots. */
+function p18Layout(state: GameState): ShopLayout {
+  const layout = getShopLayout(state);
+  let plant = 0;
+  for (const d of layout.decor) if (d.kind === 'plant') d.pos = { ...P18_PLAN.plants[plant++]! };
+  return layout;
 }
 
 function path(grid: NavGrid, from: Vec2, to: Vec2): Vec2[] {
@@ -287,7 +322,7 @@ function staff(id: number, role: StaffRole, task: StaffTask | null): Staff {
 }
 
 const state = maxedState();
-const layout = getShopLayout(state);
+const layout = p18Layout(state);
 const grid = buildNavGrid(layout);
 const spots = floorSpots(layout, grid);
 

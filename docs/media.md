@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình và đoạn demo dùng trong README bằng `npm run media`, và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -12,7 +12,8 @@ Trang này hướng dẫn tạo lại ảnh chụp màn hình và đoạn demo d
   ```
 
 - [ffmpeg](https://ffmpeg.org/) trong `PATH` để xuất GIF và mp4: macOS `brew install ffmpeg`, Debian/Ubuntu `sudo apt install ffmpeg`. Thiếu ffmpeg thì lệnh vẫn chụp ảnh PNG, bỏ qua GIF/mp4 và trả mã lỗi 1.
-- Cổng `4173` còn trống (đổi bằng `MEDIA_PORT`).
+- Cổng `4173` và `4174` còn trống (đổi bằng `MEDIA_PORT`; bản P18 chạy ở cổng kế tiếp).
+- Lịch sử git có commit P18 `d643d89` (bản clone nông thì chạy `git fetch --unshallow`).
 
 ## Chạy
 
@@ -20,28 +21,38 @@ Trang này hướng dẫn tạo lại ảnh chụp màn hình và đoạn demo d
 npm run media
 ```
 
-Lệnh build bản tĩnh, mở `vite preview` ở `127.0.0.1:4173`, rồi Chromium headless chơi ngày 1:
+Lệnh build bản tĩnh, xuất commit P18 `d643d89` ra thư mục tạm (`git archive`) và build nó, mở `vite preview` cho bản hiện tại ở `127.0.0.1:4173` và bản P18 ở `4174`. Sau đó Chromium headless chơi ngày 1 trên bản hiện tại:
 
 1. Chụp Main Menu (quán chạy nền phía sau).
 2. **Ván mới** độ khó Dễ, mở bảng Menu ở dock và chụp. Mở bảng Nhân viên và tuyển cả 3 ứng viên. Ở bảng Kho bấm Auto-restock, thêm vài gói cà phê, sữa, chanh, trà, ly, chụp rồi **Nhập hàng**.
 3. Zoom camera gần hơn, bấm **Mở cửa**, chọn tốc độ 4x.
 4. 10:00: zoom và pan tới cửa quán (giữ `A`+`S`), chụp mặt tiền, rồi `Home` về góc cũ.
 5. 12:00: chụp giờ cao điểm, rồi zoom gần quầy chụp hàng chờ.
-6. 19:00: chụp lại mặt tiền như bước 4 (ảnh rơi vào khoảng 19:25, đèn gần sáng hết).
-7. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
+6. Về tốc độ 1x, kéo chuột ngang qua cảnh rồi thả giữa chừng: camera trôi tiếp và chậm dần, người đi vòng qua góc bàn. Khoảng 4 giây này giữ nguyên tốc độ trong đoạn quay. Rồi về 4x.
+7. 15:00: chụp mặt tiền như bước 4; 19:30: chụp lại khi đèn sáng đầy (trước 20:00).
+8. Chụp Daily Report (phần Tổng kết) khi ngày kết thúc, rồi chụp tab Đánh giá.
+
+Sau ngày chơi, cùng một kịch bản Kho chạy trên bản hiện tại rồi trên bản P18, mỗi bản một ván mới. Trình duyệt này hiện thanh cuộn (Chromium headless mặc định ẩn):
+
+1. Khổ 390×844, mở bảng Kho. Chuột ngoài bảng, bỏ focus: chụp thanh cuộn lúc đứng yên. Lăn chuột trên bảng: chụp lúc đang cuộn.
+2. Cuộn ngang khung bảng hết cỡ (chỉ dịch được khi nội dung rộng hơn khung) và chụp lề ở đầu bảng, rồi cuộn xuống dòng hàng đầu và chụp lại.
+3. Cuộn về đầu, chụp khung tổng lúc 0 gói; bấm + một gói ở dòng đầu, chụp lại; bấm − trả về 0.
+4. Khổ 1280×720, tuyển 2 nhân viên, không nhập hàng, không bấm Gợi ý. **Mở cửa** ở 4x tới 10:00, mở bảng Kho, cuộn tới mặt hàng đầu tiên không "Đủ" của bản hiện tại (bản P18 cuộn tới cùng mặt hàng) và chụp.
 
 Ảnh chụp ẩn toast; đoạn quay vẫn giữ.
 
 Ảnh so sánh trước/sau:
 
-- Lúc chụp Main Menu và giờ cao điểm, lệnh dừng vòng khung hình, đọc camera Three.js (qua `window.__THREE_DEVTOOLS__`), chỗ đứng của từng người và khung DOM của dock, HUD, bảng, rồi chạy tiếp.
-- Cuối lệnh, ảnh Main Menu, Kho, cao điểm được ghép cạnh ảnh cùng tên ở commit P17 `07439cf` (đọc bằng `git show`, cần lịch sử git đầy đủ).
-- Chỗ đã đổi được khoanh: chỗ đứng sim P17 và P18 chiếu qua camera, chi tiết mặt tiền theo `facadePlan()`, icon theo khung DOM.
-- Lệnh in số vòng khoanh của từng nhãn, và cảnh báo `!!` khi một nhãn không có gì để khoanh.
+- Mỗi ảnh được đo ngay lúc chụp: khung DOM của bảng Kho, thanh cuộn, từng dòng hàng và huy hiệu dock. Ở giờ cao điểm, lệnh dừng vòng khung hình và đọc camera Three.js (qua `window.__THREE_DEVTOOLS__`).
+- Bàn ghế P18 và P19 lấy từ sim của từng bản (`getShopLayout`, `CHAIR_OFFSET`, `CHAIR_SIZE`, `TABLE_RADIUS`), chiếu qua camera của ảnh cao điểm. Ảnh cao điểm P18 là `docs/media/peak.png` ở `d643d89` (đọc bằng `git show`), cùng góc máy.
+- Cuối lệnh, các cặp ảnh được ghép thành bảng `*-p18-p19.png`: mọi khung trong một bảng cắt cùng một vùng quanh chỗ khoanh (bảng Kho, dock, khu bàn) và phóng to cho vừa bề rộng 1900 px.
+- P18 khoanh nét đứt cam, P19 nét liền xanh. Nhãn đặt tránh mọi vòng khoanh, có đường nối khi nằm xa, và ghi số đo của lần chụp (px cắt hay lòi ra, chiều cao khung tổng, độ rộng lối đi).
+- Thanh cuộn nổi (Chromium trên macOS) được khoanh bằng dải 14 px ở mép phải khung bảng.
+- Lệnh in số vòng khoanh của từng nhãn, cảnh báo `!!` khi một nhãn không có gì để khoanh hoặc khi bản hiện tại còn phần tử lòi khỏi khung bảng.
 
 Đoạn quay và dung lượng:
 
-- Cả ngày được quay lại; ffmpeg nén phần mở cửa → báo cáo còn khoảng 17 giây.
+- Cả ngày được quay lại; ffmpeg nén phần mở cửa → báo cáo còn khoảng 12 giây, giữ đoạn xoay camera ở 1x, tổng khoảng 21 giây.
 - Cuối cùng lệnh in dung lượng từng file; file nào trên 5 MB được đánh dấu `!!` và lệnh trả mã lỗi 1.
 
 ## File tạo ra
@@ -53,25 +64,29 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `demo.gif` | Một vòng ngày, dùng ở đầu README. Tự giảm khổ và fps cho tới khi dưới 5 MB. |
 | `demo.mp4` | Cùng đoạn đó, 1280×720 H.264, để đăng nơi khác. |
 | `main-menu.png` | Main Menu. |
-| `main-menu-p17-p18.png` | Main Menu P17 cạnh P18; khoanh mặt tiền, chậu cây, khung cửa sổ, quạt trần, kệ lọ hạt, đèn thả (chỗ nào không bị thẻ menu che) và icon nút menu. |
 | `menu-icons.png` | Pha chuẩn bị, bảng Menu với icon 3D. |
 | `prep-inventory.png` | Pha chuẩn bị, bảng Kho. |
-| `prep-inventory-p17-p18.png` | Bảng Kho P17 cạnh P18; khoanh icon trên dock, HUD và trong bảng. |
 | `facade-day.png` | Mặt tiền quán lúc 10:00. |
 | `peak.png` | Quán giờ cao điểm. |
-| `peak-p17-p18.png` | Giờ cao điểm P17 cạnh P18; khoanh hàng chờ, khách mang đi, nhân viên, mặt tiền và dock. |
 | `queue.png` | Gần quầy giờ cao điểm: hàng chờ. |
+| `kho-390-p18-p19.png` | Bảng Kho ở 390 px, P18 rồi P19, mỗi bản ở đầu bảng và ở dòng hàng đầu, khung bảng cuộn ngang hết cỡ; khoanh đoạn giới thiệu, nút Auto-restock, nhãn trạng thái và thẻ dòng đầu, nhãn ghi số px bị cắt hay lòi khỏi khung. |
+| `kho-foot-p18-p19.png` | Khung tổng lúc 0 gói và 1 gói, P18 rồi P19; vạch vàng ở mép trên khung lúc 0 gói, nhãn ghi chiều cao khung và dòng hướng dẫn. |
+| `kho-open-p18-p19.png` | Bảng Kho lúc 10:00, không bấm Gợi ý; khoanh nhãn "Sắp hết"/"Hết" của P19 và cùng mặt hàng ở P18, dòng "đủ khoảng N ly hôm nay" và huy hiệu dock. |
+| `scrollbar-p18-p19.png` | Thanh cuộn bảng Kho: P18 đang cuộn, P19 đứng yên và đang cuộn; nhãn ghi độ rộng rãnh khi thanh có rãnh. |
+| `peak-p18-p19.png` | Giờ cao điểm P18 cạnh P19; khoanh ghế hai bàn sát nhau (P18), bàn theo lưới (P19) và tô dải sàn của lối đi chính từ hàng bàn tới tường trước (P19). |
 | `facade-evening.png` | Mặt tiền quán từ 19:30 tới 20:00, đèn sáng đầy. |
 | `facade-day-evening.png` | Mặt tiền cùng góc máy lúc khoảng 15:30 và sau 19:30, cạnh nhau; khoanh và ghi tên chỗ phát sáng ấm (cửa sổ, cửa kính, biển hiệu, đèn thả). Lệnh tìm chỗ phát sáng bằng cách so điểm ảnh hai ảnh tối với ảnh ngày, và trả mã lỗi 1 khi không thấy biển hiệu hay kính. |
 | `daily-report.png` | Daily Report. |
 | `reviews.png` | Tab Đánh giá trong báo cáo. |
+
+`main-menu-p17-p18.png`, `peak-p17-p18.png`, `prep-inventory-p17-p18.png` (P17 cạnh P18, dùng trong [báo cáo P18](reports/p18-collision-shop-icons.md)) giữ nguyên, lệnh không ghi đè.
 
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
 | --- | --- | --- |
 | `MEDIA_SEED` | `1760400000000` | Giá trị `Date.now()` cố định trong trang, quyết định seed của ván mới. |
-| `MEDIA_PORT` | `4173` | Cổng của `vite preview`. |
+| `MEDIA_PORT` | `4173` | Cổng của `vite preview` cho bản hiện tại; bản P18 dùng cổng kế tiếp. |
 | `MEDIA_HEADED` | (trống) | `1` để mở cửa sổ Chromium thật, dùng GPU nên hình mượt hơn. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
@@ -84,11 +99,21 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | --- | --- |
 | `Cannot find package 'playwright'` | Chạy `npm ci`. |
 | `Executable doesn't exist` | Chạy `npx playwright install chromium`. |
-| `git show 07439cf:docs/media/… failed` | Bản clone nông thiếu commit P17; chạy `git fetch --unshallow`. |
+| `git archive d643d89 failed` hoặc `git show d643d89:docs/media/… failed` | Bản clone nông thiếu commit P18; chạy `git fetch --unshallow`. |
+| `vite build of d643d89 failed` | `node_modules` hiện tại không build được bản P18; chạy `npm ci` rồi thử lại. |
+| `!! kho-390-p18-p19.png: P19 still has content past the panel edge` | Bảng Kho lại tràn ngang; chạy `npm run layout` để biết phần tử nào. |
 | `no three.js camera seen on #scene` | Three.js không còn gọi `__THREE_DEVTOOLS__`; sửa `observeThree()` trong `scripts/capture-media.mjs`. |
-| `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng hoặc đặt `MEDIA_PORT=4180`. |
+| `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng (cả cổng kế tiếp) hoặc đặt `MEDIA_PORT=4180`. |
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
+
+## Kiểm lề và CLS
+
+```sh
+npm run layout
+```
+
+Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p19-layout-check.md](reports/p19-layout-check.md).
 
 ## Icon 3D
 
