@@ -2,8 +2,8 @@
  * Shop upgrades, marketing, staff roles, day phases, difficulty and
  * temperature (`object` pose). Models stand on y = 0 and face +Z.
  */
-import { ConeGeometry, CylinderGeometry, type Group, LatheGeometry, SphereGeometry, TorusGeometry, Vector2 } from 'three';
-import { part } from '../style';
+import { ConeGeometry, CylinderGeometry, type Group, LatheGeometry, type Shape, SphereGeometry, TorusGeometry, Vector2 } from 'three';
+import { part, posed } from '../style';
 import { clockFace } from './hud';
 import { arc, arrowShape, at, badgeBase, box, disc, extrude, facing, group, handle, inkDot, lathe, polygon, steam, stroke } from './shapes';
 
@@ -68,16 +68,16 @@ export function outdoor(): Group {
 
 /** i-expand: honey floor tile with four cream arrows pushing outwards. */
 export function expand(): Group {
-  const tile = at(part(box(0.9, 0.18, 0.9, 0.06), 'honey'), 0, 0.09);
+  const tile = at(part(box(1.15, 0.22, 1.15, 0.08), 'honey'), 0, 0.11);
   const g = group(tile);
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2;
-    const arrow = part(extrude(arrowShape(0.6, 0.18, 0.42, 0.26), 0.14, 0.03).rotateX(-Math.PI / 2), 'cream');
-    arrow.position.set(Math.cos(a) * 0.82, 0.1, -Math.sin(a) * 0.82);
+    const arrow = part(extrude(arrowShape(0.75, 0.26, 0.6, 0.34), 0.18, 0.04).rotateX(-Math.PI / 2), 'cream');
+    arrow.position.set(Math.cos(a) * 1.08, 0.12, -Math.sin(a) * 1.08);
     arrow.rotation.y = a;
     g.add(arrow);
   }
-  return g;
+  return posed('top', g);
 }
 
 /** i-plants: tangerine pot with two leaves. */
@@ -106,12 +106,12 @@ export function paintings(): Group {
 
 /** i-lights: pendant lamp, honey shade on a cord, warm bulb below. */
 export function lights(): Group {
-  const shade = part(new LatheGeometry([new Vector2(0.95, 0), new Vector2(0.75, 0.25), new Vector2(0.35, 0.65), new Vector2(0.12, 0.75), new Vector2(0, 0.75)], 18), 'honey');
+  // The bulb hangs below the rim so it shows from the 30° camera.
+  const shade = part(new LatheGeometry([new Vector2(0, 0), new Vector2(0.7, 0), new Vector2(0.55, 0.2), new Vector2(0.25, 0.5), new Vector2(0.1, 0.58), new Vector2(0, 0.58)], 16), 'honey');
   shade.position.y = 0.55;
-  const inside = at(part(new CylinderGeometry(0.93, 0.93, 0.02, 18), 'honeyDeep', { outline: false }), 0, 0.56);
-  const bulb = at(part(new SphereGeometry(0.26, 12, 8), 'honeyLight'), 0, 0.45);
-  const cord = at(part(new CylinderGeometry(0.04, 0.04, 0.6, 6), 'coffeeDark'), 0, 1.6);
-  return group(shade, inside, bulb, cord);
+  const bulb = at(part(new SphereGeometry(0.34, 14, 10), 'honeyLight'), 0, 0.36);
+  const cord = at(part(new CylinderGeometry(0.05, 0.05, 0.7, 6), 'coffeeDark'), 0, 1.45);
+  return group(shade, bulb, cord);
 }
 
 /** i-window-bar: window with cream mullions over a latte bar shelf. */
@@ -185,22 +185,22 @@ export function cupHot(): Group {
 
 /** i-role-server: sky cloche on a tray. */
 export function roleServer(): Group {
-  const tray = at(part(new CylinderGeometry(0.8, 0.8, 0.08, 20), 'creamDeep'), 0, 0.24);
-  const dome = at(part(new SphereGeometry(0.62, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), 'sky'), 0, 0.28);
-  const knob = at(part(new SphereGeometry(0.11, 8, 6), 'sky'), 0, 0.95);
+  const tray = at(part(new CylinderGeometry(0.82, 0.82, 0.1, 20), 'cream'), 0, 0.25);
+  const dome = at(part(new SphereGeometry(0.72, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), 'sky'), 0, 0.3);
+  const knob = at(part(new SphereGeometry(0.14, 8, 6), 'sky'), 0, 1.08);
   return group(badgeBase(), tray, dome, knob);
 }
 
 /** i-role-cleaner: leaning broom, latte handle, honey bristles. */
 export function roleCleaner(): Group {
   const broom = group(
-    at(part(new CylinderGeometry(0.06, 0.06, 1.5, 8), 'latte'), 0, 1.05),
-    at(part(box(0.5, 0.12, 0.24, 0.04), 'coffee'), 0, 0.3),
-    at(part(new CylinderGeometry(0.25, 0.4, 0.45, 4).rotateY(Math.PI / 4).scale(1, 1, 0.5), 'honey'), 0, 0.06),
+    at(part(new CylinderGeometry(0.09, 0.09, 1.5, 8), 'latte'), 0, 1.35),
+    at(part(box(0.75, 0.18, 0.32, 0.06), 'coffee'), 0, 0.62),
+    at(part(new CylinderGeometry(0.36, 0.62, 0.62, 4).rotateY(Math.PI / 4).scale(1, 1, 0.5), 'honey'), 0, 0.3),
   );
-  broom.rotation.z = -0.35;
-  broom.position.set(0.1, 0.12, 0);
-  return group(badgeBase(), broom);
+  broom.rotation.z = -0.4;
+  broom.position.set(0.15, 0.1, 0);
+  return facing(group(badgeBase(), broom), 0.3);
 }
 
 /** i-chef: puffy cream chef hat with a band. */
@@ -237,17 +237,36 @@ export function phaseOpen(): Group {
   return facing(group(door, sign, knob, step), 0.3);
 }
 
-/** i-flame: berry flame with a honey core. */
+/** i-flame: berry flame with a honey core in front, both thick flat shapes like the SVG. */
 export function flame(): Group {
-  const outer = part(lathe([[0, 0], [0.55, 0.15], [0.65, 0.55], [0.4, 1.1], [0.12, 1.55], [0, 1.7]], 10), 'coral');
-  const inner = at(part(lathe([[0, 0], [0.32, 0.1], [0.36, 0.4], [0.18, 0.8], [0, 0.95]], 10), 'honey'), 0, 0.05, 0.32);
-  return group(outer, inner);
+  const outer = polygon([
+    [0, 1.75], [0.25, 1.2], [0.6, 0.85], [0.7, 0.45], [0.5, 0.1], [0, 0],
+    [-0.5, 0.1], [-0.7, 0.45], [-0.55, 0.95], [-0.3, 0.85], [-0.2, 1.25],
+  ]);
+  const inner = polygon([[0, 1.0], [0.32, 0.55], [0.36, 0.25], [0.2, 0.08], [0, 0.05], [-0.2, 0.08], [-0.36, 0.25], [-0.3, 0.6]]);
+  return facing(group(part(extrude(outer, 0.36, 0.07), 'coral'), at(part(extrude(inner, 0.16, 0.05), 'honey'), 0, 0.02, 0.24)), 0.3);
+}
+
+/** Crescent: the circle of radius `r` at the origin minus the circle of radius `rc` at (cx, cy). */
+function crescent(r: number, cx: number, cy: number, rc: number): Shape {
+  const d = Math.hypot(cx, cy);
+  const toCut = Math.atan2(cy, cx);
+  // Half the angle, seen from the origin, between the two points where the circles cross.
+  const half = Math.acos((r * r + d * d - rc * rc) / (2 * r * d));
+  const p = (a: number) => [Math.cos(a) * r - cx, Math.sin(a) * r - cy] as const;
+  const b0 = Math.atan2(p(toCut - half)[1], p(toCut - half)[0]);
+  let b1 = Math.atan2(p(toCut + half)[1], p(toCut + half)[0]);
+  // The cut edge runs through the side of the small circle that faces the origin.
+  while (b1 < b0) b1 += Math.PI * 2;
+  const back = toCut + Math.PI;
+  const mid = (b0 + b1) / 2;
+  const [i0, i1] = Math.abs(Math.atan2(Math.sin(mid - back), Math.cos(mid - back))) < Math.PI / 2 ? [b0, b1] : [b0, b1 - Math.PI * 2];
+  return polygon([...arc(0, 0, r, toCut + half, toCut + Math.PI * 2 - half, 18), ...arc(cx, cy, rc, i0, i1, 12).slice(1, -1)]);
 }
 
 /** i-phase-close: honey crescent moon. */
 export function phaseClose(): Group {
-  const moon = polygon([...arc(0, 0, 0.85, Math.PI * 0.35, Math.PI * 1.65, 14), ...arc(0.42, 0.05, 0.62, Math.PI * 1.35, Math.PI * 0.65, 10)]);
-  const g = group(part(extrude(moon, 0.36, 0.07), 'honey'));
+  const g = group(part(extrude(crescent(0.85, 0.42, 0.3, 0.72), 0.36, 0.07), 'honey'));
   g.position.y = 0.9;
   return facing(group(g));
 }

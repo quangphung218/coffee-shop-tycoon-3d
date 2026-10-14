@@ -111,15 +111,15 @@ export function orangeJuice(): Group {
 
 /** i-croissant: crescent of five puffy segments on a small plate. */
 export function croissant(): Group {
-  const g = group(saucer(1.0));
+  const g = group(saucer(0.95));
   const n = 5;
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
-    const a = Math.PI * (0.15 + 0.7 * t);
+    const a = Math.PI * (0.12 + 0.76 * t);
     const mid = 1 - Math.abs(t - 0.5) * 2;
-    const r = 0.2 + 0.16 * mid;
+    const r = 0.26 + 0.24 * mid;
     const seg = part(new SphereGeometry(1, 12, 8).scale(r * 1.1, r * 0.9, r * 1.2), i % 2 ? 'latte' : 'honeyDeep');
-    seg.position.set(-Math.cos(a) * 0.62, 0.14 + r * 0.85, -Math.sin(a) * 0.62 + 0.38);
+    seg.position.set(-Math.cos(a) * 0.78, 0.14 + r * 0.85, -Math.sin(a) * 0.62 + 0.38);
     seg.rotation.y = -a;
     g.add(seg);
   }
@@ -128,15 +128,15 @@ export function croissant(): Group {
 
 /** i-cake: cream sponge wedge with a berry layer and a berry on top, on a plate. */
 export function cake(): Group {
-  const wedge = polygon([[0, 0], [1.2, -0.42], [1.2, 0.42]]);
+  const wedge = polygon([[0, 0], [1.5, -0.6], [1.5, 0.6]]);
   const layer = (y: number, h: number, color: PaletteKey) => {
     const m = part(extrude(wedge, h, 0.03).rotateX(-Math.PI / 2), color);
-    m.position.set(-0.6, y + h / 2, 0);
+    m.position.set(-0.75, y + h / 2, 0);
     return m;
   };
-  const top = 0.14 + 0.32 + 0.14 + 0.32;
-  const cherry = at(part(new SphereGeometry(0.17, 10, 8), 'coral'), 0.25, top + 0.15);
-  const g = group(saucer(1.0), layer(0.14, 0.32, 'cream'), layer(0.46, 0.14, 'coral'), layer(0.6, 0.32, 'cream'), cherry);
+  const top = 0.14 + 0.42 + 0.18 + 0.42;
+  const cherry = at(part(new SphereGeometry(0.22, 10, 8), 'coral'), 0.35, top + 0.2);
+  const g = group(saucer(0.95), layer(0.14, 0.42, 'cream'), layer(0.56, 0.18, 'coral'), layer(0.74, 0.42, 'cream'), cherry);
   return facing(g, -0.9);
 }
 

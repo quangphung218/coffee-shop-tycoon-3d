@@ -193,6 +193,6 @@ export function inkDot(r: number): Object3D {
 }
 
 /** Flat round badge (cream-200) that role icons stand on, so they read as one set. */
-export function badgeBase(r = 0.95): Object3D {
+export function badgeBase(r = 0.85): Object3D {
   return part(lathe([[0, 0], [r, 0], [r, 0.14], [r * 0.92, 0.2], [0, 0.2]], 24), 'creamDeep');
 }
