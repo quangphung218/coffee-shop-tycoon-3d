@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { autoRestockSuggestion, buyIngredient, dispatch } from '../../src/sim/index';
+import { buildNavGrid, isWalkable } from '../../src/sim/nav';
+import { hireStaff } from '../../src/sim/staff';
 import { DAY_START_MINUTE, createNewGame } from '../../src/sim/state';
-import type { DailyReport } from '../../src/sim/types';
+import type { DailyReport, GameState } from '../../src/sim/types';
+import { buyUpgrade, getShopLayout } from '../../src/sim/upgrades';
 import { playDay } from './helpers';
 
 const SEED = 20261014;
@@ -83,5 +86,32 @@ describe('full day, headless', () => {
     expect(state.today.day).toBe(2);
     expect(state.today.customersArrived).toBe(0);
     expect(state.lastReport?.day).toBe(1);
+  });
+
+  it('never leaves a customer or staff member inside furniture or walls over several days', () => {
+    const state = createNewGame('Quán Va Chạm', 'normal', SEED);
+    state.money = 1e12;
+    for (const i of state.inventory) i.qty = 100000;
+    for (const id of ['tables', 'tables', 'outdoor_seating', 'expand_area', 'plants', 'plants', 'big_counter'] as const) {
+      expect(buyUpgrade(state, id).ok, id).toBe(true);
+    }
+    for (const role of ['barista', 'barista', 'server', 'cleaner'] as const) {
+      if (state.candidates.length === 0) state.candidates.push({ ...state.staff[0]!, id: state.nextId++, role: 'none' });
+      expect(hireStaff(state, state.candidates[0]!.id, role), role).not.toBeNull();
+    }
+    const grid = buildNavGrid(getShopLayout(state));
+    let checks = 0;
+    const onMinute = (s: GameState) => {
+      for (const a of [...s.customers, ...s.staff]) {
+        expect(isWalkable(grid, a.pos), `day ${s.day} minute ${s.minute}: ${a.id} at ${a.pos.x},${a.pos.z}`).toBe(true);
+        checks++;
+      }
+    };
+    for (let day = 0; day < 3; day++) {
+      playDay(state, { onMinute });
+      expect(dispatch(state, { type: 'next_day' })).toBe(true);
+      for (const i of state.inventory) i.qty = 100000;
+    }
+    expect(checks).toBeGreaterThan(1000);
   });
 });

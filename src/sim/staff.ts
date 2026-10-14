@@ -1,9 +1,11 @@
-import { DOOR_POS, PICKUP_POS } from './customers';
+import { DOOR_POS, claimSpot } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
+import { buildNavGrid, cellAt, nearestFree } from './nav';
 import { TASK_MINUTES, advanceTask, finishTask, isClaimed } from './orders';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
 import { CANDIDATE_COUNT, generateCandidates } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
+import { getShopLayout, type ShopLayout } from './upgrades';
 
 export const MAX_STAFF = 6;
 /** A marketer's promote task restarts every this many minutes (only for display). */
@@ -29,16 +31,21 @@ export const ROLE_JOBS: Readonly<Record<StaffRole, readonly StaffTaskKind[]>> = 
 /** Roles handed out when there is no bottleneck to react to, in order. */
 const DEFAULT_PLAN: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'barista', 'server', 'marketer'];
 
-/** Where staff stand when they have nothing to do. */
+/**
+ * Where staff stand when they have nothing to do. Several staff of one role
+ * spread out from here to the nearest open spots (see staffSpots).
+ */
 const STATIONS: Readonly<Record<StaffRole, Vec2>> = {
-  barista: { x: -1, z: -2.7 },
+  barista: { x: -1, z: -2.75 },
   server: { x: 2.5, z: -1.8 },
   cleaner: { x: -4, z: 0 },
   marketer: { x: 1.5, z: DOOR_POS.z + 1 },
-  none: { x: 0, z: -3.8 },
+  none: { x: 0, z: -4 },
 };
-const COUNTER_FRONT: Vec2 = { x: 0, z: -1.6 };
-const MACHINE_FRONT: Vec2 = { x: -1, z: -2.9 };
+/** Staff work this far behind the counter centre, between it and the machines. */
+const COUNTER_BACK = 0.75;
+/** Staff clean a table from this far in front of or behind its centre, where no chair stands. */
+const TABLE_SIDE = 0.8;
 
 function notify(state: GameState, level: 'info' | 'success' | 'error', text: string): void {
   state.events.push({ type: 'notify', level, text });
@@ -79,8 +86,8 @@ export function hireStaff(state: GameState, candidateId: number, role: StaffRole
   member.role = role;
   member.task = null;
   member.busy = false;
-  member.pos = { ...STATIONS[role] };
   state.staff.push(member);
+  placeStaff(state);
   notify(state, 'success', `Đã tuyển ${member.name}`);
   if (state.autoAssign) autoAssignRoles(state);
   return member;
@@ -100,7 +107,7 @@ function setRole(state: GameState, member: Staff, role: StaffRole): void {
   if (member.role === role) return;
   releaseTask(state, member);
   member.role = role;
-  member.pos = { ...STATIONS[role] };
+  placeStaff(state);
 }
 
 /** Changes a staff member's role. Refused while auto-assign is on. */
@@ -197,27 +204,64 @@ export function findJob(state: GameState, member: Staff): StaffTask | null {
   return null;
 }
 
-/** Where a staff member stands while doing the task. */
-function taskPos(state: GameState, member: Staff, task: StaffTask | null): Vec2 {
-  if (!task) return { ...STATIONS[member.role] };
-  switch (task.kind) {
-    case 'brew':
-      return { ...MACHINE_FRONT };
+/** Spots a staff member would like to stand on for the task, best first. */
+function wantedSpots(state: GameState, layout: ShopLayout, member: Staff): Vec2[] {
+  const task = member.task;
+  const counter = layout.counter.pos;
+  switch (task?.kind) {
+    case 'brew': {
+      const machine = layout.machines[0]?.pos ?? counter;
+      return [{ x: machine.x, z: counter.z - COUNTER_BACK }];
+    }
     case 'take_order':
-      return { ...COUNTER_FRONT };
+      return [{ x: counter.x, z: counter.z - COUNTER_BACK }];
     case 'serve': {
       const order = state.orders.find((o) => o.id === task.targetId);
       const customer = state.customers.find((c) => c.id === order?.customerId);
-      return customer ? { ...customer.pos } : { ...PICKUP_POS };
+      // The customer's own cell is taken, so this is the open spot next to them.
+      return [customer ? (customer.target ?? customer.pos) : layout.pickup];
     }
     case 'collect':
     case 'clean': {
       const table = state.tables.find((t) => t.id === task.targetId);
-      return table ? { x: table.pos.x, z: table.pos.z - 0.8 } : { ...STATIONS[member.role] };
+      if (!table) break;
+      return [
+        { x: table.pos.x, z: table.pos.z - TABLE_SIDE },
+        { x: table.pos.x, z: table.pos.z + TABLE_SIDE },
+      ];
     }
     default:
-      return { ...STATIONS[member.role] };
+      break;
   }
+  return [STATIONS[member.role]];
+}
+
+/**
+ * Where every staff member stands this minute, by staff id. Spots are
+ * claimed in id order on the nav grid, after the spots customers are
+ * heading for, so nobody stands inside furniture, on a customer or on
+ * another staff member. Deterministic; the renderer can use it as well.
+ */
+export function staffSpots(state: GameState, layout: ShopLayout = getShopLayout(state)): Map<number, Vec2> {
+  const grid = buildNavGrid(layout);
+  const taken = new Set<number>();
+  for (const c of state.customers) {
+    if (c.state === 'leaving' || c.state === 'angry_leave') continue;
+    // A seated customer's target is the chair; they stand on the free cell next to it.
+    const spot = nearestFree(grid, c.target ?? c.pos);
+    if (spot) taken.add(cellAt(grid, spot));
+  }
+  const out = new Map<number, Vec2>();
+  for (const member of [...state.staff].sort((a, b) => a.id - b.id)) {
+    out.set(member.id, claimSpot(grid, wantedSpots(state, layout, member), taken));
+  }
+  return out;
+}
+
+/** Moves every staff member to their spot from staffSpots. */
+function placeStaff(state: GameState): void {
+  const spots = staffSpots(state);
+  for (const member of state.staff) member.pos = spots.get(member.id) ?? member.pos;
 }
 
 /** One game minute of work for one staff member, at their speed. */
@@ -237,12 +281,12 @@ function work(state: GameState, member: Staff): void {
     }
   }
   member.busy = member.task !== null;
-  member.pos = taskPos(state, member, member.task);
 }
 
-/** One game minute for every staff member: pick up free work for their role and progress it. */
+/** One game minute for every staff member: pick up free work for their role, progress it, step to its spot. */
 export function updateStaff(state: GameState): void {
   for (const member of state.staff) work(state, member);
+  placeStaff(state);
 }
 
 /** Clears everyone's task when the shop closes up. */
@@ -250,8 +294,8 @@ export function clearStaffTasks(state: GameState): void {
   for (const member of state.staff) {
     member.task = null;
     member.busy = false;
-    member.pos = { ...STATIONS[member.role] };
   }
+  placeStaff(state);
 }
 
 /** Morning of a new day: fresh candidates, idle staff, and roles from yesterday's bottleneck when auto-assign is on. */

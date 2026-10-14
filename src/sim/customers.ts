@@ -3,8 +3,10 @@ import { getMenuItem } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake } from './inventory';
 import { customerMultiplier } from './marketing';
+import { CHAIR_OFFSET, NAV_CELL, buildNavGrid, cellAt, cellCenter, findPath, nearestFree, type NavGrid } from './nav';
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
+import { getShopLayout, type ShopLayout } from './upgrades';
 
 /** Customers per game minute at 3 stars, normal difficulty, outside peak hours. */
 export const BASE_ARRIVALS_PER_MINUTE = 0.09;
@@ -20,8 +22,15 @@ export const DRINK_MINUTES: readonly [number, number] = [15, 30];
 const WALK_PER_MINUTE = 4;
 
 export const DOOR_POS: Vec2 = { x: 0, z: 6 };
-/** Where seatless customers wait for a takeaway drink. */
+/** Where seatless customers wait for a takeaway drink: the takeaway spots spread out from here. */
 export const PICKUP_POS: Vec2 = { x: 2.5, z: -1 };
+/** Customers order this far in front of the counter centre. */
+export const ORDER_DISTANCE = 1;
+/** Distance along the walkway between two people in line. */
+const QUEUE_SPACING = 0.8;
+/** Takeaway spots by the counter; past this many waiting customers, spots are shared. */
+export const PICKUP_SPOTS = 12;
+const SPOT_CACHE_SIZE = 4;
 
 const WEATHER_WEIGHTS: Record<Weather, number> = { sunny: 0.5, rainy: 0.25, hot: 0.25 };
 const WEATHER_ARRIVALS: Record<Weather, number> = { sunny: 1, rainy: 0.75, hot: 1.1 };
@@ -37,12 +46,135 @@ export function rollWeather(rng: RngHolder): Weather {
   return kinds[weightedIndex(rng, kinds.map((k) => WEATHER_WEIGHTS[k]))] ?? 'sunny';
 }
 
-export function queueSlot(index: number): Vec2 {
-  return { x: 0, z: -1 + index * 0.8 };
+/**
+ * True when someone may stand on cell i: it is free, reachable from the
+ * door, and no claimed cell is in its 3×3 neighbourhood, so two people
+ * standing still are at least two cells apart and never overlap.
+ */
+function isOpenCell(grid: NavGrid, i: number, taken: ReadonlySet<number>): boolean {
+  if (grid.blocked[i] || (grid.mainComponent !== 0 && grid.component[i] !== grid.mainComponent)) return false;
+  const c = i % grid.cols;
+  const r = (i - c) / grid.cols;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const nc = c + dc;
+      const nr = r + dr;
+      if (nc >= 0 && nr >= 0 && nc < grid.cols && nr < grid.rows && taken.has(nr * grid.cols + nc)) return false;
+    }
+  }
+  return true;
 }
 
-function seatPos(table: Table, seatIndex: number): Vec2 {
-  return { x: table.pos.x + (seatIndex % 2 === 0 ? -0.5 : 0.5), z: table.pos.z };
+/** Index of the open cell closest to p (ties: lower index), or -1. */
+function nearestOpenCell(grid: NavGrid, p: Vec2, taken: ReadonlySet<number>): number {
+  const pc = Math.round(p.x / NAV_CELL) - grid.col0;
+  const pr = Math.round(p.z / NAV_CELL) - grid.row0;
+  const maxRing = Math.max(grid.cols, grid.rows) + Math.max(Math.abs(pc), Math.abs(pr));
+  let best = -1;
+  let bestDist = Infinity;
+  for (let ring = 0; ring <= maxRing; ring++) {
+    if ((ring - 0.5) * NAV_CELL > bestDist) break;
+    for (let r = pr - ring; r <= pr + ring; r++) {
+      if (r < 0 || r >= grid.rows) continue;
+      const edge = r === pr - ring || r === pr + ring;
+      for (let c = pc - ring; c <= pc + ring; c += edge || ring === 0 ? 1 : 2 * ring) {
+        if (c < 0 || c >= grid.cols) continue;
+        const i = r * grid.cols + c;
+        if (!isOpenCell(grid, i, taken)) continue;
+        const d = Math.hypot((grid.col0 + c) * NAV_CELL - p.x, (grid.row0 + r) * NAV_CELL - p.z);
+        if (d < bestDist || (d === bestDist && i < best)) {
+          bestDist = d;
+          best = i;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Claims a standing spot for one person: the first of `wants` whose cell is
+ * open, otherwise the open cell closest to the first one. The cell goes into
+ * `taken`, so people claiming in a fixed order (by id) never stand on top of
+ * each other. Falls back to the nearest free point when the floor is full.
+ */
+export function claimSpot(grid: NavGrid, wants: readonly Vec2[], taken: Set<number>): Vec2 {
+  const first = wants[0]!;
+  let cell = -1;
+  for (const want of wants) {
+    const i = cellAt(grid, want);
+    if (i >= 0 && isOpenCell(grid, i, taken)) {
+      cell = i;
+      break;
+    }
+  }
+  if (cell < 0) cell = nearestOpenCell(grid, first, taken);
+  if (cell < 0) return nearestFree(grid, first) ?? { x: first.x, z: first.z };
+  taken.add(cell);
+  return cellCenter(grid, cell);
+}
+
+/** Standing spots of a layout, worked out once per floor plan. */
+export interface FloorSpots {
+  /** MAX_QUEUE spots from the counter along the walkway toward the door; 0 is where customers order. */
+  queue: Vec2[];
+  /** PICKUP_SPOTS takeaway spots around the pickup mat, clear of the line. */
+  pickup: Vec2[];
+}
+
+/** Point `d` along the polyline, or its end. */
+function along(line: readonly Vec2[], d: number): Vec2 {
+  let left = d;
+  for (let k = 1; k < line.length; k++) {
+    const a = line[k - 1]!;
+    const b = line[k]!;
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len >= left && len > 0) return { x: a.x + ((b.x - a.x) * left) / len, z: a.z + ((b.z - a.z) * left) / len };
+    left -= len;
+  }
+  return line[line.length - 1]!;
+}
+
+function computeFloorSpots(layout: ShopLayout, grid: NavGrid): FloorSpots {
+  const taken = new Set<number>();
+  const c = layout.counter.pos;
+  const front = nearestFree(grid, { x: c.x, z: c.z + ORDER_DISTANCE }) ?? { x: c.x, z: c.z + ORDER_DISTANCE };
+  const doorIn = grid.doorInside >= 0 ? cellCenter(grid, grid.doorInside) : layout.door;
+  const walkway = [front, ...(findPath(grid, front, doorIn) ?? [])];
+  const queue: Vec2[] = [];
+  for (let k = 0; k < MAX_QUEUE; k++) queue.push(claimSpot(grid, [along(walkway, k * QUEUE_SPACING)], taken));
+  const pickup: Vec2[] = [];
+  for (let k = 0; k < PICKUP_SPOTS; k++) pickup.push(claimSpot(grid, [layout.pickup], taken));
+  return { queue, pickup };
+}
+
+const spotCache = new Map<string, FloorSpots>();
+
+/** Queue and takeaway spots of this layout, from a small cache keyed by the floor plan. */
+export function floorSpots(layout: ShopLayout, grid: NavGrid = buildNavGrid(layout)): FloorSpots {
+  const key = `${grid.key}|${layout.pickup.x}|${layout.pickup.z}`;
+  const cached = spotCache.get(key);
+  if (cached) return cached;
+  const spots = computeFloorSpots(layout, grid);
+  spotCache.set(key, spots);
+  if (spotCache.size > SPOT_CACHE_SIZE) spotCache.delete(spotCache.keys().next().value!);
+  return spots;
+}
+
+/** Spot of the `index`-th customer in line (0 orders at the counter). */
+export function queueSlot(layout: ShopLayout, index: number): Vec2 {
+  const queue = floorSpots(layout).queue;
+  return { ...queue[Math.min(index, queue.length - 1)]! };
+}
+
+/** The chair of the side no other occupant sits on (left first), as the renderer draws it. */
+function seatPos(state: GameState, table: Table): Vec2 {
+  let left = false;
+  for (const id of table.occupants) {
+    const other = state.customers.find((c) => c.id === id);
+    if (other?.target && other.target.x < table.pos.x) left = true;
+  }
+  return { x: table.pos.x + (left ? CHAIR_OFFSET : -CHAIR_OFFSET), z: table.pos.z };
 }
 
 /** base × rating × marketing × weather × hour × difficulty (× decor appeal), in customers per minute. */
@@ -100,7 +232,7 @@ export function spawnCustomer(state: GameState): Customer | null {
     id: state.nextId++,
     state: 'entering',
     pos: { ...DOOR_POS },
-    target: queueSlot(state.customers.filter(isInLine).length),
+    target: queueSlot(getShopLayout(state), state.customers.filter(isInLine).length),
     patience,
     maxPatience: patience,
     order,
@@ -141,7 +273,7 @@ export function seatCustomer(state: GameState, customer: Customer): boolean {
   const table = findSeat(state);
   if (!table) return false;
   customer.tableId = table.id;
-  customer.target = seatPos(table, table.occupants.length);
+  customer.target = seatPos(state, table);
   table.occupants.push(customer.id);
   return true;
 }
@@ -213,21 +345,66 @@ function payAtTable(state: GameState, customer: Customer): void {
   startLeaving(state, customer, 'leaving');
 }
 
-function walk(customer: Customer): void {
+/**
+ * WALK_PER_MINUTE along the path around the furniture. A seated customer
+ * stops on the free floor next to the chair (the chair itself is blocked).
+ * Someone stopped between two cell centres first steps to the centre of
+ * their cell, where the path's line-of-sight checks start. Without any path
+ * (no free floor at all) the customer walks straight.
+ */
+function walk(grid: NavGrid, customer: Customer): void {
   const target = customer.target;
-  if (!target) return;
-  const dx = target.x - customer.pos.x;
-  const dz = target.z - customer.pos.z;
-  const dist = Math.hypot(dx, dz);
-  if (dist <= WALK_PER_MINUTE) {
-    customer.pos = { ...target };
-  } else {
-    customer.pos = { x: customer.pos.x + (dx / dist) * WALK_PER_MINUTE, z: customer.pos.z + (dz / dist) * WALK_PER_MINUTE };
+  if (!target || (customer.pos.x === target.x && customer.pos.z === target.z)) return;
+  const path = findPath(grid, customer.pos, target) ?? [target];
+  const cell = cellAt(grid, customer.pos);
+  if (cell >= 0 && !grid.blocked[cell]) {
+    const centre = cellCenter(grid, cell);
+    const first = path[0];
+    const onCentre = centre.x === customer.pos.x && centre.z === customer.pos.z;
+    if (!onCentre && first && (first.x !== centre.x || first.z !== centre.z)) path.unshift(centre);
+  }
+  let pos = customer.pos;
+  let left = WALK_PER_MINUTE;
+  for (const p of path) {
+    const d = Math.hypot(p.x - pos.x, p.z - pos.z);
+    if (d > left) {
+      pos = { x: pos.x + ((p.x - pos.x) * left) / d, z: pos.z + ((p.z - pos.z) * left) / d };
+      break;
+    }
+    pos = { x: p.x, z: p.z };
+    left -= d;
+  }
+  customer.pos = pos;
+}
+
+/**
+ * Gives every seatless waiting customer a takeaway spot of their own. A
+ * customer keeps the spot they already hold; newcomers take the first free
+ * one in customer order.
+ */
+function assignPickupSpots(state: GameState, spots: readonly Vec2[]): void {
+  const used = new Set<number>();
+  const newcomers: Customer[] = [];
+  for (const c of state.customers) {
+    if (c.state !== 'waiting' || c.tableId !== null) continue;
+    const t = c.target;
+    const k = t ? spots.findIndex((p) => p.x === t.x && p.z === t.z) : -1;
+    if (k >= 0 && !used.has(k)) used.add(k);
+    else newcomers.push(c);
+  }
+  for (const c of newcomers) {
+    let k = spots.findIndex((_, i) => !used.has(i));
+    if (k < 0) k = c.id % spots.length;
+    used.add(k);
+    c.target = { ...spots[k]! };
   }
 }
 
 /** One game minute for every customer: timers, patience, seating, movement. */
 export function updateCustomers(state: GameState): void {
+  const layout = getShopLayout(state);
+  const grid = buildNavGrid(layout);
+  const spots = floorSpots(layout, grid);
   let lineIndex = 0;
   for (const c of state.customers) {
     switch (c.state) {
@@ -247,7 +424,7 @@ export function updateCustomers(state: GameState): void {
           angryLeave(state, c, 'patience');
           break;
         }
-        if (c.tableId === null && !seatCustomer(state, c)) c.target = { ...PICKUP_POS };
+        if (c.tableId === null) seatCustomer(state, c);
         break;
       case 'drinking':
         c.timer -= 1;
@@ -265,8 +442,9 @@ export function updateCustomers(state: GameState): void {
         c.timer -= 1;
         break;
     }
-    if (isInLine(c)) c.target = queueSlot(lineIndex++);
-    walk(c);
+    if (isInLine(c)) c.target = { ...spots.queue[Math.min(lineIndex++, spots.queue.length - 1)]! };
   }
+  assignPickupSpots(state, spots.pickup);
+  for (const c of state.customers) walk(grid, c);
   state.customers = state.customers.filter((c) => !(isGone(c) && c.timer <= 0));
 }
