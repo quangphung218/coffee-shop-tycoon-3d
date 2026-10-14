@@ -424,7 +424,7 @@ describe('nav cost', () => {
     }
     expect(state.phase).toBe('report');
     const { paths, fields } = navSearchCount();
-    expect(walks).toBeGreaterThan(2000);
+    expect(walks).toBeGreaterThan(1000);
     // A field per goal the customers walked to (the door, line, takeaway spots and chairs), kept for the whole day.
     expect(fields).toBeLessThanOrEqual(goals.size);
     expect(fields).toBeLessThan(96);

@@ -241,22 +241,27 @@ describe('walkToward', () => {
     const back = { x: layout.counter.pos.x, z: layout.counter.pos.z - 0.75 };
     const goals = [back, ...layout.tables.map((t) => nearestFree(grid, { x: t.pos.x - CHAIR_OFFSET, z: t.pos.z })!)];
     for (const goal of goals) {
-      const trail = walkAll(grid, OUTSIDE, goal);
+      expect(walkAll(grid, OUTSIDE, goal).at(-1), JSON.stringify(goal)).toEqual(goal);
+      // In short steps the line between two positions is the walk itself: it must miss every footprint.
+      const trail = walkAll(grid, OUTSIDE, goal, 0.1, 600);
       expect(trail.at(-1), JSON.stringify(goal)).toEqual(goal);
-      // Between two steps the walk follows the field's corner-cut route, so check the line in between too.
       for (let k = 1; k < trail.length; k++) {
         for (const p of samples(trail[k - 1]!, [trail[k]!])) expect(hits(layout, p), `at ${p.x.toFixed(2)},${p.z.toFixed(2)}`).toEqual([]);
       }
     }
   });
 
-  it('steps out of an obstacle first, and goes the same way in small steps as in big ones', () => {
+  it('steps out of an obstacle first, and arrives in small steps as in big ones', () => {
     const layout = layoutWith({ tables: 2 });
     const grid = buildNavGrid(layout);
     const table = layout.tables[0]!.pos;
-    const first = walkToward(grid, table, OUTSIDE, 0.1)!;
-    expect(isWalkable(grid, first)).toBe(true);
-    expect(walkAll(grid, table, OUTSIDE, 0.25, 200).at(-1)).toEqual(OUTSIDE);
+    // The first stretch leads to the nearest free cell, then on from there.
+    const out = nearestFree(grid, table)!;
+    const first = walkToward(grid, table, OUTSIDE, Math.hypot(out.x - table.x, out.z - table.z))!;
+    expect(first).toEqual(out);
+    expect(isWalkable(grid, walkToward(grid, table, OUTSIDE, 1.5)!)).toBe(true);
+    // Short steps never stall between two cell centres.
+    for (const step of [0.05, 0.1, 0.25]) expect(walkAll(grid, table, OUTSIDE, step, 2000).at(-1), `step ${step}`).toEqual(OUTSIDE);
     expect(walkAll(grid, table, OUTSIDE, 4).at(-1)).toEqual(OUTSIDE);
   });
 
