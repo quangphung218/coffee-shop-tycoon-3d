@@ -4,28 +4,36 @@ import type { Quality } from '../../src/save/settings';
 import { createStreet } from '../../src/render/street';
 import {
   FAR_WALK,
+  KERB_PROP_Z,
   LANES,
+  MAX_DENSITY,
+  MIN_WALKER_GAP,
   NEAR_BUILDINGS_MIN_X,
   NEAR_WALK,
   ROAD,
   STREET_HALF,
   STREET_SPAN,
+  PROP_CLEARANCE,
+  WALKER_RADIUS,
   WALK_LINES,
   buildingLots,
   createLighting,
   densityFor,
   lightingAt,
   minLaneGap,
+  minWalkerGap,
   propSpots,
   rainY,
   RAIN_BOX,
   travelX,
   vehicleSlots,
-  walkerSlot,
+  walkerSlots,
   wrapX,
 } from '../../src/render/street/layout';
+import { exitPoint } from '../../src/render/actors/sync';
+import { buildNavGrid, isWalkable } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
-import { INDOOR_AREA } from '../../src/sim/upgrades';
+import { INDOOR_AREA, buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
 import type { GameState } from '../../src/sim/types';
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
@@ -126,10 +134,55 @@ describe('walkers, buildings and props', () => {
   });
 
   it('hands out stable, varied walkers', () => {
-    expect(walkerSlot(5)).toEqual(walkerSlot(5));
-    const starts = new Set(Array.from({ length: 18 }, (_, i) => walkerSlot(i).start.toFixed(2)));
-    expect(starts.size).toBe(18);
-    for (let i = 0; i < 18; i++) expect(walkerSlot(i).speed).toBeGreaterThan(0);
+    expect(walkerSlots(18)).toEqual(walkerSlots(18));
+    const slots = walkerSlots(18);
+    expect(new Set(slots.map((s) => s.start.toFixed(2))).size).toBe(18);
+    for (const s of slots) expect(s.speed).toBeGreaterThan(0);
+    // Raising the count keeps each walker's line and look.
+    walkerSlots(4).forEach((s, i) => {
+      expect(s.line).toBe(slots[i]!.line);
+      expect(s.look).toBe(slots[i]!.look);
+    });
+    expect(walkerSlots(0)).toEqual([]);
+  });
+
+  it('keeps walkers on one line at the line speed and apart at every moment', () => {
+    for (const q of QUALITIES) {
+      const slots = walkerSlots(densityFor(q).pedestrians);
+      for (const s of slots) expect(s.speed).toBe(WALK_LINES[s.line]!.speed);
+      const start = minWalkerGap(slots, 0);
+      expect(start).toBeGreaterThanOrEqual(MIN_WALKER_GAP);
+      for (let t = 0; t <= 600; t += 0.7) expect(minWalkerGap(slots, t)).toBeCloseTo(start, 6);
+    }
+    // Nobody walks through anybody at the highest count either.
+    const crowd = walkerSlots(MAX_DENSITY.pedestrians);
+    for (let t = 0; t <= 300; t += 1.3) expect(minWalkerGap(crowd, t)).toBeGreaterThan(2 * WALKER_RADIUS);
+  });
+
+  it('keeps every walk line clear of the trees and lamps by the kerb', () => {
+    for (const line of WALK_LINES) {
+      for (const z of KERB_PROP_Z) expect(Math.abs(line.z - z)).toBeGreaterThanOrEqual(PROP_CLEARANCE);
+    }
+    for (const spot of propSpots()) {
+      for (const line of WALK_LINES) expect(Math.abs(line.z - spot.z)).toBeGreaterThanOrEqual(PROP_CLEARANCE);
+    }
+    // Lines in one direction stay a body apart from those in the other.
+    for (const a of WALK_LINES) {
+      for (const b of WALK_LINES) if (a !== b) expect(Math.abs(a.z - b.z)).toBeGreaterThan(2 * WALKER_RADIUS);
+    }
+  });
+
+  it('lets leaving customers vanish before the walkers and clear of the patio tables', () => {
+    const state = newState();
+    state.money = 1e10;
+    while (nextUpgradeCost(state, 'outdoor_seating') !== null) expect(buyUpgrade(state, 'outdoor_seating').ok).toBe(true);
+    const layout = getShopLayout(state);
+    expect(layout.tables.some((t) => t.zone === 'outdoor')).toBe(true);
+    const exit = exitPoint(layout);
+    const nearest = Math.min(...WALK_LINES.map((l) => l.z));
+    expect(nearest - exit.z).toBeGreaterThanOrEqual(2 * WALKER_RADIUS);
+    expect(exit.z).toBeLessThan(NEAR_WALK.minZ);
+    expect(isWalkable(buildNavGrid(layout), exit)).toBe(true);
   });
 
   it('keeps buildings off the road and clear of the largest shop', () => {

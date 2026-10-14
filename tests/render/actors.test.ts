@@ -17,23 +17,33 @@ import {
 import { Pool } from '../../src/render/actors/pool';
 import { APRON_COLORS, createCharacter, materialFor } from '../../src/render/actors/rig';
 import {
+  CATCH_UP_DISTANCE,
   CUSTOMER_ANIM,
   FACE_BACK,
+  SEPARATION_RADIUS,
+  WALK_SPEED,
   advance,
   createMotion,
   customerAnim,
   customerGoal,
   exitPoint,
-  regionOf,
-  route,
+  playerSpot,
+  remaining,
+  separate,
   setGoal,
+  shownX,
+  shownZ,
+  snap,
+  stepDistance,
   workerAnim,
   workerGoal,
+  type Motion,
 } from '../../src/render/actors/sync';
 import { dispatch, step } from '../../src/sim';
+import { CHAIR_OFFSET, buildNavGrid, cellCenter, isWalkable, nearestFree } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
-import type { Customer, CustomerState, GameState, StaffTaskKind } from '../../src/sim/types';
-import { getShopLayout } from '../../src/sim/upgrades';
+import type { Customer, CustomerState, GameState, StaffTaskKind, Vec2 } from '../../src/sim/types';
+import { buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
 
 const CUSTOMER_STATES: readonly CustomerState[] = [
   'entering',
@@ -209,51 +219,274 @@ describe('sync: staff and player', () => {
     expect(workerAnim(null, false)).toBe('idle');
   });
 
-  it('places workers at the machine, the table or the customer', () => {
+  it('stands workers on the spot the sim holds and faces their work', () => {
     const state = newState();
     const layout = getShopLayout(state);
-    const home = { x: 1, z: -3 };
-    const brew = workerGoal(state, { kind: 'brew', targetId: 1, remaining: 1 }, layout, home, 0);
-    expect(brew.pos.z).toBeCloseTo(layout.machines[0]!.pos.z + 0.45);
+    const spot = { x: 1, z: -2.75 };
+    const brew = workerGoal(state, { kind: 'brew', targetId: 1, remaining: 1 }, layout, spot);
+    expect(brew).toEqual({ pos: spot, face: FACE_BACK, seated: false });
     const table = state.tables[0]!;
-    const clean = workerGoal(state, { kind: 'clean', targetId: table.id, remaining: 1 }, layout, home, 0);
-    expect(clean.pos).toEqual({ x: table.pos.x, z: table.pos.z - 0.8 });
+    const clean = workerGoal(state, { kind: 'clean', targetId: table.id, remaining: 1 }, layout, { x: table.pos.x, z: table.pos.z - 0.75 });
+    expect(clean.pos).toEqual({ x: table.pos.x, z: table.pos.z - 0.75 });
+    // Facing +z, toward the table in front of them.
+    expect(clean.face).toBeCloseTo(0);
     const c = addCustomer(state, { state: 'waiting', target: { ...layout.pickup }, pos: { ...layout.pickup } });
     state.orders.push({ id: 900, customerId: c.id, itemId: 'latte', status: 'ready', remaining: 0, staffId: null });
-    const serve = workerGoal(state, { kind: 'serve', targetId: 900, remaining: 1 }, layout, home, 0);
-    expect(serve.pos.x).toBeCloseTo(layout.pickup.x);
-    expect(workerGoal(state, null, layout, home, 0).pos).toEqual(home);
+    const serve = workerGoal(state, { kind: 'serve', targetId: 900, remaining: 1 }, layout, { x: layout.pickup.x - 1, z: layout.pickup.z });
+    expect(serve.face).toBeCloseTo(Math.PI / 2);
+    expect(workerGoal(state, null, layout, spot).pos).toEqual(spot);
+  });
+
+  it('follows the staff spots from the sim over a day, never inside furniture', () => {
+    const state = createNewGame('Test', 'normal', 11);
+    const roles = ['barista', 'server', 'cleaner', 'barista'] as const;
+    state.candidates.slice(0, 4).forEach((c, i) => dispatch(state, { type: 'hire_staff', candidateId: c.id, role: roles[i]! }));
+    dispatch(state, { type: 'start_day' });
+    const layout = getShopLayout(state);
+    const grid = buildNavGrid(layout);
+    for (let f = 0; f < 600 && state.phase !== 'report'; f++) {
+      step(state, 1);
+      for (const s of state.staff) {
+        const goal = workerGoal(state, s.task, layout, s.pos);
+        expect(goal.pos).toEqual(s.pos);
+        expect(isWalkable(grid, goal.pos)).toBe(true);
+      }
+    }
+  });
+
+  it('gives the player a free spot of their own, apart from staff and customers', () => {
+    const state = newState();
+    const layout = getShopLayout(state);
+    const grid = buildNavGrid(layout);
+    const table = state.tables[0]!;
+    state.staff.push({ id: 500, name: 'A', role: 'cleaner', wagePerDay: 1, speed: 1, busy: false, task: null, pos: { x: table.pos.x, z: table.pos.z - 0.75 }, look: 0 });
+    const spots = [
+      playerSpot(state, null, layout),
+      playerSpot(state, { kind: 'brew', targetId: 1, remaining: 1 }, layout),
+      playerSpot(state, { kind: 'take_order', targetId: 1, remaining: 1 }, layout),
+      playerSpot(state, { kind: 'clean', targetId: table.id, remaining: 1 }, layout),
+    ];
+    for (const p of spots) {
+      expect(isWalkable(grid, p)).toBe(true);
+      expect(Math.hypot(p.x - table.pos.x, p.z - (table.pos.z - 0.75))).toBeGreaterThan(0.3);
+    }
+    // Same state, same spot.
+    expect(playerSpot(state, null, layout)).toEqual(spots[0]);
   });
 });
 
-describe('sync: routes', () => {
-  it('walks around the counter and through the door', () => {
+/** Points every 5 cm along the segments of `path` starting at `from`; the last `skip` segments are left out. */
+function samples(from: Vec2, path: readonly Vec2[], skip = 0): Vec2[] {
+  const out: Vec2[] = [];
+  let prev = from;
+  for (let k = 0; k < path.length - skip; k++) {
+    const p = path[k]!;
+    const n = Math.max(1, Math.ceil(Math.hypot(p.x - prev.x, p.z - prev.z) / 0.05));
+    for (let s = 0; s <= n; s++) out.push({ x: prev.x + ((p.x - prev.x) * s) / n, z: prev.z + ((p.z - prev.z) * s) / n });
+    prev = p;
+  }
+  return out;
+}
+
+/** A shop with every table, the patio, the expansion and plants bought. */
+function fullShop(): GameState {
+  const state = newState();
+  state.money = 1e10;
+  for (const id of ['tables', 'outdoor_seating', 'expand_area', 'plants', 'big_counter', 'fast_machine'] as const) {
+    while (nextUpgradeCost(state, id) !== null) expect(buyUpgrade(state, id).ok).toBe(true);
+  }
+  return state;
+}
+
+describe('sync: paths', () => {
+  it('walks from the door to every chair of every table without crossing a blocked cell', () => {
+    for (const state of [newState(), fullShop()]) {
+      const layout = getShopLayout(state);
+      const grid = buildNavGrid(layout);
+      const door = cellCenter(grid, grid.doorOutside);
+      expect(state.tables.length).toBeGreaterThan(0);
+      for (const table of state.tables) {
+        for (const side of [-1, 1]) {
+          const chair = { x: table.pos.x + side * CHAIR_OFFSET, z: table.pos.z };
+          const m = createMotion(door);
+          setGoal(m, chair, layout, true);
+          expect(m.path.at(-1)).toEqual(chair);
+          // All but the last step onto the chair stays on free floor.
+          for (const p of samples(door, m.path, 1)) expect(isWalkable(grid, p)).toBe(true);
+          const before = m.path.at(-2)!;
+          expect(Math.hypot(before.x - chair.x, before.z - chair.z)).toBeLessThan(0.7);
+          // And back out of the door afterwards.
+          m.pos = { ...chair };
+          m.path = [];
+          setGoal(m, exitPoint(layout), layout);
+          const steps = samples(chair, m.path);
+          for (const p of steps.slice(steps.findIndex((q) => isWalkable(grid, q)))) expect(isWalkable(grid, p)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('walks from behind the counter to the room around the counter', () => {
     const layout = getShopLayout(newState());
-    const behind = { x: 0, z: -2.8 };
-    const room = { x: 3, z: 3 };
-    const outside = { x: 2.5, z: 7.8 };
-    expect(regionOf(behind, layout)).toBe('back');
-    expect(regionOf(room, layout)).toBe('front');
-    expect(regionOf(outside, layout)).toBe('out');
-    const toRoom = route(behind, room, layout);
-    expect(toRoom).toHaveLength(2);
-    expect(toRoom[0]!.x).toBeGreaterThan(layout.counter.width / 2);
-    const toPatio = route(room, outside, layout);
-    expect(toPatio.map((p) => p.x)).toEqual([layout.door.x, layout.door.x, outside.x]);
-    expect(route(behind, outside, layout)).toHaveLength(4);
-    expect(route(room, { x: -2, z: 1 }, layout)).toEqual([{ x: -2, z: 1 }]);
+    const grid = buildNavGrid(layout);
+    const behind = { x: layout.counter.pos.x, z: layout.counter.pos.z - 0.75 };
+    const m = createMotion(behind);
+    setGoal(m, { x: 3, z: 2 }, layout);
+    expect(m.path.length).toBeGreaterThan(1);
+    for (const p of samples(behind, m.path)) expect(isWalkable(grid, p)).toBe(true);
+  });
+
+  it('only runs A* when the goal moves', () => {
+    const layout = getShopLayout(newState());
+    const m = createMotion({ x: 0, z: 0 });
+    setGoal(m, { x: 3, z: 2 }, layout);
+    const path = m.path;
+    setGoal(m, { x: 3.01, z: 2 }, layout);
+    expect(m.path).toBe(path);
+  });
+
+  it('ends a walk to a blocked spot next to it, and snaps there', () => {
+    const state = newState();
+    const layout = getShopLayout(state);
+    const grid = buildNavGrid(layout);
+    const table = state.tables[0]!;
+    const m = createMotion({ x: 0, z: 0 });
+    setGoal(m, table.pos, layout);
+    snap(m);
+    expect(isWalkable(grid, m.pos)).toBe(true);
+    expect(Math.hypot(m.pos.x - table.pos.x, m.pos.z - table.pos.z)).toBeLessThan(1.2);
+    // A seat goal snaps right onto the chair.
+    const chair = { x: table.pos.x - CHAIR_OFFSET, z: table.pos.z };
+    setGoal(m, chair, layout, true);
+    snap(m);
+    expect(m.pos).toEqual(chair);
+    expect(m.path).toHaveLength(0);
+  });
+
+  it('hurries along a long path and walks normally on a short one', () => {
+    const layout = getShopLayout(newState());
+    const far = createMotion({ x: -4, z: -0.5 });
+    setGoal(far, exitPoint(layout), layout);
+    expect(remaining(far)).toBeGreaterThan(CATCH_UP_DISTANCE);
+    expect(stepDistance(far, WALK_SPEED, 1)).toBeGreaterThan(WALK_SPEED);
+    const near = createMotion({ x: 3, z: 2 });
+    setGoal(near, { x: 3, z: 2.5 }, layout);
+    expect(stepDistance(near, WALK_SPEED, 1)).toBeCloseTo(WALK_SPEED);
+    expect(stepDistance(near, WALK_SPEED, -1)).toBe(0);
   });
 
   it('advances along the path and reports the walking direction', () => {
     const layout = getShopLayout(newState());
-    const m = createMotion({ x: 0, z: 0 });
-    setGoal(m, { x: 0, z: 3 }, layout);
+    // Along the free aisle between the rows of tables.
+    const m = createMotion({ x: -3, z: 2 });
+    setGoal(m, { x: -1, z: 2 }, layout);
+    expect(m.path).toEqual([{ x: -1, z: 2 }]);
     const dir = { x: 0, z: 0 };
     expect(advance(m, 1, dir)).toBeCloseTo(1);
-    expect(m.pos.z).toBeCloseTo(1);
-    expect(dir).toEqual({ x: 0, z: 1 });
-    expect(advance(m, 10, dir)).toBeCloseTo(2);
+    expect(m.pos.x).toBeCloseTo(-2);
+    expect(dir).toEqual({ x: 1, z: 0 });
+    expect(advance(m, 10, dir)).toBeCloseTo(1);
     expect(m.path).toHaveLength(0);
+  });
+});
+
+describe('sync: separation', () => {
+  it('eases walkers apart without pushing anyone into furniture', () => {
+    const state = fullShop();
+    const layout = getShopLayout(state);
+    const grid = buildNavGrid(layout);
+    // Pairs squeezed together right beside every table, chair and the counter.
+    const pairs: Motion[] = [];
+    for (const table of state.tables) {
+      for (const [x, z] of [
+        [table.pos.x, table.pos.z - 0.75],
+        [table.pos.x, table.pos.z + 0.75],
+        [table.pos.x + 1.25, table.pos.z],
+      ] as const) {
+        const a = nearestFree(grid, { x, z })!;
+        for (const p of [a, { x: a.x + 0.05, z: a.z + 0.02 }]) {
+          const m = createMotion(p);
+          m.path = [{ x: p.x, z: p.z + 5 }];
+          pairs.push(m);
+        }
+      }
+    }
+    const shown = (m: Motion) => ({ x: shownX(m), z: shownZ(m) });
+    const start = pairs.map((m) => ({ ...m.pos }));
+    for (const m of pairs) expect(isWalkable(grid, shown(m))).toBe(true);
+    let parted = 0;
+    for (let k = 0; k < 200; k++) {
+      separate(pairs, pairs.length, grid, 0.05);
+      for (const m of pairs) expect(isWalkable(grid, shown(m))).toBe(true);
+    }
+    for (let i = 0; i < pairs.length; i += 2) {
+      const a = shown(pairs[i]!);
+      const b = shown(pairs[i + 1]!);
+      if (Math.hypot(a.x - b.x, a.z - b.z) > 0.06) parted++;
+    }
+    expect(parted).toBeGreaterThan(0);
+    // Only the drawing moves: everyone is still on their path.
+    pairs.forEach((m, i) => expect(m.pos).toEqual(start[i]));
+    // Once they stop walking, they settle back onto their spot.
+    for (const m of pairs) m.path = [];
+    for (let k = 0; k < 20; k++) separate(pairs, pairs.length, grid, 0.05);
+    for (const m of pairs) expect(m.offset).toEqual({ x: 0, z: 0 });
+  });
+
+  it('parts walkers on the same point, leaves people standing still and stops while paused', () => {
+    const layout = getShopLayout(newState());
+    const grid = buildNavGrid(layout);
+    const a = createMotion({ x: 3, z: 2 });
+    const b = createMotion({ x: 3, z: 2 });
+    const still = createMotion({ x: 3, z: 2.25 });
+    a.path = [{ x: 3, z: 0 }];
+    b.path = [{ x: 3, z: 0 }];
+    const all = [a, b, still];
+    separate(all, 3, grid, 0);
+    expect(a.offset).toEqual({ x: 0, z: 0 });
+    expect(b.offset).toEqual({ x: 0, z: 0 });
+    for (let k = 0; k < 20; k++) separate(all, 3, grid, 0.05);
+    expect(Math.hypot(shownX(a) - shownX(b), shownZ(a) - shownZ(b))).toBeGreaterThan(SEPARATION_RADIUS * 0.9);
+    expect(still.offset).toEqual({ x: 0, z: 0 });
+    for (const m of all) expect(isWalkable(grid, { x: shownX(m), z: shownZ(m) })).toBe(true);
+    // Only the first `count` motions are read.
+    const c = createMotion({ x: -3, z: 2 });
+    const d = createMotion({ x: -3, z: 2 });
+    c.path = [{ x: -3, z: 2.5 }];
+    d.path = [{ x: -3, z: 2.5 }];
+    separate([c, d], 1, grid, 0.1);
+    expect(c.offset).toEqual({ x: 0, z: 0 });
+  });
+
+  it('keeps everyone out of furniture over a busy day', () => {
+    const state = createNewGame('Test', 'normal', 5);
+    const roles = ['barista', 'server', 'cleaner'] as const;
+    state.candidates.slice(0, 3).forEach((c, i) => dispatch(state, { type: 'hire_staff', candidateId: c.id, role: roles[i]! }));
+    state.rating = 5;
+    dispatch(state, { type: 'start_day' });
+    const actors = createActors(new Scene());
+    const grid = buildNavGrid(getShopLayout(state));
+    let checked = 0;
+    for (let f = 0; f < 840 * 4 && state.phase !== 'report'; f++) {
+      step(state, 0.25);
+      actors.update(state, state.tickAccumulator);
+      for (const s of state.staff) {
+        const info = actors.inspect(`s${s.id}`)!;
+        expect(isWalkable(grid, info.pos)).toBe(true);
+        checked++;
+      }
+      for (const c of state.customers) {
+        // Seated customers sit on a chair, which is furniture, and step off it to leave.
+        const standing = c.state === 'queueing' || c.state === 'ordering' || (c.state === 'waiting' && c.tableId === null);
+        const info = actors.inspect(`c${c.id}`);
+        if (!info || !standing) continue;
+        expect(isWalkable(grid, info.pos)).toBe(true);
+        checked++;
+      }
+      state.events.length = 0;
+    }
+    expect(checked).toBeGreaterThan(1000);
+    actors.dispose();
   });
 });
 
@@ -460,9 +693,10 @@ describe('createActors', () => {
   it('picks a queueing customer as take_order', () => {
     const state = newState();
     const actors = createActors(new Scene());
-    const c = addCustomer(state, { pos: { x: 0, z: 1 }, target: { x: 0, z: 1 } });
+    // On free floor between the rows of tables (z = 1 runs through the chairs).
+    const c = addCustomer(state, { pos: { x: 0, z: 2 }, target: { x: 0, z: 2 } });
     actors.update(state, 0);
-    const ray = new Raycaster(new Vector3(0, 10, 1), new Vector3(0, -1, 0));
+    const ray = new Raycaster(new Vector3(0, 10, 2), new Vector3(0, -1, 0));
     expect(actors.pick(ray)).toEqual({ type: 'take_order', customerId: c.id });
     const miss = new Raycaster(new Vector3(-3, 10, 4), new Vector3(0, -1, 0));
     expect(actors.pick(miss)).toBeNull();
