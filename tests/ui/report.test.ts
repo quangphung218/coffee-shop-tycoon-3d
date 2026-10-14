@@ -67,6 +67,11 @@ function text(root: ParentNode, selector: string): string {
   return q(root, selector).textContent ?? '';
 }
 
+/** Icon ids drawn inside `root`, in order ("#i-star"…). */
+function iconsIn(root: Element): string[] {
+  return [...root.querySelectorAll('svg.ic use')].map((u) => u.getAttribute('href') ?? '');
+}
+
 afterEach(() => {
   document.body.replaceChildren();
 });
@@ -80,8 +85,10 @@ describe('Daily Report', () => {
     const result = q(el, '[data-result]');
     expect(result.dataset.result).toBe('profit');
     expect(result.className).not.toMatch(/is-loss|is-none/);
-    expect(result.textContent).toContain('▲ Lãi');
-    expect(result.textContent).toContain('+600.000đ');
+    // Not colour alone: triangle icon, word and sign.
+    expect(iconsIn(result)).toEqual(['#i-trend-up']);
+    expect(text(result, '.rpt-result-label')).toBe('Lãi');
+    expect(text(result, '.rpt-result-value')).toBe('+600.000đ');
 
     const money = text(el, '[data-block="money"]');
     expect(money).toContain('+1.200.000đ');
@@ -102,7 +109,10 @@ describe('Daily Report', () => {
     const rating = text(el, '[data-block="rating"]');
     expect(rating).toContain('3,8');
     expect(rating).toContain('4,0');
-    expect(rating).toContain('▲ +0,2');
+    expect(text(el, '.rpt-delta')).toBe('+0,2');
+    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['#i-trend-up']);
+    expect(iconsIn(q(el, '[data-block="top"] [data-item="latte"]'))).toEqual(['#i-latte']);
+    expect(iconsIn(q(el, '[data-block="tips"] [data-kind="restock"]'))).toEqual(['#i-inventory']);
 
     // The three newest reviews, newest first.
     const recent = [...el.querySelectorAll('[data-block="recent"] .rpt-review-name')].map((n) => n.textContent);
@@ -119,10 +129,12 @@ describe('Daily Report', () => {
     const result = q(el, '[data-result]');
     expect(result.dataset.result).toBe('loss');
     expect(result.classList.contains('is-loss')).toBe(true);
-    expect(result.textContent).toContain('▼ Lỗ');
-    expect(result.textContent).toContain('−500.000đ');
+    expect(iconsIn(result)).toEqual(['#i-trend-down']);
+    expect(text(result, '.rpt-result-label')).toBe('Lỗ');
+    expect(text(result, '.rpt-result-value')).toBe('−500.000đ');
     expect(q(el, '[data-block="money"] .is-total dd').className).toBe('neg');
-    expect(text(el, '[data-block="rating"]')).toContain('▼ −0,2');
+    expect(text(el, '.rpt-delta')).toBe('−0,2');
+    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['#i-trend-down']);
     expect(el.textContent).toContain('mọi thứ ổn');
   });
 
@@ -146,6 +158,7 @@ describe('Daily Report', () => {
     expect(result.dataset.result).toBe('none');
     expect(result.classList.contains('is-none')).toBe(true);
     expect(result.textContent).toContain('Không có khách');
+    expect(iconsIn(result)).toEqual(['#i-people']);
     expect(el.querySelector('[data-block="top"]')).toBeNull();
     expect(el.querySelector('[data-block="out"]')).toBeNull();
     expect(el.querySelector('[data-block="recent"]')).toBeNull();
@@ -171,7 +184,7 @@ describe('Daily Report', () => {
     expect(sent).toEqual([{ type: 'next_day' }]);
 
     const toggle = q<HTMLButtonElement>(el, '[data-action="reviews"]');
-    expect(toggle.textContent).toContain('Xem reviews');
+    expect(toggle.textContent).toBe('Xem đánh giá');
     toggle.click();
     expect(view.tab).toBe('reviews');
     expect(q(el, '#rpt-summary').hidden).toBe(true);
@@ -248,7 +261,8 @@ describe('Reviews', () => {
     const items = [...body.querySelectorAll<HTMLElement>('.rpt-review')];
     expect(items.map((i) => i.querySelector('.rpt-review-name')?.textContent)).toEqual(['Vy', 'Tâm', 'Hoa']);
     expect(items[1]!.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('1 trên 5 sao');
-    expect(items[1]!.querySelector('.star')?.textContent).toBe('★');
+    expect(iconsIn(q(items[1]!, '.rpt-stars'))).toEqual(['#i-star', '#i-star-empty', '#i-star-empty', '#i-star-empty', '#i-star-empty']);
+    expect(iconsIn(q(items[1]!, '[data-reason="long_wait"]'))).toEqual(['#i-thumb-down']);
     expect(items[1]!.querySelector('[data-reason="long_wait"]')?.className).toContain('is-bad');
     expect(items[0]!.querySelector('[data-reason="tasty"]')?.className).toContain('is-good');
     // Summary: "Đồ uống ngon" mentioned twice comes first.
@@ -274,6 +288,98 @@ describe('Reviews', () => {
     } finally {
       off();
     }
+  });
+});
+
+describe('no emoji', () => {
+  // Emoji plus the old symbol glyphs (triangles, circle, stars, arrow, tick).
+  const EMOJI = /\p{Extended_Pictographic}|[▲▼△▽●○★☆→✓✔]/u;
+  const reviews = [review(3, 5, 'tasty', 'A'), review(3, 2, 'long_wait', 'B')];
+  const noCustomers = { revenue: 0, ingredientCost: 0, marketingCost: 0, profit: -200_000, customersArrived: 0, customersServed: 0, customersLost: 0, topSellers: [], outOfStock: [] };
+
+  /** Every text of the overlay, both tabs. */
+  function allText(view: ReturnType<typeof mountReport>['view'], el: HTMLElement): string {
+    view.showTab('reviews');
+    const t = el.textContent ?? '';
+    view.showTab('summary');
+    return t + (el.textContent ?? '');
+  }
+
+  it.each([
+    ['profit', report({ reviews })],
+    ['loss', report({ profit: -500_000, ratingStart: 3.8, ratingEnd: 3.6, reviews })],
+    ['no customers', report(noCustomers)],
+  ] as const)('%s report has icons, no emoji', (_, r) => {
+    const { view, el } = mountReport(atReport(r, [...r.reviews]));
+    expect(allText(view, el)).not.toMatch(EMOJI);
+    expect(el.querySelectorAll('svg.ic').length).toBeGreaterThan(0);
+    expect(iconsIn(q(el, '[data-action="next-day"]'))).toEqual(['#i-next-day']);
+    expect(iconsIn(q(el, '[data-tab="summary"]'))).toEqual(['#i-chart']);
+    expect(iconsIn(q(el, '[data-tab="reviews"]'))).toEqual(['#i-reviews']);
+  });
+
+  it('"Đang tổng kết" shows a busy status and skeleton, no emoji', () => {
+    const state = atReport(report());
+    state.lastReport = null;
+    const { view, el } = mountReport(state);
+    const busy = q(el, '[data-block="busy"]');
+    expect(busy.getAttribute('role')).toBe('status');
+    expect(busy.textContent).toContain('Đang tổng kết ngày 3');
+    expect(iconsIn(busy)).toEqual(['#i-busy']);
+    expect(el.querySelector('[data-result]')).toBeNull();
+    expect(allText(view, el)).not.toMatch(EMOJI);
+  });
+
+  it('autosave failure and success lines use icons, no emoji', () => {
+    const { view, el } = mountReport(atReport(report()), () => ({ day: 3, ok: true, savedAt: Date.UTC(2026, 9, 13, 14) }));
+    const save = q(el, '[data-save]');
+    view.setSaveStatus({ day: 3, ok: false });
+    expect(save.textContent).not.toMatch(EMOJI);
+    expect(iconsIn(save)).toEqual(['#i-warning', '#i-retry']);
+    q<HTMLButtonElement>(save, '[data-action="retry-save"]').click();
+    expect(save.textContent).not.toMatch(EMOJI);
+    expect(iconsIn(save)).toEqual(['#i-ok']);
+  });
+
+  it('reviews panel and its empty state have no emoji', () => {
+    const body = document.createElement('div');
+    document.body.append(body);
+    const state = createNewGame('Quán Thử', 'normal', 1);
+    const handle = renderReviewsPanel(body, { dispatch: () => true, getState: () => state, close: () => {} });
+    expect(iconsIn(q(body, '[data-empty="reviews"]'))).toEqual(['#i-reviews']);
+    expect(body.textContent).not.toMatch(EMOJI);
+    state.reviews = [...reviews];
+    handle.update?.(state);
+    expect(body.textContent).not.toMatch(EMOJI);
+    expect(body.querySelectorAll('.rpt-review-av')).toHaveLength(2);
+  });
+});
+
+describe('report.css', () => {
+  // Vitest stubs .css imports; read the file through a dynamically named node:fs import (see styles.test.ts).
+  // A plain path from the repo root: under jsdom, `URL` is jsdom's and node:fs rejects it.
+  const FS_MODULE = 'node:fs';
+
+  async function css(): Promise<string> {
+    const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as { readFileSync(path: string, encoding: 'utf8'): string };
+    return readFileSync('src/ui/report/report.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  }
+
+  it('draws tab focus inside the border, never as an outer outline', async () => {
+    const src = await css();
+    const focus = src.match(/\.rpt-tab:focus-visible\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(focus).toMatch(/border-color:\s*var\(--focus-ring\)/);
+    expect(focus).toMatch(/outline-offset:\s*calc\(-1 \* \(var\(--bw\) \+ var\(--size-focus-width\)\)\)/);
+    expect(src).not.toMatch(/\.rpt-tab:focus(?!-visible)/);
+  });
+
+  it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {
+    const src = await css();
+    expect(src).toMatch(/\.rpt-dialog\s*\{[^}]*animation:\s*rpt-drop/);
+    expect(src).toMatch(/\.rpt-result\s*\{[^}]*animation:\s*rpt-stamp/);
+    const reduced = src.slice(src.indexOf('prefers-reduced-motion'));
+    expect(reduced).toMatch(/\.rpt-dialog\s*\{[^}]*animation:\s*rpt-fade/);
+    expect(reduced).toMatch(/\.rpt-result\s*\{[^}]*animation:\s*none/);
   });
 });
 

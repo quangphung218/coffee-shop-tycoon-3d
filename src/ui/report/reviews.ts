@@ -1,6 +1,8 @@
 import type { GameState, Review, ReviewReason } from '../../sim/types';
 import { h, setChildren, Watcher } from '../core/dom';
 import { formatRating } from '../core/format';
+import { avatarIcon, REVIEW_REASON_ICONS } from '../core/iconMap';
+import { icon } from '../core/icons';
 import { registerPanel, type PanelContext, type PanelHandle } from '../hud/panels';
 
 /** Chip text for the main reason behind a review; `good` picks the green or red chip. */
@@ -15,29 +17,40 @@ export const REASON_INFO: Readonly<Record<ReviewReason, { label: string; good: b
 
 const MAX_STARS = 5;
 
-/** ★★★★☆ with the number, read as "4 trên 5 sao"; ratings show one decimal ("3,8"). */
-export function starsEl(stars: number, small = true, prefix = ''): HTMLElement {
+/**
+ * Read as "4 trên 5 sao". `row` draws five star icons (filled, then empty) for
+ * a review; otherwise one star and the rating with one decimal ("3,8").
+ */
+export function starsEl(stars: number, row = true, prefix = ''): HTMLElement {
   const full = Math.max(0, Math.min(MAX_STARS, Math.round(stars)));
   const num = Number.isInteger(stars) ? String(stars) : formatRating(stars);
+  const attrs = { role: 'img', 'aria-label': `${prefix}${num} trên 5 sao` };
+  if (!row) return h('span', { class: 'rpt-stars', attrs }, icon('i-star'), h('b', { class: 'rpt-stars-num', text: num }));
   return h(
     'span',
-    { class: `rpt-stars${small ? ' is-sm' : ''}`, attrs: { role: 'img', 'aria-label': `${prefix}${num} trên 5 sao` } },
-    h('span', { class: 'star', text: '★'.repeat(full) }),
-    full < MAX_STARS ? h('span', { class: 'star-empty', text: '★'.repeat(MAX_STARS - full) }) : null,
-    h('span', { class: 'rpt-stars-num', text: num }),
+    { class: 'rpt-stars is-row', attrs },
+    ...Array.from({ length: MAX_STARS }, (_, i) => icon(i < full ? 'i-star' : 'i-star-empty', { size: 16, class: i < full ? 'star' : 'star-empty' })),
   );
 }
 
 function reasonChip(reason: ReviewReason): HTMLElement {
   const info = REASON_INFO[reason];
-  return h('span', { class: `rpt-chip ${info.good ? 'is-good' : 'is-bad'}`, attrs: { 'data-reason': reason } }, `${info.good ? '👍' : '👎'} ${info.label}`);
+  return h('span', { class: `rpt-chip ${info.good ? 'is-good' : 'is-bad'}`, attrs: { 'data-reason': reason } }, icon(REVIEW_REASON_ICONS[reason], { size: 16 }), info.label);
 }
 
-/** One review card: author, stars, day, quote and the reason chip. */
+/** Same author → same avatar look. */
+function authorLook(author: string): number {
+  let n = 0;
+  for (const ch of author) n = (n * 31 + (ch.codePointAt(0) ?? 0)) % 9973;
+  return n;
+}
+
+/** One review card: avatar, author, stars, day, quote and the reason chip. */
 export function reviewItem(review: Review): HTMLLIElement {
   return h(
     'li',
     { class: 'rpt-review', attrs: { 'data-stars': review.stars } },
+    avatarIcon(authorLook(review.author), { size: 32, class: 'rpt-review-av' }),
     h('div', { class: 'rpt-review-head' }, h('span', { class: 'rpt-review-name', text: review.author }), starsEl(review.stars), h('span', { class: 'rpt-review-time', text: `Ngày ${review.day}` })),
     h('p', { text: `"${review.text}"` }),
     review.reason ? h('div', { class: 'rpt-chips' }, reasonChip(review.reason)) : null,
@@ -49,7 +62,7 @@ export function newestFirst(reviews: readonly Review[], limit = reviews.length):
   return reviews.slice(-limit).reverse();
 }
 
-/** "👍 Đồ uống ngon · 7" chips for the reasons customers gave, most mentioned first. */
+/** "Đồ uống ngon · 7" chips for the reasons customers gave, most mentioned first. */
 export function reasonSummary(reviews: readonly Review[]): { reason: ReviewReason; count: number }[] {
   const counts = new Map<ReviewReason, number>();
   for (const r of reviews) if (r.reason) counts.set(r.reason, (counts.get(r.reason) ?? 0) + 1);
@@ -61,7 +74,7 @@ export function reviewsEmpty(action?: HTMLElement): HTMLElement {
   return h(
     'div',
     { class: 'rpt-empty', attrs: { 'data-empty': 'reviews' } },
-    h('span', { class: 'rpt-empty-icon', attrs: { 'aria-hidden': 'true' }, text: '💬' }),
+    icon('i-reviews', { size: 48, class: 'rpt-empty-icon' }),
     h('p', { class: 'rpt-strong', text: 'Chưa có đánh giá nào' }),
     h('p', { class: 'rpt-muted', text: 'Khách chỉ viết đánh giá sau khi được phục vụ xong hoặc khi bỏ đi. Phục vụ khách đầu tiên để thấy họ nói gì.' }),
     action ?? null,
