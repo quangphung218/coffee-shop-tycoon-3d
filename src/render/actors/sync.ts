@@ -207,10 +207,12 @@ export interface Motion {
   end: Vec2 | null;
   /** Drawn this far from `pos` so walkers do not overlap (see separate); 0 once they stand still. */
   offset: Vec2;
+  /** Walking speed right now, in world units per game minute (see easedStep). */
+  speed: number;
 }
 
 export function createMotion(pos: Vec2): Motion {
-  return { pos: { x: pos.x, z: pos.z }, path: [], goal: null, end: null, offset: { x: 0, z: 0 } };
+  return { pos: { x: pos.x, z: pos.z }, path: [], goal: null, end: null, offset: { x: 0, z: 0 }, speed: 0 };
 }
 
 /**
@@ -229,8 +231,9 @@ export function setGoal(m: Motion, goal: Vec2, layout: ShopLayout, seat = false)
   const cell = cellAt(grid, m.pos);
   const centre = cell >= 0 && grid.blocked[cell] === 0 ? cellCenter(grid, cell) : null;
   const from = centre && dist(centre, m.pos) > 1e-6 ? centre : m.pos;
-  const path = findPath(grid, from, goal) ?? [{ x: goal.x, z: goal.z }];
-  if (from !== m.pos) path.unshift(from);
+  const found = findPath(grid, from, goal) ?? [{ x: goal.x, z: goal.z }];
+  if (from !== m.pos) found.unshift(from);
+  const path = roundCorners(grid, m.pos, found);
   const end = path[path.length - 1]!;
   if (seat && dist(end, goal) > 1e-6) path.push({ x: goal.x, z: goal.z });
   m.path = path;
@@ -242,8 +245,85 @@ export function snap(m: Motion): void {
   const end = m.end ?? m.goal;
   if (end) m.pos = { x: end.x, z: end.z };
   m.path = [];
+  m.speed = 0;
   m.offset.x = 0;
   m.offset.z = 0;
+}
+
+/** Corners of a walk are rounded with at most this radius, in world units. */
+export const CORNER_RADIUS = 0.35;
+/** Segments of each rounded corner. */
+const CORNER_STEPS = 6;
+/** Spacing of the floor checks along a rounded corner. */
+const CORNER_CHECK = 0.01;
+/** Turns flatter than this (cosine) are left as they are. */
+const STRAIGHT = 0.995;
+const MIN_CORNER = 0.02;
+
+/** True when every point every CORNER_CHECK along a → b is walkable. */
+function clearLine(grid: NavGrid, ax: number, az: number, bx: number, bz: number): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / CORNER_CHECK));
+  for (let k = 0; k <= n; k++) {
+    probe.x = ax + ((bx - ax) * k) / n;
+    probe.z = az + ((bz - az) * k) / n;
+    if (!isWalkable(grid, probe)) return false;
+  }
+  return true;
+}
+
+/**
+ * The walk from `start` along `path` with each corner swapped for a
+ * quadratic Bézier arc: from CORNER_RADIUS before the corner (never more
+ * than half of either side) to as far after it, the corner as control point.
+ * A corner stays sharp when any point along its arc would be off free floor.
+ * The last point (the goal) is kept as it is. Returns a new array.
+ */
+export function roundCorners(grid: NavGrid, start: Vec2, path: readonly Vec2[]): Vec2[] {
+  const out: Vec2[] = [];
+  let prev = start;
+  for (let i = 0; i < path.length; i++) {
+    const c = path[i]!;
+    const next = path[i + 1];
+    if (next && !roundCorner(grid, prev, c, next, out)) out.push(c);
+    else if (!next) out.push(c);
+    prev = c;
+  }
+  return out;
+}
+
+/** Pushes the arc rounding corner c (from a, on to b) onto `out`; false when it does not fit. */
+function roundCorner(grid: NavGrid, a: Vec2, c: Vec2, b: Vec2, out: Vec2[]): boolean {
+  const inLen = dist(a, c);
+  const outLen = dist(c, b);
+  const r = Math.min(CORNER_RADIUS, inLen / 2, outLen / 2);
+  if (r < MIN_CORNER) return false;
+  const ix = (c.x - a.x) / inLen;
+  const iz = (c.z - a.z) / inLen;
+  const ox = (b.x - c.x) / outLen;
+  const oz = (b.z - c.z) / outLen;
+  if (ix * ox + iz * oz > STRAIGHT) return false;
+  const p0x = c.x - ix * r;
+  const p0z = c.z - iz * r;
+  const p2x = c.x + ox * r;
+  const p2z = c.z + oz * r;
+  let px = p0x;
+  let pz = p0z;
+  for (let k = 1; k <= CORNER_STEPS; k++) {
+    const t = k / CORNER_STEPS;
+    const u = 1 - t;
+    const x = u * u * p0x + 2 * u * t * c.x + t * t * p2x;
+    const z = u * u * p0z + 2 * u * t * c.z + t * t * p2z;
+    if (!clearLine(grid, px, pz, x, z)) return false;
+    px = x;
+    pz = z;
+  }
+  out.push({ x: p0x, z: p0z });
+  for (let k = 1; k <= CORNER_STEPS; k++) {
+    const t = k / CORNER_STEPS;
+    const u = 1 - t;
+    out.push({ x: u * u * p0x + 2 * u * t * c.x + t * t * p2x, z: u * u * p0z + 2 * u * t * c.z + t * t * p2z });
+  }
+  return true;
 }
 
 export function remaining(m: Motion): number {
@@ -261,6 +341,77 @@ export function stepDistance(m: Motion, speed: number, dtMinutes: number): numbe
   const left = remaining(m);
   const hurry = left > CATCH_UP_DISTANCE ? Math.min(MAX_CATCH_UP, left / CATCH_UP_DISTANCE) : 1;
   return speed * hurry * Math.max(0, dtMinutes);
+}
+
+/** Game minutes to get from standing to full speed: 0.25 s at 1× (2 game minutes per second). */
+export const ACCEL_MINUTES = 0.5;
+/** People slow down over the last this much of their walk. */
+export const BRAKE_DISTANCE = 0.6;
+/** Share of the walking speed kept at the very end of a walk, so it still ends. */
+const MIN_BRAKE = 0.25;
+
+/**
+ * Distance to cover this frame with easing: speeds up from standing over
+ * ACCEL_MINUTES toward stepDistance's speed (catch-up included), and slows
+ * down over the last BRAKE_DISTANCE. Keeps `m.speed` across frames; a
+ * paused frame keeps it, a finished walk drops it to 0.
+ */
+export function easedStep(m: Motion, speed: number, dtMinutes: number): number {
+  if (m.path.length === 0) {
+    m.speed = 0;
+    return 0;
+  }
+  const dt = Math.max(0, dtMinutes);
+  if (dt === 0) return 0;
+  const cruise = stepDistance(m, speed, 1);
+  const left = remaining(m);
+  const brake = left < BRAKE_DISTANCE ? speed * Math.max(MIN_BRAKE, Math.sqrt(left / BRAKE_DISTANCE)) : cruise;
+  m.speed = Math.min(cruise, brake, m.speed + (cruise / ACCEL_MINUTES) * dt);
+  return m.speed * dt;
+}
+
+/**
+ * Writes into `out` the direction from m.pos toward the point `ahead`
+ * further along the path, so the body faces where the walk is going
+ * rather than the segment underfoot. False when there is no path left.
+ */
+export function lookAhead(m: Motion, ahead: number, out: { x: number; z: number }): boolean {
+  let left = ahead;
+  let px = m.pos.x;
+  let pz = m.pos.z;
+  for (let i = 0; i < m.path.length && left > 0; i++) {
+    const p = m.path[i]!;
+    const d = Math.hypot(p.x - px, p.z - pz);
+    if (d >= left) {
+      px += ((p.x - px) / d) * left;
+      pz += ((p.z - pz) / d) * left;
+      left = 0;
+    } else {
+      px = p.x;
+      pz = p.z;
+      left -= d;
+    }
+  }
+  const dx = px - m.pos.x;
+  const dz = pz - m.pos.z;
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-6) return false;
+  out.x = dx / len;
+  out.z = dz / len;
+  return true;
+}
+
+/** Fastest turn, in radians per second. */
+export const MAX_TURN_SPEED = 10;
+/** Rate of the eased turn toward the target heading (per second). */
+const TURN_EASE = 12;
+
+/** Heading after turning from `heading` toward `target` for `dt` seconds: eased, never faster than MAX_TURN_SPEED. */
+export function turnToward(heading: number, target: number, dt: number): number {
+  const t = Math.max(0, dt);
+  const eased = angleDelta(heading, target) * (1 - Math.exp(-TURN_EASE * t));
+  const max = MAX_TURN_SPEED * t;
+  return heading + Math.min(max, Math.max(-max, eased));
 }
 
 /**
