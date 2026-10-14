@@ -325,7 +325,13 @@ async function drawGlowPair({ day, evening, eveningLater, dayTitle, eveningTitle
   const dist = (s) => Math.hypot(s.cx - sign.cx, s.cy - sign.cy);
   const door = sign && spots.filter((s) => !s.kind && s.cy > sign.cy && dist(s) < 150).sort((a, b) => dist(a) - dist(b))[0];
   if (door) door.kind = 'door';
-  for (const s of spots) s.kind ??= small(s) ? 'pendant' : 'window';
+  for (const s of spots) if (!s.kind && small(s)) s.kind = 'pendant';
+  // Pendants hang in a row over the counter: a spot right by one is another.
+  const lamps = spots.filter((s) => s.kind === 'pendant');
+  for (const s of spots) {
+    if (!s.kind && lamps.some((p) => Math.hypot(p.cx - s.cx, p.cy - s.cy) < 90)) s.kind = 'pendant';
+  }
+  for (const s of spots) s.kind ??= 'window';
 
   // Layout: two panels at 3/4 size, a title over each and a legend below.
   const SCALE = 0.75;
@@ -379,13 +385,21 @@ async function drawGlowPair({ day, evening, eveningLater, dayTitle, eveningTitle
   const ev = panels[1];
   ctx.font = '700 17px Nunito, system-ui, sans-serif';
   const placed = [];
+  const boxes = [];
+  const clash = (a) => boxes.some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h);
   for (const s of [...spots].sort((a, b) => b.count - a.count)) {
     const { label, color } = KINDS[s.kind];
     if (placed.some((q) => q.kind === s.kind && Math.hypot(q.cx - s.cx, q.cy - s.cy) < 160)) continue;
-    placed.push(s);
     const tw = ctx.measureText(label).width + 18;
     const lx = Math.min(ev.x + pw - tw - 4, Math.max(ev.x + 4, ev.x + s.cx * SCALE - tw / 2));
-    const ly = Math.max(top + 4, top + (s.y - 14) * SCALE - 28);
+    // Above the ring, else below it; a label that would cover another is left out (the legend still names the colour).
+    const above = { x: lx, y: Math.max(top + 4, top + (s.y - 14) * SCALE - 28), w: tw, h: 26 };
+    const below = { x: lx, y: Math.min(top + ph - 30, top + (s.y + s.h + 14) * SCALE + 2), w: tw, h: 26 };
+    const spot = !clash(above) ? above : !clash(below) ? below : null;
+    if (!spot) continue;
+    placed.push(s);
+    boxes.push(spot);
+    const ly = spot.y;
     ctx.beginPath();
     ctx.roundRect(lx, ly, tw, 26, 13);
     ctx.fillStyle = color;
