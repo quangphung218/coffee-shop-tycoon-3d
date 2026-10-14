@@ -196,17 +196,23 @@ export function createHud(actions: HudActions): Hud {
     },
   );
 
-  // A tick replaces the camera icon for a moment after a reset.
+  // After a reset the button shows a tick and "Đã đặt lại" for a moment, and a
+  // polite live region says it in words; both go back afterwards.
   let resetTimer: ReturnType<typeof setTimeout> | null = null;
+  const resetLive = h('span', { class: 'sr-only', attrs: { 'aria-live': 'polite', 'data-live': 'camera' } });
   const resetBtn = h('button', {
     class: 'hud-btn',
     attrs: { type: 'button', 'aria-label': 'Đặt lại camera (Home)' },
     on: {
       click: () => {
         actions.onResetCamera();
-        setChildren(resetBtn, icon('i-check'));
+        setChildren(resetBtn, icon('i-check'), h('span', { text: 'Đã đặt lại', attrs: { 'aria-hidden': 'true' } }));
+        resetLive.textContent = 'Đã đặt lại camera.';
         if (resetTimer) clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => setChildren(resetBtn, icon('i-camera')), 1500);
+        resetTimer = setTimeout(() => {
+          setChildren(resetBtn, icon('i-camera'));
+          resetLive.textContent = '';
+        }, 1500);
       },
     },
   });
@@ -260,11 +266,14 @@ export function createHud(actions: HudActions): Hud {
     return [...dock.querySelectorAll<HTMLElement>('[data-panel]')].find((b) => b.dataset.panel === id) ?? null;
   }
 
+  // Badge counts per dock button; rebuilt with the dock, run every frame.
+  let dockWatch = new Watcher<GameState>();
   function renderDock(): void {
+    dockWatch = new Watcher<GameState>();
     setChildren(
       dock,
-      ...listPanels().map((p) =>
-        h(
+      ...listPanels().map((p) => {
+        const btn = h(
           'button',
           {
             class: 'dock-btn',
@@ -273,9 +282,24 @@ export function createHud(actions: HudActions): Hud {
           },
           icon(p.icon, { size: 32 }),
           h('span', { text: p.label }),
-        ),
-      ),
+        );
+        const count = p.badge;
+        if (count) {
+          // The number is drawn for the eye; the name says it in words.
+          const spoken = h('span', { class: 'sr-only' });
+          const badge = h('span', { class: 'dock-badge', hidden: true, attrs: { 'aria-hidden': 'true' } });
+          btn.append(spoken, badge);
+          dockWatch.watch(count, (n) => {
+            badge.textContent = n > 0 ? String(n) : '';
+            badge.hidden = n <= 0;
+            spoken.textContent = n > 0 ? `, ${n} mục cần chú ý` : '';
+          });
+        }
+        return btn;
+      }),
     );
+    const state = actions.getState();
+    if (state) dockWatch.run(state);
   }
   // Buttons stay in place while panels open and close, so focus can return to them.
   function syncPressed(): void {
@@ -344,6 +368,7 @@ export function createHud(actions: HudActions): Hud {
       settingsBtn,
     ),
     note,
+    resetLive,
   );
   const el = h('div', { class: 'hud-layer', hidden: true }, bar, dock);
 
@@ -352,6 +377,7 @@ export function createHud(actions: HudActions): Hud {
     panelEl,
     update(state) {
       w.run(state);
+      dockWatch.run(state);
       handle?.update?.(state);
     },
     openPanel: (id) => openPanel(id),
