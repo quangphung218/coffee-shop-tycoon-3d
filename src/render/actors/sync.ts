@@ -1,3 +1,4 @@
+import { CHAIR_OFFSET } from '../../sim/nav/footprints';
 import type { Customer, CustomerState, GameState, StaffTask, StaffTaskKind, Vec2 } from '../../sim/types';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { AnimName } from './animations';
@@ -19,8 +20,6 @@ export const FACE_BACK = Math.PI;
 /** Heading that faces +z: from behind the counter toward the room. */
 export const FACE_FRONT = 0;
 
-/** Chairs stand this far from the table centre on the x axis (matches the shop's CHAIR_OFFSET). */
-export const CHAIR_OFFSET = 0.75;
 /** Walking speeds in world units per game minute. */
 export const WALK_SPEED = 3.5;
 export const ANGRY_SPEED = 5.5;

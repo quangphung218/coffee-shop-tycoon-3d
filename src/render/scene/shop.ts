@@ -18,6 +18,32 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { UPGRADES } from '../../sim/data/upgrades';
+import {
+  BACK_COUNTER_DEPTH,
+  BACK_COUNTER_TOP_DEPTH,
+  BACK_COUNTER_TOP_EXTRA,
+  BACK_COUNTER_Z,
+  CHAIR_OFFSET,
+  CHAIR_SIZE,
+  COUNTER_DEPTH,
+  COUNTER_TOP_DEPTH,
+  COUNTER_TOP_EXTRA,
+  DOOR_FRAME_DEPTH,
+  DOOR_LEAF_THICKNESS,
+  DOOR_LEAF_WIDTH,
+  DOOR_LEAF_X,
+  DOOR_LEAF_YAW,
+  DOOR_LEAF_Z,
+  DOOR_POST_WIDTH,
+  DOOR_WIDTH,
+  MACHINE_SIZE,
+  PARASOL_POLE_RADIUS,
+  PLANT_RADIUS,
+  TABLE_RADIUS,
+  WALL_THICKNESS,
+  backCounterSpan,
+  wallSpans,
+} from '../../sim/nav/footprints';
 import { getShopLayout, type Area, type LayoutMachine, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
 
@@ -60,13 +86,9 @@ const MACHINE_TIERS: readonly (readonly [number, number])[] = [
 
 const WALL_HEIGHT = 2.2;
 const WALL_LOW = 0.35;
-const WALL_THICKNESS = 0.2;
-const DOOR_WIDTH = 1.6;
 const COUNTER_HEIGHT = 1;
 const BACK_COUNTER_HEIGHT = 0.9;
-const BACK_COUNTER_Z = -3.4;
 const TABLE_TOP_Y = 0.78;
-const CHAIR_OFFSET = 0.75;
 const MAX_CUPS_PER_TABLE = 3;
 const CUP_SPOTS: readonly (readonly [number, number])[] = [
   [-0.18, 0.12],
@@ -126,7 +148,7 @@ function cyl(rTop: number, rBottom: number, h: number, segments = 8): CylinderGe
 
 function tableGeometry(): BufferGeometry {
   return merge([
-    part(cyl(0.5, 0.5, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0),
+    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0),
     part(cyl(0.06, 0.06, TABLE_TOP_Y - 0.08, 6), PALETTE.woodDark, 0, (TABLE_TOP_Y - 0.08) / 2, 0),
     part(cyl(0.28, 0.3, 0.04, 8), PALETTE.woodDark, 0, 0.02, 0),
   ]);
@@ -145,14 +167,14 @@ function chairGeometry(): BufferGeometry {
   }
   return merge([
     ...legs,
-    part(box(0.44, 0.07, 0.44), PALETTE.mint, 0, 0.45, 0),
-    part(box(0.44, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2),
+    part(box(CHAIR_SIZE, 0.07, CHAIR_SIZE), PALETTE.mint, 0, 0.45, 0),
+    part(box(CHAIR_SIZE, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2),
   ]);
 }
 
 function parasolGeometry(): BufferGeometry {
   return merge([
-    part(cyl(0.03, 0.03, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
+    part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
     part(new ConeGeometry(1.1, 0.45, 8), PALETTE.coral, 0, 2.15, 0),
     part(cyl(0.08, 0.08, 0.1, 6), PALETTE.cream, 0, 2.42, 0),
   ]);
@@ -176,7 +198,7 @@ function cupGeometry(): BufferGeometry {
 function plantGeometry(): BufferGeometry {
   return merge([
     part(cyl(0.25, 0.18, 0.45, 8), PALETTE.pot, 0, 0.225, 0),
-    part(new IcosahedronGeometry(0.42, 0), PALETTE.plant, 0, 0.85, 0),
+    part(new IcosahedronGeometry(PLANT_RADIUS, 0), PALETTE.plant, 0, 0.85, 0),
     part(new IcosahedronGeometry(0.28, 0), PALETTE.plantDark, 0.15, 1.2, 0.05),
   ]);
 }
@@ -205,7 +227,7 @@ function machineGeometry(m: LayoutMachine): BufferGeometry {
   if (m.kind === 'espresso') {
     parts.push(
       part(box(0.9, 0.6, 0.55), body, 0, y + 0.3, 0),
-      part(box(0.96, 0.08, 0.6), accent, 0, y + 0.64, 0),
+      part(box(MACHINE_SIZE.espresso.width, 0.08, MACHINE_SIZE.espresso.depth), accent, 0, y + 0.64, 0),
       part(box(0.8, 0.05, 0.25), accent, 0, y + 0.03, 0.3),
       part(cyl(0.06, 0.06, 0.12, 6), accent, -0.2, y + 0.38, 0.32),
       part(cyl(0.06, 0.06, 0.12, 6), accent, 0.2, y + 0.38, 0.32),
@@ -217,7 +239,7 @@ function machineGeometry(m: LayoutMachine): BufferGeometry {
   } else {
     parts.push(
       part(box(0.6, 0.9, 0.5), 0x5b8def, 0, y + 0.45, 0),
-      part(box(0.64, 0.06, 0.54), accent, 0, y + 0.93, 0),
+      part(box(MACHINE_SIZE.fast.width, 0.06, MACHINE_SIZE.fast.depth), accent, 0, y + 0.93, 0),
       part(box(0.3, 0.12, 0.12), accent, 0, y + 0.5, 0.3),
       part(new ConeGeometry(0.18, 0.3, 8), body, 0, y + 1.11, 0, 0, Math.PI),
       part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, 0, y + 0.06, 0.3),
@@ -228,8 +250,8 @@ function machineGeometry(m: LayoutMachine): BufferGeometry {
 
 function counterGeometry(width: number, level: number): BufferGeometry {
   const parts = [
-    part(box(width, COUNTER_HEIGHT - 0.06, 0.8), PALETTE.wood, 0, (COUNTER_HEIGHT - 0.06) / 2, 0),
-    part(box(width + 0.12, 0.06, 0.92), PALETTE.woodDark, 0, COUNTER_HEIGHT - 0.03, 0),
+    part(box(width, COUNTER_HEIGHT - 0.06, COUNTER_DEPTH), PALETTE.wood, 0, (COUNTER_HEIGHT - 0.06) / 2, 0),
+    part(box(width + COUNTER_TOP_EXTRA, 0.06, COUNTER_TOP_DEPTH), PALETTE.woodDark, 0, COUNTER_HEIGHT - 0.03, 0),
     part(box(width - 0.2, 0.12, 0.04), level >= 1 ? PALETTE.gold : PALETTE.cream, 0, 0.55, 0.41),
     // Cash register at the right end.
     part(box(0.45, 0.25, 0.35), 0x3b2418, width / 2 - 0.4, COUNTER_HEIGHT + 0.125, 0),
@@ -248,19 +270,19 @@ function backCounterGeometry(minX: number, maxX: number): BufferGeometry {
   const w = maxX - minX;
   const cx = (minX + maxX) / 2;
   return merge([
-    part(box(w, BACK_COUNTER_HEIGHT - 0.05, 0.7), PALETTE.wood, cx, (BACK_COUNTER_HEIGHT - 0.05) / 2, 0),
-    part(box(w + 0.08, 0.05, 0.76), PALETTE.cream, cx, BACK_COUNTER_HEIGHT - 0.025, 0),
+    part(box(w, BACK_COUNTER_HEIGHT - 0.05, BACK_COUNTER_DEPTH), PALETTE.wood, cx, (BACK_COUNTER_HEIGHT - 0.05) / 2, 0),
+    part(box(w + BACK_COUNTER_TOP_EXTRA, 0.05, BACK_COUNTER_TOP_DEPTH), PALETTE.cream, cx, BACK_COUNTER_HEIGHT - 0.025, 0),
   ]);
 }
 
 function doorGeometry(): BufferGeometry {
   const half = DOOR_WIDTH / 2;
   return merge([
-    part(box(0.14, WALL_HEIGHT, 0.26), PALETTE.woodDark, -half, WALL_HEIGHT / 2, 0),
-    part(box(0.14, WALL_HEIGHT, 0.26), PALETTE.woodDark, half, WALL_HEIGHT / 2, 0),
-    part(box(DOOR_WIDTH + 0.14, 0.18, 0.26), PALETTE.woodDark, 0, WALL_HEIGHT - 0.09, 0),
+    part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, -half, WALL_HEIGHT / 2, 0),
+    part(box(DOOR_POST_WIDTH, WALL_HEIGHT, DOOR_FRAME_DEPTH), PALETTE.woodDark, half, WALL_HEIGHT / 2, 0),
+    part(box(DOOR_WIDTH + DOOR_POST_WIDTH, 0.18, DOOR_FRAME_DEPTH), PALETTE.woodDark, 0, WALL_HEIGHT - 0.09, 0),
     // Door leaf swung open inward.
-    part(box(0.72, 1.95, 0.06), PALETTE.mint, -half + 0.1, 0.99, -0.36, Math.PI / 2 - 0.35),
+    part(box(DOOR_LEAF_WIDTH, 1.95, DOOR_LEAF_THICKNESS), PALETTE.mint, -half + DOOR_LEAF_X, 0.99, DOOR_LEAF_Z, DOOR_LEAF_YAW),
     // Awning over the entrance.
     part(box(DOOR_WIDTH + 1.4, 0.08, 1.1), PALETTE.coral, 0, WALL_HEIGHT + 0.05, 0.55, 0, 0.3),
     part(box(DOOR_WIDTH + 1.4, 0.2, 0.04), PALETTE.cream, 0, WALL_HEIGHT - 0.18, 1.07),
@@ -520,17 +542,7 @@ export class ShopView {
     const minZ = indoor.minZ;
     const maxZ = indoor.maxZ;
     const t = WALL_THICKNESS;
-    const doorL = door.x - DOOR_WIDTH / 2;
-    const doorR = door.x + DOOR_WIDTH / 2;
-    // [cx, cz, length along x, length along z]
-    const spans: readonly (readonly [number, number, number, number])[] = [
-      [(minX + maxX) / 2, minZ - t / 2, maxX - minX + 2 * t, t],
-      [minX - t / 2, (minZ + maxZ) / 2, t, maxZ - minZ],
-      [maxX + t / 2, (minZ + maxZ) / 2, t, maxZ - minZ],
-      [(minX - t + doorL) / 2, maxZ + t / 2, doorL - minX + t, t],
-      [(doorR + maxX + t) / 2, maxZ + t / 2, maxX + t - doorR, t],
-    ];
-    spans.forEach(([cx, cz, sx, sz], i) => {
+    wallSpans(layout).forEach(([cx, cz, sx, sz], i) => {
       const wall = this.walls[i]!;
       wall.mesh.position.set(cx, wall.height / 2, cz);
       wall.mesh.scale.set(sx, wall.height, sz);
@@ -573,19 +585,16 @@ export class ShopView {
     if (sig === this.machineSig) return;
     this.machineSig = sig;
     this.clearMachines();
-    let minX = Infinity;
-    let maxX = -Infinity;
     for (const m of layout.machines) {
       const mesh = new Mesh(machineGeometry(m), SHARED_MATERIAL);
       mesh.position.set(m.pos.x, 0, m.pos.z);
       mesh.castShadow = true;
       mesh.userData.pick = 'machine';
       this.machines.add(mesh);
-      minX = Math.min(minX, m.pos.x);
-      maxX = Math.max(maxX, m.pos.x);
     }
-    if (layout.machines.length === 0) return;
-    const geo = backCounterGeometry(minX - 1, maxX + 1.2);
+    const span = backCounterSpan(layout);
+    if (!span) return;
+    const geo = backCounterGeometry(span.minX, span.maxX);
     if (this.backCounter) {
       this.backCounter.geometry.dispose();
       this.backCounter.geometry = geo;
