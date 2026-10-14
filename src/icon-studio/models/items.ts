@@ -137,7 +137,8 @@ export function cake(): Group {
   const top = 0.14 + 0.42 + 0.18 + 0.42;
   const cherry = at(part(new SphereGeometry(0.22, 10, 8), 'coral'), 0.35, top + 0.2);
   const g = group(saucer(0.95), layer(0.14, 0.42, 'cream'), layer(0.56, 0.18, 'coral'), layer(0.74, 0.42, 'cream'), cherry);
-  return facing(g, -0.9);
+  // Long side to the camera so the layers show; end-on the wedge looks tiny.
+  return facing(g, 0.2);
 }
 
 // Ingredients
