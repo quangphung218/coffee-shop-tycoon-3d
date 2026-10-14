@@ -316,10 +316,11 @@ async function drawGlowPair({ day, evening, eveningLater, dayTitle, eveningTitle
   }
 
   // The sign is the palest (most blue) large spot; the door glass is the
-  // nearest spot under it, small or not; other small spots are bulbs; the
-  // rest of the glass is windows.
-  const small = (s) => s.count < 80 && s.w <= 24 && s.h <= 24;
-  const sign = spots.filter((s) => !small(s) && s.b >= 150).sort((a, b) => b.b - a.b)[0];
+  // nearest spot under it, small or not. Pendant lamps (bulb and lit shade)
+  // are small or wider than tall; wall windows are taller than wide. A spot
+  // cut by the frame edge keeps the window reading.
+  const small = (s) => (s.count < 80 && s.w <= 24 && s.h <= 24) || (s.w > s.h && s.x > 0 && s.y > 0 && s.x + s.w < w && s.y + s.h < h);
+  const sign = spots.filter((s) => s.count >= 80 && s.b >= 150).sort((a, b) => b.b - a.b)[0];
   if (sign) sign.kind = 'sign';
   const dist = (s) => Math.hypot(s.cx - sign.cx, s.cy - sign.cy);
   const door = sign && spots.filter((s) => !s.kind && s.cy > sign.cy && dist(s) < 150).sort((a, b) => dist(a) - dist(b))[0];
