@@ -134,6 +134,33 @@ Mỗi slot là JSON:
 
 ## Mẹo hiệu năng
 
+### Khởi động
+
+1. `index.html` vẽ màn hình chờ `#boot` (CSS thuần, thanh tiến độ chạy bằng animation) ngay khi trang tải, trước khi có JS.
+2. Chunk chính (UI, sim, save, audio) chạy `createShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`.
+3. `main.ts` gọi `import('./render/scene')` ngay đầu `start()`. Sau khi menu đã vẽ, `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
+
+Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`, `src/save`: làm vậy kéo three.js trở lại chunk chính.
+
+| Chunk (`npm run build`) | Raw | Gzip | Tải khi |
+| --- | --- | --- | --- |
+| `index-*.js` (chunk chính) | 107,7 kB | 36,8 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 36,1 kB | 5,9 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 51,5 kB | 19,5 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 495,1 kB | 124,2 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+
+Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 36,8 kB gzip.
+
+Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
+
+```sh
+node scripts/measure-startup.mjs --base <git-ref> --runs 3
+```
+
+Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless không cache, in bảng kích thước chunk và trung vị thời gian tới first paint, Main Menu và cảnh 3D, ở hai cấu hình: máy bàn không giới hạn và di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần).
+
+### Khi chơi
+
 - UI dựng DOM một lần bằng `h()` và cập nhật qua `Watcher` (`src/ui/core/dom.ts`); khung hình không đổi gì thì không chạm DOM. Daily Report chỉ dựng lại khi `state.lastReport` đổi.
 - Bàn, ghế, đồ trang trí trong quán và nhà, cây, đèn ngoài phố dùng `InstancedMesh` với vật liệu dùng chung.
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.

@@ -18,6 +18,8 @@ npm run preview    # mở bản build ở http://localhost:4173
 
 `vite.config.ts` đặt `base: './'` nên `dist/` chạy được ở mọi đường dẫn con, kể cả `https://<owner>.github.io/<repo>/`.
 
+Đo tốc độ mở trang của bản build: xem [Kiến trúc → Khởi động](architecture.md#khởi-động).
+
 ## Deploy
 
 ```sh

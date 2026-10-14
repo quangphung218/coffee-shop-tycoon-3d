@@ -19,6 +19,11 @@
         width: 100%;
         height: 100%;
         display: block;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+      }
+      #scene.is-ready {
+        opacity: 1;
       }
       #ui {
         position: fixed;
@@ -28,9 +33,89 @@
       #ui > * {
         pointer-events: auto;
       }
+      /* Loading screen: plain CSS, painted before any JS arrives; main.ts fades it out. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        background: #f6e7d2;
+        color: #3b2418;
+        transition: opacity 0.3s ease;
+      }
+      #boot.is-done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .boot-card {
+        width: min(320px, 80vw);
+        text-align: center;
+      }
+      .boot-mark {
+        font-size: 56px;
+        line-height: 1;
+        animation: boot-bob 1.6s ease-in-out infinite;
+      }
+      .boot-title {
+        margin: 16px 0 20px;
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .boot-bar {
+        height: 10px;
+        border-radius: 999px;
+        background: #f3dfc2;
+        overflow: hidden;
+      }
+      .boot-bar > span {
+        display: block;
+        height: 100%;
+        width: 90%;
+        border-radius: inherit;
+        background: #8a5a3b;
+        transform-origin: left;
+        animation: boot-fill 8s cubic-bezier(0.1, 0.7, 0.2, 1) both;
+      }
+      #boot.is-done .boot-bar > span {
+        animation: none;
+        width: 100%;
+      }
+      .boot-text {
+        margin: 12px 0 0;
+        font-size: 14px;
+        color: #6b5e55;
+      }
+      @keyframes boot-fill {
+        from {
+          transform: scaleX(0.05);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+      @keyframes boot-bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-mark,
+        .boot-bar > span {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
+    <div id="boot" role="status">
+      <div class="boot-card">
+        <div class="boot-mark" aria-hidden="true">☕</div>
+        <p class="boot-title">Coffee Shop Tycoon 3D</p>
+        <div class="boot-bar" aria-hidden="true"><span></span></div>
+        <p class="boot-text">Đang mở quán…</p>
+      </div>
+    </div>
     <canvas id="scene"></canvas>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>

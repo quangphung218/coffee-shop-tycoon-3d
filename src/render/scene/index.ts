@@ -21,6 +21,11 @@ export interface World {
    * Never modifies the state.
    */
   update(state: GameState, alpha: number): void;
+  /**
+   * Lays out `state` and compiles its shaders without drawing, so the first
+   * update() does not stall the page. Resolves once the GPU has finished.
+   */
+  prepare(state: GameState): Promise<void>;
   setQuality(quality: Quality): void;
   setCameraKeys(mode: CameraKeys): void;
   setEdgePan(enabled: boolean): void;
@@ -64,23 +69,31 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const picker = new Picker(camera.camera, shop);
   view.onResize((w, h) => camera.setAspect(w / h));
 
+  function sync(state: GameState, alpha: number): void {
+    lastState = state;
+    const now = performance.now() / 1000;
+    const dt = lastTime < 0 ? 0 : Math.min(now - lastTime, MAX_FRAME_DT);
+    lastTime = now;
+    camera.update(dt);
+    if (shop.update(state, now, dt, camera.yaw)) {
+      const e = shop.extent;
+      camera.setBounds(e.minX, e.maxX, e.minZ, e.maxZ);
+      camera.setHome(shop.center.x, shop.center.z);
+      if (firstLayout) camera.reset(true);
+      firstLayout = false;
+    }
+    actors.update(state, alpha);
+    street.update(state, alpha, dt);
+  }
+
   return {
     update(state: GameState, alpha: number): void {
-      lastState = state;
-      const now = performance.now() / 1000;
-      const dt = lastTime < 0 ? 0 : Math.min(now - lastTime, MAX_FRAME_DT);
-      lastTime = now;
-      camera.update(dt);
-      if (shop.update(state, now, dt, camera.yaw)) {
-        const e = shop.extent;
-        camera.setBounds(e.minX, e.maxX, e.minZ, e.maxZ);
-        camera.setHome(shop.center.x, shop.center.z);
-        if (firstLayout) camera.reset(true);
-        firstLayout = false;
-      }
-      actors.update(state, alpha);
-      street.update(state, alpha, dt);
+      sync(state, alpha);
       view.renderer.render(view.scene, camera.camera);
+    },
+    async prepare(state: GameState): Promise<void> {
+      sync(state, state.tickAccumulator);
+      await view.renderer.compileAsync(view.scene, camera.camera);
     },
     setQuality: (q) => {
       view.setQuality(q);

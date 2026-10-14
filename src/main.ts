@@ -1,7 +1,7 @@
 import './ui/styles/tokens.css';
 import './ui/styles/ui.css';
 import { createAudio } from './audio';
-import { createWorld } from './render/scene';
+import type { World } from './render/scene';
 import { loadSettings } from './save/settings';
 import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
@@ -17,6 +17,8 @@ const GAME_MINUTES_PER_SECOND = 2;
 const MAX_FRAME_S = 0.1;
 /** Camera spin behind the main menu, radians per second. */
 const MENU_SPIN = 0.08;
+/** Fade-out of the #boot loading screen in index.html, ms. */
+const BOOT_FADE_MS = 300;
 
 /** A busy lunchtime shop that plays itself behind the main menu. */
 function createMenuScene(): GameState {
@@ -28,12 +30,26 @@ function createMenuScene(): GameState {
   return state;
 }
 
+/** Resolves after the browser has painted the current DOM. */
+function afterPaint(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
+}
+
+function hideBoot(): void {
+  const boot = document.getElementById('boot');
+  if (!boot) return;
+  boot.classList.add('is-done');
+  setTimeout(() => boot.remove(), BOOT_FADE_MS);
+}
+
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
+  // three.js and the 3D world load as a separate chunk while the menu comes up.
+  const worldModule = import('./render/scene');
   const storage = defaultStorage();
   const settings = loadSettings(storage);
-  const world = createWorld(canvas, { quality: settings.quality, cameraKeys: settings.cameraKeys });
   const audio = createAudio({ music: settings.musicVolume, sfx: settings.sfxVolume });
   audio.setMusic(true);
+  let world: World | null = null;
 
   registerPrepPanels();
   registerReviewsPanel();
@@ -42,15 +58,15 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     storage,
     settings,
     onSettingsChange: (s) => {
-      world.setQuality(s.quality);
-      world.setCameraKeys(s.cameraKeys);
+      world?.setQuality(s.quality);
+      world?.setCameraKeys(s.cameraKeys);
       audio.setVolumes(s.musicVolume, s.sfxVolume);
     },
-    onResetCamera: () => world.resetCamera(),
-    onGameStart: () => world.resetCamera(),
+    onResetCamera: () => world?.resetCamera(),
+    onGameStart: () => world?.resetCamera(),
   });
-  // Clicks in the scene go through the same dispatch as the UI.
-  world.onCommand((cmd) => shell.dispatch(cmd));
+  hideBoot();
+  performance.mark('cst:menu');
 
   // Browsers only allow audio after a user gesture.
   const unlock = (): void => {
@@ -69,7 +85,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     const game = shell.state;
     if (game) {
       step(game, dt * GAME_MINUTES_PER_SECOND * game.speed);
-      world.update(game, game.tickAccumulator);
+      world?.update(game, game.tickAccumulator);
       shell.update();
       audio.handleEvents(game.events);
       shell.handleEvents(game.events);
@@ -77,13 +93,27 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     } else {
       step(menuScene, dt * GAME_MINUTES_PER_SECOND);
       if (menuScene.phase === 'report') menuScene = createMenuScene();
-      world.rotateCamera(MENU_SPIN * dt);
-      world.update(menuScene, menuScene.tickAccumulator);
+      world?.rotateCamera(MENU_SPIN * dt);
+      world?.update(menuScene, menuScene.tickAccumulator);
       menuScene.events.length = 0;
     }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+
+  // Build the scene only after the menu is on screen, then fade it in.
+  void Promise.all([worldModule, afterPaint()])
+    .then(async ([{ createWorld }]) => {
+      const s = shell.settings;
+      const w = createWorld(canvas, { quality: s.quality, cameraKeys: s.cameraKeys });
+      // Clicks in the scene go through the same dispatch as the UI.
+      w.onCommand((cmd) => shell.dispatch(cmd));
+      await w.prepare(shell.state ?? menuScene);
+      world = w;
+      canvas.classList.add('is-ready');
+      performance.mark('cst:world');
+    })
+    .catch((err: unknown) => console.error('3D scene failed to load', err));
 }
 
 const ui = document.getElementById('ui');
@@ -91,6 +121,8 @@ const canvas = document.getElementById('scene');
 if (canvas instanceof HTMLCanvasElement && ui) {
   // Dev-only actors preview: npm run dev, then open /?preview=actors.
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'actors') {
+    hideBoot();
+    canvas.classList.add('is-ready');
     void import('./render/actors/preview').then((m) => m.startActorsPreview(canvas, ui));
   } else {
     start(canvas, ui);
