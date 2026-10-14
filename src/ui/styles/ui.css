@@ -1058,6 +1058,7 @@ legend {
   box-shadow: var(--shadow-lg);
 }
 .dock-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1091,6 +1092,26 @@ legend {
   background: var(--accent-primary);
   border-color: var(--border-outline);
   box-shadow: var(--shadow-sm);
+}
+/* Attention count, top right inside the button. It starts --space-1 in from
+   the border, clear of the 3px inset focus ring drawn along the border. */
+.dock-badge {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--space-1);
+  background: var(--accent-danger);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  line-height: 1;
 }
 @media (max-width: 1023px) {
   .dock-btn {
@@ -1341,6 +1362,10 @@ legend {
   .dock-btn {
     min-width: 0;
     font-size: var(--font-size-xs);
+  }
+  /* Narrow cells: tuck the badge into the corner, still inside the focus ring. */
+  .dock-badge {
+    right: var(--space-1);
   }
   #ui > .panel {
     top: auto;

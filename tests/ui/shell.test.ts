@@ -4,6 +4,7 @@ import { createAudio, soundForEvent } from '../../src/audio';
 import { saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, loadSettings, type Settings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
+import { INGREDIENTS } from '../../src/sim/data/ingredients';
 import { createNewGame as createGameState } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { Watcher } from '../../src/ui/core/dom';
@@ -12,6 +13,7 @@ import { MAX_TOASTS, TOAST_VISIBLE_MS, Toasts } from '../../src/ui/core/toast';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createHud } from '../../src/ui/hud/hud';
 import { registerPanel } from '../../src/ui/hud/panels';
+import { lowStockCount, openTaskCount, registerPrepPanels } from '../../src/ui/panels';
 import { createLoadGame } from '../../src/ui/screens/loadGame';
 import { createMainMenu } from '../../src/ui/screens/mainMenu';
 import { createNewGame, validateShopName } from '../../src/ui/screens/newGame';
@@ -512,6 +514,114 @@ describe('HUD', () => {
     expect(hud.panelEl.hidden).toBe(true);
     off();
     expect(hud.el.querySelector('[data-panel="stock"]')).toBeNull();
+  });
+
+  describe('dock badges', () => {
+    /** Name as a screen reader builds it from content: aria-hidden parts dropped. */
+    function spokenName(el: Element): string {
+      let out = '';
+      for (const node of el.childNodes) {
+        if (node instanceof Element) {
+          if (node.getAttribute('aria-hidden') === 'true') continue;
+          out += spokenName(node);
+        } else out += node.textContent ?? '';
+      }
+      return out.trim();
+    }
+
+    function fillStock(state: GameState, qty: number): void {
+      for (const def of INGREDIENTS) {
+        const item = state.inventory.find((i) => i.id === def.id);
+        if (item) item.qty = qty;
+        else state.inventory.push({ id: def.id, qty });
+      }
+    }
+
+    it('counts low and empty stock on Kho, says it in words and hides at zero', () => {
+      const state = game();
+      fillStock(state, 1_000_000);
+      const { hud } = makeHud(state);
+      const off = registerPrepPanels();
+      try {
+        const kho = q<HTMLButtonElement>(hud.el, '.dock [data-panel="inventory"]');
+        const badge = q(kho, '.dock-badge');
+        expect(badge.getAttribute('aria-hidden')).toBe('true');
+        expect(badge.hidden).toBe(true);
+        expect(spokenName(kho)).toBe('Kho');
+
+        const [a, b] = INGREDIENTS;
+        state.inventory.find((i) => i.id === a!.id)!.qty = 0;
+        state.inventory.find((i) => i.id === b!.id)!.qty = b!.lowStock - 1;
+        hud.update(state);
+        expect(badge.hidden).toBe(false);
+        expect(badge.textContent).toBe('2');
+        expect(lowStockCount(state)).toBe(2);
+        expect(spokenName(kho)).toBe('Kho, 2 mục cần chú ý');
+        expect(kho.dataset.panel).toBe('inventory');
+        expect(kho.getAttribute('aria-controls')).toBe('ui-panel');
+        expect(kho.getAttribute('aria-pressed')).toBe('false');
+
+        // Same count: the badge is not written again.
+        badge.textContent = 'sentinel';
+        hud.update(state);
+        expect(badge.textContent).toBe('sentinel');
+
+        fillStock(state, 1_000_000);
+        hud.update(state);
+        expect(badge.hidden).toBe(true);
+        expect(spokenName(kho)).toBe('Kho');
+        // Panels without a badge function get no badge.
+        expect(hud.el.querySelector('.dock [data-panel="menu"] .dock-badge')).toBeNull();
+      } finally {
+        off();
+      }
+    });
+
+    it('drops the Việc count when a task gets done', () => {
+      const state = game();
+      fillStock(state, 0);
+      const { hud } = makeHud(state);
+      const off = registerPrepPanels();
+      try {
+        const viec = q<HTMLButtonElement>(hud.el, '.dock [data-panel="tasks"]');
+        const badge = q(viec, '.dock-badge');
+        const before = openTaskCount(state);
+        expect(before).toBeGreaterThan(0);
+        expect(badge.textContent).toBe(String(before));
+        expect(spokenName(viec)).toBe(`Việc, ${before} mục cần chú ý`);
+
+        // A full store finishes "Nhập nguyên liệu".
+        fillStock(state, 1_000_000);
+        hud.update(state);
+        const after = openTaskCount(state);
+        expect(after).toBeLessThan(before);
+        expect(badge.hidden).toBe(after === 0);
+        expect(badge.textContent).toBe(after > 0 ? String(after) : '');
+      } finally {
+        off();
+      }
+    });
+  });
+
+  it('announces a camera reset in a polite live region, then restores the button', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const state = game();
+    const { hud } = makeHud(state);
+    const reset = q<HTMLButtonElement>(hud.el, '[aria-label="Đặt lại camera (Home)"]');
+    const live = q(hud.el, '[data-live="camera"]');
+    expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(live.textContent).toBe('');
+
+    reset.click();
+    expect(live.textContent).toBe('Đã đặt lại camera.');
+    expect(reset.textContent).toContain('Đã đặt lại');
+    expect(q(reset, 'use').getAttribute('href')).toBe('#i-check');
+
+    vi.advanceTimersByTime(1500);
+    expect(live.textContent).toBe('');
+    expect(reset.textContent).not.toContain('Đã đặt lại');
+    expect(q(reset, 'use').getAttribute('href')).toBe('#i-camera');
+    hud.dispose();
   });
 });
 
