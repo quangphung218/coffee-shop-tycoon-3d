@@ -8,8 +8,9 @@
 // may stick out of the left or right edge of the panel or report card. In the
 // Kho panel a layout-shift observer runs while the stepper, Auto-restock and
 // an over-budget pack count change the order: CLS (shifts without recent
-// input, as web-vitals counts it) must be 0, and the foot and its rows (totals,
-// buy button, hint) must keep their place and size. Shifts that follow a click
+// input, as web-vitals counts it) must be 0, the foot and its rows (totals,
+// buy button, hint) must keep their place and size, and the stock list must
+// not move. Shifts that follow a click
 // are listed per step as notes. Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -170,22 +171,27 @@ async function takeShifts(page) {
   });
 }
 
-/** Boxes of the Kho foot and its direct rows, rounded to 0.1 px; null without a foot. */
+/**
+ * Boxes of the Kho foot, its direct rows and the stock list, rounded to
+ * 0.1 px; null without a foot. The list's height grows with the cost text,
+ * so only its top and left edge count.
+ */
 function footBoxes(page) {
   return page.evaluate(() => {
     const foot = document.querySelector('#ui > .panel:not([hidden]) .prep > .panel-foot');
-    if (!foot) return null;
+    const list = document.querySelector('#ui > .panel:not([hidden]) .prep > .stack');
+    if (!foot || !list) return null;
     const box = (el) => {
       const r = el.getBoundingClientRect();
       return [r.top, r.height, r.left, r.width].map((v) => Math.round(v * 10) / 10);
     };
-    return { foot: box(foot), rows: [...foot.children].map(box) };
+    return { foot: box(foot), rows: [...foot.children].map(box), list: box(list).filter((_, i) => i === 0 || i === 2) };
   });
 }
 
 /** Largest difference between two footBoxes() readings, px. */
 function footMoved(a, b) {
-  const flat = (x) => [...x.foot, ...x.rows.flat()];
+  const flat = (x) => [...x.foot, ...x.rows.flat(), ...x.list];
   const fa = flat(a);
   const fb = flat(b);
   if (fa.length !== fb.length) return Infinity;
@@ -194,8 +200,9 @@ function footMoved(a, b) {
 
 /**
  * Kho: + then − on the first stepper, Auto-restock, then a pack count past
- * the money. Fails on CLS (shifts with no recent input) and on any move or
- * resize of the foot or its rows; shifts that follow the click are notes.
+ * the money. Fails on CLS (shifts with no recent input), on any move or
+ * resize of the foot or its rows and on a move of the stock list; shifts
+ * that follow the click are notes.
  */
 async function checkKhoShift(page, results, viewport) {
   const stepper = page.locator('#ui > .panel:not([hidden]) .item .stepper').first();
@@ -230,19 +237,19 @@ async function checkKhoShift(page, results, viewport) {
     const d = start && now ? footMoved(start, now) : Infinity;
     moved = Math.max(moved, d);
     const sources = [...new Set(shifts.flatMap((s) => s.sources))].join(', ');
-    notes.push(`${name}: CLS ${own.toFixed(4)}, sau thao tác ${input.toFixed(4)}${sources ? ` (${sources})` : ''}; foot lệch ${d.toFixed(1)} px`);
+    notes.push(`${name}: CLS ${own.toFixed(4)}, sau thao tác ${input.toFixed(4)}${sources ? ` (${sources})` : ''}; foot/danh sách lệch ${d.toFixed(1)} px`);
   }
   const short = await page.locator('#ui > .panel:not([hidden]) .foot-hint.reason-danger').count();
   const fails = [];
   if (cls > 0) fails.push(`CLS ${cls.toFixed(4)} > 0`);
-  if (!start) fails.push('.panel-foot not found');
-  else if (moved > EPS) fails.push(`foot or one of its rows moved or resized by ${moved.toFixed(1)} px`);
+  if (!start) fails.push('.panel-foot or .stack not found');
+  else if (moved > EPS) fails.push(`the foot, one of its rows or the stock list moved by ${moved.toFixed(1)} px`);
   if (short === 0) fails.push('the over-budget step did not show the short-of-money hint');
   results.push({
     viewport,
     screen: 'Kho: đổi số gói',
     pass: fails.length === 0,
-    detail: `CLS ${cls.toFixed(4)}; foot cao ${start ? start.foot[1].toFixed(1) : '?'} px, lệch tối đa ${moved.toFixed(1)} px; shift ngay sau thao tác ${afterInput.toFixed(4)}`,
+    detail: `CLS ${cls.toFixed(4)}; foot cao ${start ? start.foot[1].toFixed(1) : '?'} px; foot/danh sách lệch tối đa ${moved.toFixed(1)} px; shift ngay sau thao tác ${afterInput.toFixed(4)}`,
     fails,
     notes,
   });
