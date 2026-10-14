@@ -63,7 +63,8 @@ const DECOR_SLOTS: Readonly<Record<DecorKind, readonly Vec2[]>> = {
   plant: [
     { x: -4, z: -4 },
     { x: 4, z: 5.4 },
-    { x: -4, z: 5.4 },
+    // Between the left ends of the last two table rows: the front-left corner is taken by a chair once all tables are bought.
+    { x: -4, z: 4 },
   ],
   painting: [
     { x: -3, z: -4.4 },
