@@ -44,13 +44,13 @@ const FACADE_WHEEL = -400;
 const FACADE_PAN_MS = 800;
 /**
  * Game clock (HUD text) for the shop-front shots. The morning shot frames the
- * front at 10:00. For the day/evening pair the camera frames the front once at
- * 15:30 (lamps still off) and stays there; at 19:30 the lamps are full
+ * front at 10:00. For the day/evening pair the camera frames the front once from
+ * 15:00, the shot landing near 15:30 with the lamps off, and stays there; at 19:30 the lamps are full
  * (street/layout.ts) and the game drops to 1x, so the evening shots land at
  * about 19:31-19:40, before the 20:00 close.
  */
 const FACADE_DAY_AT = '10:00';
-const FACADE_PAIR_DAY_AT = '15:30';
+const FACADE_PAIR_DAY_AT = '15:00';
 const FACADE_EVENING_AT = '19:30';
 const FACADE_EVENING_END = '20:00';
 /** Real time between the two evening frames; glow is what stays lit while people move. */
@@ -264,7 +264,9 @@ async function drawGlowPair({ day, evening, eveningLater, dayTitle, eveningTitle
   const d = pixels(dayImg);
   const e = pixels(eveImg);
   const l = pixels(laterImg);
-  const warm = (p, i) => (p[i] >= 200 && p[i] - p[i + 2] >= 30) || (p[i] >= 235 && p[i + 1] >= 225 && p[i + 2] >= 200);
+  // Lit glass, bulbs and the sign stay pale (green >= 170); table tops under
+  // the warm point lights are redder and darker, so they drop out.
+  const warm = (p, i) => (p[i] >= 200 && p[i + 1] >= 170 && p[i] - p[i + 2] >= 30) || (p[i] >= 235 && p[i + 1] >= 225 && p[i + 2] >= 200);
   const glows = (i) => warm(e, i) && warm(l, i) && e[i] - d[i] >= 12;
 
   // Glowing pixels per CELL x CELL cell, then cells grouped with a 1-cell gap allowed.
@@ -313,16 +315,16 @@ async function drawGlowPair({ day, evening, eveningLater, dayTitle, eveningTitle
     spots.push({ ...box, cx: box.x + box.w / 2, cy: box.y + box.h / 2, count, g: g / count, b: b / count });
   }
 
-  // Bulbs are small; the sign is the largest near-white spot; the door glass
-  // is the nearest glass under the sign; the rest of the glass is windows.
-  for (const s of spots) if (s.count < 80 && s.w <= 24 && s.h <= 24) s.kind = 'pendant';
-  const sign = spots.filter((s) => !s.kind && s.b >= 225 && s.g >= 225).sort((a, b) => b.count - a.count)[0];
+  // The sign is the palest (most blue) large spot; the door glass is the
+  // nearest spot under it, small or not; other small spots are bulbs; the
+  // rest of the glass is windows.
+  const small = (s) => s.count < 80 && s.w <= 24 && s.h <= 24;
+  const sign = spots.filter((s) => !small(s) && s.b >= 150).sort((a, b) => b.b - a.b)[0];
   if (sign) sign.kind = 'sign';
-  const door = spots
-    .filter((s) => !s.kind && sign && s.cy > sign.cy && Math.hypot(s.cx - sign.cx, s.cy - sign.cy) < 250)
-    .sort((a, b) => Math.hypot(a.cx - sign.cx, a.cy - sign.cy) - Math.hypot(b.cx - sign.cx, b.cy - sign.cy))[0];
+  const dist = (s) => Math.hypot(s.cx - sign.cx, s.cy - sign.cy);
+  const door = sign && spots.filter((s) => !s.kind && s.cy > sign.cy && dist(s) < 150).sort((a, b) => dist(a) - dist(b))[0];
   if (door) door.kind = 'door';
-  for (const s of spots) s.kind ??= 'window';
+  for (const s of spots) s.kind ??= small(s) ? 'pendant' : 'window';
 
   // Layout: two panels at 3/4 size, a title over each and a legend below.
   const SCALE = 0.75;

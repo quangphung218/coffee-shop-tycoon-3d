@@ -76,7 +76,7 @@ Quầy có 4 pha chế (1 nhận order, 1 pha, 2 rảnh) và 2 phục vụ (1 r�
 | --- | --- |
 | ![Mặt tiền ban ngày](../media/facade-day.png) | Mặt tiền 10:21: mái hiên, biển tên, cửa kính, chậu cây. |
 | ![Mặt tiền buổi tối](../media/facade-evening.png) | Mặt tiền sau 19:30, đèn sáng đầy: cửa sổ và cửa kính phát sáng ấm, đèn thả và biển hiệu sáng hơn. |
-| ![Mặt tiền ngày và tối cạnh nhau, khoanh chỗ phát sáng](../media/facade-day-evening.png) | Cùng góc máy lúc 15:30 và sau 19:30. Vòng liền khoanh chỗ phát sáng ấm lúc tối (cửa sổ, cửa kính, biển hiệu, đèn thả); vòng nét đứt là cùng chỗ đó ban ngày. |
+| ![Mặt tiền ngày và tối cạnh nhau, khoanh chỗ phát sáng](../media/facade-day-evening.png) | Cùng góc máy lúc khoảng 15:30 và sau 19:30. Vòng liền khoanh chỗ phát sáng ấm lúc tối (cửa sổ, cửa kính, biển hiệu, đèn thả); vòng nét đứt là cùng chỗ đó ban ngày. |
 | ![Hàng chờ giờ cao điểm](../media/queue.png) | Cao điểm trưa, gần quầy: hàng chờ dọc lối đi, không đè ghế. |
 | ![Bảng Menu](../media/menu-icons.png) | Bảng Menu với icon 3D của từng món. |
 
