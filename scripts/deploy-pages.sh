@@ -7,7 +7,18 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
+# A half-finished install can leave node_modules/ without the build tools,
+# so check the tools and the installed lockfile, not just the directory.
+REINSTALL=
 if [ ! -d node_modules ]; then
+  REINSTALL="node_modules/ is missing"
+elif [ ! -x node_modules/.bin/tsc ] || [ ! -x node_modules/.bin/vite ]; then
+  REINSTALL="node_modules/.bin/tsc or node_modules/.bin/vite is missing"
+elif ! cmp -s node_modules/.package-lock.json package-lock.json; then
+  REINSTALL="node_modules/.package-lock.json differs from package-lock.json"
+fi
+if [ -n "$REINSTALL" ]; then
+  echo "Running npm ci: $REINSTALL."
   npm ci
 fi
 npm run build
