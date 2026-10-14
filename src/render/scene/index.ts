@@ -44,7 +44,7 @@ const MAX_FRAME_DT = 0.1;
 export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {}): World {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene);
-  const actors = createActors(view.scene);
+  const actors = createActors(view.scene, { quality: options.quality ?? 'medium' });
   const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
   const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
@@ -98,6 +98,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     setQuality: (q) => {
       view.setQuality(q);
       street.setQuality(q);
+      actors.setQuality(q);
     },
     setCameraKeys: (mode) => camera.setCameraKeys(mode),
     setEdgePan: (enabled) => {

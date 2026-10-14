@@ -1,8 +1,10 @@
 import { Group, type Object3D, type Raycaster, type Scene } from 'three';
+import type { Quality } from '../../save/settings';
 import type { Command, GameState, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
 import { layoutKey } from '../scene/shop';
-import { ANIM_PERIOD, MOVING_ANIMS, poseFor, type AnimName } from './animations';
+import { ANIM_PERIOD, IDLE_BOUNCE_PERIOD, MOVING_ANIMS, bounceFor, poseFor, type AnimName } from './animations';
+import { CoinFx, Steam, puffTexture, steamFor } from './fx';
 import { Label, LabelAssets, commandForCustomer, labelFor } from './labels';
 import { Pool } from './pool';
 import { createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
@@ -35,11 +37,17 @@ export interface Actors {
   update(state: GameState, alpha: number): void;
   /** Command for the customer under the ray (take an order, carry a ready drink), or null. */
   pick(ray: Raycaster): Command | null;
-  /** Live and pooled character counts (tests, debugging). */
-  stats(): { live: number; free: number; created: number };
+  /** Live and pooled character counts, plus live and ever-made coin popups (tests, debugging). */
+  stats(): { live: number; free: number; created: number; coins: number; coinsCreated: number };
   /** Snapshot of one person: 'c<id>' customer, 's<id>' staff, 'player'. */
   inspect(key: string): ActorInfo | null;
+  /** Low quality drops the steam, keeps coins still and softens the bounce. */
+  setQuality(quality: Quality): void;
   dispose(): void;
+}
+
+export interface ActorsOptions {
+  quality?: Quality;
 }
 
 export interface ActorInfo {
@@ -48,6 +56,10 @@ export interface ActorInfo {
   heading: number;
   visible: boolean;
   label: string | null;
+  /** Steam is rising from a hot drink in their hands. */
+  steam: boolean;
+  /** Vertical squash of the body (1 = none). */
+  squash: number;
 }
 
 /** World units walked per animation loop of a moving animation. */
@@ -62,6 +74,7 @@ const TURN_RATE = 10;
 interface Body {
   char: Character;
   label: Label;
+  steam: Steam;
 }
 
 interface Actor {
@@ -80,23 +93,32 @@ interface Actor {
   /** Reached the exit; hidden until the sim drops the customer. */
   gone: boolean;
   seen: number;
+  /** Offset into the standing bob, so people do not breathe in step. */
+  bobOffset: number;
 }
 
-export function createActors(scene: Scene): Actors {
+export function createActors(scene: Scene, options: ActorsOptions = {}): Actors {
   const root = new Group();
   root.name = 'actors';
   scene.add(root);
   const assets = new LabelAssets();
+  const puff = puffTexture();
+  const coins = new CoinFx(assets.face('i-coin').map);
+  root.add(coins.group);
+  let quality: Quality = options.quality ?? 'medium';
   const pool = new Pool<Body>(
     () => {
       const char = createCharacter({ role: 'customer', look: 0 });
       const label = new Label(assets);
       char.labelAnchor.add(label.group);
+      const steam = new Steam(puff);
+      char.steamAnchor.add(steam.group);
       root.add(char.root);
-      return { char, label };
+      return { char, label, steam };
     },
     (body) => {
       body.char.root.visible = false;
+      body.steam.update(false, 0);
     },
   );
   const actors = new Map<string, Actor>();
@@ -127,6 +149,8 @@ export function createActors(scene: Scene): Actors {
       ghost: false,
       gone: false,
       seen: frame,
+      // Golden-ratio spread keeps neighbouring ids far apart in the cycle.
+      bobOffset: ((id * 0.618034) % 1) * IDLE_BOUNCE_PERIOD,
     };
     actors.set(key, actor);
     byHitbox.set(body.char.hitbox, actor);
@@ -152,10 +176,26 @@ export function createActors(scene: Scene): Actors {
     return actor;
   }
 
-  /** Walks, turns and poses one person for this frame. */
-  function animate(actor: Actor, anim: (moving: boolean, seated: boolean) => AnimName, speed: number, dtGame: number, dtReal: number, snapNow: boolean): void {
+  /** Low quality or prefers-reduced-motion: no steam, still coins, a softer bounce. */
+  function calm(): boolean {
+    return quality === 'low' || assets.reducedMotion;
+  }
+
+  /**
+   * Walks, turns and poses one person for this frame. `now` is real seconds;
+   * returns whether they are still walking (false before the shop has a layout).
+   */
+  function animate(
+    actor: Actor,
+    anim: (moving: boolean, seated: boolean) => AnimName,
+    speed: number,
+    dtGame: number,
+    dtReal: number,
+    snapNow: boolean,
+    now: number,
+  ): boolean {
     const m = actor.motion;
-    if (!layout) return;
+    if (!layout) return false;
     setGoal(m, actor.goal.pos, layout);
     if (snapNow) snap(m);
     const moved = advance(m, stepDistance(m, speed, dtGame), dir);
@@ -180,10 +220,12 @@ export function createActors(scene: Scene): Actors {
 
     const char = actor.body.char;
     char.applyPose(poseFor(next, actor.phase));
+    char.applyBounce(bounceFor(next, actor.phase, now + actor.bobOffset, calm()));
     char.showProps(next);
     char.setAngry(actor.angry);
     char.root.position.set(m.pos.x, 0, m.pos.z);
     char.root.rotation.y = actor.heading;
+    return moving;
   }
 
   function customerSpeed(actor: Actor): number {
@@ -202,6 +244,7 @@ export function createActors(scene: Scene): Actors {
       const now = performance.now() / 1000;
       const dtReal = lastTime < 0 ? 0 : Math.min(Math.max(0, now - lastTime), MAX_FRAME_DT);
       lastTime = now;
+      const still = calm();
       const clock = state.day * 1440 + state.minute + Math.min(1, Math.max(0, Number.isFinite(alpha) ? alpha : 0));
       let dtGame = lastClock < 0 ? 0 : clock - lastClock;
       const jump = lastClock < 0 || dtGame < 0 || dtGame > MAX_GAME_STEP;
@@ -228,7 +271,7 @@ export function createActors(scene: Scene): Actors {
           continue;
         }
         actor.ghost = true;
-        animate(actor, () => (actor.angry ? 'angry_leave' : 'walk'), customerSpeed(actor), dtGame, dtReal, false);
+        animate(actor, () => (actor.angry ? 'angry_leave' : 'walk'), customerSpeed(actor), dtGame, dtReal, false, now);
         if (reachedExit(actor)) release(actor);
       }
 
@@ -240,7 +283,7 @@ export function createActors(scene: Scene): Actors {
         if (!leaving) actor.gone = false;
         if (actor.gone) continue;
         // New arrivals walk in from the door; after a clock jump everyone snaps into place.
-        animate(actor, (moving, seated) => customerAnim(c.state, moving, seated), customerSpeed(actor), dtGame, dtReal, jump);
+        animate(actor, (moving, seated) => customerAnim(c.state, moving, seated), customerSpeed(actor), dtGame, dtReal, jump, now);
         actor.body.label.set(labelFor(state, c), now);
         if (leaving && reachedExit(actor)) {
           actor.gone = true;
@@ -252,15 +295,23 @@ export function createActors(scene: Scene): Actors {
         const role: CharacterRole = s.role;
         const actor = ensure(`s${s.id}`, 'staff', s.id, role, s.look, s.pos);
         actor.goal = workerGoal(state, s.task, shop, s.pos, slot);
-        animate(actor, (moving) => workerAnim(s.task, moving), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null);
+        const moving = animate(actor, (m) => workerAnim(s.task, m), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null, now);
         actor.body.label.set(NO_LABEL, now);
+        actor.body.steam.update(!still && steamFor(state, s.task, moving), now + actor.bobOffset);
       });
 
       const head = state.playerTasks[0] ?? null;
       const player = ensure('player', 'player', 0, 'player', 3, playerHome(shop));
       player.goal = workerGoal(state, head, shop, playerHome(shop), state.staff.length);
-      animate(player, (moving) => workerAnim(head, moving), STAFF_SPEED * 1.1, dtGame, dtReal, jump || player.motion.goal === null);
+      const playerMoving = animate(player, (m) => workerAnim(head, m), STAFF_SPEED * 1.1, dtGame, dtReal, jump || player.motion.goal === null, now);
       player.body.label.set(NO_LABEL, now);
+      player.body.steam.update(!still && steamFor(state, head, playerMoving), now);
+
+      // Money coming in (take-away paid at the counter, cash picked up from a table).
+      for (const e of state.events) {
+        if (e.type === 'cash' && e.amount > 0) coins.spawn(e.amount, e.pos, now);
+      }
+      coins.update(now, still);
     },
 
     pick(ray: Raycaster): Command | null {
@@ -281,7 +332,12 @@ export function createActors(scene: Scene): Actors {
     },
 
     stats() {
-      return { live: pool.liveCount, free: pool.freeCount, created: pool.created };
+      const c = coins.stats();
+      return { live: pool.liveCount, free: pool.freeCount, created: pool.created, coins: c.live, coinsCreated: c.created };
+    },
+
+    setQuality(q: Quality): void {
+      quality = q;
     },
 
     inspect(key: string): ActorInfo | null {
@@ -293,11 +349,16 @@ export function createActors(scene: Scene): Actors {
         heading: actor.heading,
         visible: actor.body.char.root.visible,
         label: actor.body.label.iconShown,
+        steam: actor.body.steam.active,
+        squash: actor.body.char.bounce.scale.y,
       };
     },
 
     dispose(): void {
       for (const actor of [...actors.values()]) release(actor);
+      for (const body of pool.all()) body.steam.dispose();
+      coins.dispose();
+      puff?.dispose();
       root.removeFromParent();
       root.clear();
       assets.dispose();

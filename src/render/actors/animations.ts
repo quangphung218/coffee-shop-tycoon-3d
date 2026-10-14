@@ -196,6 +196,52 @@ export function poseFor(anim: AnimName, t: number): Pose {
   return p;
 }
 
+/** Whole-body squash and stretch on top of the pose, scaled around the feet. */
+export interface Bounce {
+  /** Width and depth scale; 1/√sy so the volume holds. */
+  sx: number;
+  sy: number;
+  /** Lift off the floor, in world units. */
+  lift: number;
+}
+
+/** Seconds per breath of the standing bob (design/t237-cartoon motion notes). */
+export const IDLE_BOUNCE_PERIOD = 1.2;
+/** Share of the bounce kept at low quality or with prefers-reduced-motion. */
+export const CALM_BOUNCE = 0.35;
+const IDLE_SQUASH = 0.04;
+const IDLE_LIFT = 0.02;
+const HOP_HEIGHT = 0.06;
+const LAND_SQUASH = 0.06;
+const HOP_STRETCH = 0.04;
+
+/**
+ * Bounce of `anim`. Moving animations hop once per step from `phase` (the
+ * same stride clock as poseFor) and squash on landing; standing ones bob
+ * every IDLE_BOUNCE_PERIOD of `idleTime`; seated ones stay still. `calm`
+ * shrinks the motion to CALM_BOUNCE.
+ */
+export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm: boolean): Bounce {
+  const k = calm ? CALM_BOUNCE : 1;
+  let sy = 1;
+  let lift = 0;
+  if (MOVING_ANIMS.has(anim)) {
+    const period = ANIM_PERIOD[anim];
+    const t = Number.isFinite(phase) ? phase / period : 0;
+    // Two steps per stride: |sin| is 0 at each footfall and 1 mid-air.
+    const hop = Math.abs(Math.sin(t * TAU));
+    lift = hop * HOP_HEIGHT * k;
+    sy = 1 + k * (HOP_STRETCH * hop - LAND_SQUASH * (1 - hop) ** 4);
+  } else if (!SEATED_ANIMS.has(anim)) {
+    const a = Number.isFinite(idleTime) ? (idleTime / IDLE_BOUNCE_PERIOD) * TAU : 0;
+    // 0 → 1 → 0 over one breath: sinks to 0.96 while the lift drops to 0.
+    const d = 0.5 - 0.5 * Math.cos(a);
+    sy = 1 - IDLE_SQUASH * d * k;
+    lift = IDLE_LIFT * (1 - d) * k;
+  }
+  return { sx: 1 / Math.sqrt(sy), sy, lift };
+}
+
 /** Which hand props are shown during an animation. */
 export interface PropSet {
   tray: boolean;
