@@ -15,7 +15,7 @@ Kết quả `npm run layout` (`scripts/check-layout.mjs`) và `scripts/measure-s
 | Phần | Kịch bản | Điều kiện PASS |
 | --- | --- | --- |
 | Tràn ngang | Mỗi khổ 390×844, 768×1024, 1440×900: ván mới (Easy), mở lần lượt 6 panel trên dock, tuyển 2 nhân viên, nhập theo gợi ý, chạy một ngày ở 4×, mở Daily Report rồi tab Đánh giá | `html`, khung panel hay report và mọi phần tử con có `overflow` khác `visible` đều có `scrollWidth <= clientWidth`; không phần tử nào lệch ra ngoài mép trái hay phải của `.panel-body` hoặc `.rpt-dialog` (sai số 0,5 px). Bỏ qua phần tử rộng hoặc cao ≤ 1 px (`.sr-only`). |
-| CLS bảng Kho | `PerformanceObserver('layout-shift')` qua 4 bước: + 1 gói, − 1 gói, Gợi ý nhập tự động, nhập 99 gói (vượt tiền) rồi bấm ra ngoài. Toast được ẩn trong lúc đo. | CLS (shift không có `hadRecentInput`, như web-vitals) = 0; `.panel-foot` và từng dòng trong đó không đổi vị trí hay kích thước; mép trên danh sách hàng không xê dịch trong nội dung cuộn; bước vượt tiền hiện dòng báo thiếu tiền. |
+| CLS bảng Kho | `PerformanceObserver('layout-shift')` qua 4 bước: + 1 gói, − 1 gói, Gợi ý nhập tự động, gõ 99 gói (vượt tiền) rồi bấm ra ngoài. Toast được ẩn trong lúc đo. | CLS (shift không có `hadRecentInput`, như web-vitals) = 0; `.panel-foot` và từng dòng trong đó không đổi vị trí hay kích thước; mép trên danh sách hàng không xê dịch trong nội dung cuộn; bước vượt tiền hiện dòng báo thiếu tiền. |
 
 ## Tràn ngang
 
@@ -37,13 +37,13 @@ Kết quả `npm run layout` (`scripts/check-layout.mjs`) và `scripts/measure-s
 | Khổ | Chiều cao foot | Foot và danh sách lệch | Shift ngay sau thao tác | CLS |
 | --- | --- | --- | --- | --- |
 | 390×844 | 202 px | 0 px | 0,0015 | 0,000017 |
-| 768×1024 | 202 px | 0 px | 0,0119 | 0,000006 |
+| 768×1024 | 202 px | 0 px | 0,0060 | 0,000006 |
 | 1440×900 | 202 px | 0 px | 0,0002 | 0,000003 |
 
 - Khung tổng giữ 202 px ở mọi bước và mọi khổ; dòng hướng dẫn, tổng tiền và nút Nhập hàng không xê dịch.
 - Dòng giới thiệu và kết quả Gợi ý / Nhập hàng dùng chung ô `.kho-note` cao 3 dòng, nên bấm Gợi ý không đẩy danh sách hàng.
-- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`) và dòng hàng cao thêm khi nhãn "gợi ý" hiện ra.
-- CLS khác 0 ở bước vượt tiền đến từ nhãn "gợi ý" (ô 46×22 px trong dòng tên) bị gỡ khỏi layout khi sửa số gói của dòng đã gợi ý. Nhãn `.sug` giờ giữ chỗ khi ẩn (`visibility: hidden`), nên dòng hàng không đổi chiều cao khi nhãn hiện hay ẩn.
+- Shift ngay sau thao tác đến từ số tiền căn phải đổi độ dài (`.foot-sum b`, `.item-cost`). Nhãn "gợi ý" (`.sug`) giữ chỗ khi tắt (class `is-off`, `visibility: hidden`), nên dòng hàng không đổi chiều cao khi bấm Gợi ý.
+- CLS khác 0 ở bước vượt tiền là phần chữ căn giữa trong ô số gói (46×22 px, trong shadow DOM của `<input>`) dịch khi giá trị đổi từ 1 sang 2 chữ số. Script cũ nhập bằng `fill()`, không phát phím, nên Chrome không gắn shift này với thao tác. Script hiện gõ từng phím như người chơi.
 
 ## Thời gian tới Main Menu
 
