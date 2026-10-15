@@ -3,6 +3,7 @@ import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveG
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { dispatch, isUnlocked, step } from '../../src/sim';
+import { levelForXp, xpToReach } from '../../src/sim/data/levels';
 import { CHAIR_OFFSET, buildNavGrid, isWalkable } from '../../src/sim/nav';
 import { createDayStats, createNewGame, tablePosition } from '../../src/sim/state';
 import type { Customer, Vec2 } from '../../src/sim/types';
@@ -256,6 +257,34 @@ describe('migrate to version 2 (shop level, XP, missions)', () => {
     expect(isUnlocked(g, 'upgrade', 'expand_area')).toBe(true);
     // The player can still toggle the grandfathered item.
     expect(dispatch(g, { type: 'set_menu_item', itemId: 'cappuccino', enabled: true })).toBe(true);
+  });
+
+  it('raises the XP to at least the threshold of a level granted by owned items', () => {
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', v1Save((s) => {
+      s.upgrades = { expand_area: 1 }; // unlocks at level 6
+      s.history = [{ ...createDayStats(1, 3), customersServed: 10 }]; // 20 XP from play
+    }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.shopLevel).toBe(6);
+    expect(r.value.xp).toBe(xpToReach(6));
+    expect(levelForXp(r.value.xp)).toBe(r.value.shopLevel);
+  });
+
+  it('keeps the played XP when it is already above the level threshold', () => {
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', v1Save((s) => {
+      s.menu.find((m) => m.id === 'cappuccino')!.enabled = true; // unlocks at level 2
+      s.history = [{ ...createDayStats(1, 3), customersServed: 600 }]; // 1200 XP, level 2
+    }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.shopLevel).toBe(2);
+    expect(r.value.xp).toBe(1200);
+    expect(r.value.xp).toBeGreaterThanOrEqual(xpToReach(2));
   });
 
   it('upgrades a version-0 bare state all the way to version 2', () => {
