@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // Measures how fast the production build shows the Main Menu, in headless Chrome.
 //
-//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>] [--fps]
+//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>] [--fps | --fps-only]
 //
 // Builds the working tree (and <git-ref> with --base), serves each build with
 // `vite preview`, loads it with an empty cache and prints chunk sizes and the
 // median time to first paint, Main Menu on screen and 3D scene on screen.
 // --fps also plays day 1 on Easy at 4x up to the peak phase at each FPS_QUALITIES
-// graphics setting and prints the median and 5th-percentile frame rate over
-// FPS_SECONDS of play. Chrome: $CHROME_PATH, else the usual install locations.
+// graphics setting, <n> times per build taking turns between builds, and prints
+// the median over runs of the average frame rate across FPS_SECONDS of play and
+// the 5th-percentile frame rate of all those frames. --fps-only skips the
+// startup table. Chrome: $CHROME_PATH, else the usual install locations.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -83,6 +85,7 @@ function parseArgs(argv) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
     else if (argv[i] === '--fps') args.fps = true;
+    else if (argv[i] === '--fps-only') args.fps = args.fpsOnly = true;
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
   return args;
@@ -257,13 +260,18 @@ const SAMPLE_FRAMES = `new Promise((resolve) => {
   requestAnimationFrame(frame);
 })`;
 
-/** Median and 5th-percentile frame rate of rAF timestamps (ms). */
-function fpsStats(ts) {
-  const fps = [];
-  for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) fps.push(1000 / (ts[i] - ts[i - 1]));
-  fps.sort((a, b) => a - b);
-  if (fps.length === 0) return { median: null, p5: null, frames: 0 };
-  return { median: fps[Math.floor(fps.length / 2)], p5: fps[Math.floor(fps.length * 0.05)], frames: fps.length };
+/**
+ * Frame rates of rAF timestamps (ms): the average over the whole sample
+ * (frames per second of wall time), and each frame's own rate. Headless
+ * Chrome hands out frames on whole vsync intervals, so per-frame rates only
+ * take a few values (20, 15, 7.5…) and their median jumps between runs; the
+ * average does not.
+ */
+function frameRates(ts) {
+  const each = [];
+  for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) each.push(1000 / (ts[i] - ts[i - 1]));
+  const span = ts.length > 1 ? ts[ts.length - 1] - ts[0] : 0;
+  return { average: span > 0 ? ((ts.length - 1) * 1000) / span : null, each };
 }
 
 /** Plays `url` up to the peak at graphics `quality` and samples the frame rate. */
@@ -294,7 +302,7 @@ async function measureFps(cdp, url, quality) {
     await s('Emulation.setDeviceMetricsOverride', { ...FPS_VIEW, mobile: false });
     await sleep(1500);
     const { result } = await s('Runtime.evaluate', { expression: SAMPLE_FRAMES, awaitPromise: true, returnByValue: true });
-    return fpsStats(result.value);
+    return frameRates(result.value);
   } finally {
     await cdp.send('Target.closeTarget', { targetId });
   }
@@ -363,34 +371,48 @@ async function main() {
       console.log('');
     }
 
-    console.log('| Build | Profile | First paint | Main Menu | 3D scene |\n| --- | --- | --- | --- | --- |');
-    for (const profile of PROFILES) {
-      for (const b of builds) {
-        const runs = [];
-        for (let i = 0; i < args.runs; i++) runs.push(await measureOnce(cdp, b.url, profile));
-        const pick = (k) => median(runs.map((r) => (r ? (r[k] ?? null) : null)));
-        console.log(`| ${b.label} | ${profile.name} | ${ms(pick('fcp'))} | ${ms(pick('menu'))} | ${ms(pick('world'))} |`);
+    if (!args.fpsOnly) {
+      console.log('| Build | Profile | First paint | Main Menu | 3D scene |\n| --- | --- | --- | --- | --- |');
+      for (const profile of PROFILES) {
+        for (const b of builds) {
+          const runs = [];
+          for (let i = 0; i < args.runs; i++) runs.push(await measureOnce(cdp, b.url, profile));
+          const pick = (k) => median(runs.map((r) => (r ? (r[k] ?? null) : null)));
+          console.log(`| ${b.label} | ${profile.name} | ${ms(pick('fcp'))} | ${ms(pick('menu'))} | ${ms(pick('world'))} |`);
+        }
       }
     }
 
     if (args.fps) {
       const v = FPS_VIEW;
-      console.log(`\nFPS at the peak of day 1 (Easy, 4x), ${FPS_SECONDS} s, ${v.width}×${v.height} @${v.deviceScaleFactor}x\n`);
-      console.log('| Build | Quality | Median FPS | p5 FPS | Frames |\n| --- | --- | --- | --- | --- |');
+      console.log(`\nFPS at the peak of day 1 (Easy, 4x), ${FPS_SECONDS} s × ${args.runs} runs per cell, builds taking turns, ${v.width}×${v.height} @${v.deviceScaleFactor}x\n`);
       const rows = [];
       for (const quality of FPS_QUALITIES) {
-        for (const b of builds) {
-          const r = await measureFps(cdp, b.url, quality);
-          rows.push({ build: b, quality, ...r });
-          console.log(`| ${b.label} | ${quality} | ${fps(r.median)} | ${fps(r.p5)} | ${r.frames} |`);
+        const cells = builds.map((build) => ({ build, quality, averages: [], each: [] }));
+        // Taking turns spreads any drift (heat, background work) over both builds.
+        for (let i = 0; i < args.runs; i++) {
+          for (const c of cells) {
+            const r = await measureFps(cdp, c.build.url, quality);
+            if (r.average !== null) c.averages.push(r.average);
+            c.each.push(...r.each);
+            console.error(`  ${c.build.label} ${quality} run ${i + 1}: ${fps(r.average)} FPS`);
+          }
+        }
+        for (const c of cells) {
+          c.each.sort((a, b) => a - b);
+          c.average = median(c.averages);
+          c.p5 = c.each.length ? c.each[Math.floor(c.each.length * 0.05)] : null;
+          rows.push(c);
         }
       }
+      console.log('| Build | Quality | Average FPS (median of runs) | Runs | p5 FPS | Frames |\n| --- | --- | --- | --- | --- | --- |');
+      for (const r of rows) console.log(`| ${r.build.label} | ${r.quality} | ${fps(r.average)} | ${r.averages.map(fps).join(' / ')} | ${fps(r.p5)} | ${r.each.length} |`);
       if (builds.length > 1) {
         for (const quality of FPS_QUALITIES) {
           const [base, cur] = builds.map((b) => rows.find((r) => r.build === b && r.quality === quality));
-          if (!base?.median || !cur?.median) continue;
-          const drop = (1 - cur.median / base.median) * 100;
-          console.log(`${drop > 10 ? '!!' : 'ok'} ${quality}: working tree median ${drop > 0 ? `${drop.toFixed(1)}% below` : `${(-drop).toFixed(1)}% above`} base`);
+          if (!base?.average || !cur?.average) continue;
+          const drop = (1 - cur.average / base.average) * 100;
+          console.log(`${drop > 10 ? '!!' : 'ok'} ${quality}: working tree ${drop > 0 ? `${drop.toFixed(1)}% below` : `${(-drop).toFixed(1)}% above`} base`);
         }
       }
     }

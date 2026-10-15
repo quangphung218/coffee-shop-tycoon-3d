@@ -120,10 +120,18 @@ Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 ### Đo FPS
 
 ```sh
-node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps
+node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 ```
 
-Ngoài bảng khởi động, `--fps` chơi ngày 1 Dễ ở 4x tới giờ cao điểm cho từng bản, ở mức Vừa và Cao (cửa sổ 1280×800, tỉ lệ điểm ảnh 2), lấy mẫu 10 s và in FPS trung vị và p5. Dòng cuối so trung vị bản hiện tại với bản gốc; `!!` khi tụt quá 10%.
+`--fps-only` chỉ đo FPS; `--fps` đo cả bảng khởi động. Mỗi lượt chơi ngày 1 Dễ ở 4x tới giờ cao điểm (chờ trong cửa sổ nhỏ), rồi lấy mẫu 10 s ở 1280×800, tỉ lệ điểm ảnh 2, mức Vừa và Cao. Mỗi ô chạy `--runs` lượt, hai bản xen kẽ nhau.
+
+| Cột | Nghĩa |
+| --- | --- |
+| Average FPS | Trung vị qua các lượt của FPS trung bình (số khung / thời gian). |
+| Runs | FPS trung bình từng lượt. |
+| p5 FPS | FPS của khung chậm thứ 5% trong mọi khung đã lấy. |
+
+Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. Chrome headless cấp khung theo bội số nhịp màn hình, nên FPS từng khung chỉ ra vài mức (20, 15, 7,5…); dùng cột Average FPS để so.
 
 ## Tùy chọn
 

@@ -48,16 +48,16 @@ Trung vị 3 lần, Chrome headless không cache trên Apple M2 (ANGLE Metal), s
 
 | Cấu hình | Mốc | P19 (96030ca) | P20 |
 | --- | --- | --- | --- |
-| Di động (150 ms RTT, 1,6 Mbps, CPU 4x) | Nội dung đầu tiên | 760 ms | 532 ms |
-| Di động | **Main Menu** | 995 ms | **762 ms** |
-| Di động | Cảnh 3D | 3072 ms | 2775 ms |
-| Máy bàn, không giới hạn | Main Menu | 99 ms | 162 ms |
+| Di động (150 ms RTT, 1,6 Mbps, CPU 4x) | Nội dung đầu tiên | 760 ms | 520 ms |
+| Di động | **Main Menu** | 904 ms | **759 ms** |
+| Di động | Cảnh 3D | 2948 ms | 2816 ms |
+| Máy bàn, không giới hạn | Main Menu | 136 ms | 132 ms |
 
-Main Menu di động của P20 là **762 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
+Main Menu di động của P20 là **759 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
 
-P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 56,4 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
+P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 57,5 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
 
-FPS giờ cao điểm ở mức Vừa và Cao đo bằng `node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps` (cách đo ở [docs/media.md](../media.md#đo-fps)).
+FPS giờ cao điểm ở mức Vừa và Cao đo bằng `node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only` (cách đo ở [docs/media.md](../media.md#đo-fps)).
 
 ## Nguồn và license asset tham khảo
 
