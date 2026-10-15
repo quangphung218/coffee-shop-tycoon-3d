@@ -76,6 +76,30 @@ describe('buildInsights — hand-computed figures', () => {
     expect(lemon.marginPct).toBeCloseTo(60.875, 2);
     expect(lemon.status).toBe('watch');
   });
+
+  it('builds per-item day profit from what sold, highest gross profit first', () => {
+    const sold = day({ sold: { espresso: 10, lemon_tea: 3 } });
+    const { itemProfits, arrivalsByHour } = buildInsights(s, sold);
+    // Espresso: (25.000 − 6.900) × 10 = 181.000 beats Trà chanh's smaller take.
+    expect(itemProfits.map((p) => p.id)).toEqual(['espresso', 'lemon_tea']);
+    const espresso = itemProfits[0]!;
+    expect(espresso.qty).toBe(10);
+    expect(espresso.price).toBe(25_000);
+    expect(espresso.cost).toBe(6_900);
+    expect(espresso.grossProfit).toBe((25_000 - 6_900) * 10);
+    expect(espresso.marginPct).toBeCloseTo(72.4, 1);
+    expect(espresso.status).toBe('good');
+    // The hourly arrivals come straight through for the chart.
+    expect(arrivalsByHour?.[12]).toBe(sold.arrivalsByHour?.[12]);
+  });
+
+  it('includes a sold item even after it is switched off the menu', () => {
+    const offMenu = game();
+    offMenu.menu = offMenu.menu.map((m) => (m.id === 'latte' ? { ...m, enabled: false } : m));
+    const { itemProfits } = buildInsights(offMenu, day({ sold: { latte: 4 } }));
+    expect(itemProfits.map((p) => p.id)).toEqual(['latte']);
+    expect(itemProfits[0]!.qty).toBe(4);
+  });
 });
 
 describe('buildInsights — thresholds and advice on a bad day', () => {
