@@ -34,7 +34,8 @@ describe('full day, headless', () => {
     const startMoney = state.money;
 
     // Menu for today, then stock it the way the restock button would.
-    expect(dispatch(state, { type: 'set_menu_item', itemId: 'cappuccino', enabled: true })).toBe(true);
+    // milk_tea is unlocked at level 1 (cappuccino needs a higher shop level).
+    expect(dispatch(state, { type: 'set_menu_item', itemId: 'milk_tea', enabled: true })).toBe(true);
     const suggestion = autoRestockSuggestion(state);
     expect(suggestion.items.length).toBeGreaterThan(0);
     let spent = 0;
@@ -47,7 +48,7 @@ describe('full day, headless', () => {
     expect(state.money).toBe(startMoney - spent);
     expect(autoRestockSuggestion(state).items).toEqual([]);
     const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
-    expect(enabled).toEqual(['espresso', 'americano', 'latte', 'cappuccino', 'lemon_tea']);
+    expect(enabled).toEqual(['espresso', 'americano', 'latte', 'milk_tea', 'lemon_tea']);
 
     const events = playDay(state);
 
@@ -71,8 +72,12 @@ describe('full day, headless', () => {
     expect(report.ratingEnd).toBe(state.rating);
     expect(report.topSellers.length).toBeGreaterThan(0);
 
-    // Ingredients are paid when bought; wages and marketing at the end of the day.
-    expect(state.money).toBe(startMoney - spent + report.revenue - report.wages - report.marketingCost - t.upgradeCost);
+    // Ingredients are paid when bought; wages and marketing at the end of the day;
+    // completed daily missions add a small cash reward.
+    const missionReward = (report.missions ?? [])
+      .filter((m) => m.status === 'completed')
+      .reduce((s, m) => s + m.rewardMoney, 0);
+    expect(state.money).toBe(startMoney - spent + report.revenue - report.wages - report.marketingCost - t.upgradeCost + missionReward);
 
     const ended = events.filter((e) => e.type === 'dayEnded');
     expect(ended).toEqual([{ type: 'dayEnded', day: 1 }]);

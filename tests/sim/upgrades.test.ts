@@ -56,6 +56,7 @@ describe('buyUpgrade', () => {
 
   it('adds seats indoors when buying a decor item with capacity', () => {
     const s = createNewGame('A', 'normal', 1);
+    s.shopLevel = 5; // window_bar unlocks at level 5
     const def = getUpgrade('window_bar');
     expect(def.category).toBe('decor');
     const seats = totalSeats(s);

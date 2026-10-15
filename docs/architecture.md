@@ -105,10 +105,10 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | --- | --- |
 | `start_day` | Chuẩn bị → mở cửa. |
 | `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). |
-| `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu. |
+| `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu; bật món chưa mở khóa theo cấp quán trả `false`. |
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
-| `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. |
+| `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa theo cấp quán trả `false`. |
 | `set_speed`, `set_paused` | Nhịp game. |
 | `take_order`, `brew`, `deliver`, `collect_cash`, `clean_table` | Người chơi tự phục vụ (từ cảnh 3D). |
 
@@ -116,6 +116,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | --- | --- |
 | `doorbell`, `brew`, `cash`, `angry`, `served`, `cleaned` | Âm thanh, hiệu ứng trong cảnh; `served`/`angry` còn sinh review. |
 | `notify`, `low_stock`, `review` | Toast. |
+| `level_up` | Quán lên cấp lúc `closeDay`; kèm `level` mới và `unlocks` (món, nâng cấp, dụng cụ mới mở). |
 | `phase` | Đổi pha trong ngày. |
 | `dayEnded` | Báo cáo đã nằm trong `state.lastReport`; shell tự lưu vào slot `auto` và chuyển kết quả cho Daily Report. |
 
@@ -140,9 +141,19 @@ stateDiagram-v2
 | `opening` | Chạy | Khách đến theo tốc độ cơ bản. |
 | `peak` | Chạy | Khách đến nhiều hơn. |
 | `closing` | Chạy | Không nhận khách mới. |
-| `report` | Dừng | `closeDay` đã trả lương, cập nhật rating, dựng `DailyReport`; UI hiện Daily Report (`src/ui/report`). |
+| `report` | Dừng | `closeDay` đã trả lương, cập nhật rating, chấm nhiệm vụ ngày, cộng XP và lên cấp, dựng `DailyReport`; UI hiện Daily Report (`src/ui/report`). |
 
-Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history`, tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing và phân vai nhân viên cho ngày mới.
+Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history`, tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing, phân vai nhân viên và rút nhiệm vụ mới cho ngày mới.
+
+### Cấp quán và nhiệm vụ
+
+Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/levels.ts`:
+
+| Khái niệm | Chi tiết |
+| --- | --- |
+| Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ cả 10 món lẫn 10 nâng cấp, kèm id dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) cho hạng mục sau. `isUnlocked(state, kind, id)` so cấp hiện tại với cấp mở khóa. |
+| XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP. Cộng lúc `closeDay`; qua ngưỡng `xpToReach` thì lên cấp và phát `level_up`. |
+| Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng XP và một ít tiền. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính. |
 
 ### Trạng thái kho
 
@@ -221,10 +232,11 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 Mỗi slot là JSON:
 
 ```json
-{ "version": 1, "savedAt": 1760364000000, "state": { "...": "GameState, events = []" } }
+{ "version": 2, "savedAt": 1760364000000, "state": { "...": "GameState, events = []" } }
 ```
 
-- `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (1). Phiên bản 0 là `GameState` trần không có vỏ bọc.
+- `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (2). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán.
+- Migration 1→2 thêm `shopLevel`, `xp`, `missions` và `seed`: cấp tính từ số khách đã phục vụ trong `history`, nhưng không thấp hơn cấp đủ để mọi món đang bật và nâng cấp đã mua vẫn mở khóa, nên save cũ không mất quyền đã có.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
 - Sau khi nâng, `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.

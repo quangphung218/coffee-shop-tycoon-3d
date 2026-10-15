@@ -1,4 +1,5 @@
 import { rollWeather } from './customers';
+import { rollMissions } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
 import type { GameState, Phase } from './types';
@@ -88,6 +89,7 @@ export function startNextDay(state: GameState): boolean {
   state.tickAccumulator = 0;
   state.weather = rollWeather(state);
   state.today = createDayStats(state.day, state.rating);
+  state.missions = rollMissions(state.seed, state.day, state.shopLevel);
   setPhase(state, 'preparation');
   return true;
 }

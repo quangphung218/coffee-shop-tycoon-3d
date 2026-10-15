@@ -72,7 +72,10 @@ describe('day loop', () => {
     const soldCount = Object.values(t.sold).reduce((a, b) => a + (b ?? 0), 0);
     expect(soldCount).toBe(t.customersServed);
     expect(t.revenue).toBeGreaterThan(0);
-    expect(state.money).toBe(createNewGame('Quán Test', 'normal', 2024).money + t.revenue);
+    const missionReward = (state.lastReport?.missions ?? [])
+      .filter((m) => m.status === 'completed')
+      .reduce((sum, m) => sum + m.rewardMoney, 0);
+    expect(state.money).toBe(createNewGame('Quán Test', 'normal', 2024).money + t.revenue + missionReward);
     for (const type of ['doorbell', 'brew', 'cash', 'notify', 'served', 'cleaned'] as const) {
       expect(events.some((e) => e.type === type), type).toBe(true);
     }
