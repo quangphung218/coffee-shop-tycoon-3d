@@ -29,7 +29,7 @@ Nguồn: `src/render/actors/rig.ts`, `animations.ts`, `src/render/scene/renderer
 | Thao tác pha chế | Một vòng gộp chung. | Một vòng đọc ra bốn nhịp: xay → nén → chiết → rót (`poseFor`, beat trong `animations.ts`). |
 | Cá tính khách | Không. | 5 persona kèm phụ kiện (túi, ba lô, khăn) gắn lên thân (`ACCESSORIES` trong `rig.ts`). |
 | Vật liệu cảnh | `MeshLambertMaterial` phẳng, không texture. | `MeshStandardMaterial` phẳng + `CanvasTexture` vân nhỏ vẽ lúc chạy (`parts.ts`). |
-| Ánh sáng | Hemi + Directional. | Thêm `scene.environment` từ `RoomEnvironment` của three qua `PMREMGenerator` cho phản xạ/ánh sáng mềm (`environment.ts`). |
+| Ánh sáng | Hemi 1,6 + Directional 1,8. | Thêm `scene.environment` từ `RoomEnvironment` của three qua `PMREMGenerator` (`environment.ts`) ở mức Vừa/Cao với cường độ 0,1, hemi hạ còn 1,0 để tổng ánh sáng và độ tương phản giữ bằng P19 (`LIGHTING` trong `renderer.ts`); mức Thấp giữ nguyên đèn P19. |
 | Dụng cụ quầy | Máy espresso + máy nhanh. | 5 dụng cụ mới (máy xay, tủ bánh, máy xay sinh tố, máy làm đá, máy rửa) là mesh gộp một draw call (`shop.ts`). |
 
 Mọi cải tiến trên là procedural trong code: không nhúng file ảnh/HDRI, **0 byte tải thêm**, giữ style hoạt hình và ngân sách tải.
@@ -53,7 +53,9 @@ Trung vị 3 lần, Chrome headless không cache trên Apple M2 (ANGLE Metal), s
 
 Main Menu di động của P20 là **762 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
 
-P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 56,4 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt). Lệnh không đo FPS trực tiếp; thời gian tới cảnh 3D di động của P20 không cao hơn P19, và vật liệu/đèn mới chỉ thêm một env map dựng một lần nên không tăng tải mỗi khung.
+P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 56,4 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
+
+FPS giờ cao điểm ở mức Vừa và Cao đo bằng `node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps` (cách đo ở [docs/media.md](../media.md#đo-fps)).
 
 ## Nguồn và license asset tham khảo
 

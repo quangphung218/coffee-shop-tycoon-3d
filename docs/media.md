@@ -89,19 +89,40 @@ npm run media:p20
 
 Lệnh build bản hiện tại, xuất commit P19 `96030ca` ra thư mục tạm và build nó, rồi dùng lại bộ dựng bảng của `scripts/capture-media.mjs` (preview, chơi ván mới, khoanh và nhãn) qua `scripts/capture-p20.mjs`. Mỗi bảng ghép P19 cạnh bản hiện tại, cùng seed và góc máy; P19 khoanh nét đứt cam, P20 nét liền xanh, nhãn ghi chỗ đã sửa. Yêu cầu giống `npm run media`: Playwright/Chromium và lịch sử git tới `96030ca`, cổng `4173`/`4174` trống.
 
-Tám bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
+Bản P20 chơi từ hai ván dựng sẵn, nạp qua **Tiếp tục**: ván ngày 1 thiếu 1 XP tới cấp 2 (hết ngày hiện băng Lên cấp) và ván cấp 6 đã mua đủ 5 dụng cụ mới. Bản P19 chơi ván mới.
+
+Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 
 | File | Nội dung |
 | --- | --- |
-| `hud-dock-p20.png` | HUD lúc Chuẩn bị: chip "Cấp N" + thanh XP và vạch chia nhóm dock (mới ở P20). |
-| `tasks-missions-p20.png` | Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ (mới). |
+| `hud-dock-p20.png` | HUD lúc Chuẩn bị: chip "Cấp N" + thanh XP và vạch chia nhóm dock. |
+| `dock-390-p20.png` | Dock ở 390 px: vạch chia không chiếm ô, Đánh giá nhóm riêng. |
+| `tasks-missions-p20.png` | Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ. |
 | `upgrades-locks-p20.png` | Bảng Nâng cấp ở Cấp 1: chia nhóm Dụng cụ / Không gian / Trang trí và nhãn "Mở ở cấp N". |
-| `report-insights-p20.png` | Daily Report: tab Chỉ số mới với KPI ngành F&B. |
-| `settings-390-p20.png`, `settings-1280-p20.png` | Cài đặt ở 390 px và 1280 px: nhóm Hiển thị + Giảm chuyển động, nhóm Điều khiển, Phím tắt trong ô xổ. |
-| `brew-closeup-p20.png` | Cận cảnh quầy giờ cao điểm: nhân viên pha chế có mặt biểu cảm và chuỗi xay–nén–chiết–rót. |
-| `peak-p20.png` | Giờ cao điểm: vật liệu chuẩn + RoomEnvironment và mô hình quầy chi tiết hơn. |
+| `report-insights-p20.png` | Daily Report: tab Tổng kết P19 có số liệu cạnh tab Chỉ số P20 với KPI ngành F&B. |
+| `report-levelup-p20.png` | Daily Report: tab Tổng kết P19 cạnh tab Tổng kết P20 có băng "Lên cấp N". |
+| `settings-390-p20.png`, `settings-1280-p20.png` | Cài đặt ở 390 px và 1280 px, chụp cả form: nhóm Hiển thị + Giảm chuyển động, nhóm Điều khiển, Phím tắt trong ô xổ. |
+| `brew-closeup-p20.png` | Camera trước mặt nhân viên đứng ở máy espresso lúc đang pha: mặt biểu cảm và tư thế pha. |
+| `customer-mood-p20.png` | Camera trước mặt khách giờ cao điểm: mặt vui / sốt ruột. |
+| `tools-p20.png` | Quầy sau nhìn thẳng: 5 dụng cụ mới, mỗi cái khoanh kèm tên. |
+| `peak-p20.png` | Giờ cao điểm: vật liệu chuẩn, env map nhẹ, quầy chi tiết hơn. |
 
-Đổi commit gốc bằng `P20_BASE`, seed bằng `MEDIA_SEED`, cổng bằng `MEDIA_PORT` (xem [Tùy chọn](#tùy-chọn)). Lệnh in dung lượng từng file và cảnh báo `!!` khi một nhãn không có gì để khoanh.
+Đổi commit gốc bằng `P20_BASE`, seed bằng `MEDIA_SEED`, cổng bằng `MEDIA_PORT` (xem [Tùy chọn](#tùy-chọn)). Lệnh in dung lượng từng file và cảnh báo `!!` khi:
+
+| Cảnh báo | Nghĩa |
+| --- | --- |
+| `nothing to ring` | Nhãn không có gì để khoanh (phần tử không thấy trên màn hình). |
+| `rings a flat area` | Vòng khoanh nằm trên vùng gần như một màu (độ lệch màu < 8), tức vùng trống. |
+| `label covers text` | Nhãn vẫn đè lên chữ của khung dù đã thử cả dải lề bên phải. |
+| `no barista brewing`, `no customer with a mood` | Trong 60 s giờ cao điểm không có người phù hợp cho cận cảnh; bảng đó bị bỏ. |
+
+### Đo FPS
+
+```sh
+node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps
+```
+
+Ngoài bảng khởi động, `--fps` chơi ngày 1 Dễ ở 4x tới giờ cao điểm cho từng bản, ở mức Vừa và Cao (cửa sổ 1280×800, tỉ lệ điểm ảnh 2), lấy mẫu 10 s và in FPS trung vị và p5. Dòng cuối so trung vị bản hiện tại với bản gốc; `!!` khi tụt quá 10%.
 
 ## Tùy chọn
 
@@ -129,7 +150,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng (cả cổng kế tiếp) hoặc đặt `MEDIA_PORT=4180`. |
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
-| `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). |
+| `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `[data-block="money"]`, `[data-block="level-up"]`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). Cận cảnh 3D dựa vào nhóm `machine-steam` và thứ tự khối của nhân vật trong `src/render/actors/rig.ts` (xem `aimAt()`). |
 
 ## Kiểm lề và CLS
 
