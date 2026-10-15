@@ -10,15 +10,12 @@ npm run media:p20
 
 Lệnh dựng tám bảng vào `docs/media/`, mỗi bảng ghép P19 cạnh P20 cùng seed và góc máy, khoanh chỗ đã đổi (P19 nét đứt cam, P20 nét liền xanh); cách chạy ở [docs/media.md](../media.md#ảnh-trướcsau-p20).
 
-| Bảng | Khoanh gì |
+| | |
 | --- | --- |
-| `hud-dock-p20.png` | HUD lúc Chuẩn bị: chip "Cấp N" + thanh XP, vạch chia nhóm dock Vận hành \| Phát triển. |
-| `tasks-missions-p20.png` | Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ (tên · tiến độ · thưởng). |
-| `upgrades-locks-p20.png` | Bảng Nâng cấp ở Cấp 1: nhóm Dụng cụ / Không gian / Trang trí và nhãn "Mở ở cấp N". |
-| `report-insights-p20.png` | Daily Report: tab Chỉ số mới với KPI ngành F&B. |
-| `settings-390-p20.png`, `settings-1280-p20.png` | Cài đặt: nhóm Hiển thị + Giảm chuyển động, nhóm Điều khiển, Phím tắt trong ô xổ. |
-| `brew-closeup-p20.png` | Cận cảnh quầy: nhân viên pha chế có mặt biểu cảm và chuỗi xay–nén–chiết–rót. |
-| `peak-p20.png` | Giờ cao điểm: vật liệu chuẩn + RoomEnvironment, mô hình quầy chi tiết hơn. |
+| ![HUD: chip Cấp N + thanh XP và vạch chia nhóm dock](../media/hud-dock-p20.png)<br>HUD: chip "Cấp N" + thanh XP, vạch chia Vận hành \| Phát triển | ![Bảng Việc: nhiệm vụ ngày](../media/tasks-missions-p20.png)<br>Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ |
+| ![Bảng Nâng cấp: nhóm và khóa](../media/upgrades-locks-p20.png)<br>Nâng cấp: nhóm Dụng cụ/Không gian/Trang trí, nhãn "Mở ở cấp N" | ![Daily Report: tab Chỉ số](../media/report-insights-p20.png)<br>Daily Report: tab Chỉ số với KPI ngành F&B |
+| ![Cài đặt 390 px](../media/settings-390-p20.png)<br>Cài đặt 390 px: Hiển thị + Giảm chuyển động, Điều khiển, Phím tắt trong ô xổ | ![Cài đặt 1280 px](../media/settings-1280-p20.png)<br>Cài đặt 1280 px: cùng cấu trúc mới |
+| ![Cận cảnh pha chế](../media/brew-closeup-p20.png)<br>Cận cảnh quầy: nhân vật có mặt biểu cảm và chuỗi xay–nén–chiết–rót | ![Giờ cao điểm](../media/peak-p20.png)<br>Giờ cao điểm: vật liệu chuẩn + RoomEnvironment, quầy chi tiết hơn |
 
 ## Chấm 3D: hiện trạng P19 → P20
 
