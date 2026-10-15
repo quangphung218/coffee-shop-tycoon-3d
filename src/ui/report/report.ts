@@ -1,10 +1,13 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
+import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
-import type { Command, DailyReport, GameState, InsightPanel, Review, SuggestionKind } from '../../sim/types';
+import { getUpgrade } from '../../sim/data/upgrades';
+import type { Command, DailyReport, GameState, InsightPanel, Mission, Review, SuggestionKind } from '../../sim/types';
 import { h, setChildren, trapFocus, Watcher } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
-import { MENU_ICONS } from '../core/iconMap';
+import { LEVEL_ICON, MENU_ICONS, MISSION_ICON } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { MISSION_META } from '../panels/tasks';
 import { renderInsights } from './insights';
 import { fillReviews, newestFirst, reviewItem, starsEl } from './reviews';
 
@@ -201,6 +204,78 @@ function suggestions(r: DailyReport): HTMLElement {
   );
 }
 
+const MISSION_RESULT: Record<Mission['status'], { label: string; badge: string; icon: IconId }> = {
+  completed: { label: 'Đạt', badge: 'badge-ok', icon: 'i-ok' },
+  failed: { label: 'Hụt', badge: 'badge-warn', icon: 'i-warning' },
+  active: { label: 'Chưa chấm', badge: 'badge-neutral', icon: 'i-clock' },
+};
+
+/**
+ * "Lên cấp N" band, in place at the top of the summary (design/p20 §6): the
+ * new level's name and what it unlocks. Null when the day brought no level-up.
+ */
+export function levelUpBand(r: DailyReport): HTMLElement | null {
+  const up = r.levelUp;
+  if (!up) return null;
+  const groups: [string, string[]][] = [
+    ['Món mới', up.unlocks.menu.map((id) => getMenuItem(id).name)],
+    ['Nâng cấp', up.unlocks.upgrades.map((id) => getUpgrade(id).name)],
+    ['Dụng cụ', up.unlocks.tools.map((id) => getUpgrade(id).name)],
+  ];
+  const lines = groups.filter(([, names]) => names.length > 0);
+  return h(
+    'div',
+    { class: 'rpt-levelup', attrs: { role: 'status', 'data-block': 'level-up' } },
+    icon(LEVEL_ICON, { size: 32, class: 'rpt-levelup-icon' }),
+    h(
+      'div',
+      { class: 'rpt-levelup-body' },
+      h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
+      lines.length === 0
+        ? muted('Cấp này chưa mở thêm món hay dụng cụ.')
+        : h(
+            'ul',
+            { class: 'rpt-list rpt-unlocks', attrs: { 'aria-label': 'Mở khóa' } },
+            ...lines.map(([title, names]) => h('li', {}, icon('i-sparkle', { size: 16 }), h('b', { text: `${title}: ` }), names.join(', '))),
+          ),
+    ),
+  );
+}
+
+/** Today's missions, reached or missed, with their rewards, plus the XP earned. Old saves lack both. */
+function missionsBlock(r: DailyReport): HTMLElement {
+  const xp = typeof r.xpGained === 'number' ? h('p', { class: 'rpt-xp', attrs: { 'data-block': 'xp' } }, icon('i-sparkle', { size: 16 }), 'Kinh nghiệm hôm nay: ', h('b', { text: `+${r.xpGained} KN` })) : null;
+  const missions = r.missions;
+  if (!missions) return section(MISSION_ICON, 'Nhiệm vụ ngày', muted('Báo cáo này lưu từ bản cũ, chưa có nhiệm vụ ngày.'), xp);
+  if (missions.length === 0) return section(MISSION_ICON, 'Nhiệm vụ ngày', muted('Ngày này chưa có nhiệm vụ.'), xp);
+  return section(
+    MISSION_ICON,
+    `Nhiệm vụ ngày · đạt ${missions.filter((m) => m.status === 'completed').length}/${missions.length}`,
+    h(
+      'ul',
+      { class: 'rpt-list', attrs: { 'data-block': 'missions' } },
+      ...missions.map((m) => {
+        const meta = MISSION_META[m.id];
+        const st = MISSION_RESULT[m.status];
+        const reward = `+${m.rewardXp} KN · +${formatMoney(m.rewardMoney)}`;
+        return h(
+          'li',
+          { class: 'rpt-mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
+          h('span', { class: `badge ${st.badge}` }, icon(st.icon, { size: 16 }), st.label),
+          h(
+            'div',
+            {},
+            h('p', { class: 'rpt-strong', text: meta.title }),
+            h('p', { class: 'rpt-muted', text: m.status === 'active' ? meta.goal(m.target) : `${meta.measure(m.progress)} · ${meta.goal(m.target)}` }),
+            h('p', { class: 'rpt-muted rpt-mission-reward', text: m.status === 'completed' ? `Đã nhận ${reward}` : `Thưởng ${reward}` }),
+          ),
+        );
+      }),
+    ),
+    xp,
+  );
+}
+
 function resultNote(r: DailyReport, kind: ResultKind): string {
   const cash = `Tiền hiện có: ${formatMoney(r.money)}.`;
   if (kind === 'none') return `Chỉ có chi phí cố định trong ngày. ${cash}`;
@@ -210,6 +285,7 @@ function resultNote(r: DailyReport, kind: ResultKind): string {
 /** The summary tab, rebuilt once per report. */
 export function renderSummary(r: DailyReport): HTMLElement[] {
   const result = reportResult(r);
+  const band = levelUpBand(r);
   return [
     h(
       'div',
@@ -219,6 +295,8 @@ export function renderSummary(r: DailyReport): HTMLElement[] {
       h('span', { class: 'rpt-result-value', text: result.value }),
       h('span', { class: 'rpt-result-note', text: resultNote(r, result.kind) }),
     ),
+    ...(band ? [band] : []),
+    missionsBlock(r),
     h('div', { class: 'rpt-grid' }, money(r), h('div', { class: 'rpt-col' }, customers(r), rating(r))),
     h('div', { class: 'rpt-grid' }, topSellers(r), h('div', { class: 'rpt-col' }, outOfStock(r), recentReviews(r.reviews))),
     suggestions(r),

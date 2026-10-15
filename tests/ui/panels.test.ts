@@ -86,6 +86,8 @@ describe('registration', () => {
 describe('menu panel', () => {
   it('lists the 11 items and locks one that lacks an ingredient, with the reason', () => {
     const state = game();
+    // Mocha opens at a later shop level; reach it so only the ingredient locks it.
+    state.shopLevel = 6;
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
     const { body, sent } = mount(renderMenuPanel, state);
     expect(body.querySelectorAll('li.item')).toHaveLength(11);

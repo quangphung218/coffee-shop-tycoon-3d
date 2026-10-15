@@ -105,11 +105,13 @@ export function createHud(actions: HudActions): Hud {
     { class: 'xp', attrs: { role: 'progressbar', 'aria-label': 'Kinh nghiệm cấp quán', 'aria-valuemin': '0' } },
     xpFill,
   );
+  // "320/500": XP into this level over the XP the level spans; the bar already says it to a screen reader.
+  const xpNum = h('span', { class: 'xp-num', attrs: { 'aria-hidden': 'true', 'data-stat': 'xp' } });
   const levelChip = h(
     'div',
     { class: 'hud-stat hud-level', attrs: { 'data-stat': 'level' } },
     icon(LEVEL_ICON),
-    h('div', { class: 'level-body' }, levelName, xpBar),
+    h('div', { class: 'level-body' }, levelName, h('div', { class: 'xp-row' }, xpBar, xpNum)),
   );
   let levelTimer: ReturnType<typeof setTimeout> | null = null;
   let shownLevel: number | null = null;
@@ -136,6 +138,7 @@ export function createHud(actions: HudActions): Hud {
       xpBar.setAttribute('aria-valuemax', String(atMax ? 1 : span));
       xpBar.setAttribute('aria-valuenow', String(atMax ? 1 : into));
       xpBar.setAttribute('aria-valuetext', atMax ? 'Cấp tối đa' : `${into}/${span} KN tới Cấp ${level + 1}`);
+      xpNum.textContent = atMax ? 'Tối đa' : `${into}/${span}`;
       if (shownLevel !== null && level > shownLevel) flashLevel();
       shownLevel = level;
     },

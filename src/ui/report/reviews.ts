@@ -127,7 +127,13 @@ export function renderReviewsPanel(body: HTMLElement, ctx: PanelContext): PanelH
 
 export const REVIEWS_PANEL_ID = 'reviews';
 
+/**
+ * Dock group of the Reviews button: its own group after "Phát triển", so a
+ * divider keeps it out of Marketing/Nâng cấp (design/p20 §5).
+ */
+export const REVIEWS_DOCK_GROUP = 'feedback';
+
 /** Adds the Reviews button to the dock. Returns a function that removes it. */
 export function registerReviewsPanel(): () => void {
-  return registerPanel(REVIEWS_PANEL_ID, 'Đánh giá', 'i-reviews', renderReviewsPanel);
+  return registerPanel(REVIEWS_PANEL_ID, 'Đánh giá', 'i-reviews', renderReviewsPanel, undefined, REVIEWS_DOCK_GROUP);
 }

@@ -154,6 +154,56 @@ describe('tokens.css', () => {
   });
 });
 
+describe('ui.css HUD level chip (design/p20 §4)', () => {
+  it('tints the chip and the XP bar through the P20 aliases', () => {
+    const all = rules(uiCss);
+    const body = (selector: string): string => all.find((r) => r.selector === selector)?.body ?? '';
+    expect(body('.hud-level')).toMatch(/background:\s*var\(--level-chip-bg\)/);
+    expect(body('.xp')).toMatch(/background:\s*var\(--xp-track\)/);
+    expect(body('.xp-fill')).toMatch(/background:\s*var\(--xp-fill\)/);
+    expect(token('--level-chip-bg')).toBe('var(--surface-selected)');
+    expect(token('--xp-fill')).toBe('var(--data-bar)');
+  });
+
+  it('spaces the chip with tokens, no hand-set px', () => {
+    const all = rules(uiCss);
+    for (const sel of ['.hud-level', '.hud-level .level-body', '.xp-row', '.xp', '.xp-num']) {
+      const body = all.find((r) => r.selector === sel)?.body ?? '';
+      expect(body, sel).not.toMatch(/\b\d+px\b/);
+    }
+  });
+});
+
+describe('ui.css dock at 390 px', () => {
+  /** Innermost rules of the `@media (max-width: 640px)` block that lays the dock out as a grid. */
+  function phoneRules(): Rule[] {
+    const src = uiCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const blocks: string[] = [];
+    for (let i = src.indexOf('@media (max-width: 640px)'); i >= 0; i = src.indexOf('@media (max-width: 640px)', i + 1)) {
+      const start = src.indexOf('{', i);
+      let depth = 0;
+      let end = start;
+      for (; end < src.length; end++) {
+        if (src[end] === '{') depth++;
+        else if (src[end] === '}' && --depth === 0) break;
+      }
+      blocks.push(src.slice(start + 1, end));
+    }
+    return rules(blocks.find((b) => /\.dock\s*\{[^}]*grid-template-columns/.test(b)) ?? '');
+  }
+
+  it('keeps the divider out of the 4-column grid, so both rows hold whole buttons', () => {
+    const phone = phoneRules();
+    expect(phone.find((r) => r.selector === '.dock')?.body).toMatch(/grid-template-columns:\s*repeat\(4/);
+    expect(phone.find((r) => r.selector === '.dock-sep')?.body).toMatch(/display:\s*none/);
+  });
+
+  it('marks a later group on the same row (Đánh giá) with a line that takes no cell', () => {
+    const line = phoneRules().find((r) => r.selector === '.dock-sep ~ .dock-sep + .dock-btn::before');
+    expect(line?.body).toMatch(/position:\s*absolute/);
+  });
+});
+
 describe('ui.css buttons vs labels (design/p20 §4)', () => {
   const all = rules(uiCss);
   const body = (selector: string): string => all.find((r) => r.selector === selector)?.body ?? '';

@@ -1,6 +1,8 @@
 import { getIngredient } from '../../sim/data/ingredients';
+import { menuUnlockLevel } from '../../sim/data/levels';
 import { MENU } from '../../sim/data/menu';
 import { stockOf } from '../../sim/inventory';
+import { isUnlocked } from '../../sim/progression';
 import type { GameState, MenuItemDef } from '../../sim/types';
 import { h, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -29,18 +31,22 @@ function popularityDots(p: number): HTMLElement {
 /**
  * Menu hôm nay: every item with price, cost, hot/cold, popularity and a
  * Bán/Không switch. Items the stock cannot make are locked with the missing
- * ingredient; an item already on sale can still be switched off.
+ * ingredient; items above the shop level show "Mở ở cấp N" and stay off. An
+ * item already on sale can still be switched off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
   const intro = h('p', { class: 'intro' });
-  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu bị khóa cho tới khi nhập thêm.`);
+  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu bị khóa cho tới khi nhập thêm; món mới mở theo cấp quán.`);
 
   const rows = MENU.map((item) => {
     const why = reasonLine();
     const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }));
     const lockBadge = h('span', { class: 'badge badge-danger', hidden: true }, ...withIcon('i-lock', 'Khóa'));
+    // Below its unlock level: a flat "Mở ở cấp N" label (design/p20 §5), not a button.
+    const need = menuUnlockLevel(item.id);
+    const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } }, ...withIcon('i-lock', `Mở ở cấp ${need}`));
     const meta = h('p', { class: 'item-meta' });
     const toStock = linkBtn('Nhập ở Kho', 'inventory');
     toStock.hidden = true;
@@ -51,7 +57,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       h(
         'div',
         {},
-        h('p', { class: 'item-title' }, item.name, ' ', lockBadge),
+        h('p', { class: 'item-title' }, item.name, ' ', lockBadge, levelBadge),
         meta,
         h(
           'p',
@@ -68,20 +74,23 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     w.watch(
       (s) => {
         const entry = s.menu.find((m) => m.id === item.id);
-        return `${entry?.enabled ? 1 : 0}|${entry?.price ?? item.price}|${lockReason(s, item) ?? ''}`;
+        return `${entry?.enabled ? 1 : 0}|${entry?.price ?? item.price}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}`;
       },
       (_, s) => {
         const entry = s.menu.find((m) => m.id === item.id);
         const enabled = !!entry?.enabled;
         const price = entry?.price ?? item.price;
-        const locked = lockReason(s, item);
+        // An item already on sale (an old save's right) can still be switched off.
+        const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
+        const locked = levelLocked ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
         meta.textContent = `Giá ${formatMoney(price)} · vốn ${formatMoney(item.cost)} · lãi ${formatMoney(price - item.cost)}/ly · biên ${margin}%`;
-        li.classList.toggle('is-locked', !!locked);
+        li.classList.toggle('is-locked', levelLocked || !!locked);
+        levelBadge.hidden = !levelLocked;
         lockBadge.hidden = !locked;
         toStock.hidden = !locked;
-        sw.set(enabled, !!locked && !enabled);
-        setReason(why, sw.el, locked, 'i-lock');
+        sw.set(enabled, levelLocked || (!!locked && !enabled));
+        setReason(why, sw.el, levelLocked ? `Mở khóa ở Cấp ${need}.` : locked, 'i-lock');
       },
     );
     return li;
