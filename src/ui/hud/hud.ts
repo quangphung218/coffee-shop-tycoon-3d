@@ -1,7 +1,8 @@
+import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
 import type { Command, GameState, Phase } from '../../sim/types';
 import { h, setChildren, Watcher } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
-import { PHASE_ICONS } from '../core/iconMap';
+import { LEVEL_ICON, PHASE_ICONS } from '../core/iconMap';
 import { icon, type IconId, type IconSize } from '../core/icons';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
 
@@ -93,6 +94,52 @@ export function createHud(actions: HudActions): Hud {
   const day = h('b');
   const clock = h('b');
   w.text(day, (s) => String(s.day)).text(clock, (s) => formatClock(s.minute));
+
+  // Shop level chip with an XP bar, next to the day (design/p20 §5). The bar is
+  // a progressbar reporting XP earned toward the next level; it flashes on a
+  // level-up (muted when motion is reduced).
+  const levelName = h('b', { class: 'level-name' });
+  const xpFill = h('span', { class: 'xp-fill' });
+  const xpBar = h(
+    'div',
+    { class: 'xp', attrs: { role: 'progressbar', 'aria-label': 'Kinh nghiệm cấp quán', 'aria-valuemin': '0' } },
+    xpFill,
+  );
+  const levelChip = h(
+    'div',
+    { class: 'hud-stat hud-level', attrs: { 'data-stat': 'level' } },
+    icon(LEVEL_ICON),
+    h('div', { class: 'level-body' }, levelName, xpBar),
+  );
+  let levelTimer: ReturnType<typeof setTimeout> | null = null;
+  let shownLevel: number | null = null;
+  function flashLevel(): void {
+    if (prefersReducedMotion()) return;
+    levelChip.classList.remove('is-level-up');
+    void levelChip.offsetWidth; // restart the animation
+    levelChip.classList.add('is-level-up');
+    if (levelTimer) clearTimeout(levelTimer);
+    levelTimer = setTimeout(() => levelChip.classList.remove('is-level-up'), 1200);
+  }
+  w.watch(
+    (s) => `${s.shopLevel}|${s.xp}`,
+    (_, s) => {
+      const level = s.shopLevel;
+      const def = levelDef(level);
+      levelName.textContent = `Cấp ${level} · ${def.name}`;
+      const atMax = level >= MAX_SHOP_LEVEL;
+      const base = xpToReach(level);
+      const span = atMax ? 1 : xpToReach(level + 1) - base;
+      const into = Math.max(0, Math.min(span, s.xp - base));
+      const frac = atMax ? 1 : span > 0 ? into / span : 1;
+      xpFill.style.width = `${Math.round(frac * 100)}%`;
+      xpBar.setAttribute('aria-valuemax', String(atMax ? 1 : span));
+      xpBar.setAttribute('aria-valuenow', String(atMax ? 1 : into));
+      xpBar.setAttribute('aria-valuetext', atMax ? 'Cấp tối đa' : `${into}/${span} KN tới Cấp ${level + 1}`);
+      if (shownLevel !== null && level > shownLevel) flashLevel();
+      shownLevel = level;
+    },
+  );
 
   const phaseItems = PHASE_STEPS.map((step, i) => {
     const mark = h('span', { class: 'ph-icon' });
@@ -272,34 +319,39 @@ export function createHud(actions: HudActions): Hud {
   let dockWatch = new Watcher<GameState>();
   function renderDock(): void {
     dockWatch = new Watcher<GameState>();
-    setChildren(
-      dock,
-      ...listPanels().map((p) => {
-        const btn = h(
-          'button',
-          {
-            class: 'dock-btn',
-            attrs: { type: 'button', 'aria-pressed': String(p.id === openId), 'aria-controls': 'ui-panel', 'data-panel': p.id },
-            on: { click: (e) => (openId === p.id ? closePanel() : openPanel(p.id, e.currentTarget as HTMLElement)) },
-          },
-          icon(p.icon, { size: 32 }),
-          h('span', { text: p.label }),
-        );
-        const count = p.badge;
-        if (count) {
-          // The number is drawn for the eye; the name says it in words.
-          const spoken = h('span', { class: 'sr-only' });
-          const badge = h('span', { class: 'dock-badge', hidden: true, attrs: { 'aria-hidden': 'true' } });
-          btn.append(spoken, badge);
-          dockWatch.watch(count, (n) => {
-            badge.textContent = n > 0 ? String(n) : '';
-            badge.hidden = n <= 0;
-            spoken.textContent = n > 0 ? `, ${n} mục cần chú ý` : '';
-          });
-        }
-        return btn;
-      }),
-    );
+    const items: HTMLElement[] = [];
+    let prevGroup: string | undefined;
+    for (const p of listPanels()) {
+      // A thin divider marks where the group changes (Vận hành | Phát triển).
+      if (items.length && p.group && prevGroup && p.group !== prevGroup) {
+        items.push(h('span', { class: 'dock-sep', attrs: { role: 'separator', 'aria-orientation': 'vertical', 'aria-hidden': 'true' } }));
+      }
+      if (p.group) prevGroup = p.group;
+      const btn = h(
+        'button',
+        {
+          class: 'dock-btn',
+          attrs: { type: 'button', 'aria-pressed': String(p.id === openId), 'aria-controls': 'ui-panel', 'data-panel': p.id },
+          on: { click: (e) => (openId === p.id ? closePanel() : openPanel(p.id, e.currentTarget as HTMLElement)) },
+        },
+        icon(p.icon, { size: 32 }),
+        h('span', { text: p.label }),
+      );
+      const count = p.badge;
+      if (count) {
+        // The number is drawn for the eye; the name says it in words.
+        const spoken = h('span', { class: 'sr-only' });
+        const badge = h('span', { class: 'dock-badge', hidden: true, attrs: { 'aria-hidden': 'true' } });
+        btn.append(spoken, badge);
+        dockWatch.watch(count, (n) => {
+          badge.textContent = n > 0 ? String(n) : '';
+          badge.hidden = n <= 0;
+          spoken.textContent = n > 0 ? `, ${n} mục cần chú ý` : '';
+        });
+      }
+      items.push(btn);
+    }
+    setChildren(dock, ...items);
     const state = actions.getState();
     if (state) dockWatch.run(state);
   }
@@ -359,6 +411,7 @@ export function createHud(actions: HudActions): Hud {
       'div',
       { class: 'hud-left' },
       pill(h('small', { text: 'Ngày' }), day),
+      levelChip,
       pill(icon('i-clock'), h('small', { text: 'Giờ' }), clock),
       h('ol', { class: 'phases', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li)),
     ),
@@ -413,6 +466,7 @@ export function createHud(actions: HudActions): Hud {
       edges?.disconnect();
       closePanel();
       if (resetTimer) clearTimeout(resetTimer);
+      if (levelTimer) clearTimeout(levelTimer);
       if (countFrame) cancelAnimationFrame(countFrame);
     },
   };

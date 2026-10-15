@@ -29,6 +29,8 @@ export interface PanelDef {
   render: PanelRender;
   /** Items that need attention, shown as a dock badge; 0 hides it. Reads the state only. */
   badge?(state: GameState): number;
+  /** Dock group ('ops'/'dev'); a divider is drawn where it changes. */
+  group?: string;
 }
 
 const panels: PanelDef[] = [];
@@ -38,8 +40,8 @@ const listeners = new Set<() => void>();
  * Adds a dock button that opens a side panel (Kho, Menu, Nhân viên…).
  * Registering an id again replaces the earlier panel. Returns an unregister function.
  */
-export function registerPanel(id: string, label: string, icon: IconId, render: PanelRender, badge?: PanelDef['badge']): () => void {
-  const def: PanelDef = { id, label, icon, render, badge };
+export function registerPanel(id: string, label: string, icon: IconId, render: PanelRender, badge?: PanelDef['badge'], group?: string): () => void {
+  const def: PanelDef = { id, label, icon, render, badge, group };
   const i = panels.findIndex((p) => p.id === id);
   if (i >= 0) panels[i] = def;
   else panels.push(def);
