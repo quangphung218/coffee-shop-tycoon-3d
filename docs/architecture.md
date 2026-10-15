@@ -155,6 +155,25 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP. Cộng lúc `closeDay`; qua ngưỡng `xpToReach` thì lên cấp và phát `level_up`. |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng XP và một ít tiền. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính. |
 
+### Nâng cấp và dụng cụ
+
+10 nâng cấp và 5 dụng cụ ở `src/sim/data/upgrades.ts`; mỗi loại có `category` (`equipment` / `space` / `decor`) và `effectPerLevel`. `totalUpgradeEffect(state.upgrades)` cộng dồn hiệu ứng mọi cấp đã mua:
+
+| Trường hiệu ứng | Tác dụng trong sim | Áp ở |
+| --- | --- | --- |
+| `capacity` | Thêm chỗ ngồi (thêm bàn vào bố cục) | `upgrades.ts` (`addTables`) |
+| `appeal` | +% khách đến | `customers.ts` |
+| `foodAppeal` | +% khách gọi thêm món ăn | `customers.ts` |
+| `brewSpeed` | Pha mọi món nhanh hơn | `orders.ts` (`brewSpeedFor`) |
+| `coffeeBrewSpeed` | Pha đồ cà phê nhanh hơn | `orders.ts` |
+| `coldBrewSpeed` | Pha đồ lạnh nhanh hơn | `orders.ts` |
+| `foodBrewSpeed` | Làm món ăn nhanh hơn | `orders.ts` |
+| `cleanSpeed` | Dọn bàn nhanh hơn | `orders.ts` (`cleanMinutes`) |
+| `iceCostReduction` | Giảm chi phí đá cho đồ lạnh | `inventory.ts` |
+| `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
+
+Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`.
+
 ### Trạng thái kho
 
 `stockOutlook(state)` (`src/sim/inventory.ts`) trả cho mỗi nguyên liệu `{ qty, need, level, cups }`:
@@ -166,6 +185,25 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | `cups` | Số ly của cơ cấu món hôm nay mà kho còn đủ; `null` khi menu không dùng nguyên liệu đó. |
 
 Kết quả cache theo state, chỉ tính lại khi tồn kho, menu, pha, ngày hay khung 15 phút game đổi, nên gọi mỗi khung được. Nhãn Đủ / Sắp hết / Hết trong bảng Kho, huy hiệu dock Kho (`lowStockCount`) và toast `low_stock` cùng đọc hàm này; bảng Kho đang mở cập nhật theo sim qua `Watcher`, không cần bấm Gợi ý.
+
+### Chỉ số kinh doanh
+
+`buildInsights(state, stats)` (`src/sim/insights.ts`) dựng `Insights` lúc `closeDay` và gắn vào `DailyReport.insights`: tám KPI (`metrics`), lãi gộp từng món (`itemProfits`) và lượng khách theo giờ (`arrivalsByHour`). Tab Chỉ số của Daily Report (`src/ui/report/insights.ts`) vẽ chúng; save cũ không có `insights` thì tab hiện ô rỗng.
+
+Ngưỡng ở `src/sim/data/benchmarks.ts` là mốc huấn luyện theo thông lệ quán cà phê (food cost, lương, prime cost), tinh chỉnh cho kinh tế trong game, không phải số kế toán thật. `lowerStatus` / `upperStatus` xếp mỗi KPI thành `good` / `watch` / `bad`:
+
+| KPI | Tốt | Cần chú ý | Chiều |
+| --- | --- | --- | --- |
+| Food cost % (giá vốn / doanh thu) | ≤ 35 | ≤ 40 | thấp tốt |
+| Chi phí lương % | ≤ 35 | ≤ 40 | thấp tốt |
+| Prime cost % (vốn + lương) | ≤ 65 | ≤ 72 | thấp tốt |
+| Tỷ lệ bỏ về % | ≤ 10 | ≤ 20 | thấp tốt |
+| Chờ trung bình (phút game) | ≤ 8 | ≤ 15 | thấp tốt |
+| Hao hụt % (trên giá vốn) | ≤ 5 | ≤ 12 | thấp tốt |
+| Lấp ghế % (trên khung phục vụ) | ≤ 70 | ≤ 90 | cao = thiếu ghế |
+| Biên món % | ≥ 65 | ≥ 58 | cao tốt |
+
+Đơn trung bình (AOV) và giờ cao điểm chỉ để tham khảo, không có ngưỡng. KPI `watch` hoặc `bad` kèm một câu gợi ý và một `panel` để UI mở thẳng bảng sửa (Nhân viên, Nâng cấp, Menu, Kho, Marketing).
 
 ## FSM khách
 
@@ -255,10 +293,10 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 128,5 kB | 44,8 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 54,8 kB | 8,7 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 72,5 kB | 27,1 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 496,5 kB | 124,2 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 162,6 kB | 56,4 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 62,8 kB | 10,0 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 84,3 kB | 31,2 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 502,0 kB | 125,7 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `icons3d/atlas@1x.webp` hoặc `atlas@2x.webp` (một trong hai, theo mật độ điểm ảnh) | 100,8 kB / 280,9 kB | (đã nén) | Khi icon đầu tiên hiện; không chặn Main Menu |
 

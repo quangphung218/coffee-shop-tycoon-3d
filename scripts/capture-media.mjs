@@ -848,7 +848,7 @@ function cropAround(boxes, pad, { w, h }) {
  * `maxScale` so the row fits BOARD_WIDTH. Prints the rings per label and
  * warns with !! for a label with nothing to ring.
  */
-async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25 }) {
+async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25, names = { before: `P18 (${P18_COMMIT})`, after: 'P19' } }) {
   const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) }));
   const ringed = kept.filter((m) => m.boxes.length > 0);
   const crop = cropAround([...ringed.flatMap((m) => m.boxes), ...include.filter(Boolean)], pad, pngSize(frames[0].png));
@@ -862,7 +862,7 @@ async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend =
       lines,
       lineLegend,
       notes,
-      names: { before: `P18 (${P18_COMMIT})`, after: 'P19' },
+      names,
       crop,
       scale,
     });
@@ -1462,7 +1462,44 @@ async function main() {
   if (over || !withVideo) process.exitCode = 1;
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+// Reusable pieces for scripts/capture-p20.mjs. Importing this module must not
+// start a capture, so main() only runs when the file is the entry point.
+export {
+  OUT,
+  VIEWPORT,
+  PHONE,
+  FIXED_NOW,
+  SETTINGS,
+  BOARD_WIDTH,
+  startPreview,
+  buildRef,
+  newContext,
+  observeThree,
+  openMenu,
+  startEasyDay,
+  freeze,
+  thaw,
+  measured,
+  sceneSnapshot,
+  project,
+  worldBox,
+  cuboid,
+  clockAt,
+  clockText,
+  cameraHome,
+  cameraFacade,
+  drawBoard,
+  cropAround,
+  pngSize,
+  makeBoard,
+  sizeMb,
+  urlFor,
+};
+
+const isEntry = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isEntry) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}

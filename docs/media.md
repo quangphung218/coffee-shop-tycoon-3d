@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -81,6 +81,28 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 
 `main-menu-p17-p18.png`, `peak-p17-p18.png`, `prep-inventory-p17-p18.png` (P17 cạnh P18, dùng trong [báo cáo P18](reports/p18-collision-shop-icons.md)) giữ nguyên, lệnh không ghi đè.
 
+## Ảnh trước/sau P20
+
+```sh
+npm run media:p20
+```
+
+Lệnh build bản hiện tại, xuất commit P19 `96030ca` ra thư mục tạm và build nó, rồi dùng lại bộ dựng bảng của `scripts/capture-media.mjs` (preview, chơi ván mới, khoanh và nhãn) qua `scripts/capture-p20.mjs`. Mỗi bảng ghép P19 cạnh bản hiện tại, cùng seed và góc máy; P19 khoanh nét đứt cam, P20 nét liền xanh, nhãn ghi chỗ đã sửa. Yêu cầu giống `npm run media`: Playwright/Chromium và lịch sử git tới `96030ca`, cổng `4173`/`4174` trống.
+
+Tám bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `hud-dock-p20.png` | HUD lúc Chuẩn bị: chip "Cấp N" + thanh XP và vạch chia nhóm dock (mới ở P20). |
+| `tasks-missions-p20.png` | Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ (mới). |
+| `upgrades-locks-p20.png` | Bảng Nâng cấp ở Cấp 1: chia nhóm Dụng cụ / Không gian / Trang trí và nhãn "Mở ở cấp N". |
+| `report-insights-p20.png` | Daily Report: tab Chỉ số mới với KPI ngành F&B. |
+| `settings-390-p20.png`, `settings-1280-p20.png` | Cài đặt ở 390 px và 1280 px: nhóm Hiển thị + Giảm chuyển động, nhóm Điều khiển, Phím tắt trong ô xổ. |
+| `brew-closeup-p20.png` | Cận cảnh quầy giờ cao điểm: nhân viên pha chế có mặt biểu cảm và chuỗi xay–nén–chiết–rót. |
+| `peak-p20.png` | Giờ cao điểm: vật liệu chuẩn + RoomEnvironment và mô hình quầy chi tiết hơn. |
+
+Đổi commit gốc bằng `P20_BASE`, seed bằng `MEDIA_SEED`, cổng bằng `MEDIA_PORT` (xem [Tùy chọn](#tùy-chọn)). Lệnh in dung lượng từng file và cảnh báo `!!` khi một nhãn không có gì để khoanh.
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -88,6 +110,7 @@ Tất cả nằm trong `docs/media/` và được ghi đè mỗi lần chạy.
 | `MEDIA_SEED` | `1760400000000` | Giá trị `Date.now()` cố định trong trang, quyết định seed của ván mới. |
 | `MEDIA_PORT` | `4173` | Cổng của `vite preview` cho bản hiện tại; bản P18 dùng cổng kế tiếp. |
 | `MEDIA_HEADED` | (trống) | `1` để mở cửa sổ Chromium thật, dùng GPU nên hình mượt hơn. |
+| `P20_BASE` | `96030ca` | Commit "trước" mà `npm run media:p20` so với bản hiện tại. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
 
@@ -106,6 +129,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng (cả cổng kế tiếp) hoặc đặt `MEDIA_PORT=4180`. |
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
+| `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). |
 
 ## Kiểm lề và CLS
 
