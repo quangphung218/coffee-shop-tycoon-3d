@@ -153,6 +153,18 @@
   --shadow-soft: 0 12px 24px 0 rgba(58, 34, 22, 0.18);
   --shadow-card: var(--shadow-lg), var(--shadow-soft);
 
+  /* Buttons vs labels (design/p20 §4): a button has a bottom (elevation) shadow
+     that deepens on hover and shallows on press; a label is flat with none.
+     All aliases of existing tokens, so no new colour or depth is introduced.
+     --btn-radius keeps the current 12px rather than design's radius-lg, to avoid
+     restyling every button beyond this screen. */
+  --btn-radius: var(--radius-md);
+  --btn-shadow-rest: var(--shadow-md);
+  --btn-shadow-hover: var(--shadow-lg);
+  --btn-shadow-press: var(--shadow-sm);
+  --label-radius: var(--radius-pill);
+  --label-shadow: none;
+
   --duration-instant: 80ms;
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -198,4 +210,12 @@
     --duration-count: 0ms;
     --easing-bounce: var(--easing-standard);
   }
+}
+/* The "Giảm chuyển động = Luôn giảm" setting (src/ui/screens/shell.ts) adds
+   .reduce-motion on <html>: zero the same long animations whatever the OS says. */
+html.reduce-motion {
+  --duration-pop: 0ms;
+  --duration-float: 0ms;
+  --duration-count: 0ms;
+  --easing-bounce: var(--easing-standard);
 }

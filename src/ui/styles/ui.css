@@ -73,6 +73,14 @@ button:not([aria-disabled='true'], :disabled):active .ic,
   flex-direction: column;
   gap: var(--space-3);
 }
+/* Separates a trailing, less-related action (e.g. "Về Main Menu" in Pause). */
+.stack-rule {
+  width: 100%;
+  height: 0;
+  margin: var(--space-1) 0;
+  border: 0;
+  border-top: var(--size-border-thin) solid var(--border-subtle);
+}
 
 /* Full-screen layers: menu screens and the pause overlay. */
 .ui-screen {
@@ -132,11 +140,11 @@ button:not([aria-disabled='true'], :disabled):active .ic,
   justify-content: center;
   gap: var(--space-2);
   padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
+  border-radius: var(--btn-radius);
   border: var(--size-outline) solid var(--border-outline);
   background: var(--surface-panel-solid);
   color: var(--text-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--btn-shadow-rest);
   font: inherit;
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
@@ -164,12 +172,12 @@ button:not([aria-disabled='true'], :disabled):active .ic,
 @media (hover: hover) {
   .btn:not([aria-disabled='true'], :disabled):hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--btn-shadow-hover);
   }
 }
 .btn:not([aria-disabled='true'], :disabled):active {
   transform: translateY(2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--btn-shadow-press);
   transition-duration: var(--duration-instant);
 }
 .btn[aria-disabled='true'],
@@ -763,6 +771,35 @@ legend {
   font-size: var(--font-size-sm);
   margin-top: var(--space-2);
 }
+/* Phím tắt: collapsed by default so Điều khiển stays short; the chevron flips
+   open. The summary is a disclosure control, not a button: no shadow. */
+.keys-details {
+  padding: var(--space-3) 0;
+  border-bottom: var(--size-border-thin) solid var(--border-subtle);
+}
+.keys-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-target);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+.keys-details > summary::-webkit-details-marker {
+  display: none;
+}
+.keys-details > summary .ic {
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+.keys-details[open] > summary .ic {
+  transform: rotate(180deg);
+}
+.keys-details > summary:focus-visible {
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: 0;
+}
 #ui p.app-version {
   margin-top: var(--space-4);
 }
@@ -836,12 +873,15 @@ legend {
   gap: var(--space-2);
   font-weight: var(--font-weight-semibold);
 }
+/* A label (design/p20 §4): flat tint, no bottom shadow, no pointer cursor, so
+   it never reads as a button. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--label-radius);
+  box-shadow: var(--label-shadow);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
@@ -1484,4 +1524,31 @@ legend {
   .range::-moz-range-thumb {
     transform: none !important;
   }
+}
+
+/* Same cuts, forced by the "Giảm chuyển động = Luôn giảm" setting
+   (.reduce-motion on <html>) even when the OS does not ask for it. */
+html.reduce-motion #ui *,
+html.reduce-motion #ui *::before,
+html.reduce-motion #ui *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+html.reduce-motion .btn,
+html.reduce-motion .choice,
+html.reduce-motion .icon-btn,
+html.reduce-motion .seg-opt span,
+html.reduce-motion .seg button,
+html.reduce-motion .hud-btn,
+html.reduce-motion .dock-btn,
+html.reduce-motion .toggle-thumb,
+html.reduce-motion .ic {
+  transform: none !important;
+}
+html.reduce-motion .range::-webkit-slider-thumb {
+  transform: none !important;
+}
+html.reduce-motion .range::-moz-range-thumb {
+  transform: none !important;
 }

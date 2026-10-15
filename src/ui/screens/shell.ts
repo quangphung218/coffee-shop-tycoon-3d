@@ -73,6 +73,14 @@ export function createShell(options: ShellOptions): Shell {
   const screens = new ScreenManager<ShellScreen>(root);
   const toasts = new Toasts();
 
+  // "Giảm chuyển động = Luôn giảm" forces the reduced-motion CSS (ui.css,
+  // tokens.css) on even when the OS does not ask for it; "Theo máy" leaves it
+  // to the prefers-reduced-motion media query.
+  function applyReducedMotion(s: Settings): void {
+    root.ownerDocument.documentElement.classList.toggle('reduce-motion', s.reducedMotion === 'reduce');
+  }
+  applyReducedMotion(settings);
+
   function dispatch(cmd: Command): boolean {
     return state ? simDispatch(state, cmd) : false;
   }
@@ -187,6 +195,7 @@ export function createShell(options: ShellOptions): Shell {
     onChange: (next) => {
       settings = next;
       if (state) state.speed = next.gameSpeed;
+      applyReducedMotion(next);
       options.onSettingsChange?.(next);
     },
     onBack: () => screens.show(settingsReturn),
