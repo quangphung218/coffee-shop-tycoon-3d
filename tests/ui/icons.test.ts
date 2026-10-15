@@ -38,7 +38,7 @@ afterEach(() => {
 
 describe('icon atlas', () => {
   it('has a 48 px and a 24 px cell for every icon and every avatar look, in atlas order', () => {
-    expect(ICON_IDS).toHaveLength(105);
+    expect(ICON_IDS).toHaveLength(113);
     expect(Object.keys(ATLAS.icons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
     expect(Object.keys(ATLAS.smallIcons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
     expect(AVATAR_CELL_COUNT).toBe(AVATAR_LOOKS.length);
@@ -131,9 +131,9 @@ describe('drawIcon()', () => {
 });
 
 describe('flat SVG reference (icon studio only)', () => {
-  it('holds the 105 design symbols, drawn exactly as in the design file', () => {
+  it('holds the 113 design symbols, drawn exactly as in the design file', () => {
     const design = symbolsOf(DESIGN);
-    expect(design.size).toBe(105);
+    expect(design.size).toBe(113);
     expect(Object.keys(ICON_SYMBOLS)).toEqual([...ICON_IDS]);
     for (const [id, body] of design) expect(ICON_SYMBOLS[id as keyof typeof ICON_SYMBOLS], id).toBe(body);
   });
