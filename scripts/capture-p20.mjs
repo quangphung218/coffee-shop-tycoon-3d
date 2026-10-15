@@ -138,8 +138,10 @@ async function loadSim(root) {
       .machines.filter((m) => TOOL_IDS.includes(m.kind))
       .map((m) => ({ kind: m.kind, pos: m.pos, name: data.getUpgrade(m.kind).name, size: footprints.MACHINE_SIZE[m.kind] }));
 
-    // The first upgrade a level-1 shop cannot buy yet, shown on the Nâng cấp board of both builds.
-    const lockedId = data.UPGRADES.find((u) => levels.upgradeUnlockLevel(u.id) > 1)?.id ?? null;
+    // The first locked row of the Nâng cấp panel (the Dụng cụ group comes first, sorted by unlock
+    // level), so its group heading sits just above it; shown on the board of both builds.
+    const unlock = (u) => levels.upgradeUnlockLevel(u.id);
+    const lockedId = data.UPGRADES.filter((u) => u.category === 'equipment' && unlock(u) > 1).sort((a, b) => unlock(a) - unlock(b))[0]?.id ?? null;
 
     return JSON.parse(
       JSON.stringify({
@@ -552,7 +554,7 @@ async function gameSession(browser, url, sim, { who, lockedId, save, needMood })
     await page.locator('[data-block="money"]').first().waitFor();
     await sleep(1200);
     // The dialog opens scrolled to its buttons; bring the top of the summary (level-up band, then the numbers) into view.
-    await page.evaluate(() => (document.querySelector('[data-block="level-up"]') ?? document.querySelector('[data-block="money"]'))?.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => (document.querySelector('[data-block="level-up"]') ?? document.querySelector('[data-block="money"]'))?.scrollIntoView({ block: 'center' }));
     await sleep(300);
     const summary = { png: await shot(page), boxes: await page.evaluate(measureReport), texts: await texts() };
     let insights = null;
