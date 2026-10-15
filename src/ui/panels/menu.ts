@@ -75,7 +75,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const enabled = !!entry?.enabled;
         const price = entry?.price ?? item.price;
         const locked = lockReason(s, item);
-        meta.textContent = `Giá ${formatMoney(price)} · vốn ${formatMoney(item.cost)} · lãi ${formatMoney(price - item.cost)}/ly`;
+        const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
+        meta.textContent = `Giá ${formatMoney(price)} · vốn ${formatMoney(item.cost)} · lãi ${formatMoney(price - item.cost)}/ly · biên ${margin}%`;
         li.classList.toggle('is-locked', !!locked);
         lockBadge.hidden = !locked;
         toStock.hidden = !locked;
