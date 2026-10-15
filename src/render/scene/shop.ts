@@ -145,32 +145,141 @@ function lampGeometry(): BufferGeometry {
   ]);
 }
 
-function machineGeometry(m: LayoutMachine): BufferGeometry {
-  const [body, accent] = MACHINE_TIERS[Math.min(m.quality, MACHINE_TIERS.length - 1)]!;
-  const y = BACK_COUNTER_HEIGHT;
-  const parts: BufferGeometry[] = [];
-  if (m.kind === 'espresso') {
-    parts.push(
-      part(box(0.9, 0.6, 0.55), body, 0, y + 0.3, 0),
-      part(box(MACHINE_SIZE.espresso.width, 0.08, MACHINE_SIZE.espresso.depth), accent, 0, y + 0.64, 0),
-      part(box(0.8, 0.05, 0.25), accent, 0, y + 0.03, 0.3),
-      part(cyl(0.06, 0.06, 0.12, 6), accent, -0.2, y + 0.38, 0.32),
-      part(cyl(0.06, 0.06, 0.12, 6), accent, 0.2, y + 0.38, 0.32),
-      part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, -0.2, y + 0.11, 0.32),
-    );
-    if (m.quality >= 1) parts.push(part(new IcosahedronGeometry(0.08, 0), accent, 0.33, y + 0.5, 0.29));
-    if (m.quality >= 2) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, -0.25, y + 0.84, -0.05, 0, Math.PI));
-    if (m.quality >= 3) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, 0.25, y + 0.84, -0.05, 0, Math.PI));
-  } else {
-    parts.push(
-      part(box(0.6, 0.9, 0.5), 0x5b8def, 0, y + 0.45, 0),
-      part(box(MACHINE_SIZE.fast.width, 0.06, MACHINE_SIZE.fast.depth), accent, 0, y + 0.93, 0),
-      part(box(0.3, 0.12, 0.12), accent, 0, y + 0.5, 0.3),
-      part(new ConeGeometry(0.18, 0.3, 8), body, 0, y + 1.11, 0, 0, Math.PI),
-      part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, 0, y + 0.06, 0.3),
-    );
+/** Back-counter top the machines stand on. */
+const MACHINE_Y = BACK_COUNTER_HEIGHT;
+
+function espressoGeometry(quality: number): BufferGeometry {
+  const [body, accent] = MACHINE_TIERS[Math.min(quality, MACHINE_TIERS.length - 1)]!;
+  const y = MACHINE_Y;
+  const parts: BufferGeometry[] = [
+    part(box(0.9, 0.6, 0.55), body, 0, y + 0.3, 0),
+    part(box(MACHINE_SIZE.espresso.width, 0.08, MACHINE_SIZE.espresso.depth), accent, 0, y + 0.64, 0),
+    part(box(0.8, 0.05, 0.25), accent, 0, y + 0.03, 0.3),
+    // Group heads with a portafilter and twin spouts below the left one.
+    part(cyl(0.06, 0.06, 0.12, 6), accent, -0.2, y + 0.38, 0.32),
+    part(cyl(0.06, 0.06, 0.12, 6), accent, 0.2, y + 0.38, 0.32),
+    part(cyl(0.065, 0.065, 0.05, 8), PALETTE.steelDark, -0.2, y + 0.27, 0.34),
+    part(box(0.035, 0.035, 0.16), PALETTE.woodDark, -0.2, y + 0.27, 0.48),
+    part(cyl(0.012, 0.012, 0.07, 6), PALETTE.steelDark, -0.23, y + 0.2, 0.34),
+    part(cyl(0.012, 0.012, 0.07, 6), PALETTE.steelDark, -0.17, y + 0.2, 0.34),
+    part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, -0.2, y + 0.11, 0.32),
+  ];
+  if (quality >= 1) parts.push(part(new IcosahedronGeometry(0.08, 0), accent, 0.33, y + 0.5, 0.29));
+  if (quality >= 2) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, -0.25, y + 0.84, -0.05, 0, Math.PI));
+  if (quality >= 3) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, 0.25, y + 0.84, -0.05, 0, Math.PI));
+  return merge(parts);
+}
+
+function fastGeometry(quality: number): BufferGeometry {
+  const [body, accent] = MACHINE_TIERS[Math.min(quality, MACHINE_TIERS.length - 1)]!;
+  const y = MACHINE_Y;
+  return merge([
+    part(box(0.6, 0.9, 0.5), PALETTE.steel, 0, y + 0.45, 0),
+    part(box(MACHINE_SIZE.fast.width, 0.06, MACHINE_SIZE.fast.depth), accent, 0, y + 0.93, 0),
+    part(box(0.3, 0.12, 0.12), accent, 0, y + 0.5, 0.3),
+    part(new ConeGeometry(0.18, 0.3, 8), body, 0, y + 1.11, 0, 0, Math.PI),
+    part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, 0, y + 0.06, 0.3),
+  ]);
+}
+
+/** Bean grinder: squat body, a tapered bean hopper on top and a dosing chute. */
+function grinderGeometry(): BufferGeometry {
+  const y = MACHINE_Y;
+  return merge([
+    part(box(0.3, 0.1, 0.42), PALETTE.steelDark, 0, y + 0.05, 0),
+    part(box(0.26, 0.4, 0.34), PALETTE.steel, 0, y + 0.3, 0),
+    part(box(0.12, 0.1, 0.1), PALETTE.steelDark, 0, y + 0.18, 0.2),
+    part(cyl(0.05, 0.06, 0.1, 6), PALETTE.cup, 0, y + 0.07, 0.24),
+    part(cyl(0.14, 0.1, 0.22, 10), PALETTE.coffee, 0, y + 0.62, 0),
+    part(cyl(0.15, 0.15, 0.03, 10), PALETTE.steelDark, 0, y + 0.74, 0),
+    part(box(0.04, 0.12, 0.04), PALETTE.gold, 0.11, y + 0.3, 0.17),
+  ]);
+}
+
+/** Smoothie blender: motor base, a glass jar and a lid. */
+function blenderGeometry(): BufferGeometry {
+  const y = MACHINE_Y;
+  return merge([
+    part(box(0.3, 0.26, 0.34), PALETTE.steel, 0, y + 0.13, 0),
+    part(box(0.2, 0.06, 0.2), PALETTE.steelDark, 0, y + 0.28, 0),
+    part(cyl(0.13, 0.1, 0.34, 8), PALETTE.glass, 0, y + 0.48, 0),
+    part(cyl(0.135, 0.135, 0.04, 8), PALETTE.mint, 0, y + 0.67, 0),
+    part(box(0.04, 0.1, 0.03), PALETTE.coral, 0.12, y + 0.14, 0.18),
+  ]);
+}
+
+/** Pastry display: a wood cabinet with a glazed frame and treats on two shelves. */
+function pastryCaseGeometry(): BufferGeometry {
+  const y = MACHINE_Y;
+  const w = 0.56;
+  const d = 0.42;
+  const parts: BufferGeometry[] = [
+    part(box(w, 0.14, d), PALETTE.wood, 0, y + 0.07, 0),
+    part(box(w, 0.02, d), PALETTE.woodDark, 0, y + 0.15, 0),
+    part(box(w, 0.03, d), PALETTE.steelDark, 0, y + 0.52, 0),
+    part(box(w - 0.1, 0.02, d - 0.08), PALETTE.cream, 0, y + 0.33, 0),
+  ];
+  // Glass-tinted corner posts read as a case without hiding the treats.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      parts.push(part(box(0.03, 0.36, 0.03), PALETTE.glass, (sx * (w - 0.03)) / 2, y + 0.34, (sz * (d - 0.03)) / 2));
+    }
+  }
+  const treats = [PALETTE.gold, PALETTE.coffee, PALETTE.coral];
+  for (let i = 0; i < 3; i++) {
+    const x = -0.16 + i * 0.16;
+    parts.push(part(new IcosahedronGeometry(0.05, 0), treats[i]!, x, y + 0.2, 0));
+    parts.push(part(new IcosahedronGeometry(0.05, 0), treats[(i + 2) % 3]!, x, y + 0.38, 0));
   }
   return merge(parts);
+}
+
+/** Ice maker: a white chest with a steel lid, a window hatch and a cold-blue badge. */
+function iceMakerGeometry(): BufferGeometry {
+  const y = MACHINE_Y;
+  const w = 0.46;
+  const d = 0.42;
+  return merge([
+    part(box(w, 0.5, d), PALETTE.cup, 0, y + 0.25, 0),
+    part(box(w + 0.02, 0.06, d + 0.02), PALETTE.steel, 0, y + 0.53, 0),
+    part(box(0.26, 0.18, 0.02), PALETTE.glass, 0, y + 0.22, d / 2),
+    part(box(0.28, 0.03, 0.04), PALETTE.steelDark, 0, y + 0.12, d / 2),
+    part(new IcosahedronGeometry(0.05, 0), PALETTE.mint, 0, y + 0.4, d / 2 + 0.01),
+  ]);
+}
+
+/** Dishwasher: a steel box with a front door, a handle bar and a control strip. */
+function dishwasherGeometry(): BufferGeometry {
+  const y = MACHINE_Y;
+  const w = 0.54;
+  const d = 0.42;
+  return merge([
+    part(box(w, 0.6, d), PALETTE.steel, 0, y + 0.3, 0),
+    part(box(w - 0.06, 0.44, 0.02), PALETTE.steelDark, 0, y + 0.28, d / 2),
+    part(box(w - 0.12, 0.04, 0.04), PALETTE.cup, 0, y + 0.5, d / 2),
+    part(box(w - 0.06, 0.08, 0.02), PALETTE.mint, 0, y + 0.56, d / 2),
+    part(new IcosahedronGeometry(0.03, 0), PALETTE.gold, w / 2 - 0.08, y + 0.56, d / 2 + 0.01),
+  ]);
+}
+
+/** Merged geometry of one machine or piece of equipment, sitting on the back counter. */
+export function machineGeometry(m: LayoutMachine): BufferGeometry {
+  switch (m.kind) {
+    case 'espresso':
+      return espressoGeometry(m.quality);
+    case 'fast':
+      return fastGeometry(m.quality);
+    case 'grinder':
+      return grinderGeometry();
+    case 'blender':
+      return blenderGeometry();
+    case 'pastry_case':
+      return pastryCaseGeometry();
+    case 'ice_maker':
+      return iceMakerGeometry();
+    case 'dishwasher':
+      return dishwasherGeometry();
+  }
 }
 
 function counterGeometry(width: number, level: number): BufferGeometry {
