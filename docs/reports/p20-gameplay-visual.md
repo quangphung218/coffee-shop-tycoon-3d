@@ -57,7 +57,20 @@ Main Menu di động của P20 là **759 ms (< 1000 ms)**. Số đo dao động 
 
 P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 57,5 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
 
-FPS giờ cao điểm ở mức Vừa và Cao đo bằng `node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only` (cách đo ở [docs/media.md](../media.md#đo-fps)).
+FPS giờ cao điểm ngày 1 (Dễ, 4x), 10 s × 3 lượt mỗi ô, hai bản xen kẽ, cửa sổ 1280×800 tỉ lệ điểm ảnh 2, cùng máy M2 (cách đo ở [docs/media.md](../media.md#đo-fps)):
+
+```sh
+node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
+```
+
+| Mức | Bản | FPS trung bình (trung vị 3 lượt) | Từng lượt | p5 FPS | So P19 |
+| --- | --- | --- | --- | --- | --- |
+| Vừa | P19 (96030ca) | 11,3 | 11,4 / 11,3 / 10,7 | 7,5 | — |
+| Vừa | P20 | **11,6** | 11,7 / 10,7 / 11,6 | 7,5 | +2,9% |
+| Cao | P19 (96030ca) | 13,3 | 12,0 / 13,3 / 14,5 | 7,5 | — |
+| Cao | P20 | **14,2** | 11,9 / 15,5 / 14,2 | 7,5 | +6,4% |
+
+P20 không tụt FPS so với P19 ở cả hai mức (ngưỡng chấp nhận: tụt không quá 10%). Số tuyệt đối thấp vì Chrome headless vẽ 2560×1600 điểm ảnh; chỉ dùng để so hai bản trong cùng một lượt đo.
 
 ## Nguồn và license asset tham khảo
 
