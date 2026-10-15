@@ -11,6 +11,11 @@ export type GameSpeed = 1 | 2 | 4;
 export type CameraKeys = 'qe-wasd' | 'qa-arrows';
 /** How fast drag and the rotate keys turn the camera. */
 export type CameraRotateSpeed = 'slow' | 'normal' | 'fast';
+/**
+ * 'system': follow the OS prefers-reduced-motion setting (default).
+ * 'reduce': always cut animations down, whatever the OS says.
+ */
+export type ReducedMotion = 'system' | 'reduce';
 
 export interface Settings {
   /** 0..1 */
@@ -21,6 +26,7 @@ export interface Settings {
   gameSpeed: GameSpeed;
   cameraKeys: CameraKeys;
   cameraRotateSpeed: CameraRotateSpeed;
+  reducedMotion: ReducedMotion;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -30,12 +36,14 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   gameSpeed: 1,
   cameraKeys: 'qe-wasd',
   cameraRotateSpeed: 'normal',
+  reducedMotion: 'system',
 };
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
 const CAMERA_KEYS: readonly CameraKeys[] = ['qe-wasd', 'qa-arrows'];
 const ROTATE_SPEEDS: readonly CameraRotateSpeed[] = ['slow', 'normal', 'fast'];
+const REDUCED_MOTIONS: readonly ReducedMotion[] = ['system', 'reduce'];
 
 function volume(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
@@ -55,6 +63,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     gameSpeed: oneOf(r.gameSpeed, SPEEDS, DEFAULT_SETTINGS.gameSpeed),
     cameraKeys: oneOf(r.cameraKeys, CAMERA_KEYS, DEFAULT_SETTINGS.cameraKeys),
     cameraRotateSpeed: oneOf(r.cameraRotateSpeed, ROTATE_SPEEDS, DEFAULT_SETTINGS.cameraRotateSpeed),
+    reducedMotion: oneOf(r.reducedMotion, REDUCED_MOTIONS, DEFAULT_SETTINGS.reducedMotion),
   };
 }
 
