@@ -302,11 +302,17 @@ Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless 
 
 Chất lượng đồ họa:
 
-| Mức | `pixelRatio` tối đa | Bóng đổ | Mật độ phố | Chi tiết quán | Chuyển động nhẹ | Đèn điểm trong quán |
-| --- | --- | --- | --- | --- | --- | --- |
-| Thấp | 1 | Tắt | Thấp | Bỏ lọ hạt, đèn thả, diềm mái hiên, song cửa sổ | Tắt | 0 |
-| Vừa | 1,5 | Tắt | Vừa | Đủ, trừ hộp hoa dưới cửa sổ | Bật | 0 |
-| Cao | 2 | Bật | Cao | Đủ | Bật | 2 |
+| Mức | `pixelRatio` tối đa | Bóng đổ | Ánh sáng môi trường | Mật độ phố | Chi tiết quán | Chuyển động nhẹ | Đèn điểm trong quán |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Thấp | 1 | Tắt | Tắt | Thấp | Bỏ lọ hạt, đèn thả, diềm mái hiên, song cửa sổ | Tắt | 0 |
+| Vừa | 1,5 | Tắt | Bật | Vừa | Đủ, trừ hộp hoa dưới cửa sổ | Bật | 0 |
+| Cao | 2 | Bật | Bật | Cao | Đủ | Bật | 2 |
+
+Ánh sáng và vật liệu cảnh (`src/render/scene/renderer.ts`, `parts.ts`, `environment.ts`):
+
+- Chiếu sáng gồm `HemisphereLight` + `DirectionalLight` tông ấm, cộng `scene.environment` lấy từ `RoomEnvironment` của three qua `PMREMGenerator` (0 byte tải). Env map dựng một lần, dùng lại qua các lần đổi mức; mức Thấp tắt env để bớt một lần lấy mẫu mỗi điểm ảnh.
+- Đồ trong quán và ngoài phố dùng chung một `MeshStandardMaterial` phẳng (flatShading, roughness cao) để bắt ánh sáng môi trường mà vẫn giữ nét hoạt hình; một `CanvasTexture` vân nhỏ (≤ 128 px) vẽ lúc chạy, lát lên mọi mặt làm map màu.
+- Mỗi máy và dụng cụ (`espresso`, `fast`, `grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là một mesh gộp (`machineGeometry` trong `shop.ts`), một draw call.
 
 Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 

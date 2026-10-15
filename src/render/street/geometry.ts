@@ -58,7 +58,7 @@ function part(geo: BufferGeometry, color: number, x = 0, y = 0, z = 0, rx = 0, r
     colors[i * 3 + 2] = tmp.b;
   }
   g.setAttribute('color', new BufferAttribute(colors, 3));
-  g.deleteAttribute('uv');
+  // UVs kept so SHARED_MATERIAL's grain map has coordinates on the street too.
   return g;
 }
 

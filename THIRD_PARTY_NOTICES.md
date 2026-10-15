@@ -4,10 +4,10 @@ The game's own code is MIT-licensed (see [LICENSE](LICENSE)). The build bundles 
 
 | Component | Version | Used for | License |
 | --- | --- | --- | --- |
-| [three.js](https://github.com/mrdoob/three.js) | 0.180 | 3D rendering (`three` and `three/examples` addons) | MIT |
+| [three.js](https://github.com/mrdoob/three.js) | 0.180 | 3D rendering (`three` and `three/examples` addons, including the `RoomEnvironment` image-based lighting) | MIT |
 | [Nunito](https://github.com/googlefonts/nunito) via [@fontsource/nunito](https://fontsource.org/fonts/nunito) | 5.3 | UI font, `latin` and `vietnamese` subsets, weights 400 and 700 | SIL Open Font License 1.1 |
 
-All other assets are made in this repository: 3D models, characters and icons are built in code (`src/render`, `src/icon-studio`), sounds are synthesized with Web Audio (`src/audio`).
+All other assets are made in this repository: 3D models, characters and icons are built in code (`src/render`, `src/icon-studio`), sounds are synthesized with Web Audio (`src/audio`). The scene lighting and material colours take visual cues from [Poly Haven](https://polyhaven.com) (CC0) HDRIs and textures, but bundle none of their files; the soft ambient light comes from three's procedural `RoomEnvironment` and the surface grain is drawn on a canvas at runtime.
 
 ## three.js
 
