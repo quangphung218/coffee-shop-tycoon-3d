@@ -41,36 +41,43 @@ Mọi cải tiến trên là procedural trong code: không nhúng file ảnh/HDR
 Mục tiêu: Main Menu di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần) dưới 1000 ms; FPS không tụt so với P19.
 
 ```sh
-node scripts/measure-startup.mjs --base 96030ca --runs 3
+node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps
 ```
 
-Trung vị 3 lần, Chrome headless không cache trên Apple M2 (ANGLE Metal), so P19 `96030ca` với P20:
+Trung vị 3 lần, Google Chrome trên Apple M2 (ANGLE Metal), so P19 `96030ca` với P20:
 
 | Cấu hình | Mốc | P19 (96030ca) | P20 |
 | --- | --- | --- | --- |
-| Di động (150 ms RTT, 1,6 Mbps, CPU 4x) | Nội dung đầu tiên | 760 ms | 520 ms |
-| Di động | **Main Menu** | 904 ms | **759 ms** |
-| Di động | Cảnh 3D | 2948 ms | 2816 ms |
-| Máy bàn, không giới hạn | Main Menu | 136 ms | 132 ms |
+| Di động (150 ms RTT, 1,6 Mbps, CPU 4x) | Nội dung đầu tiên | 448 ms | 460 ms |
+| Di động | **Main Menu** | 661 ms | **722 ms** |
+| Di động | Cảnh 3D | 2514 ms | 2680 ms |
+| Máy bàn, không giới hạn | Nội dung đầu tiên | 52 ms | 36 ms |
+| Máy bàn | Main Menu | 33 ms | 42 ms |
+| Máy bàn | Cảnh 3D | 140 ms | 185 ms |
 
-Main Menu di động của P20 là **759 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
+Main Menu di động của P20 là **722 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
 
-P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 57,5 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
+Dung lượng chunk (gzip):
 
-FPS giờ cao điểm ngày 1 (Dễ, 4x), 10 s × 3 lượt mỗi ô, hai bản xen kẽ, cửa sổ 1280×800 tỉ lệ điểm ảnh 2, cùng máy M2 (cách đo ở [docs/media.md](../media.md#đo-fps)):
+| Chunk | P19 (96030ca) | P20 |
+| --- | --- | --- |
+| three | 124,2 kB | 125,7 kB |
+| JS tải trước Main Menu | 46,8 kB | 57,5 kB |
+| JS còn lại | 29,0 kB | 31,8 kB |
+| CSS | 9,3 kB | 10,3 kB |
 
-```sh
-node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
-```
+P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); JS tăng do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt).
+
+FPS giờ cao điểm ngày 1 (Dễ, 4x), 10 s × 3 lượt mỗi ô, hai bản xen kẽ, cửa sổ 1280×800 tỉ lệ điểm ảnh 2, cùng lượt đo trên (cách đo ở [docs/media.md](../media.md#đo-fps)):
 
 | Mức | Bản | FPS trung bình (trung vị 3 lượt) | Từng lượt | p5 FPS | So P19 |
 | --- | --- | --- | --- | --- | --- |
-| Vừa | P19 (96030ca) | 11,3 | 11,4 / 11,3 / 10,7 | 7,5 | — |
-| Vừa | P20 | **11,6** | 11,7 / 10,7 / 11,6 | 7,5 | +2,9% |
-| Cao | P19 (96030ca) | 13,3 | 12,0 / 13,3 / 14,5 | 7,5 | — |
-| Cao | P20 | **14,2** | 11,9 / 15,5 / 14,2 | 7,5 | +6,4% |
+| Vừa | P19 (96030ca) | 60,0 | 60,0 / 60,0 / 60,0 | 59,5 | — |
+| Vừa | P20 | **60,0** | 60,0 / 60,0 / 60,0 | 59,9 | 0,0% |
+| Cao | P19 (96030ca) | 60,0 | 60,0 / 60,0 / 60,0 | 59,9 | — |
+| Cao | P20 | **60,0** | 60,0 / 59,9 / 60,0 | 59,9 | 0,0% |
 
-P20 không tụt FPS so với P19 ở cả hai mức (ngưỡng chấp nhận: tụt không quá 10%). Số tuyệt đối thấp vì Chrome headless vẽ 2560×1600 điểm ảnh; chỉ dùng để so hai bản trong cùng một lượt đo.
+P20 không tụt FPS so với P19 ở cả hai mức (ngưỡng chấp nhận: tụt không quá 10%); cả hai bản đều chạm trần 60 FPS.
 
 ## Nguồn và license asset tham khảo
 
