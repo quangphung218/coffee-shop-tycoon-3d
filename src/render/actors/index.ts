@@ -63,11 +63,17 @@ export interface Actors {
   inspect(key: string): ActorInfo | null;
   /** Low quality drops the steam, keeps coins still and softens the bounce. */
   setQuality(quality: Quality): void;
+  /** Force reduced motion on (true) or leave it to the OS media query (false). */
+  setReducedMotion(reduce: boolean): void;
+  /** Steam, coin bounce, bubble pop and body bounce are toned down (low quality or reduced motion). */
+  calm(): boolean;
   dispose(): void;
 }
 
 export interface ActorsOptions {
   quality?: Quality;
+  /** Force reduced motion on regardless of the OS (the "Luôn giảm" setting). */
+  reducedMotion?: boolean;
 }
 
 export interface ActorInfo {
@@ -130,6 +136,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   root.name = 'actors';
   scene.add(root);
   const assets = new LabelAssets();
+  assets.forceReducedMotion = options.reducedMotion ?? false;
   const puff = puffTexture();
   const coins = new CoinFx(assets.face('i-coin').map);
   root.add(coins.group);
@@ -220,7 +227,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     return actor;
   }
 
-  /** Low quality or prefers-reduced-motion: no steam, still coins, a softer bounce. */
+  /** Low quality or reduced motion (setting or OS): no steam, still coins, a softer bounce. */
   function calm(): boolean {
     return quality === 'low' || assets.reducedMotion;
   }
@@ -434,6 +441,12 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     setQuality(q: Quality): void {
       quality = q;
     },
+
+    setReducedMotion(reduce: boolean): void {
+      assets.forceReducedMotion = reduce;
+    },
+
+    calm,
 
     inspect(key: string): ActorInfo | null {
       const actor = actors.get(key);

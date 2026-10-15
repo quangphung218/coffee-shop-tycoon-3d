@@ -95,9 +95,11 @@ export function createHud(actions: HudActions): Hud {
   const clock = h('b');
   w.text(day, (s) => String(s.day)).text(clock, (s) => formatClock(s.minute));
 
-  // Shop level chip with an XP bar, next to the day (design/p20 §5). The bar is
-  // a progressbar reporting XP earned toward the next level; it flashes on a
-  // level-up (muted when motion is reduced).
+  // Shop level chip on one row, next to the day (design/p20 §5): "Cấp N", the
+  // XP bar and its count. The level's name ("Quán nhỏ") lives only in the
+  // chip's title and accessible name, so the chip stays short. The bar is a
+  // progressbar reporting XP earned toward the next level; the chip flashes
+  // on a level-up (muted when motion is reduced).
   const levelName = h('b', { class: 'level-name' });
   const xpFill = h('span', { class: 'xp-fill' });
   const xpBar = h(
@@ -109,9 +111,11 @@ export function createHud(actions: HudActions): Hud {
   const xpNum = h('span', { class: 'xp-num', attrs: { 'aria-hidden': 'true', 'data-stat': 'xp' } });
   const levelChip = h(
     'div',
-    { class: 'hud-stat hud-level', attrs: { 'data-stat': 'level' } },
+    { class: 'hud-stat hud-level', attrs: { 'data-stat': 'level', role: 'group' } },
     icon(LEVEL_ICON),
-    h('div', { class: 'level-body' }, levelName, h('div', { class: 'xp-row' }, xpBar, xpNum)),
+    levelName,
+    xpBar,
+    xpNum,
   );
   let levelTimer: ReturnType<typeof setTimeout> | null = null;
   let shownLevel: number | null = null;
@@ -128,7 +132,10 @@ export function createHud(actions: HudActions): Hud {
     (_, s) => {
       const level = s.shopLevel;
       const def = levelDef(level);
-      levelName.textContent = `Cấp ${level} · ${def.name}`;
+      levelName.textContent = `Cấp ${level}`;
+      const fullName = `Cấp ${level} · ${def.name}`;
+      levelChip.title = fullName;
+      levelChip.setAttribute('aria-label', fullName);
       const atMax = level >= MAX_SHOP_LEVEL;
       const base = xpToReach(level);
       const span = atMax ? 1 : xpToReach(level + 1) - base;

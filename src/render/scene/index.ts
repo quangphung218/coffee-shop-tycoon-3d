@@ -51,7 +51,7 @@ const MAX_FRAME_DT = 0.1;
 export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {}): World {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene, options.quality ?? 'medium');
-  const actors = createActors(view.scene, { quality: options.quality ?? 'medium' });
+  const actors = createActors(view.scene, { quality: options.quality ?? 'medium', reducedMotion: options.reducedMotion ?? false });
   const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
   // Forced by the setting, or the OS media query when not forced. Ambient and
   // the camera read this each frame / on drag release, so toggling it at
@@ -126,6 +126,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     },
     setReducedMotion: (reduce) => {
       reducedMotionForced = reduce;
+      actors.setReducedMotion(reduce);
     },
     resetCamera: () => camera.reset(),
     rotateCamera: (dYaw) => camera.rotate(dYaw),

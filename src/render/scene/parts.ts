@@ -2,30 +2,31 @@ import {
   BoxGeometry,
   BufferAttribute,
   type BufferGeometry,
-  CanvasTexture,
   Color,
   CylinderGeometry,
+  DataTexture,
+  LinearFilter,
+  LinearMipmapLinearFilter,
   MeshBasicMaterial,
   MeshStandardMaterial,
   RepeatWrapping,
   SRGBColorSpace,
-  type Texture,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { PALETTE, cssColor } from './palette';
+import { PALETTE } from './palette';
 
 /**
- * Shared look of the shop scene: palette (palette.ts), the one flat-shaded
- * vertex-colour material, and helpers that bake a primitive's transform and
+ * Shared look of the shop scene: palette (palette.ts), the flat-shaded
+ * vertex-colour materials, and helpers that bake a primitive's transform and
  * colour so many parts merge into one geometry (src/render/scene/shop.ts,
  * facade.ts).
  *
- * The material is MeshStandardMaterial (not Lambert): kept flat-shaded and
- * rough so it still reads as hand-painted, but now it picks up the soft
- * ambient and faint reflections of `scene.environment` (environment.ts). One
- * small CanvasTexture of a warm grain is tiled over every surface as the
- * colour map, so the flat palette colours gain a little painted texture at 0
- * bytes to download; parts keep their UVs for it.
+ * The materials are MeshStandardMaterial (not Lambert): kept flat-shaded and
+ * rough so they still read as hand-painted, but they pick up the soft
+ * ambient and faint reflections of `scene.environment` (environment.ts).
+ * SHARED_MATERIAL is plain palette colour; only WOOD_MATERIAL (counters,
+ * tables, chairs, wooden floor) adds a small generated grain, at 0 bytes to
+ * download.
  */
 
 export { PALETTE };
@@ -33,47 +34,96 @@ export { PALETTE };
 export const WALL_HEIGHT = 2.2;
 export const WALL_LOW = 0.35;
 
-/** Side of the shared grain texture in px (small; tiled over everything). */
-const GRAIN_SIZE = 128;
-/** How many times the grain tiles across a part's 0..1 UV. */
-const GRAIN_REPEAT = 4;
+/** Side of the wood grain texture in px (small; tiled over the wood). */
+const GRAIN_SIZE = 64;
+/** Metres of wood one grain tile covers, so a chair and a long counter show grain at the same scale. */
+export const GRAIN_TILE_METRES = 0.6;
+/** Darkest a grain line gets as a multiplier on the vertex colour (1 = no grain); kept close to 1 for low contrast. */
+const GRAIN_MIN = 0.9;
 
-/** A faint warm grain the shared material multiplies its vertex colours by; null without OffscreenCanvas (tests, jsdom). */
-function grainTexture(): Texture | null {
-  if (typeof OffscreenCanvas === 'undefined') return null;
-  const canvas = new OffscreenCanvas(GRAIN_SIZE, GRAIN_SIZE);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, GRAIN_SIZE, GRAIN_SIZE);
-  // Faint warm streaks: low-alpha strokes keep the multiplier near white, so
-  // hues stay flat while large surfaces (floor, counters, tabletops) gain grain.
-  ctx.strokeStyle = cssColor(PALETTE.woodDark);
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 90; i++) {
-    const y = Math.random() * GRAIN_SIZE;
-    ctx.globalAlpha = 0.04 + Math.random() * 0.06;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.bezierCurveTo(GRAIN_SIZE / 3, y + (Math.random() - 0.5) * 6, (GRAIN_SIZE * 2) / 3, y + (Math.random() - 0.5) * 6, GRAIN_SIZE, y);
-    ctx.stroke();
+/** Small deterministic hash in 0..1, so the grain looks the same on every load. */
+function hash(n: number): number {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/**
+ * Faint wood grain the wood material multiplies its vertex colours by: thin
+ * wavy lines running along u, near white so palette hues stay flat. Built as
+ * a DataTexture (no canvas needed, so it exists in tests too).
+ */
+export function grainTexture(): DataTexture {
+  const n = GRAIN_SIZE;
+  const data = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const u = (x / n) * Math.PI * 2;
+      // Lines wobble a little across the tile; whole periods keep it seamless.
+      const v = y + 1.5 * Math.sin(u + hash(y >> 3) * 6) + 0.8 * Math.sin(2 * u);
+      const row = ((Math.floor(v) % n) + n) % n;
+      const line = hash(row) < 0.22 ? 1 : 0;
+      const fibre = hash(row * 7 + 3) * 0.35;
+      const shade = 1 - (1 - GRAIN_MIN) * Math.min(1, line + fibre);
+      const c = Math.round(255 * shade);
+      const i = (y * n + x) * 4;
+      data[i] = c;
+      data[i + 1] = Math.round(c * 0.99);
+      data[i + 2] = Math.round(c * 0.97);
+      data[i + 3] = 255;
+    }
   }
-  ctx.globalAlpha = 1;
-  const tex = new CanvasTexture(canvas);
+  const tex = new DataTexture(data, n, n);
   tex.colorSpace = SRGBColorSpace;
   tex.wrapS = RepeatWrapping;
   tex.wrapT = RepeatWrapping;
-  tex.repeat.set(GRAIN_REPEAT, GRAIN_REPEAT);
+  tex.magFilter = LinearFilter;
+  tex.minFilter = LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
   return tex;
 }
 
+/** Flat palette colour for everything that is not wood: grass, walls, street, machines, people. */
 export const SHARED_MATERIAL = new MeshStandardMaterial({
   vertexColors: true,
   flatShading: true,
   roughness: 0.82,
   metalness: 0,
+});
+
+/**
+ * Counters, tables, chairs and the wooden floor: the shared look plus a faint
+ * grain. The grain is sampled from world-space position on the plane facing
+ * the surface (not the part's 0..1 UV), so it keeps one real-world density
+ * however big the piece or the scaled floor is, and never stretches into
+ * wide stripes.
+ */
+export const WOOD_MATERIAL = new MeshStandardMaterial({
+  vertexColors: true,
+  flatShading: true,
+  roughness: 0.78,
+  metalness: 0,
   map: grainTexture(),
 });
+WOOD_MATERIAL.onBeforeCompile = (shader) => {
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <project_vertex>',
+    `#include <project_vertex>
+#ifdef USE_MAP
+  vec4 woodPos = vec4( transformed, 1.0 );
+  vec3 woodNormal = objectNormal;
+  #ifdef USE_INSTANCING
+    woodPos = instanceMatrix * woodPos;
+    woodNormal = mat3( instanceMatrix ) * woodNormal;
+  #endif
+  woodPos = modelMatrix * woodPos;
+  woodNormal = abs( mat3( modelMatrix ) * woodNormal );
+  vec2 woodUv = woodNormal.y >= max( woodNormal.x, woodNormal.z ) ? woodPos.xz
+    : ( woodNormal.x >= woodNormal.z ? woodPos.zy : woodPos.xy );
+  vMapUv = woodUv * ${(1 / GRAIN_TILE_METRES).toFixed(4)};
+#endif`,
+  );
+};
 export const GLOW_MATERIAL = new MeshBasicMaterial({ color: PALETTE.bulb });
 /** Window and door glass; smoother so it catches the environment, and ambient.ts raises its warm emissive in the evening. */
 export const GLASS_MATERIAL = new MeshStandardMaterial({
@@ -104,8 +154,8 @@ export function part(geo: BufferGeometry, color: number, x = 0, y = 0, z = 0, ry
     colors[i * 3 + 2] = tmpColor.b;
   }
   g.setAttribute('color', new BufferAttribute(colors, 3));
-  // UVs are kept so SHARED_MATERIAL's grain map (and any future map) has
-  // somewhere to sample; every primitive we merge carries its own 0..1 UV.
+  // UVs are kept so any future map has somewhere to sample (the wood grain
+  // works from world position instead); every merged primitive carries a 0..1 UV.
   return g;
 }
 

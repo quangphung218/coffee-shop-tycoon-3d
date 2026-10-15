@@ -107,8 +107,12 @@ export class LabelAssets {
     return this.material(this.faces, id, false);
   }
 
-  /** The player asked for less motion (prefers-reduced-motion). */
+  /** Reduced motion forced on by the "Luôn giảm" setting, whatever the OS says. */
+  forceReducedMotion = false;
+
+  /** The player asked for less motion: the setting, or prefers-reduced-motion when not forced. */
   get reducedMotion(): boolean {
+    if (this.forceReducedMotion) return true;
     if (this.motionQuery === undefined) {
       this.motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
     }
