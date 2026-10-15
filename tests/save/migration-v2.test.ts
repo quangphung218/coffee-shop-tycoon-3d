@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, loadGame, migrate } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
+import { menuUnlockLevel, xpToReach } from '../../src/sim/data/levels';
+import { MENU, getMenuItem } from '../../src/sim/data/menu';
 import { dispatch } from '../../src/sim/index';
 import { buildInsights } from '../../src/sim/insights';
 import { createDayStats, createNewGame } from '../../src/sim/state';
@@ -104,5 +106,57 @@ describe('migrate v1 → v2 mid-game save', () => {
     expect(state.menu.find((m) => m.id === 'cake')!.enabled).toBe(true);
     expect(state.upgrades.expand_area).toBe(1);
     expect(state.shopLevel).toBe(6);
+  });
+});
+
+describe('menu items added after the save was written', () => {
+  /** A save whose menu predates the frappe: the entry is missing entirely. */
+  function withoutFrappe(version: 1 | 2): string {
+    const s = createNewGame('Quán Cũ', 'normal', 7);
+    s.menu = s.menu.filter((m) => m.id !== 'frappe');
+    const legacy: Record<string, unknown> = JSON.parse(JSON.stringify(s));
+    if (version === 1) for (const k of ['seed', 'shopLevel', 'xp', 'missions']) delete legacy[k];
+    return JSON.stringify({ version, savedAt: 1, state: legacy });
+  }
+
+  function load(text: string): GameState {
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', text);
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    return (r as { ok: true; value: GameState }).value;
+  }
+
+  it('adds the frappe to a v1 save, switched off at its menu price, in menu order', () => {
+    const g = load(withoutFrappe(1));
+    const frappe = g.menu.find((m) => m.id === 'frappe');
+    expect(frappe).toEqual({ id: 'frappe', enabled: false, price: getMenuItem('frappe').price });
+    expect(g.menu.map((m) => m.id)).toEqual(MENU.map((m) => m.id));
+  });
+
+  it('lets a loaded v1 save enable the frappe once the shop level allows it', () => {
+    const g = load(withoutFrappe(1));
+    expect(g.shopLevel).toBeLessThan(menuUnlockLevel('frappe'));
+    expect(dispatch(g, { type: 'set_menu_item', itemId: 'frappe', enabled: true })).toBe(false);
+    g.xp = xpToReach(menuUnlockLevel('frappe'));
+    g.shopLevel = menuUnlockLevel('frappe');
+    expect(dispatch(g, { type: 'set_menu_item', itemId: 'frappe', enabled: true })).toBe(true);
+    expect(g.menu.find((m) => m.id === 'frappe')!.enabled).toBe(true);
+  });
+
+  it('also fills in the frappe for a v2 save that is missing it', () => {
+    const g = load(withoutFrappe(2));
+    expect(g.menu.find((m) => m.id === 'frappe')?.enabled).toBe(false);
+    expect(g.menu).toHaveLength(MENU.length);
+  });
+
+  it('keeps the price and switch of items already on the saved menu', () => {
+    const s = createNewGame('Quán Cũ', 'normal', 7);
+    const latte = s.menu.find((m) => m.id === 'latte')!;
+    latte.price = 52000;
+    latte.enabled = false;
+    s.menu = s.menu.filter((m) => m.id !== 'frappe');
+    const g = load(JSON.stringify({ version: 2, savedAt: 1, state: s }));
+    expect(g.menu.find((m) => m.id === 'latte')).toEqual({ id: 'latte', enabled: false, price: 52000 });
   });
 });
