@@ -222,16 +222,16 @@ describe('migrate to version 2 (shop level, XP, missions)', () => {
     const storage = createMemoryStorage();
     storage.setItem('cst3d:save:1', v1Save((s) => {
       s.history = [
-        { ...createDayStats(1, 3), customersServed: 40 },
-        { ...createDayStats(2, 3), customersServed: 40 },
+        { ...createDayStats(1, 3), customersServed: 300 },
+        { ...createDayStats(2, 3), customersServed: 300 },
       ];
     }));
     const r = loadGame('1', storage);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(typeof r.value.seed).toBe('number');
-    // 80 served * 2 XP = 160 → level 2.
-    expect(r.value.xp).toBe(160);
+    // 600 served * 2 XP = 1200 → level 2 (from 1100 XP).
+    expect(r.value.xp).toBe(1200);
     expect(r.value.shopLevel).toBe(2);
     expect(r.value.missions).toHaveLength(3);
   });

@@ -1,7 +1,7 @@
 import { DOOR_POS, claimSpot } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { buildNavGrid, cellAt, nearestFree } from './nav';
-import { TASK_MINUTES, advanceTask, cleanMinutes, finishTask, isClaimed } from './orders';
+import { TASK_MINUTES, cleanMinutes, finishTask, isClaimed, workMinute } from './orders';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
 import { CANDIDATE_COUNT, generateCandidates } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
@@ -272,13 +272,25 @@ function work(state: GameState, member: Staff): void {
     task.remaining -= member.speed;
     if (task.remaining <= 0) task.remaining = PROMOTE_MINUTES;
   } else if (task) {
-    if (!advanceTask(state, task, member.id, member.speed)) {
-      member.task = null;
-    } else if (task.remaining <= 0) {
-      // Drop the task before finishing it: finishing may send the customer away.
-      member.task = null;
-      finishTask(state, task);
-    }
+    workMinute(
+      state,
+      member.id,
+      member.speed,
+      () => {
+        member.task ??= findJob(state, member);
+        // Promoting is a role of its own; it never shares a minute with other work.
+        return member.task?.kind === 'promote' ? null : member.task;
+      },
+      () => {
+        member.task = null;
+        return false;
+      },
+      (done) => {
+        // Drop the task before finishing it: finishing may send the customer away.
+        member.task = null;
+        finishTask(state, done);
+      },
+    );
   }
   member.busy = member.task !== null;
 }

@@ -73,7 +73,8 @@ describe('buildInsights — hand-computed figures', () => {
     expect(espresso.status).toBe('good');
     // Trà chanh is the thinnest-margin starter item.
     const lemon = itemMargins.find((m) => m.id === 'lemon_tea')!;
-    expect(lemon.marginPct).toBeCloseTo(60.875, 2);
+    // tea 2.500 + lemon 3.000 + sugar 625 + ice 200×3 + cup 1.500 = 8.225 of 20.000.
+    expect(lemon.marginPct).toBeCloseTo(58.875, 2);
     expect(lemon.status).toBe('watch');
   });
 

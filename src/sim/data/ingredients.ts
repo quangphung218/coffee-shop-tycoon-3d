@@ -11,7 +11,7 @@ export const INGREDIENTS: readonly IngredientDef[] = [
   { id: 'orange', name: 'Cam', icon: '🍊', unit: 'quả', unitPrice: 5000, packSize: 12, lowStock: 6 },
   { id: 'flour', name: 'Bột bánh', icon: '🌾', unit: 'g', unitPrice: 30, packSize: 1000, lowStock: 150 },
   { id: 'butter', name: 'Bơ', icon: '🧈', unit: 'g', unitPrice: 250, packSize: 250, lowStock: 60 },
-  { id: 'ice', name: 'Đá viên', icon: '🧊', unit: 'g', unitPrice: 1, packSize: 5000, lowStock: 600 },
+  { id: 'ice', name: 'Đá viên', icon: '🧊', unit: 'g', unitPrice: 3, packSize: 5000, lowStock: 600 },
   { id: 'cup', name: 'Ly', icon: '🥤', unit: 'cái', unitPrice: 1500, packSize: 50, lowStock: 10 },
 ];
 

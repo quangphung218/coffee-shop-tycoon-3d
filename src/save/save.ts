@@ -1,4 +1,5 @@
 import { levelForXp } from '../sim/data/levels';
+import { MENU } from '../sim/data/menu';
 import { settleActors } from '../sim/index';
 import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progression';
 import { createDayStats } from '../sim/state';
@@ -115,6 +116,7 @@ export function migrate(raw: unknown): Result<SaveFile> {
     version = file.version as number;
   }
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
+  addMissingMenuItems(file.state);
   try {
     relayoutTables(file.state);
   } catch {
@@ -126,6 +128,22 @@ export function migrate(raw: unknown): Result<SaveFile> {
     // Positions are only where people stand; a layout that cannot be read leaves them as saved.
   }
   return { ok: true, value: { version, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state: file.state } };
+}
+
+/**
+ * Adds the menu items the game gained after the save was written (the frappe
+ * came with v2), switched off at their default price, so they can be enabled
+ * once the shop level allows. Runs on every load, so a v2 save written before
+ * an item existed gets it too. Entries keep the order of MENU; entries for
+ * items the game no longer knows stay at the end, as saved.
+ */
+function addMissingMenuItems(state: GameState): void {
+  const saved = new Map(state.menu.filter(isObject).map((m) => [m.id, m]));
+  const known = new Set<unknown>(MENU.map((m) => m.id));
+  state.menu = [
+    ...MENU.map((item) => saved.get(item.id) ?? { id: item.id, enabled: false, price: item.price }),
+    ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)),
+  ];
 }
 
 function isValidState(s: unknown): s is GameState {

@@ -251,4 +251,15 @@ describe('report suggestions', () => {
     hire(s, 'barista', 200000);
     expect(kinds(s)).toEqual([]);
   });
+
+  it('only suggests upgrades the shop level has unlocked', () => {
+    const s = quietGoodDay();
+    // Enough for the ice maker (level 5), not for the plants (level 1).
+    s.money = 250000;
+    expect(kinds(s)).toEqual([]);
+    s.shopLevel = 5;
+    const r = buildDailyReport(s);
+    expect(r.suggestions.map((x) => x.kind)).toEqual(['upgrade']);
+    expect(r.suggestions[0]!.text).toContain('Máy làm đá');
+  });
 });

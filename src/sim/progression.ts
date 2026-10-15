@@ -1,3 +1,4 @@
+import { DIFFICULTIES } from './data/difficulty';
 import {
   MAX_SHOP_LEVEL,
   levelForXp,
@@ -30,12 +31,11 @@ interface MissionSpec {
   rewardMoney: number;
   /** Measured value for the day. */
   measure: (state: GameState) => number;
-  /** True when the measured value meets the target. */
-  meets: (progress: number, target: number) => boolean;
+  /** 'gte': reach the target or more; 'lte': stay at or under it. */
+  goal: 'gte' | 'lte';
+  /** False while the value cannot be judged yet (food cost before any revenue). */
+  ready?: (state: GameState) => boolean;
 }
-
-const gte = (p: number, t: number): boolean => p >= t;
-const lte = (p: number, t: number): boolean => p <= t;
 
 function sumValues(rec: Partial<Record<string, number>>): number {
   return Object.values(rec).reduce<number>((s, v) => s + (v ?? 0), 0);
@@ -44,48 +44,90 @@ function sumValues(rec: Partial<Record<string, number>>): number {
 const SPECS: Record<MissionId, MissionSpec> = {
   serve_customers: {
     target: (lvl) => 18 + lvl * 7,
-    rewardXp: 25,
-    rewardMoney: 40000,
+    rewardXp: 60,
+    rewardMoney: 100000,
     measure: (s) => s.today.customersServed,
-    meets: gte,
+    goal: 'gte',
   },
   no_stockout_loss: {
     target: () => 0,
-    rewardXp: 30,
-    rewardMoney: 50000,
+    rewardXp: 70,
+    rewardMoney: 120000,
     measure: (s) => sumValues(s.today.outOfStock),
-    meets: lte,
+    goal: 'lte',
   },
   food_cost: {
     target: () => 38,
-    rewardXp: 25,
-    rewardMoney: 40000,
-    measure: (s) => (s.today.revenue > 0 ? Math.round((s.today.ingredientCost / s.today.revenue) * 100) : 100),
-    meets: lte,
+    rewardXp: 60,
+    rewardMoney: 100000,
+    // Without revenue there is no food cost to judge: ingredients bought but not sold count as 100%.
+    measure: (s) =>
+      s.today.revenue > 0
+        ? Math.round((s.today.ingredientCost / s.today.revenue) * 100)
+        : s.today.ingredientCost > 0
+          ? 100
+          : 0,
+    goal: 'lte',
+    ready: (s) => s.today.revenue > 0,
   },
   sell_food: {
     target: (lvl) => 2 + lvl,
-    rewardXp: 25,
-    rewardMoney: 40000,
+    rewardXp: 60,
+    rewardMoney: 100000,
     measure: (s) => (s.today.sold.croissant ?? 0) + (s.today.sold.cake ?? 0),
-    meets: gte,
+    goal: 'gte',
   },
   end_rating: {
     target: (lvl) => Math.round((3.4 + lvl * 0.15) * 10) / 10,
-    rewardXp: 20,
-    rewardMoney: 30000,
+    rewardXp: 50,
+    rewardMoney: 80000,
     measure: (s) => Math.round(s.today.ratingEnd * 100) / 100,
-    meets: gte,
+    goal: 'gte',
   },
   low_abandon: {
     target: (lvl) => Math.max(10, 21 - lvl),
-    rewardXp: 25,
-    rewardMoney: 40000,
+    rewardXp: 60,
+    rewardMoney: 100000,
     measure: (s) =>
       s.today.customersArrived > 0 ? Math.round((s.today.customersLost / s.today.customersArrived) * 100) : 0,
-    meets: lte,
+    goal: 'lte',
   },
 };
+
+export interface MissionProgress {
+  /** Today's measured value, in the mission's unit (customers, cups, stars, %). */
+  value: number;
+  /**
+   * How far along the day is, 0..1, for a progress bar. For a 'reach' goal it
+   * is value / target; for a 'stay under' goal it is 1 while the value is
+   * within the limit and shrinks as it goes over (0 once a zero limit is broken).
+   */
+  ratio: number;
+  /** True when the mission would count as completed if the day ended now. */
+  met: boolean;
+}
+
+/**
+ * Today's progress on a mission, from the live day stats. Pure: reads the
+ * state only. Nothing counts as met before the first customer of the day.
+ */
+export function missionProgress(state: GameState, mission: Mission): MissionProgress {
+  const spec = SPECS[mission.id];
+  const value = spec.measure(state);
+  const ready = state.today.customersArrived > 0 && (spec.ready?.(state) ?? true);
+  const target = mission.target;
+  let ratio: number;
+  let within: boolean;
+  if (spec.goal === 'gte') {
+    within = value >= target;
+    ratio = target > 0 ? value / target : 1;
+  } else {
+    within = value <= target;
+    ratio = within ? 1 : target > 0 ? target / value : 0;
+  }
+  if (!ready) ratio = spec.goal === 'gte' ? ratio : 0;
+  return { value, ratio: Math.max(0, Math.min(1, ratio)), met: ready && within };
+}
 
 /** The six daily missions, in a fixed order the roll shuffles. */
 export const MISSION_POOL: readonly MissionId[] = [
@@ -124,10 +166,13 @@ export function rollMissions(seed: number, day: number, level: number): Mission[
     const j = Math.floor(draw() * (i + 1));
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];
   }
-  return pool.slice(0, MISSIONS_PER_DAY).map((id) => {
-    const spec = SPECS[id];
-    return { id, target: spec.target(level), progress: 0, rewardXp: spec.rewardXp, rewardMoney: spec.rewardMoney, status: 'active' };
-  });
+  return pool.slice(0, MISSIONS_PER_DAY).map((id) => makeMission(id, level));
+}
+
+/** A fresh, active mission with its target and rewards for a shop level. */
+export function makeMission(id: MissionId, level: number): Mission {
+  const spec = SPECS[id];
+  return { id, target: spec.target(level), progress: 0, rewardXp: spec.rewardXp, rewardMoney: spec.rewardMoney, status: 'active' };
 }
 
 export interface ProgressionResult {
@@ -139,26 +184,25 @@ export interface ProgressionResult {
  * Scores today's missions, grants XP (served customers, good reviews, completed
  * missions) and their small cash rewards, then levels the shop up if the XP
  * crosses a threshold. Call at the end of the day, after settleDay and
- * updateRating so the costs and rating are final. Missions need at least one
- * customer to count, so an empty day completes none.
+ * updateRating so the costs and rating are final. Missions are judged by
+ * missionProgress, so an empty day completes none.
  */
 export function scoreProgression(state: GameState): ProgressionResult {
   const t = state.today;
-  const active = t.customersArrived > 0;
   let missionXp = 0;
   let missionMoney = 0;
   for (const m of state.missions) {
-    const spec = SPECS[m.id];
-    m.progress = spec.measure(state);
-    const completed = active && spec.meets(m.progress, m.target);
-    m.status = completed ? 'completed' : 'failed';
-    if (completed) {
+    const { value, met } = missionProgress(state, m);
+    m.progress = value;
+    m.status = met ? 'completed' : 'failed';
+    if (met) {
       missionXp += m.rewardXp;
       missionMoney += m.rewardMoney;
     }
   }
   const goodReviews = state.reviews.filter((r) => r.day === t.day && r.stars >= GOOD_REVIEW_STARS).length;
-  const xpGained = t.customersServed * XP_PER_SERVED + goodReviews * XP_PER_GOOD_REVIEW + missionXp;
+  const baseXp = t.customersServed * XP_PER_SERVED + goodReviews * XP_PER_GOOD_REVIEW + missionXp;
+  const xpGained = Math.round(baseXp * DIFFICULTIES[state.difficulty].xpMult);
   state.xp += xpGained;
   if (missionMoney > 0) state.money += missionMoney;
 

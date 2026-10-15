@@ -62,17 +62,18 @@ const COUNTER_WIDTH = 3;
 const COUNTER_WIDTH_PER_LEVEL = 1.5;
 const MACHINE_POS: Vec2 = { x: -1, z: -3.3 };
 /**
- * Where each equipment unit stands on the back counter. They sit between the
- * espresso machine and the right wall so the extended back counter clears the
- * back-left planter and both side walls at every combination. Shown only when
- * owned; all machines share the 'bar' group, so they never collide.
+ * Where each equipment unit stands on the back counter: the grinder and the
+ * pastry case left of the espresso machine, the rest in the gaps between the
+ * fast machines. No two machine tops (MACHINE_SIZE) overlap at any combination
+ * of owned machines, and the extended back counter still clears the back-left
+ * planter and both side walls. Shown only when owned.
  */
 const EQUIPMENT_SPOTS: Readonly<Record<Exclude<MachineKind, 'espresso' | 'fast'>, Vec2>> = {
-  grinder: { x: -2.2, z: MACHINE_POS.z },
-  pastry_case: { x: -1.6, z: MACHINE_POS.z },
+  grinder: { x: -2.45, z: MACHINE_POS.z },
+  pastry_case: { x: -1.92, z: MACHINE_POS.z },
   blender: { x: 0.8, z: MACHINE_POS.z },
   ice_maker: { x: 2, z: MACHINE_POS.z },
-  dishwasher: { x: 3.2, z: MACHINE_POS.z },
+  dishwasher: { x: 3.24, z: MACHINE_POS.z },
 };
 const OUTDOOR_TABLE_X: readonly number[] = [-2.5, 2.5, -2.5 - TABLE_PITCH, 2.5 + TABLE_PITCH];
 const OUTDOOR_TABLE_Z = 7.8;

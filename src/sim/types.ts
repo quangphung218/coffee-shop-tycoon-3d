@@ -212,6 +212,8 @@ export interface DifficultyDef {
   /** Multiplier on ingredient, upgrade and wage prices. */
   priceMult: number;
   startRating: number;
+  /** Multiplier on all XP earned, so the shop levels up faster on Easy and slower on Hard. */
+  xpMult: number;
 }
 
 export interface InventoryItem {

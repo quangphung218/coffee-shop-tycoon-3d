@@ -24,31 +24,31 @@ export const LEVELS: readonly LevelDef[] = [
   {
     level: 2,
     name: 'Quán quen',
-    xpToReach: 120,
+    xpToReach: 1100,
     unlocks: { menu: ['cappuccino'], upgrades: ['fast_machine'], tools: ['grinder'] },
   },
   {
     level: 3,
     name: 'Quán đông khách',
-    xpToReach: 320,
+    xpToReach: 3500,
     unlocks: { menu: ['orange_juice'], upgrades: ['better_machine', 'big_counter'], tools: ['pastry_case'] },
   },
   {
     level: 4,
     name: 'Thương hiệu khu phố',
-    xpToReach: 640,
+    xpToReach: 7000,
     unlocks: { menu: ['mocha', 'frappe'], upgrades: ['paintings', 'lights'], tools: ['blender'] },
   },
   {
     level: 5,
     name: 'Quán nổi tiếng',
-    xpToReach: 1200,
+    xpToReach: 12000,
     unlocks: { menu: ['cake'], upgrades: ['window_bar', 'outdoor_seating'], tools: ['ice_maker'] },
   },
   {
     level: 6,
     name: 'Chuỗi nổi tiếng',
-    xpToReach: 2200,
+    xpToReach: 19000,
     unlocks: { menu: [], upgrades: ['expand_area'], tools: ['dishwasher'] },
   },
 ];
