@@ -14,6 +14,8 @@ export interface WorldOptions {
   cameraKeys?: CameraKeys;
   cameraRotateSpeed?: CameraRotateSpeed;
   edgePan?: boolean;
+  /** Force reduced motion on regardless of the OS (the "Luôn giảm" setting). */
+  reducedMotion?: boolean;
 }
 
 export interface World {
@@ -32,6 +34,8 @@ export interface World {
   setCameraKeys(mode: CameraKeys): void;
   setCameraRotateSpeed(speed: CameraRotateSpeed): void;
   setEdgePan(enabled: boolean): void;
+  /** Force reduced motion on (true) or leave it to the OS media query (false). */
+  setReducedMotion(reduce: boolean): void;
   resetCamera(): void;
   /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
   rotateCamera(dYaw: number): void;
@@ -49,7 +53,13 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const shop = new ShopView(view.scene, options.quality ?? 'medium');
   const actors = createActors(view.scene, { quality: options.quality ?? 'medium' });
   const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
-  const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium' });
+  // Forced by the setting, or the OS media query when not forced. Ambient and
+  // the camera read this each frame / on drag release, so toggling it at
+  // runtime takes effect without rebuilding anything.
+  let reducedMotionForced = options.reducedMotion ?? false;
+  const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const reducedMotion = (): boolean => reducedMotionForced || (motionQuery?.matches ?? false);
+  const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
@@ -60,6 +70,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     cameraKeys: options.cameraKeys,
     rotateSpeed: options.cameraRotateSpeed,
     edgePan: options.edgePan,
+    reducedMotion,
     onClick: (x, y) => {
       if (!lastState || handlers.size === 0) return;
       const w = canvas.clientWidth;
@@ -112,6 +123,9 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     setCameraRotateSpeed: (speed) => camera.setRotateSpeed(speed),
     setEdgePan: (enabled) => {
       camera.edgePan = enabled;
+    },
+    setReducedMotion: (reduce) => {
+      reducedMotionForced = reduce;
     },
     resetCamera: () => camera.reset(),
     rotateCamera: (dYaw) => camera.rotate(dYaw),

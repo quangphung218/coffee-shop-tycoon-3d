@@ -70,6 +70,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       world?.setQuality(s.quality);
       world?.setCameraKeys(s.cameraKeys);
       world?.setCameraRotateSpeed(s.cameraRotateSpeed);
+      world?.setReducedMotion(s.reducedMotion === 'reduce');
       audio.setVolumes(s.musicVolume, s.sfxVolume);
     },
     onResetCamera: () => world?.resetCamera(),
@@ -115,7 +116,12 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   void Promise.all([worldModule, afterPaint()])
     .then(async ([{ createWorld }]) => {
       const s = shell.settings;
-      const w = createWorld(canvas, { quality: s.quality, cameraKeys: s.cameraKeys, cameraRotateSpeed: s.cameraRotateSpeed });
+      const w = createWorld(canvas, {
+        quality: s.quality,
+        cameraKeys: s.cameraKeys,
+        cameraRotateSpeed: s.cameraRotateSpeed,
+        reducedMotion: s.reducedMotion === 'reduce',
+      });
       // Clicks in the scene go through the same dispatch as the UI.
       w.onCommand((cmd) => shell.dispatch(cmd));
       await w.prepare(shell.state ?? menuScene);

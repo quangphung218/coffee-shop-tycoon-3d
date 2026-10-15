@@ -296,10 +296,10 @@ describe('Settings', () => {
     fast.dispatchEvent(new Event('change'));
     expect(changes.at(-1)?.gameSpeed).toBe(4);
 
-    const keys = q<HTMLButtonElement>(screen.el, '[role="switch"]');
-    expect(keys.getAttribute('aria-checked')).toBe('true');
-    keys.click();
-    expect(keys.getAttribute('aria-checked')).toBe('false');
+    expect(q<HTMLInputElement>(screen.el, 'input[data-setting="cameraKeys"][value="qe-wasd"]').checked).toBe(true);
+    const arrows = q<HTMLInputElement>(screen.el, 'input[data-setting="cameraKeys"][value="qa-arrows"]');
+    arrows.checked = true;
+    arrows.dispatchEvent(new Event('change'));
     expect(changes.at(-1)?.cameraKeys).toBe('qa-arrows');
 
     const normal = q<HTMLInputElement>(screen.el, 'input[data-setting="cameraRotateSpeed"][value="normal"]');
@@ -317,10 +317,15 @@ describe('Settings', () => {
       gameSpeed: 4,
       cameraKeys: 'qa-arrows',
       cameraRotateSpeed: 'slow',
+      reducedMotion: 'system',
     });
     expect(q(screen.el, '[role="status"]').textContent).toContain('Đã lưu');
 
-    button(screen.el, 'Về mặc định').click();
+    // "Về mặc định" confirms in place: the first click only arms it.
+    const reset = button(screen.el, 'Về mặc định');
+    reset.click();
+    expect(loadSettings(storage).quality).toBe('high');
+    reset.click();
     expect(loadSettings(storage)).toEqual(DEFAULT_SETTINGS);
     expect(music.value).toBe('50');
     expect(normal.checked).toBe(true);
@@ -826,7 +831,9 @@ describe('no emoji on the screens', () => {
     const settings = createSettings(createMemoryStorage(), { ...DEFAULT_SETTINGS }, { onChange: vi.fn(), onBack: vi.fn() });
     mount(settings.el);
     settings.onShow?.();
-    button(settings.el, 'Về mặc định').click();
+    const resetBtn = button(settings.el, 'Về mặc định');
+    resetBtn.click();
+    resetBtn.click();
     expect(q(settings.el, '[role="status"]').textContent).toContain('Đã lưu');
     expect(settings.el.textContent).not.toMatch(EMOJI);
 

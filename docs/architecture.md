@@ -91,7 +91,7 @@ Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ
 
 | Input | Cách chạy |
 | --- | --- |
-| Kéo chuột | Xoay `DRAG_ROTATE_SPEED` rad/px. Lúc kéo, vận tốc được làm mượt; thả ra thì camera trôi tiếp với vận tốc đó (tối đa `MAX_INERTIA` = 4 rad/s), giảm dần theo `INERTIA_DECAY`. Bấm vào cảnh dừng ngay. Không trôi khi `prefers-reduced-motion`. |
+| Kéo chuột | Xoay `DRAG_ROTATE_SPEED` rad/px. Lúc kéo, vận tốc được làm mượt; thả ra thì camera trôi tiếp với vận tốc đó (tối đa `MAX_INERTIA` = 4 rad/s), giảm dần theo `INERTIA_DECAY`. Bấm vào cảnh dừng ngay. Không trôi khi Giảm chuyển động bật (cài đặt `reducedMotion` là `reduce` hay `prefers-reduced-motion`). |
 | Phím xoay, phím pan, pan mép màn | Tăng tốc và giảm tốc theo `KEY_RAMP`, không bật tắt đột ngột. |
 | Bám đích | `current` đuổi theo `target` bằng `dampMoving` (`ROTATE_DAMPING`, `ZOOM_DAMPING`, `PAN_DAMPING`), nên chuyển động giống nhau ở mọi tốc độ khung hình. |
 
@@ -227,7 +227,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 | --- | --- |
 | `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
-| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`). |
+| `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`), giảm chuyển động (`reducedMotion`: `system` hay `reduce`, thiếu thì `system`). |
 
 Mỗi slot là JSON:
 
@@ -320,4 +320,4 @@ Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 - Hệ số này làm kính cửa sổ và cửa phát sáng (`GLASS_MATERIAL` emissive), bóng đèn sáng hơn và biển hiệu ấm lên.
 - Mức Cao thêm 2 `PointLight` ấm không đổ bóng, tạo theo mức đồ họa chứ không theo giờ.
 - Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn.
-- Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi trình duyệt bật `prefers-reduced-motion`.
+- Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi Giảm chuyển động bật — do cài đặt `reducedMotion` là `reduce` (`world.setReducedMotion`) hay trình duyệt bật `prefers-reduced-motion`.

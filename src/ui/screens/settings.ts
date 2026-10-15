@@ -1,4 +1,13 @@
-import { DEFAULT_SETTINGS, saveSettings, type CameraRotateSpeed, type GameSpeed, type Quality, type Settings } from '../../save/settings';
+import {
+  DEFAULT_SETTINGS,
+  saveSettings,
+  type CameraKeys,
+  type CameraRotateSpeed,
+  type GameSpeed,
+  type Quality,
+  type ReducedMotion,
+  type Settings,
+} from '../../save/settings';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, setChildren, uid } from '../core/dom';
@@ -31,10 +40,22 @@ const ROTATE_OPTIONS: readonly { value: CameraRotateSpeed; label: string }[] = [
   { value: 'normal', label: 'Vừa' },
   { value: 'fast', label: 'Nhanh' },
 ];
+const MOTION_OPTIONS: readonly { value: ReducedMotion; label: string }[] = [
+  { value: 'system', label: 'Theo máy' },
+  { value: 'reduce', label: 'Luôn giảm' },
+];
+const CAMERA_KEY_OPTIONS: readonly { value: CameraKeys; label: string }[] = [
+  { value: 'qe-wasd', label: 'WASD di chuyển · Q/E xoay' },
+  { value: 'qa-arrows', label: 'Mũi tên di chuyển · Q/A xoay' },
+];
+
+/** How long "Về mặc định" stays armed waiting for a second click, ms. */
+const RESET_CONFIRM_MS = 3000;
 
 /**
- * Settings: music and SFX volume, graphics quality, game speed, camera keys
- * and rotate speed. Every change applies at once and is saved; there is no Save button.
+ * Settings grouped into Âm thanh, Hiển thị, Điều khiển and Trò chơi, each item
+ * with a one-line purpose. Every change applies at once and is saved; there is
+ * no Save button. "Về mặc định" confirms in place (no modal).
  */
 export function createSettings(storage: StorageLike, initial: Settings, actions: SettingsActions): SettingsScreen {
   let value: Settings = { ...initial };
@@ -53,7 +74,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     actions.onChange({ ...value });
   }
 
-  function range(iconId: IconId, label: string, key: 'musicVolume' | 'sfxVolume'): { row: HTMLElement; sync(): void } {
+  function range(iconId: IconId, label: string, hint: string, key: 'musicVolume' | 'sfxVolume'): { row: HTMLElement; sync(): void } {
     const id = uid(key);
     const out = h('span', { class: 'range-val', attrs: { 'aria-hidden': 'true' } });
     const input = h('input', { class: 'range', id, attrs: { type: 'range', min: 0, max: 100, step: 5, name: key } });
@@ -67,7 +88,12 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       commit({ [key]: Number(input.value) / 100 });
       sync();
     });
-    const row = h('div', { class: 'set-row' }, h('label', { class: 'label', attrs: { for: id } }, icon(iconId), label), h('div', { class: 'range-wrap' }, input, out));
+    const row = h(
+      'div',
+      { class: 'set-row' },
+      h('div', { class: 'field' }, h('label', { class: 'label', attrs: { for: id } }, icon(iconId), label), h('span', { class: 'hint', text: hint })),
+      h('div', { class: 'range-wrap' }, input, out),
+    );
     return { row, sync };
   }
 
@@ -101,25 +127,37 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     return { row, sync };
   }
 
-  const music = range('i-music', 'Nhạc nền', 'musicVolume');
-  const sfx = range('i-sound', 'Hiệu ứng (chuông cửa, máy pha, tiền)', 'sfxVolume');
+  const music = range('i-music', 'Nhạc nền', 'Nhạc nền trong quán.', 'musicVolume');
+  const sfx = range('i-sound', 'Hiệu ứng', 'Chuông cửa, máy pha, tiếng tiền.', 'sfxVolume');
   const quality = seg(
     'i-quality',
-    'Chất lượng',
+    'Chất lượng đồ họa',
     'Thấp: không bóng đổ, phố thưa. Cao: bóng đổ, phố đông xe và người.',
     'quality',
     QUALITY_OPTIONS,
     () => value.quality,
     (q) => commit({ quality: q }),
   );
-  const speed = seg(
-    'i-speed-2',
-    'Tốc độ khi mở cửa',
-    'Có thể đổi bất cứ lúc nào trên HUD.',
-    'speed',
-    SPEED_OPTIONS,
-    () => value.gameSpeed,
-    (s) => commit({ gameSpeed: s }),
+  const motion = seg(
+    'i-pause',
+    'Giảm chuyển động',
+    'Tắt bớt hoạt họa. "Theo máy" dùng cài đặt của hệ điều hành.',
+    'reducedMotion',
+    MOTION_OPTIONS,
+    () => value.reducedMotion,
+    (m) => commit({ reducedMotion: m }),
+  );
+  const cameraKeys = seg(
+    'i-camera',
+    'Kiểu phím camera',
+    'Chọn cụm phím di chuyển và xoay camera.',
+    'cameraKeys',
+    CAMERA_KEY_OPTIONS,
+    () => value.cameraKeys,
+    (k) => {
+      commit({ cameraKeys: k });
+      syncKeys();
+    },
   );
   const rotate = seg(
     'i-camera',
@@ -130,30 +168,20 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     () => value.cameraRotateSpeed,
     (r) => commit({ cameraRotateSpeed: r }),
   );
-
-  const panLabelId = uid('pan-l');
-  const panState = h('span', { class: 'toggle-state' });
-  const panToggle = h(
-    'button',
-    {
-      class: 'toggle',
-      attrs: { type: 'button', role: 'switch', 'aria-labelledby': panLabelId, name: 'cameraKeys' },
-      on: {
-        click: () => {
-          commit({ cameraKeys: value.cameraKeys === 'qe-wasd' ? 'qa-arrows' : 'qe-wasd' });
-          syncKeys();
-        },
-      },
-    },
-    h('span', { class: 'toggle-track', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'toggle-thumb' })),
-    panState,
+  const speed = seg(
+    'i-speed-2',
+    'Tốc độ mặc định khi mở cửa',
+    'Đổi nhanh bằng phím 1 / 2 / 3 trên HUD.',
+    'speed',
+    SPEED_OPTIONS,
+    () => value.gameSpeed,
+    (s) => commit({ gameSpeed: s }),
   );
+
   const keysList = h('div', { class: 'keys' });
 
   function syncKeys(): void {
     const wasd = value.cameraKeys === 'qe-wasd';
-    panToggle.setAttribute('aria-checked', String(wasd));
-    panState.textContent = wasd ? 'Bật' : 'Tắt';
     keysList.replaceChildren(
       h('span', { text: wasd ? 'W A S D / mũi tên: di chuyển camera' : 'Mũi tên: di chuyển camera' }),
       h('span', { text: wasd ? 'Q E: xoay camera' : 'Q A (hoặc E): xoay camera' }),
@@ -168,10 +196,39 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     music.sync();
     sfx.sync();
     quality.sync();
-    speed.sync();
+    motion.sync();
+    cameraKeys.sync();
     rotate.sync();
+    speed.sync();
     syncKeys();
   }
+
+  // "Về mặc định": first click arms it (label changes for RESET_CONFIRM_MS),
+  // a second click within that window resets. One signal changes: the text.
+  let resetArmed = false;
+  let resetTimer: ReturnType<typeof setTimeout> | null = null;
+  const resetBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' } });
+  function paintReset(): void {
+    setChildren(resetBtn, icon('i-reset'), resetArmed ? 'Bấm lần nữa để đặt lại' : 'Về mặc định');
+  }
+  function disarmReset(): void {
+    resetArmed = false;
+    if (resetTimer !== null) clearTimeout(resetTimer);
+    resetTimer = null;
+    paintReset();
+  }
+  resetBtn.addEventListener('click', () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      paintReset();
+      resetTimer = setTimeout(disarmReset, RESET_CONFIRM_MS);
+      return;
+    }
+    disarmReset();
+    commit({ ...DEFAULT_SETTINGS });
+    syncAll();
+  });
+  paintReset();
 
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
   const form = h(
@@ -181,46 +238,17 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     h('p', { class: 'section-title', text: 'Âm thanh' }),
     music.row,
     sfx.row,
-    h('p', { class: 'section-title', text: 'Đồ họa' }),
+    h('p', { class: 'section-title', text: 'Hiển thị' }),
     quality.row,
+    motion.row,
+    h('p', { class: 'section-title', text: 'Điều khiển' }),
+    cameraKeys.row,
+    rotate.row,
+    h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
     h('p', { class: 'section-title', text: 'Trò chơi' }),
     speed.row,
-    h(
-      'div',
-      { class: 'set-row' },
-      h(
-        'div',
-        { class: 'field' },
-        h('span', { class: 'label', id: panLabelId }, icon('i-camera'), 'Di chuyển camera bằng WASD'),
-        h('span', { class: 'hint', text: 'Tắt để dùng Q/A xoay camera như phím gốc; khi bật, xoay bằng Q/E.' }),
-      ),
-      panToggle,
-    ),
-    rotate.row,
-    h('p', { class: 'section-title', text: 'Phím tắt' }),
-    keysList,
     h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
-    h(
-      'div',
-      { class: 'foot' },
-      status,
-      h(
-        'button',
-        {
-          class: 'btn btn-secondary',
-          attrs: { type: 'button' },
-          on: {
-            click: () => {
-              commit({ ...DEFAULT_SETTINGS });
-              syncAll();
-            },
-          },
-        },
-        icon('i-reset'),
-        'Về mặc định',
-      ),
-      done,
-    ),
+    h('div', { class: 'foot' }, status, resetBtn, done),
   );
   form.addEventListener('submit', (e) => e.preventDefault());
 
@@ -232,6 +260,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     },
     onShow: () => {
       status.textContent = '';
+      disarmReset();
       syncAll();
     },
     initialFocus: () => form.querySelector<HTMLElement>('input'),

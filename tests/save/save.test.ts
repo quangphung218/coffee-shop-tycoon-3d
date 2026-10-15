@@ -303,7 +303,7 @@ describe('settings', () => {
 
   it('round-trips under its own key', () => {
     const storage = createMemoryStorage();
-    const s = { musicVolume: 0.2, sfxVolume: 1, quality: 'high', gameSpeed: 4, cameraKeys: 'qa-arrows', cameraRotateSpeed: 'fast' } as const;
+    const s = { musicVolume: 0.2, sfxVolume: 1, quality: 'high', gameSpeed: 4, cameraKeys: 'qa-arrows', cameraRotateSpeed: 'fast', reducedMotion: 'reduce' } as const;
     expect(saveSettings(s, storage)).toBe(true);
     expect(storage.getItem(SETTINGS_KEY)).not.toBeNull();
     expect(loadSettings(storage)).toEqual(s);
@@ -323,6 +323,16 @@ describe('settings', () => {
     const storage = createMemoryStorage();
     const old = { musicVolume: 0.3, sfxVolume: 0.6, quality: 'low', gameSpeed: 2, cameraKeys: 'qa-arrows' };
     storage.setItem(SETTINGS_KEY, JSON.stringify(old));
-    expect(loadSettings(storage)).toEqual({ ...old, cameraRotateSpeed: 'normal' });
+    expect(loadSettings(storage)).toEqual({ ...old, cameraRotateSpeed: 'normal', reducedMotion: 'system' });
+  });
+
+  it('gives settings saved before reduced motion existed the system default', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ musicVolume: 0.3, quality: 'high' }));
+    expect(loadSettings(storage).reducedMotion).toBe('system');
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ reducedMotion: 'wiggle' }));
+    expect(loadSettings(storage).reducedMotion).toBe('system');
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ reducedMotion: 'reduce' }));
+    expect(loadSettings(storage).reducedMotion).toBe('reduce');
   });
 });

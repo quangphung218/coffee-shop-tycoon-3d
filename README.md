@@ -85,15 +85,18 @@ Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ l
 
 **Cài đặt** có:
 
-| Mục | Giá trị |
-| --- | --- |
-| Nhạc nền, Hiệu ứng | Âm lượng 0–100% |
-| Chất lượng | Thấp / Vừa / Cao |
-| Tốc độ khi mở cửa | 1x / 2x / 4x |
-| Di chuyển camera bằng WASD | Bật: `Q`/`E` xoay, `WASD` và mũi tên pan. Tắt: `Q`/`A` (hoặc `E`) xoay, chỉ mũi tên pan. |
-| Tốc độ xoay camera | Chậm / Vừa / Nhanh, cho cả kéo chuột và phím xoay |
+| Nhóm | Mục | Giá trị |
+| --- | --- | --- |
+| Âm thanh | Nhạc nền, Hiệu ứng | Âm lượng 0–100% |
+| Hiển thị | Chất lượng đồ họa | Thấp / Vừa / Cao |
+| Hiển thị | Giảm chuyển động | Theo máy (dùng cài đặt hệ điều hành) / Luôn giảm |
+| Điều khiển | Kiểu phím camera | `WASD` di chuyển · `Q`/`E` xoay — hoặc mũi tên di chuyển · `Q`/`A` xoay |
+| Điều khiển | Tốc độ xoay camera | Chậm / Vừa / Nhanh, cho cả kéo chuột và phím xoay |
+| Trò chơi | Tốc độ mặc định khi mở cửa | 1x / 2x / 4x (đổi nhanh bằng `1` / `2` / `3` trên HUD) |
 
-Thả chuột sau khi kéo thì camera trôi thêm một chút rồi dừng (tắt khi hệ điều hành bật giảm chuyển động).
+Phím tắt nằm trong mục **Phím tắt** sổ ra ở nhóm Điều khiển. **Về mặc định** xác nhận tại chỗ: bấm lần đầu đổi thành "Bấm lần nữa để đặt lại", bấm lại trong 3 giây để áp dụng.
+
+Thả chuột sau khi kéo thì camera trôi thêm một chút rồi dừng (tắt khi Giảm chuyển động là Luôn giảm, hoặc hệ điều hành bật giảm chuyển động).
 
 Version đang chạy (vd `v0.1.0`) hiện ở chân Main Menu và cuối màn Cài đặt.
 

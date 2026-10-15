@@ -58,9 +58,12 @@ export function createPause(actions: PauseActions): Screen {
     h(
       'div',
       { class: 'stack', attrs: { style: 'margin-top:var(--space-6)' } },
+      // Keep going in this game: resume, save, settings.
       resume,
       saveRow,
       h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onSettings() } }, icon('i-settings'), 'Cài đặt'),
+      // Leaving the game sits on its own below a rule, away from the rest.
+      h('hr', { class: 'stack-rule' }),
       h('button', { class: 'btn btn-secondary btn-block', attrs: { type: 'button' }, on: { click: () => actions.onMenu() } }, icon('i-home'), 'Về Main Menu'),
     ),
     status,
