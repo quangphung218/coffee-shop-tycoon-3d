@@ -16,7 +16,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     id: 'better_machine',
     name: 'Máy espresso cao cấp',
     icon: '⚙️',
-    description: 'Đồ uống ngon hơn, khách chấm điểm cao hơn 0,2 sao mỗi cấp.',
+    description: 'Đồ uống ngon hơn: mỗi cấp +0,2 sao vào điểm ngày và +20% cơ hội khách chấm thêm 1 sao (tối đa 50%).',
     category: 'equipment',
     maxLevel: 3,
     baseCost: 1500000,
