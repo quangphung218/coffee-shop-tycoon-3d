@@ -1,6 +1,7 @@
 import { Scene } from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createActors } from '../../src/render/actors';
+import { LabelAssets, popScale } from '../../src/render/actors/labels';
 import { ALL_ANIMS, CALM_BOUNCE, IDLE_BOUNCE_PERIOD, SEATED_ANIMS, bounceFor } from '../../src/render/actors/animations';
 import { COIN_SECONDS, CoinFx, HOT_ITEMS, STEAM_PUFFS, Steam, steamFor } from '../../src/render/actors/fx';
 import { createNewGame } from '../../src/sim/state';
@@ -136,6 +137,64 @@ describe('steam', () => {
     actors.update(state, 0);
     expect(actors.inspect('player')!.steam).toBe(false);
     actors.dispose();
+  });
+});
+
+describe('reduced motion setting', () => {
+  function stubMedia(matches: boolean): () => void {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches, media: query }) as MediaQueryList);
+    return () => vi.unstubAllGlobals();
+  }
+
+  it('calms the actors when forced on at creation, even if the OS does not ask', () => {
+    const restore = stubMedia(false);
+    const state = newState();
+    state.playerTasks = [{ kind: 'serve', targetId: addOrder(state, 'mocha'), remaining: 1 }];
+    const actors = createActors(new Scene(), { reducedMotion: true });
+    expect(actors.calm()).toBe(true);
+    actors.update(state, 0);
+    expect(actors.inspect('player')!.steam).toBe(false);
+    actors.dispose();
+    restore();
+  });
+
+  it('follows the setting when it changes at runtime', () => {
+    const restore = stubMedia(false);
+    const state = newState();
+    state.playerTasks = [{ kind: 'serve', targetId: addOrder(state, 'mocha'), remaining: 1 }];
+    const actors = createActors(new Scene());
+    expect(actors.calm()).toBe(false);
+    actors.update(state, 0);
+    expect(actors.inspect('player')!.steam).toBe(true);
+
+    actors.setReducedMotion(true);
+    expect(actors.calm()).toBe(true);
+    actors.update(state, 0);
+    expect(actors.inspect('player')!.steam).toBe(false);
+
+    actors.setReducedMotion(false);
+    expect(actors.calm()).toBe(false);
+    actors.dispose();
+    restore();
+  });
+
+  it('still honours the OS media query when the setting is off', () => {
+    const restore = stubMedia(true);
+    const actors = createActors(new Scene(), { reducedMotion: false });
+    expect(actors.calm()).toBe(true);
+    actors.dispose();
+    restore();
+  });
+
+  it('skips the bubble pop-in when forced on', () => {
+    const restore = stubMedia(false);
+    const assets = new LabelAssets();
+    expect(assets.reducedMotion).toBe(false);
+    assets.forceReducedMotion = true;
+    expect(assets.reducedMotion).toBe(true);
+    expect(popScale(0.05, assets.reducedMotion)).toBe(1);
+    assets.dispose();
+    restore();
   });
 });
 
