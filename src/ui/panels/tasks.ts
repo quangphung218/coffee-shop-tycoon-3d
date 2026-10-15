@@ -2,6 +2,7 @@ import { getIngredient } from '../../sim/data/ingredients';
 import { getCampaign } from '../../sim/data/marketing';
 import { getMenuItem } from '../../sim/data/menu';
 import { autoRestockSuggestion, canMake } from '../../sim/inventory';
+import { missionProgress } from '../../sim/progression';
 import type { GameState, Mission, MissionId, SuggestionKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
 import { formatMoney, formatRating } from '../core/format';
@@ -95,7 +96,7 @@ const SUGGESTION_PANEL: Record<SuggestionKind, { panel: string; link: string }> 
 };
 
 /** Display name and goal phrasing for each daily mission (design/p20 §5). */
-const MISSION_META: Record<MissionId, { title: string; dir: 'gte' | 'lte'; goal: (t: number) => string; measure: (v: number) => string }> = {
+export const MISSION_META: Record<MissionId, { title: string; dir: 'gte' | 'lte'; goal: (t: number) => string; measure: (v: number) => string }> = {
   serve_customers: { title: 'Phục vụ khách', dir: 'gte', goal: (t) => `Mục tiêu ≥ ${t} khách`, measure: (v) => `${v} khách` },
   no_stockout_loss: { title: 'Không để hết hàng', dir: 'lte', goal: () => 'Mục tiêu 0 đơn lỡ vì hết hàng', measure: (v) => `${v} đơn lỡ` },
   food_cost: { title: 'Giữ giá vốn thấp', dir: 'lte', goal: (t) => `Mục tiêu ≤ ${t}% giá vốn`, measure: (v) => `${v}%` },
@@ -105,25 +106,35 @@ const MISSION_META: Record<MissionId, { title: string; dir: 'gte' | 'lte'; goal:
 };
 
 const MISSION_STATE: Record<Mission['status'], { label: string; badge: string; icon: IconId }> = {
-  active: { label: 'Đang theo dõi', badge: 'badge-neutral', icon: 'i-todo' },
+  active: { label: 'Đang theo dõi', badge: 'badge-neutral', icon: 'i-clock' },
   completed: { label: 'Xong', badge: 'badge-ok', icon: 'i-ok' },
   failed: { label: 'Hụt', badge: 'badge-warn', icon: 'i-warning' },
 };
 
-/** 0..1 bar fill: full when won, how close for a missed "reach" goal, else empty (not yet scored). */
-function missionFill(m: Mission): number {
+/**
+ * 0..1 bar fill: today's live progress while active (missionProgress), full
+ * when won, how close for a missed "reach" goal, else empty.
+ */
+function missionFill(state: GameState, m: Mission): number {
+  if (m.status === 'active') return missionProgress(state, m).ratio;
   if (m.status === 'completed') return 1;
-  if (m.status === 'failed' && MISSION_META[m.id].dir === 'gte') return m.target > 0 ? Math.min(1, m.progress / m.target) : 0;
+  if (MISSION_META[m.id].dir === 'gte') return m.target > 0 ? Math.min(1, m.progress / m.target) : 0;
   return 0;
 }
 
+/** Bar percent and value text of a card; also the key that tells when to redraw it. */
+function missionView(state: GameState, m: Mission): { now: number; valueText: string } {
+  const meta = MISSION_META[m.id];
+  const now = Math.round(missionFill(state, m) * 100);
+  const value = m.status === 'active' ? missionProgress(state, m).value : m.progress;
+  return { now, valueText: `${meta.measure(value)} · ${meta.goal(m.target)}` };
+}
+
 /** One mission card: name, status badge, goal, a progressbar and the XP/cash reward. */
-function missionCard(m: Mission): HTMLElement {
+function missionCard(state: GameState, m: Mission): HTMLElement {
   const meta = MISSION_META[m.id];
   const st = MISSION_STATE[m.status];
-  const fill = missionFill(m);
-  const now = Math.round(fill * 100);
-  const valueText = m.status === 'active' ? meta.goal(m.target) : `${meta.measure(m.progress)} · ${meta.goal(m.target)}`;
+  const { now, valueText } = missionView(state, m);
   return h(
     'li',
     { class: 'mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
@@ -206,10 +217,10 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
   w.watch(
-    (s) => JSON.stringify(s.missions),
+    (s) => `${JSON.stringify(s.missions)}|${s.missions.map((m) => JSON.stringify(missionView(s, m))).join('|')}`,
     (_, s) => {
       missionEmpty.hidden = s.missions.length > 0;
-      setChildren(missionList, ...s.missions.map(missionCard));
+      setChildren(missionList, ...s.missions.map((m) => missionCard(s, m)));
     },
   );
   w.watch(

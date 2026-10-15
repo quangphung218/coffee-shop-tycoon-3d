@@ -16,13 +16,11 @@ export function lowStockCount(state: GameState): number {
 }
 
 /**
- * Unfinished items on the Việc checklist, plus the daily missions still to
- * win while the shop is being prepared (they are scored only at day end).
+ * Unfinished items on the Việc checklist. Daily missions are not counted: they
+ * are scored on their own at day end and need no action to open the shop.
  */
 export function openTaskCount(state: GameState): number {
-  const tasks = dayTasks(state).filter((t) => !t.done).length;
-  const missions = state.phase === 'preparation' ? state.missions.filter((m) => m.status !== 'completed').length : 0;
-  return tasks + missions;
+  return dayTasks(state).filter((t) => !t.done).length;
 }
 
 /**

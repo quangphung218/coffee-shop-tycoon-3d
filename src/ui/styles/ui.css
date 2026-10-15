@@ -987,14 +987,17 @@ legend {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* Shop-level chip: level name over an XP bar, sharing the day pill's row. */
+/* Shop-level chip: level name over an XP bar and its "320/500" count, sharing
+   the day pill's row. A label, so it keeps the HUD pill frame on a tint. */
 .hud-level {
   padding-right: var(--space-4);
+  background: var(--level-chip-bg);
+  color: var(--level-chip-text);
 }
 .hud-level .level-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
   min-width: 0;
 }
 .hud-level .level-name {
@@ -1002,20 +1005,31 @@ legend {
   font-weight: var(--font-weight-heavy);
   white-space: nowrap;
 }
+.xp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
 .xp {
-  width: 112px;
-  max-width: 34vw;
+  width: calc(var(--space-16) + var(--space-8));
+  max-width: 24vw;
   height: var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--data-track);
+  background: var(--xp-track);
   border: var(--size-outline-sm) solid var(--border-outline);
   overflow: hidden;
 }
 .xp-fill {
   display: block;
   height: 100%;
-  background: var(--data-bar);
+  background: var(--xp-fill);
   transition: width var(--duration-base) var(--easing-standard);
+}
+.xp-num {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* One-shot honey ring when the shop levels up; reduce-motion zeroes it. */
 .hud-level.is-level-up {
@@ -1028,7 +1042,7 @@ legend {
   }
   40% {
     box-shadow:
-      0 0 0 4px var(--accent-primary),
+      0 0 0 var(--space-1) var(--accent-primary),
       var(--shadow-md);
   }
 }
@@ -1246,7 +1260,7 @@ legend {
   font-weight: var(--font-weight-heavy);
   line-height: 1;
 }
-/* Divider between the dock's two groups (Vận hành | Phát triển). */
+/* Divider between the dock's groups (Vận hành | Phát triển | Đánh giá). */
 .dock-sep {
   flex: 0 0 auto;
   align-self: stretch;
@@ -1541,6 +1555,22 @@ legend {
   /* Narrow cells: tuck the badge into the corner, still inside the focus ring. */
   .dock-badge {
     right: var(--space-1);
+  }
+  /* The rows split the groups instead: Vận hành fills row one, so the divider
+     takes no grid cell and both rows hold whole buttons. A later group on the
+     same row (Đánh giá after Nâng cấp) gets a thin line in the gap before it. */
+  .dock-sep {
+    display: none;
+  }
+  .dock-sep ~ .dock-sep + .dock-btn::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: calc(-1 * (var(--size-outline) + (var(--size-group-gap) + var(--size-outline-sm)) / 2));
+    width: var(--size-outline-sm);
+    background: var(--border-outline);
+    border-radius: var(--radius-pill);
   }
   /* Full width, still between the HUD and the dock. */
   #ui > .panel {

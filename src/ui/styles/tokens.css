@@ -164,6 +164,11 @@
   --btn-shadow-press: var(--shadow-sm);
   --label-radius: var(--radius-pill);
   --label-shadow: none;
+  /* Shop level chip and XP bar in the HUD (design/p20 §4), also aliases. */
+  --level-chip-bg: var(--surface-selected);
+  --level-chip-text: var(--text-primary);
+  --xp-fill: var(--data-bar);
+  --xp-track: var(--data-track);
 
   --duration-instant: 80ms;
   --duration-fast: 120ms;

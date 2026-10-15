@@ -330,7 +330,7 @@
   flex: 0 0 auto;
 }
 .mission-reward .ic {
-  margin-right: 2px;
+  margin-right: var(--space-1);
 }
 .mission-empty {
   padding: var(--space-1) 0;

@@ -139,7 +139,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     (q) => commit({ quality: q }),
   );
   const motion = seg(
-    'i-pause',
+    'i-rest',
     'Giảm chuyển động',
     'Tắt bớt hoạt họa. "Theo máy" dùng cài đặt của hệ điều hành.',
     'reducedMotion',
