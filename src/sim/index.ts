@@ -4,10 +4,13 @@ import { getIngredient } from './data/ingredients';
 import { applyRestockSuggestion, buyIngredient, toggleMenuItem } from './inventory';
 import { advanceCampaigns, runCampaign } from './marketing';
 import { brew, cleanTable, collectCash, deliver, takeOrder, updatePlayerTasks } from './orders';
+import { isUnlocked } from './progression';
 import { recordExperiencesSince } from './reviews';
 import { assignRole, clearStaffTasks, fireStaff, hireStaff, placeStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
 import { buildNavGrid, nearestFree } from './nav';
 import { buyUpgrade, getShopLayout } from './upgrades';
+import { getMenuItem } from './data/menu';
+import { getUpgrade } from './data/upgrades';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -104,6 +107,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
     case 'set_menu_item': {
       const entry = state.menu.find((m) => m.id === cmd.itemId);
       if (!entry) return false;
+      if (cmd.enabled && !isUnlocked(state, 'menu', cmd.itemId)) {
+        state.events.push({ type: 'notify', level: 'error', text: `${getMenuItem(cmd.itemId).name} chưa mở khóa ở cấp quán này` });
+        return false;
+      }
       if (entry.enabled !== cmd.enabled) toggleMenuItem(state, cmd.itemId);
       return true;
     }
@@ -117,6 +124,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       setAutoAssign(state, cmd.enabled);
       return true;
     case 'buy_upgrade':
+      if (!isUnlocked(state, 'upgrade', cmd.upgradeId)) {
+        state.events.push({ type: 'notify', level: 'error', text: `${getUpgrade(cmd.upgradeId).name} chưa mở khóa ở cấp quán này` });
+        return false;
+      }
       return buyUpgrade(state, cmd.upgradeId).ok;
     case 'start_campaign':
       return runCampaign(state, cmd.campaignId).ok;
@@ -141,3 +152,5 @@ export { buildDailyReport, closeDay } from './report';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
 export { buyUpgrade, getShopLayout, nextUpgradeCost } from './upgrades';
+export { isUnlocked, rollMissions, scoreProgression, type ProgressionResult } from './progression';
+export { LEVELS, MAX_SHOP_LEVEL, levelDef, levelForXp, xpToReach } from './data/levels';

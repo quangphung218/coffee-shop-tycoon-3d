@@ -72,6 +72,48 @@ export type UpgradeId =
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
 
+/** Equipment unlocked by shop level but wired up in a later milestone; kept as plain strings for now. */
+export type ToolId = 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
+
+/** Menu items, upgrades and tools a shop level makes available. */
+export interface Unlocks {
+  menu: MenuItemId[];
+  upgrades: UpgradeId[];
+  tools: ToolId[];
+}
+
+export interface LevelDef {
+  /** 1..MAX_SHOP_LEVEL. */
+  level: number;
+  name: string;
+  /** Cumulative XP needed to reach this level (0 for level 1). */
+  xpToReach: number;
+  /** What this level newly unlocks. */
+  unlocks: Unlocks;
+}
+
+export type MissionId =
+  | 'serve_customers'
+  | 'no_stockout_loss'
+  | 'food_cost'
+  | 'sell_food'
+  | 'end_rating'
+  | 'low_abandon';
+
+export type MissionStatus = 'active' | 'completed' | 'failed';
+
+/** One of today's three daily missions. */
+export interface Mission {
+  id: MissionId;
+  /** Goal value: customers, cups, a 1..5 rating or a 0..100 percentage, by mission. */
+  target: number;
+  /** Measured value toward the goal, filled in when the day is scored. */
+  progress: number;
+  rewardXp: number;
+  rewardMoney: number;
+  status: MissionStatus;
+}
+
 export interface IngredientDef {
   id: IngredientId;
   name: string;
@@ -314,6 +356,12 @@ export interface DailyReport {
   /** Today's reviews, newest last. */
   reviews: Review[];
   suggestions: Suggestion[];
+  /** Today's daily missions with their final progress and status. */
+  missions?: Mission[];
+  /** XP earned today from service, 4–5 star reviews and completed missions. */
+  xpGained?: number;
+  /** Set when the shop reached a new level at the end of today. */
+  levelUp?: { level: number; unlocks: Unlocks };
 }
 
 export interface ActiveCampaign {
@@ -324,8 +372,16 @@ export interface ActiveCampaign {
 export interface GameState {
   shopName: string;
   difficulty: Difficulty;
+  /** Original seed the game started from; daily missions hash from it, never from rngState. */
+  seed: number;
   /** mulberry32 state, advanced by every random draw. */
   rngState: number;
+  /** Shop level, 1..MAX_SHOP_LEVEL; gates which menu items and upgrades are available. */
+  shopLevel: number;
+  /** Total experience earned so far; the level follows from it. */
+  xp: number;
+  /** Today's three daily missions, rolled from the seed and the day. */
+  missions: Mission[];
   day: number;
   /** Game minutes since midnight. */
   minute: number;
@@ -399,5 +455,6 @@ export type GameEvent =
   | { type: 'phase'; phase: Phase }
   | { type: 'review'; review: Review }
   | { type: 'low_stock'; ingredientId: IngredientId }
+  | { type: 'level_up'; level: number; unlocks: Unlocks }
   /** The daily report is in `state.lastReport`; the UI autosaves on this. */
   | { type: 'dayEnded'; day: number };

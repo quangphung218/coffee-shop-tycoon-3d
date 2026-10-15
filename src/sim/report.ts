@@ -4,6 +4,7 @@ import { getMenuItem } from './data/menu';
 import { UPGRADES, upgradeCost } from './data/upgrades';
 import { profit, settleDay, totalWages } from './economy';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
+import { scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
 import type { DailyReport, GameState, MenuItemId, Suggestion } from './types';
 
@@ -69,8 +70,12 @@ export function buildSuggestions(state: GameState, outOfStock: readonly MenuItem
   return out;
 }
 
-/** Summary of the current day. Call after settleDay and updateRating so costs and rating are final. */
-export function buildDailyReport(state: GameState): DailyReport {
+/**
+ * Summary of the current day. Call after settleDay and updateRating so costs
+ * and rating are final. `prog` carries the XP earned and any level-up from
+ * scoring; without it the report shows the missions as they stand with no XP.
+ */
+export function buildDailyReport(state: GameState, prog?: ProgressionResult): DailyReport {
   const t = state.today;
   const topSellers = (Object.entries(t.sold) as [MenuItemId, number][])
     .filter(([, qty]) => qty > 0)
@@ -96,14 +101,18 @@ export function buildDailyReport(state: GameState): DailyReport {
     ratingEnd: t.ratingEnd,
     reviews: state.reviews.filter((r) => r.day === t.day).slice(-REPORT_REVIEWS),
     suggestions: buildSuggestions(state, outOfStock),
+    missions: state.missions,
+    xpGained: prog?.xpGained ?? 0,
+    levelUp: prog?.levelUp,
   };
 }
 
-/** End-of-day bookkeeping: pay costs, update the rating and store the report. */
+/** End-of-day bookkeeping: pay costs, update the rating, score progression and store the report. */
 export function closeDay(state: GameState): DailyReport {
   settleDay(state);
   updateRating(state);
-  const report = buildDailyReport(state);
+  const prog = scoreProgression(state);
+  const report = buildDailyReport(state, prog);
   state.lastReport = report;
   return report;
 }

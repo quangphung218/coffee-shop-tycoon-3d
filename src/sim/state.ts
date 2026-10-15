@@ -2,6 +2,7 @@ import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS } from './data/ingredients';
 import { MENU } from './data/menu';
 import { STAFF_NAMES } from './data/staffNames';
+import { rollMissions } from './progression';
 import { normalizeSeed, pick, randInt, randRange, type RngHolder } from './rng';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId, Staff, Table } from './types';
 
@@ -83,7 +84,8 @@ export function generateCandidates(rng: RngHolder, firstId: number, count: numbe
 
 export function createNewGame(shopName: string, difficulty: Difficulty, seed: number): GameState {
   const diff = DIFFICULTIES[difficulty];
-  const rng: RngHolder = { rngState: normalizeSeed(seed) };
+  const normSeed = normalizeSeed(seed);
+  const rng: RngHolder = { rngState: normSeed };
   let nextId = 1;
 
   const tables: Table[] = [];
@@ -99,7 +101,11 @@ export function createNewGame(shopName: string, difficulty: Difficulty, seed: nu
   return {
     shopName: name,
     difficulty,
+    seed: normSeed,
     rngState: rng.rngState,
+    shopLevel: 1,
+    xp: 0,
+    missions: rollMissions(normSeed, 1, 1),
     day: 1,
     minute: DAY_START_MINUTE,
     phase: 'preparation',
