@@ -63,15 +63,24 @@ const TOOL_IDS = ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'
 const GUTTER = 280;
 /** A ring whose pixels spread less than this (mean RGB standard deviation, 0–255) is around an empty area. */
 const FLAT_SPREAD = 8;
+/** A ring with less than this share of its box on the frame is around something scrolled or turned out of view. */
+const MIN_ON_IMAGE = 0.6;
 
 /**
  * Close-up framings (world units): orthographic height in view, camera pitch,
  * and how far in front of the subject geometry is kept; everything nearer the
  * camera (walls, the machine, the counter) is cut by the near plane.
  */
-const BREW_SHOT = { height: 2.6, pitch: 0.3, keep: 1, targetY: 1.3, yawOffset: 0.75 };
-const MOOD_SHOT = { height: 2.6, pitch: 0.3, keep: 1, targetY: 1.15, yawOffset: 0 };
+// People are about 1.32 tall (rig.ts: hips 0.55, head 0.98–1.32). The barista
+// faces the machine, so the camera comes in 63° off their face to look past it.
+const BREW_SHOT = { height: 2.2, pitch: 0.3, keep: 0.6, targetY: 1, yawOffset: 1.1 };
+// A little off their face, so the camera does not look down a row of tables or the queue.
+const MOOD_SHOT = { height: 2.2, pitch: 0.3, keep: 0.5, targetY: 0.9, yawOffset: 0.5 };
 const TOOLS_SHOT = { height: 4.6, pitch: 0.42, keep: 0.5, targetY: 1.15 };
+/** World boxes of a person standing at (x, z): head, arms and hands, whole body. */
+const HEAD_Y = [0.96, 1.36];
+const ARMS_Y = [0.6, 1.05];
+const BODY_Y = [0, 1.36];
 
 const shot = (page) => page.screenshot({ style: HIDE_TOASTS });
 
@@ -410,7 +419,7 @@ async function closeUp(page, arg) {
   return null;
 }
 
-/** Mean RGB standard deviation inside each box of a frame PNG (base64), or null for a box off the image. */
+/** For each box of a frame PNG (base64): the share of it on the image, and the mean RGB standard deviation of that part (null when none is on it). */
 async function ringSpread({ png, boxes }) {
   const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
   const ctx = new OffscreenCanvas(img.width, img.height).getContext('2d');
@@ -420,7 +429,8 @@ async function ringSpread({ png, boxes }) {
     const y = Math.max(0, Math.floor(b.y));
     const w = Math.min(img.width, Math.ceil(b.x + b.w)) - x;
     const h = Math.min(img.height, Math.ceil(b.y + b.h)) - y;
-    if (w <= 0 || h <= 0) return null;
+    if (w <= 0 || h <= 0) return { onImage: 0, spread: null };
+    const onImage = (w * h) / Math.max(1, b.w * b.h);
     const d = ctx.getImageData(x, y, w, h).data;
     const n = w * h;
     let spread = 0;
@@ -434,7 +444,7 @@ async function ringSpread({ png, boxes }) {
       const mean = sum / n;
       spread += Math.sqrt(Math.max(0, sq / n - mean * mean));
     }
-    return spread / 3;
+    return { onImage, spread: spread / 3 };
   });
 }
 
@@ -512,6 +522,9 @@ async function gameSession(browser, url, sim, { lockedId, save, needMood }) {
     await report.waitFor({ timeout: DAY_TIMEOUT_MS });
     await page.locator('[data-block="money"]').first().waitFor();
     await sleep(1200);
+    // The dialog opens scrolled to its buttons; bring the top of the summary (level-up band, then the numbers) into view.
+    await page.evaluate(() => (document.querySelector('[data-block="level-up"]') ?? document.querySelector('[data-block="money"]'))?.scrollIntoView({ block: 'start' }));
+    await sleep(300);
     const summary = { png: await shot(page), boxes: await page.evaluate(measureReport), texts: await texts() };
     let insights = null;
     if ((await page.locator('.rpt-tab[data-tab="insights"]').count()) > 0) {
@@ -592,9 +605,11 @@ async function board(browser, out, opts) {
     for (const m of opts.marks) {
       const boxes = m.boxes.filter(Boolean);
       if (boxes.length === 0) continue;
-      const spread = await page.evaluate(ringSpread, { png: opts.frames[m.frame].png.toString('base64'), boxes });
-      const flat = spread.filter((s) => s !== null && s < FLAT_SPREAD);
-      if (flat.length > 0) console.warn(`!! ${out}: "${m.label}" rings a flat area (colour spread ${flat.map((s) => s.toFixed(1)).join(', ')} < ${FLAT_SPREAD})`);
+      const rings = await page.evaluate(ringSpread, { png: opts.frames[m.frame].png.toString('base64'), boxes });
+      const off = rings.filter((r) => r.onImage < MIN_ON_IMAGE);
+      if (off.length > 0) console.warn(`!! ${out}: "${m.label}" rings something mostly off the frame (${off.map((r) => `${Math.round(r.onImage * 100)}%`).join(', ')} on it)`);
+      const flat = rings.filter((r) => r.spread !== null && r.spread < FLAT_SPREAD);
+      if (flat.length > 0) console.warn(`!! ${out}: "${m.label}" rings a flat area (colour spread ${flat.map((r) => r.spread.toFixed(1)).join(', ')} < ${FLAT_SPREAD})`);
     }
   } finally {
     await page.close();
@@ -722,8 +737,8 @@ async function makeP20Boards(browser, { cur, base, curSet, baseSet, curTools, ba
 
   // Barista close-up, camera in front of their face while the espresso machine steams.
   if (cur.brew && base.brew) {
-    const face = (s) => cuboid(s.x - 0.22, s.x + 0.22, 1.38, 1.9, s.z - 0.22, s.z + 0.22);
-    const body = (s) => cuboid(s.x - 0.4, s.x + 0.4, 0.9, 1.4, s.z - 0.45, s.z + 0.45);
+    const face = (s) => cuboid(s.x - 0.2, s.x + 0.2, HEAD_Y[0], HEAD_Y[1], s.z - 0.2, s.z + 0.2);
+    const body = (s) => cuboid(s.x - 0.38, s.x + 0.38, ARMS_Y[0], ARMS_Y[1], s.z - 0.45, s.z + 0.45);
     await put('brew-closeup-p20.png', {
       frames: [before(base.brew.png, 'Pha chế'), after(cur.brew.png, 'Pha chế')],
       marks: [
@@ -734,26 +749,23 @@ async function makeP20Boards(browser, { cur, base, curSet, baseSet, curTools, ba
       ],
       pad: 90,
       maxScale: 2,
-      notes: ['Giờ cao điểm, lúc máy espresso đang pha; camera đặt trước mặt nhân viên đứng ở máy (lệch 43°), cắt bỏ tường và đồ chắn phía trước. Cùng seed.'],
+      notes: ['Giờ cao điểm, lúc máy espresso đang pha; camera đặt trước mặt nhân viên đứng ở máy (lệch 63° để không bị máy che), cắt bỏ tường phía trước. Cùng seed.'],
     });
   } else console.warn(`!! brew-closeup-p20.png: no barista brewing at the espresso machine within ${SUBJECT_WAIT_MS / 1000} s (${cur.brew ? NAMES.before : NAMES.after})`);
 
   // A customer with a mood, camera in front of their face.
   if (cur.mood && base.mood) {
-    const person = (s) => cuboid(s.x - 0.3, s.x + 0.3, 0.6, 1.9, s.z - 0.3, s.z + 0.3);
+    const head = (s) => cuboid(s.x - 0.2, s.x + 0.2, HEAD_Y[0], HEAD_Y[1], s.z - 0.2, s.z + 0.2);
     await put('customer-mood-p20.png', {
       frames: [before(base.mood.png, 'Khách'), after(cur.mood.png, 'Khách')],
       marks: [
-        { frame: 0, boxes: [worldBox(base.mood.scene, person(base.mood.subject))], label: 'P19: mặt 2 chấm, không đổi theo tâm trạng' },
-        {
-          frame: 1,
-          boxes: [cur.mood.subject, ...cur.mood.subject.others].map((s) => worldBox(cur.mood.scene, person(s))),
-          label: 'Khách vui / sốt ruột: lông mày + miệng đổi theo tâm trạng',
-        },
+        { frame: 0, boxes: [worldBox(base.mood.scene, head(base.mood.subject))], label: 'P19: mặt 2 chấm, không đổi theo tâm trạng' },
+        { frame: 1, boxes: [worldBox(cur.mood.scene, head(cur.mood.subject))], label: 'Khách vui / sốt ruột: lông mày + miệng đổi theo tâm trạng' },
       ],
-      pad: 90,
+      include: [base.mood, cur.mood].map(({ scene, subject: s }) => worldBox(scene, cuboid(s.x - 0.4, s.x + 0.4, BODY_Y[0], BODY_Y[1], s.z - 0.4, s.z + 0.4))),
+      pad: 60,
       maxScale: 2,
-      notes: ['Giờ cao điểm, camera đặt trước mặt khách. P20 khoanh mọi khách trong khung có mặt khác mặt thường của nhân viên (vui khi uống, sốt ruột khi chờ lâu).'],
+      notes: ['Giờ cao điểm, camera đặt trước mặt khách gần quầy nhất (lệch 29°). P20 chọn khách có mặt khác mặt thường của nhân viên (vui khi uống, sốt ruột khi chờ lâu).'],
     });
   } else console.warn(`!! customer-mood-p20.png: no customer with a mood within ${SUBJECT_WAIT_MS / 1000} s (${cur.mood ? NAMES.before : NAMES.after})`);
 
@@ -766,7 +778,7 @@ async function makeP20Boards(browser, { cur, base, curSet, baseSet, curTools, ba
       { frame: 0, boxes: [toolBox(baseTools.scene, { pos: espresso.pos, size: sim.espressoSize })], label: 'P19: quầy sau chỉ có máy espresso' },
       ...sim.tools.map((t) => ({ frame: 1, boxes: [toolBox(curTools.scene, t)], label: t.name })),
     ],
-    pad: 60,
+    pad: 100,
     maxScale: 2,
     notes: ['Pha Chuẩn bị, camera nhìn thẳng quầy sau. P20 nạp ván đã mua đủ 5 dụng cụ mới (cấp 6); P19 là ván mới.'],
   });

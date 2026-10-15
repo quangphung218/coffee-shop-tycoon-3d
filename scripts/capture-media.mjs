@@ -766,12 +766,12 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
       h: th,
     });
     const tries = [];
+    // With a gutter, first in it level with the rings, then further up and down.
+    if (gutter > 0) for (let k = 0; k < 24; k++) tries.push(at(p.x + p.w + 10, cy - th / 2 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (th / 2 + 2)));
     for (let k = 0; k < 12; k++) {
       const d = 6 + k * (th + 4);
       tries.push(at(cx - tw / 2, y0 - th - d), at(cx - tw / 2, y1 + d), at(x0 - tw - 6 - k * 24, cy - th / 2), at(x1 + 6 + k * 24, cy - th / 2));
     }
-    // In the gutter level with the rings, then further up and down.
-    if (gutter > 0) for (let k = 0; k < 24; k++) tries.push(at(p.x + p.w + 10, cy - th / 2 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (th / 2 + 2)));
     const spot = tries.find((t) => !clash(t)) ?? tries[0];
     if (texts.some((b) => hits(spot, b))) overText.push(m.label);
     placed.push(spot);

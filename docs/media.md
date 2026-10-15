@@ -112,6 +112,7 @@ Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 | Cảnh báo | Nghĩa |
 | --- | --- |
 | `nothing to ring` | Nhãn không có gì để khoanh (phần tử không thấy trên màn hình). |
+| `rings something mostly off the frame` | Dưới 60% vòng khoanh nằm trong ảnh: phần tử đã bị cuộn hoặc quay ra ngoài khung. |
 | `rings a flat area` | Vòng khoanh nằm trên vùng gần như một màu (độ lệch màu < 8), tức vùng trống. |
 | `label covers text` | Nhãn vẫn đè lên chữ của khung dù đã thử cả dải lề bên phải. |
 | `no barista brewing`, `no customer with a mood` | Trong 60 s giờ cao điểm không có người phù hợp cho cận cảnh; bảng đó bị bỏ. |
