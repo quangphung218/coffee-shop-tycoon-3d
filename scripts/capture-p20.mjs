@@ -245,7 +245,8 @@ async function settingsSession(browser, url) {
   const context = await newContext(browser, { viewport: PHONE });
   const page = await context.newPage();
   // The form (not the viewport) is captured at full height, so no row is cut off.
-  const form = page.locator('form', { hasText: 'Cài đặt' });
+  // By accessible name (aria-labelledby), so the hidden new-game form never matches.
+  const form = page.getByRole('form', { name: 'Cài đặt' });
   const grab = async () => {
     await sleep(300);
     return { png: await form.screenshot(), boxes: await page.evaluate(measureSettings) };
