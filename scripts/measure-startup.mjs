@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Measures how fast the production build shows the Main Menu, in headless Chrome.
 //
-//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>]
+//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>] [--fps]
 //
 // Builds the working tree (and <git-ref> with --base), serves each build with
 // `vite preview`, loads it with an empty cache and prints chunk sizes and the
 // median time to first paint, Main Menu on screen and 3D scene on screen.
-// Chrome: $CHROME_PATH, else the usual install locations.
+// --fps also plays day 1 on Easy at 4x up to the peak phase at each FPS_QUALITIES
+// graphics setting and prints the median and 5th-percentile frame rate over
+// FPS_SECONDS of play. Chrome: $CHROME_PATH, else the usual install locations.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,6 +22,15 @@ const PROFILES = [
   { name: 'Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x', latency: 150, down: (1.6 * 1024 * 1024) / 8, up: (750 * 1024) / 8, cpu: 4 },
 ];
 const TIMEOUT_MS = 60_000;
+
+/** Graphics settings the FPS pass compares (Vừa, Cao). */
+const FPS_QUALITIES = ['medium', 'high'];
+/** Seconds of frames sampled once the peak phase starts. */
+const FPS_SECONDS = 10;
+/** A retina laptop screen, so the per-quality pixel-ratio cap matters. */
+const FPS_VIEW = { width: 1280, height: 800, deviceScaleFactor: 2 };
+/** Day 1 at 4x reaches the peak in about a minute; software WebGL is slower. */
+const PEAK_TIMEOUT_MS = 8 * 60_000;
 
 /** Runs in the page before any of its scripts; resolves window.__cst with timings in ms since navigation. */
 const PROBE = `window.__cst = new Promise((resolve) => {
@@ -65,10 +76,11 @@ const PROBE = `window.__cst = new Promise((resolve) => {
 });`;
 
 function parseArgs(argv) {
-  const args = { base: null, runs: 3 };
+  const args = { base: null, runs: 3, fps: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
+    else if (argv[i] === '--fps') args.fps = true;
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
   return args;
@@ -208,6 +220,81 @@ async function measureOnce(cdp, url, profile) {
   }
 }
 
+/** Runs in the page: New Game on Easy, open the shop at 4x and wait for the peak phase. */
+const PLAY_TO_PEAK = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const until = async (what, fn, ms) => {
+    const end = performance.now() + ms;
+    for (;;) {
+      const v = fn();
+      if (v) return v;
+      if (performance.now() > end) throw new Error('timed out waiting for ' + what);
+      await sleep(100);
+    }
+  };
+  const button = (text) => [...document.querySelectorAll('button')].find((b) => b.offsetParent !== null && b.textContent.replace(/\\s+/g, ' ').trim().endsWith(text));
+  const ready = () => document.querySelector('#scene.is-ready') && !document.getElementById('boot');
+  (await until('Main Menu', () => ready() && button('Ván mới'), ${TIMEOUT_MS})).click();
+  (await until('difficulty', () => document.querySelector('label.choice input[value="easy"]')?.closest('label'), 10000)).click();
+  (await until('start', () => button('Bắt đầu ngày 1'), 10000)).click();
+  (await until('open', () => document.querySelector('[data-action="open"]'), 10000)).click();
+  (await until('speed 4', () => document.querySelector('[data-speed="4"]'), 10000)).click();
+  await until('peak', () => document.querySelector('.phases li[data-phase="peak"]')?.getAttribute('aria-current') === 'step', ${PEAK_TIMEOUT_MS});
+  return true;
+})()`;
+
+/** Runs in the page: requestAnimationFrame timestamps over FPS_SECONDS. */
+const SAMPLE_FRAMES = `new Promise((resolve) => {
+  const ts = [];
+  const end = performance.now() + ${FPS_SECONDS * 1000};
+  const frame = (t) => {
+    ts.push(t);
+    if (t < end) requestAnimationFrame(frame);
+    else resolve(ts);
+  };
+  requestAnimationFrame(frame);
+})`;
+
+/** Median and 5th-percentile frame rate of rAF timestamps (ms). */
+function fpsStats(ts) {
+  const fps = [];
+  for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) fps.push(1000 / (ts[i] - ts[i - 1]));
+  fps.sort((a, b) => a - b);
+  if (fps.length === 0) return { median: null, p5: null, frames: 0 };
+  return { median: fps[Math.floor(fps.length / 2)], p5: fps[Math.floor(fps.length * 0.05)], frames: fps.length };
+}
+
+/** Plays `url` up to the peak at graphics `quality` and samples the frame rate. */
+async function measureFps(cdp, url, quality) {
+  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+  const s = (method, params) => cdp.send(method, params, sessionId);
+  try {
+    await s('Page.enable');
+    await s('Emulation.setDeviceMetricsOverride', { ...FPS_VIEW, mobile: false });
+    const settings = { musicVolume: 0, sfxVolume: 0, quality, gameSpeed: 1, cameraKeys: 'qe-wasd' };
+    await s('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('cst3d:settings', ${JSON.stringify(JSON.stringify(settings))});` });
+    await s('Page.navigate', { url });
+    // The page may still be on about:blank for a moment; retry until the game page answers.
+    const deadline = Date.now() + TIMEOUT_MS;
+    for (;;) {
+      const { result, exceptionDetails } = await s('Runtime.evaluate', {
+        expression: `location.protocol.startsWith('http') && document.readyState !== 'loading' ? ${PLAY_TO_PEAK} : null`,
+        awaitPromise: true,
+        returnByValue: true,
+      }).catch(() => ({ result: { value: null } }));
+      if (exceptionDetails) throw new Error(`${quality}: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`);
+      if (result.value) break;
+      if (Date.now() > deadline) throw new Error(`${quality}: page did not load`);
+      await sleep(100);
+    }
+    const { result } = await s('Runtime.evaluate', { expression: SAMPLE_FRAMES, awaitPromise: true, returnByValue: true });
+    return fpsStats(result.value);
+  } finally {
+    await cdp.send('Target.closeTarget', { targetId });
+  }
+}
+
 async function gpuName(cdp) {
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
@@ -232,6 +319,7 @@ const median = (xs) => {
 };
 const ms = (x) => (x === null ? 'n/a' : `${Math.round(x)} ms`);
 const kb = (n) => `${(n / 1000).toFixed(1)} kB`;
+const fps = (x) => (x === null ? 'n/a' : x.toFixed(1));
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -277,6 +365,28 @@ async function main() {
         for (let i = 0; i < args.runs; i++) runs.push(await measureOnce(cdp, b.url, profile));
         const pick = (k) => median(runs.map((r) => (r ? (r[k] ?? null) : null)));
         console.log(`| ${b.label} | ${profile.name} | ${ms(pick('fcp'))} | ${ms(pick('menu'))} | ${ms(pick('world'))} |`);
+      }
+    }
+
+    if (args.fps) {
+      const v = FPS_VIEW;
+      console.log(`\nFPS at the peak of day 1 (Easy, 4x), ${FPS_SECONDS} s, ${v.width}×${v.height} @${v.deviceScaleFactor}x\n`);
+      console.log('| Build | Quality | Median FPS | p5 FPS | Frames |\n| --- | --- | --- | --- | --- |');
+      const rows = [];
+      for (const quality of FPS_QUALITIES) {
+        for (const b of builds) {
+          const r = await measureFps(cdp, b.url, quality);
+          rows.push({ build: b, quality, ...r });
+          console.log(`| ${b.label} | ${quality} | ${fps(r.median)} | ${fps(r.p5)} | ${r.frames} |`);
+        }
+      }
+      if (builds.length > 1) {
+        for (const quality of FPS_QUALITIES) {
+          const [base, cur] = builds.map((b) => rows.find((r) => r.build === b && r.quality === quality));
+          if (!base?.median || !cur?.median) continue;
+          const drop = (1 - cur.median / base.median) * 100;
+          console.log(`${drop > 10 ? '!!' : 'ok'} ${quality}: working tree median ${drop > 0 ? `${drop.toFixed(1)}% below` : `${(-drop).toFixed(1)}% above`} base`);
+        }
       }
     }
   } finally {
