@@ -33,7 +33,7 @@ import {
 import { getShopLayout, type Area, type LayoutMachine, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
 import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
-import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part } from './parts';
 
 export { SHARED_MATERIAL };
 
@@ -420,9 +420,9 @@ export class ShopView {
     ground.receiveShadow = true;
     this.root.add(ground);
 
-    this.indoorFloor = this.floorMesh(this.geo.unit);
-    this.expansionFloor = this.floorMesh(this.geo.unit);
-    this.patioFloor = this.floorMesh(this.geo.patio);
+    this.indoorFloor = this.floorMesh(this.geo.unit, WOOD_MATERIAL);
+    this.expansionFloor = this.floorMesh(this.geo.unit, WOOD_MATERIAL);
+    this.patioFloor = this.floorMesh(this.geo.patio, SHARED_MATERIAL);
 
     // back, left, right, front-left, front-right
     const normals: readonly (readonly [number, number])[] = [
@@ -562,8 +562,8 @@ export class ShopView {
     for (let i = 0; i < this.walls.length; i++) this.facade.syncWall(i, this.walls[i]!.height);
   }
 
-  private floorMesh(geo: BufferGeometry): Mesh {
-    const mesh = new Mesh(geo, SHARED_MATERIAL);
+  private floorMesh(geo: BufferGeometry, material: Material): Mesh {
+    const mesh = new Mesh(geo, material);
     mesh.receiveShadow = true;
     mesh.visible = false;
     this.root.add(mesh);
@@ -612,7 +612,7 @@ export class ShopView {
         this.counter.geometry.dispose();
         this.counter.geometry = counterGeometry(width, level);
       } else {
-        this.counter = new Mesh(counterGeometry(width, level), SHARED_MATERIAL);
+        this.counter = new Mesh(counterGeometry(width, level), WOOD_MATERIAL);
         this.counter.castShadow = true;
         this.counter.receiveShadow = true;
         this.root.add(this.counter);
@@ -645,7 +645,7 @@ export class ShopView {
       this.backCounter.geometry.dispose();
       this.backCounter.geometry = geo;
     } else {
-      this.backCounter = new Mesh(geo, SHARED_MATERIAL);
+      this.backCounter = new Mesh(geo, WOOD_MATERIAL);
       this.backCounter.castShadow = true;
       this.backCounter.receiveShadow = true;
       this.root.add(this.backCounter);
@@ -661,8 +661,8 @@ export class ShopView {
       mesh.dispose();
     }
     this.tableCap = capacity;
-    this.tables = instanced(this.geo.table, SHARED_MATERIAL, capacity, true);
-    this.chairs = instanced(this.geo.chair, SHARED_MATERIAL, capacity * 2, true);
+    this.tables = instanced(this.geo.table, WOOD_MATERIAL, capacity, true);
+    this.chairs = instanced(this.geo.chair, WOOD_MATERIAL, capacity * 2, true);
     this.parasols = instanced(this.geo.parasol, SHARED_MATERIAL, capacity, true);
     this.coins = instanced(this.geo.coin, SHARED_MATERIAL, capacity, false);
     this.cups = instanced(this.geo.cup, SHARED_MATERIAL, capacity * MAX_CUPS_PER_TABLE, false);

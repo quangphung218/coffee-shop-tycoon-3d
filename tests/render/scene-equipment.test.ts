@@ -43,7 +43,7 @@ describe('machineGeometry', () => {
     }
   });
 
-  it('keeps UVs on the merged model so the shared grain map has coordinates', () => {
+  it('keeps UVs on the merged model so it merges with the other parts', () => {
     const geo = machineGeometry({ kind: 'grinder', quality: 1, pos: { x: 0, z: 0 } });
     expect(geo.getAttribute('uv')).toBeDefined();
     geo.dispose();
