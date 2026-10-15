@@ -79,7 +79,8 @@ describe('end of day', () => {
     expect(r.ingredientCost).toBe(t.ingredientsUsed);
     expect(r.wages).toBe(150000);
     expect(r.profit).toBe(r.revenue - r.ingredientCost - r.wages - r.marketingCost);
-    expect(s.money).toBe(startMoney + r.revenue - r.wages);
+    const missionReward = (r.missions ?? []).filter((m) => m.status === 'completed').reduce((sum, m) => sum + m.rewardMoney, 0);
+    expect(s.money).toBe(startMoney + r.revenue - r.wages + missionReward);
     expect(r.money).toBe(s.money);
     expect(r.customersServed + r.customersLost).toBe(r.customersArrived);
 

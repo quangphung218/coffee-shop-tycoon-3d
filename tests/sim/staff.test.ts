@@ -356,7 +356,10 @@ describe('wages', () => {
     playDay(s);
     expect(s.today.wages).toBe(a.wagePerDay + b.wagePerDay);
     expect(s.lastReport?.wages).toBe(s.today.wages);
-    expect(s.money).toBe(start + s.today.revenue - s.today.wages);
+    const missionReward = (s.lastReport?.missions ?? [])
+      .filter((m) => m.status === 'completed')
+      .reduce((sum, m) => sum + m.rewardMoney, 0);
+    expect(s.money).toBe(start + s.today.revenue - s.today.wages + missionReward);
   });
 });
 

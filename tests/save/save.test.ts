@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
-import { dispatch, step } from '../../src/sim';
+import { dispatch, isUnlocked, step } from '../../src/sim';
 import { CHAIR_OFFSET, buildNavGrid, isWalkable } from '../../src/sim/nav';
-import { createNewGame, tablePosition } from '../../src/sim/state';
+import { createDayStats, createNewGame, tablePosition } from '../../src/sim/state';
 import type { Customer, Vec2 } from '../../src/sim/types';
 import { getShopLayout } from '../../src/sim/upgrades';
 
@@ -205,6 +205,74 @@ describe('migrate', () => {
     }
     // Each one reached a free spot the sim gave them, or has walked out of the shop.
     for (const id of loaded) expect(arrived.has(id) || !game.customers.some((c) => c.id === id), `customer #${id}`).toBe(true);
+  });
+});
+
+describe('migrate to version 2 (shop level, XP, missions)', () => {
+  /** A version-1 save on disk: a current state with the v2 fields stripped off. */
+  function v1Save(patch: (s: ReturnType<typeof createNewGame>) => void): string {
+    const s = createNewGame('Quán Cũ', 'normal', 7);
+    patch(s);
+    const legacy: Record<string, unknown> = JSON.parse(JSON.stringify(s));
+    for (const k of ['seed', 'shopLevel', 'xp', 'missions']) delete legacy[k];
+    return JSON.stringify({ version: 1, savedAt: 1, state: legacy });
+  }
+
+  it('fills in a sensible level and the missing fields', () => {
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', v1Save((s) => {
+      s.history = [
+        { ...createDayStats(1, 3), customersServed: 40 },
+        { ...createDayStats(2, 3), customersServed: 40 },
+      ];
+    }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(typeof r.value.seed).toBe('number');
+    // 80 served * 2 XP = 160 → level 2.
+    expect(r.value.xp).toBe(160);
+    expect(r.value.shopLevel).toBe(2);
+    expect(r.value.missions).toHaveLength(3);
+  });
+
+  it('keeps enabled items and bought upgrades usable even when they are above the earned level', () => {
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:save:1', v1Save((s) => {
+      // A pre-levelling save that already enabled a high-tier item and owns a top upgrade.
+      s.menu.find((m) => m.id === 'cappuccino')!.enabled = true; // unlocks at level 2
+      s.upgrades = { expand_area: 1 }; // unlocks at level 6
+      s.history = [{ ...createDayStats(1, 3), customersServed: 10 }]; // only worth level 1 on its own
+    }));
+    const r = loadGame('1', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const g = r.value;
+    // The level is raised to keep everything already owned unlocked.
+    expect(g.shopLevel).toBe(6);
+    expect(g.menu.find((m) => m.id === 'cappuccino')!.enabled).toBe(true);
+    expect(g.upgrades.expand_area).toBe(1);
+    expect(isUnlocked(g, 'menu', 'cappuccino')).toBe(true);
+    expect(isUnlocked(g, 'upgrade', 'expand_area')).toBe(true);
+    // The player can still toggle the grandfathered item.
+    expect(dispatch(g, { type: 'set_menu_item', itemId: 'cappuccino', enabled: true })).toBe(true);
+  });
+
+  it('upgrades a version-0 bare state all the way to version 2', () => {
+    const storage = createMemoryStorage();
+    const base = createNewGame('Quán Số 0', 'normal', 3);
+    const legacy: Record<string, unknown> = JSON.parse(JSON.stringify(base));
+    for (const k of ['version', 'savedAt', 'seed', 'shopLevel', 'xp', 'missions', 'events', 'campaigns', 'today']) {
+      delete legacy[k];
+    }
+    storage.setItem('cst3d:save:2', JSON.stringify(legacy));
+    const r = loadGame('2', storage);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.shopLevel).toBe(1);
+    expect(r.value.xp).toBe(0);
+    expect(r.value.missions).toHaveLength(3);
+    expect(typeof r.value.seed).toBe('number');
   });
 });
 
