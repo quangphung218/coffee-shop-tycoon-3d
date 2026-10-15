@@ -15,19 +15,28 @@ export function lowStockCount(state: GameState): number {
   return Object.values(stockOutlook(state)).filter((o) => o.level !== 'ok').length;
 }
 
-/** Unfinished tasks on the Việc checklist. */
+/**
+ * Unfinished items on the Việc checklist, plus the daily missions still to
+ * win while the shop is being prepared (they are scored only at day end).
+ */
 export function openTaskCount(state: GameState): number {
-  return dayTasks(state).filter((t) => !t.done).length;
+  const tasks = dayTasks(state).filter((t) => !t.done).length;
+  const missions = state.phase === 'preparation' ? state.missions.filter((m) => m.status !== 'completed').length : 0;
+  return tasks + missions;
 }
 
-/** The six preparation panels, in dock order (design/t237-cartoon HUD). */
+/**
+ * The six preparation panels, in dock order (design/t237-cartoon HUD). The
+ * dock splits them into "Vận hành" (ops) and "Phát triển" (dev) with a divider
+ * where the group changes (design/p20 §5).
+ */
 export const PREP_PANELS: readonly PanelDef[] = [
-  { id: 'tasks', label: 'Việc', icon: 'i-tasks', render: renderTasksPanel, badge: openTaskCount },
-  { id: 'menu', label: 'Menu', icon: 'i-menu', render: renderMenuPanel },
-  { id: 'inventory', label: 'Kho', icon: 'i-inventory', render: renderInventoryPanel, badge: lowStockCount },
-  { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel },
-  { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel },
-  { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel },
+  { id: 'tasks', label: 'Việc', icon: 'i-tasks', render: renderTasksPanel, badge: openTaskCount, group: 'ops' },
+  { id: 'menu', label: 'Menu', icon: 'i-menu', render: renderMenuPanel, group: 'ops' },
+  { id: 'inventory', label: 'Kho', icon: 'i-inventory', render: renderInventoryPanel, badge: lowStockCount, group: 'ops' },
+  { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, group: 'ops' },
+  { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel, group: 'dev' },
+  { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel, group: 'dev' },
 ];
 
 /** Panels need a running game; on the main menu they say so instead of failing. */
@@ -43,6 +52,6 @@ function guarded(render: PanelRender): PanelRender {
 
 /** Adds the six panels to the dock. Returns a function that removes them. */
 export function registerPrepPanels(): () => void {
-  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge));
+  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group));
   return () => offs.forEach((off) => off());
 }

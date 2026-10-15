@@ -1,6 +1,7 @@
-import { getUpgrade } from '../../sim/data/upgrades';
+import { upgradeUnlockLevel } from '../../sim/data/levels';
+import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
 import { nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
-import type { GameState, UpgradeEffect, UpgradeId } from '../../sim/types';
+import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { UPGRADE_ICONS } from '../core/iconMap';
@@ -8,15 +9,22 @@ import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
 
-/** Groups from the spec, in display order; each heading borrows the icon of its first upgrade. */
-export const UPGRADE_GROUPS: readonly { title: string; icon: IconId; ids: readonly UpgradeId[] }[] = [
-  { title: 'Bàn ghế', icon: UPGRADE_ICONS.tables, ids: ['tables'] },
-  { title: 'Máy pha', icon: UPGRADE_ICONS.better_machine, ids: ['better_machine', 'fast_machine'] },
-  { title: 'Quầy', icon: UPGRADE_ICONS.big_counter, ids: ['big_counter'] },
-  { title: 'Ngoài trời', icon: UPGRADE_ICONS.outdoor_seating, ids: ['outdoor_seating'] },
-  { title: 'Mở rộng', icon: UPGRADE_ICONS.expand_area, ids: ['expand_area'] },
-  { title: 'Trang trí', icon: UPGRADE_ICONS.plants, ids: ['plants', 'paintings', 'lights', 'window_bar'] },
+/** Heading per upgrade `category` (design/p20 §4): equipment / space / decor. */
+const GROUP_ORDER: readonly { title: string; icon: IconId; category: UpgradeDef['category'] }[] = [
+  { title: 'Dụng cụ', icon: UPGRADE_ICONS.better_machine, category: 'equipment' },
+  { title: 'Không gian', icon: UPGRADE_ICONS.tables, category: 'space' },
+  { title: 'Trang trí', icon: UPGRADE_ICONS.plants, category: 'decor' },
 ];
+
+/** The three category groups, each listing its upgrades by unlock level then data order. */
+export const UPGRADE_GROUPS: readonly { title: string; icon: IconId; ids: readonly UpgradeId[] }[] = GROUP_ORDER.map((g) => ({
+  title: g.title,
+  icon: g.icon,
+  ids: UPGRADES.filter((u) => u.category === g.category)
+    .map((u, i) => ({ id: u.id, level: upgradeUnlockLevel(u.id), i }))
+    .sort((a, b) => a.level - b.level || a.i - b.i)
+    .map((u) => u.id),
+}));
 
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 const dec = (v: number): string => String(Math.round(v * 100) / 100).replace('.', ',');
@@ -28,6 +36,12 @@ export function effectText(e: UpgradeEffect): string {
   if (e.ratingBonus) parts.push(`+${dec(e.ratingBonus)} sao mỗi đơn`);
   if (e.appeal) parts.push(`+${pct(e.appeal)} khách`);
   if (e.brewSpeed) parts.push(`pha nhanh hơn ${pct(e.brewSpeed)}`);
+  if (e.coffeeBrewSpeed) parts.push(`pha cà phê nhanh hơn ${pct(e.coffeeBrewSpeed)}`);
+  if (e.coldBrewSpeed) parts.push(`pha đồ lạnh nhanh hơn ${pct(e.coldBrewSpeed)}`);
+  if (e.foodBrewSpeed) parts.push(`làm món ăn nhanh hơn ${pct(e.foodBrewSpeed)}`);
+  if (e.foodAppeal) parts.push(`+${pct(e.foodAppeal)} gọi món ăn`);
+  if (e.cleanSpeed) parts.push(`dọn bàn nhanh hơn ${pct(e.cleanSpeed)}`);
+  if (e.iceCostReduction) parts.push(`−${pct(e.iceCostReduction)} giá đá`);
   return parts.join(' · ');
 }
 
@@ -75,12 +89,24 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         ),
       );
     });
+    const need = upgradeUnlockLevel(id);
     w.watch(
-      (s) => `${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}`,
+      (s) => `${s.shopLevel}|${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}`,
       (_, s) => {
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
         level.textContent = `Cấp ${lv}/${def.maxLevel} · ${def.description}`;
+        // Locked below its unlock level: a flat "Mở ở cấp N" label, Mua disabled with the reason.
+        const locked = lv === 0 && s.shopLevel < need;
+        li.classList.toggle('is-locked', locked);
+        if (locked) {
+          side.className = 'badge badge-neutral';
+          setIconText(side, 'i-lock', `Mở ở cấp ${need}`);
+          if (!li.querySelector('.confirm')) actions.hidden = false;
+          setAriaDisabled(buy, true);
+          setReason(why, buy, `Mở khóa ở Cấp ${need}.`);
+          return;
+        }
         if (cost === null) {
           side.className = 'badge badge-ok';
           setIconText(side, 'i-ok', 'Tối đa');

@@ -303,6 +303,39 @@
   width: var(--space-16);
 }
 
+/* Daily missions (Việc panel): one card each with a status badge, a goal, an
+   XP bar and the reward. The won card tints to read apart from the rest. */
+.mission {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-panel-solid);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-lg);
+}
+.mission[data-status='completed'] {
+  background: var(--surface-selected);
+}
+.mission-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mission-title {
+  flex: 1 1 auto;
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+}
+.mission-head .badge {
+  flex: 0 0 auto;
+}
+.mission-reward .ic {
+  margin-right: 2px;
+}
+.mission-empty {
+  padding: var(--space-1) 0;
+}
+
 /* Stepper: three separate controls in a group with a 4px gap, so each one
    owns its border and the focus ring stays inside it. */
 .stepper-label {
