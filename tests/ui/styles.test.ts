@@ -140,4 +140,39 @@ describe('tokens.css', () => {
   it('zeroes the long animations for reduced motion', () => {
     expect(tokensCss).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*:root\s*\{[^}]*--duration-pop:\s*0ms/);
   });
+
+  it('aliases the button and label tokens to existing depth tokens (no new colours)', () => {
+    expect(token('--btn-shadow-rest')).toBe('var(--shadow-md)');
+    expect(token('--btn-shadow-hover')).toBe('var(--shadow-lg)');
+    expect(token('--btn-shadow-press')).toBe('var(--shadow-sm)');
+    expect(token('--label-shadow')).toBe('none');
+    expect(token('--label-radius')).toBe('var(--radius-pill)');
+  });
+
+  it('also zeroes the long animations when the setting forces reduced motion', () => {
+    expect(tokensCss).toMatch(/html\.reduce-motion\s*\{[^}]*--duration-pop:\s*0ms/);
+  });
+});
+
+describe('ui.css buttons vs labels (design/p20 §4)', () => {
+  const all = rules(uiCss);
+  const body = (selector: string): string => all.find((r) => r.selector === selector)?.body ?? '';
+
+  it('gives a button a bottom shadow, an ink border and a pointer cursor', () => {
+    const btn = body('.btn');
+    expect(btn).toMatch(/box-shadow:\s*var\(--btn-shadow-rest\)/);
+    expect(btn).toMatch(/border:\s*var\(--size-outline\) solid var\(--border-outline\)/);
+    expect(btn).toMatch(/cursor:\s*pointer/);
+  });
+
+  it('keeps a label flat: no shadow, no pointer cursor, so it never reads as a button', () => {
+    const badge = body('.badge');
+    expect(badge).toMatch(/box-shadow:\s*var\(--label-shadow\)/);
+    expect(badge).not.toMatch(/box-shadow:\s*var\(--shadow-/);
+    expect(badge).not.toMatch(/cursor:\s*pointer/);
+  });
+
+  it('forces reduced motion through a .reduce-motion class as well as the media query', () => {
+    expect(all.some((r) => r.selector.includes('html.reduce-motion') && r.body.includes('transition-duration'))).toBe(true);
+  });
 });
