@@ -1,7 +1,8 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
+import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
 import { totalUpgradeEffect } from './data/upgrades';
-import { canMake } from './inventory';
+import { canMake, consume } from './inventory';
 import { customerMultiplier } from './marketing';
 import {
   CHAIR_OFFSET,
@@ -232,7 +233,7 @@ export function arrivalRate(state: GameState): number {
  * are in stock. When every enabled item is out of stock the customer still
  * wants one of them and will leave angry at the counter. Null if the menu is empty.
  */
-export function pickOrder(state: GameState): MenuItemId | null {
+export function pickOrder(state: GameState, persona?: Persona): MenuItemId | null {
   const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
   if (enabled.length === 0) return null;
   const inStock = enabled.filter((id) => canMake(state, id));
@@ -241,9 +242,29 @@ export function pickOrder(state: GameState): MenuItemId | null {
   const weights = pool.map((id) => {
     const def = getMenuItem(id);
     const boost = def.category === 'food' ? foodBoost : 1;
-    return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature] * boost;
+    const taste = persona?.itemWeights[id] ?? 1;
+    return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature] * boost * taste;
   });
   return pool[weightedIndex(state, weights)] ?? null;
+}
+
+/**
+ * Picks a food to add alongside the drink when the persona orders one: an
+ * enabled, in-stock food other than the drink itself, consumed now like the
+ * drink. Deterministic from the seed and the id, so it never touches the game
+ * RNG. Does nothing when no suitable food is on the menu.
+ */
+export function maybeAddOn(state: GameState, customer: Customer): void {
+  if (!customer.persona) return;
+  const persona = PERSONAS[customer.persona];
+  if (persona.foodChance <= 0 || addOnRoll(state.seed, customer.id) >= persona.foodChance) return;
+  const foods = state.menu
+    .filter((m) => m.enabled && m.id !== customer.order && getMenuItem(m.id).category === 'food' && canMake(state, m.id))
+    .map((m) => m.id);
+  if (foods.length === 0) return;
+  const food = foods[Math.floor(addOnPick(state.seed, customer.id) * foods.length)]!;
+  consume(state, food);
+  customer.extraItem = food;
 }
 
 function isInLine(c: Customer): boolean {
@@ -266,9 +287,12 @@ export function canAdmit(state: GameState): boolean {
 
 /** Brings one customer through the door. Returns null when the menu is empty. */
 export function spawnCustomer(state: GameState): Customer | null {
-  const order = pickOrder(state);
+  const persona = PERSONAS[pickPersona(state.seed, state.nextId, state.minute, state.weather)];
+  const order = pickOrder(state, persona);
   if (!order) return null;
-  const patience = Math.round(BASE_PATIENCE * DIFFICULTIES[state.difficulty].patienceMult * randRange(state, 0.8, 1.2));
+  const patience = Math.round(
+    BASE_PATIENCE * DIFFICULTIES[state.difficulty].patienceMult * persona.patienceMult * randRange(state, 0.8, 1.2),
+  );
   const customer: Customer = {
     id: state.nextId++,
     state: 'entering',
@@ -280,6 +304,7 @@ export function spawnCustomer(state: GameState): Customer | null {
     tableId: null,
     timer: ENTER_MINUTES,
     look: randInt(state, 0, 7),
+    persona: persona.id,
   };
   state.customers.push(customer);
   state.today.customersArrived += 1;
@@ -356,6 +381,11 @@ function sellPrice(state: GameState, itemId: MenuItemId): number {
   return state.menu.find((m) => m.id === itemId)?.price ?? getMenuItem(itemId).price;
 }
 
+/** Price of the food the customer ordered alongside the drink, or 0 when there is none. */
+function extraPrice(state: GameState, customer: Customer): number {
+  return customer.extraItem ? sellPrice(state, customer.extraItem) : 0;
+}
+
 /**
  * Hands the drink over. Seated customers start drinking; customers without a
  * clean seat take it away and pay at the counter.
@@ -363,13 +393,15 @@ function sellPrice(state: GameState, itemId: MenuItemId): number {
 export function serveCustomer(state: GameState, customer: Customer, itemId: MenuItemId): void {
   state.today.customersServed += 1;
   state.today.sold[itemId] = (state.today.sold[itemId] ?? 0) + 1;
+  if (customer.extraItem) state.today.sold[customer.extraItem] = (state.today.sold[customer.extraItem] ?? 0) + 1;
   state.events.push({ type: 'served', customerId: customer.id, itemId });
   if (seatCustomer(state, customer)) {
     customer.state = 'drinking';
-    customer.timer = randInt(state, DRINK_MINUTES[0], DRINK_MINUTES[1]);
+    const sitMult = customer.persona ? PERSONAS[customer.persona].sitMult : 1;
+    customer.timer = Math.max(1, Math.round(randInt(state, DRINK_MINUTES[0], DRINK_MINUTES[1]) * sitMult));
     return;
   }
-  const price = sellPrice(state, itemId);
+  const price = sellPrice(state, itemId) + extraPrice(state, customer);
   state.money += price;
   state.today.revenue += price;
   state.events.push({ type: 'cash', amount: price, pos: { ...customer.pos } });
@@ -380,7 +412,7 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
 function payAtTable(state: GameState, customer: Customer): void {
   const table = state.tables.find((t) => t.id === customer.tableId);
   if (table && customer.order) {
-    table.cash += sellPrice(state, customer.order);
+    table.cash += sellPrice(state, customer.order) + extraPrice(state, customer);
     table.trash += 1;
   }
   startLeaving(state, customer, 'leaving');
