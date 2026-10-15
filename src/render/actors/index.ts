@@ -1,7 +1,7 @@
 import { Group, type Object3D, type Raycaster, type Scene } from 'three';
 import type { Quality } from '../../save/settings';
 import { buildNavGrid, type NavGrid } from '../../sim/nav';
-import type { Command, GameState, Vec2 } from '../../sim/types';
+import type { Command, GameState, PersonaId, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
 import { layoutKey } from '../scene/shop';
 import {
@@ -10,6 +10,7 @@ import {
   MOVING_ANIMS,
   blendBounce,
   blendPose,
+  blinkFor,
   bounceFor,
   poseFor,
   restPose,
@@ -29,6 +30,7 @@ import {
   createMotion,
   customerAnim,
   customerGoal,
+  customerMood,
   easedStep,
   headingOf,
   lookAhead,
@@ -170,9 +172,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   let lastTime = -1;
   let frame = 0;
 
-  function spawn(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2): Actor {
+  function spawn(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId): Actor {
     const body = pool.acquire();
-    body.char.setLook({ role, look });
+    body.char.setLook({ role, look, persona });
     body.char.root.visible = true;
     const actor: Actor = {
       key,
@@ -210,10 +212,10 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     if (actor) actor.seen = frame;
   }
 
-  function ensure(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2): Actor {
+  function ensure(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId): Actor {
     let actor = actors.get(key);
-    if (!actor) actor = spawn(key, kind, id, role, look, pos);
-    else if (actor.body.char.role !== role || actor.body.char.look !== look) actor.body.char.setLook({ role, look });
+    if (!actor) actor = spawn(key, kind, id, role, look, pos, persona);
+    else if (actor.body.char.role !== role || actor.body.char.look !== look) actor.body.char.setLook({ role, look, persona });
     actor.seen = frame;
     return actor;
   }
@@ -286,7 +288,8 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     char.applyPose(blendPose(standPose, movePose, blend, standPose));
     char.applyBounce(blendBounce(standBounce, moveBounce, blend, standBounce));
     char.showProps(next);
-    char.setAngry(actor.angry);
+    // Eyes blink on a per-character clock; reduced motion keeps them open.
+    char.setBlink(quiet ? 1 : blinkFor(now, actor.bobOffset));
     char.root.position.set(m.pos.x, 0, m.pos.z);
     char.root.rotation.y = actor.heading;
     return moving;
@@ -338,6 +341,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         }
         actor.ghost = true;
         animate(actor, () => (actor.angry ? 'angry_leave' : 'walk'), customerSpeed(actor), dtGame, dtReal, false, now);
+        actor.body.char.setMood(actor.angry ? 'angry' : 'neutral');
         if (reachedExit(actor)) {
           // Out of the separation list again: the body goes back to the pool.
           if (walkingCount > 0 && walking[walkingCount - 1] === actor.motion) walkingCount -= 1;
@@ -346,14 +350,16 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       }
 
       for (const c of state.customers) {
-        const actor = ensure(`c${c.id}`, 'customer', c.id, 'customer', c.look, c.pos);
+        const actor = ensure(`c${c.id}`, 'customer', c.id, 'customer', c.look, c.pos, c.persona);
         actor.goal = customerGoal(state, c, shop);
         actor.angry = c.state === 'angry_leave';
         const leaving = c.state === 'leaving' || c.state === 'angry_leave';
         if (!leaving) actor.gone = false;
         if (actor.gone) continue;
+        const frac = c.maxPatience > 0 ? c.patience / c.maxPatience : 1;
         // New arrivals walk in from the door; after a clock jump everyone snaps into place.
-        animate(actor, (moving, seated) => customerAnim(c.state, moving, seated), customerSpeed(actor), dtGame, dtReal, jump, now);
+        animate(actor, (moving, seated) => customerAnim(c.state, moving, seated, frac), customerSpeed(actor), dtGame, dtReal, jump, now);
+        actor.body.char.setMood(customerMood(c.state, frac));
         actor.body.label.set(labelFor(state, c), now);
         if (leaving && reachedExit(actor)) {
           actor.gone = true;
@@ -367,6 +373,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         // s.pos is the spot the sim holds for them (staffSpots).
         actor.goal = workerGoal(state, s.task, shop, s.pos);
         const moving = animate(actor, (m) => workerAnim(s.task, m), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null, now);
+        actor.body.char.setMood('neutral');
         actor.body.label.set(NO_LABEL, now);
         actor.body.steam.update(!still && steamFor(state, s.task, moving), now + actor.bobOffset);
       }
@@ -385,6 +392,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       }
       player.goal = workerGoal(state, head, shop, playerAt);
       const playerMoving = animate(player, (m) => workerAnim(head, m), STAFF_SPEED * 1.1, dtGame, dtReal, jump || player.motion.goal === null, now);
+      player.body.char.setMood('neutral');
       player.body.label.set(NO_LABEL, now);
       player.body.steam.update(!still && steamFor(state, head, playerMoving), now);
 

@@ -3,7 +3,7 @@ import { CHAIR_OFFSET } from '../../sim/nav/footprints';
 import { buildNavGrid, cellAt, cellCenter, findPath, isWalkable, nearestFree, type NavGrid } from '../../sim/nav';
 import type { Customer, CustomerState, GameState, StaffTask, StaffTaskKind, Vec2 } from '../../sim/types';
 import type { ShopLayout } from '../../sim/upgrades';
-import type { AnimName } from './animations';
+import type { AnimName, Mood } from './animations';
 
 /**
  * Maps sim state to what each person on screen should be doing: an
@@ -52,18 +52,33 @@ export const CUSTOMER_ANIM: Readonly<Record<CustomerState, AnimName>> = {
   angry_leave: 'angry_leave',
 };
 
-export function customerAnim(state: CustomerState, moving: boolean, seated: boolean): AnimName {
+/** A standing customer below this share of their patience fidgets and frowns. */
+export const IMPATIENT_FRAC = 0.4;
+
+/** States where a standing, low-patience customer shows they are getting restless. */
+const RESTLESS: ReadonlySet<CustomerState> = new Set<CustomerState>(['entering', 'queueing', 'waiting']);
+
+export function customerAnim(state: CustomerState, moving: boolean, seated: boolean, patienceFrac = 1): AnimName {
   if (state === 'angry_leave') return 'angry_leave';
   if (moving) return 'walk';
   if (state === 'waiting' && seated) return 'sit';
+  if (patienceFrac < IMPATIENT_FRAC && RESTLESS.has(state)) return 'impatient';
   return CUSTOMER_ANIM[state];
+}
+
+/** Expression for a customer in `state` with `patienceFrac` of their patience left. */
+export function customerMood(state: CustomerState, patienceFrac: number): Mood {
+  if (state === 'angry_leave') return 'angry';
+  if (state === 'drinking' || state === 'leaving') return 'happy';
+  if (patienceFrac < IMPATIENT_FRAC && RESTLESS.has(state)) return 'impatient';
+  return 'neutral';
 }
 
 /** Staff and player animation while at the task spot. */
 const TASK_ANIM: Readonly<Record<StaffTaskKind, AnimName>> = {
-  brew: 'work',
+  brew: 'brew',
   take_order: 'idle',
-  serve: 'serve',
+  serve: 'handoff',
   clean: 'clean',
   collect: 'work',
   promote: 'wave',
