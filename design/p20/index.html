@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P20 - Coffee Shop Tycoon 3D - thiet ke giao dien</title>
+<style>
+:root {
+  /* ---- Palette (tu design/t237-cartoon/tokens.css) ---- */
+  --color-neutral-0: #ffffff;
+  --color-neutral-700: #6e4f3c;
+  --color-neutral-900: #3a2216;
+  --color-coffee-300: #d9a877;
+  --color-coffee-500: #a0673f;
+  --color-coffee-700: #6b3f24;
+  --color-cream-50: #fffaf2;
+  --color-cream-100: #f6e7d2;
+  --color-cream-200: #ecd3b2;
+  --color-honey-100: #fff0c7;
+  --color-honey-400: #ffc145;
+  --color-honey-500: #f5a524;
+  --color-mint-100: #d9f6ea;
+  --color-mint-400: #5fd3a8;
+  --color-mint-500: #3dbd8f;
+  --color-berry-100: #ffe3de;
+  --color-berry-400: #ff8a7a;
+  --color-berry-500: #f76b5a;
+  --color-sky-100: #e2f4fc;
+  --color-sky-400: #8fd3f4;
+  --color-leaf-400: #8fcf5f;
+  --color-tangerine-400: #ffa04d;
+  --color-ok-700: #17663a;
+  --color-warning-700: #7a4a00;
+  --color-danger-700: #b3261e;
+  --color-cinnamon-700: #7a3000;
+  --color-scene-sky: #bfe6f5;
+  --color-scene-ground: #b9de9a;
+  --color-scene-floor: #e9cfa8;
+  --color-scene-wall: #f6e3c6;
+
+  /* ---- Semantic (tokens.json) ---- */
+  --text-primary: var(--color-neutral-900);
+  --text-muted: var(--color-neutral-700);
+  --text-inverse: var(--color-cream-50);
+  --text-on-accent: var(--color-neutral-900);
+  --text-ok: var(--color-ok-700);
+  --text-warning: var(--color-warning-700);
+  --text-danger: var(--color-danger-700);
+  --surface-app: var(--color-cream-100);
+  --surface-panel-solid: var(--color-cream-50);
+  --surface-sunken: var(--color-cream-100);
+  --surface-ink: var(--color-neutral-900);
+  --surface-ok: var(--color-mint-100);
+  --surface-warning: var(--color-honey-100);
+  --surface-danger: var(--color-berry-100);
+  --surface-info: var(--color-sky-100);
+  --surface-disabled: var(--color-cream-200);
+  --surface-selected: var(--color-honey-100);
+  --border-outline: var(--color-neutral-900);
+  --border-disabled: var(--color-neutral-700);
+  --accent-primary: var(--color-honey-400);
+  --accent-primary-hover: var(--color-honey-500);
+  --accent-mint: var(--color-mint-400);
+  --accent-danger: var(--color-berry-400);
+  --accent-info: var(--color-sky-400);
+  --data-bar: var(--color-honey-400);
+  --data-track: var(--color-cream-200);
+  --patience-high: var(--color-mint-400);
+  --patience-low: var(--color-berry-400);
+  --focus-ring: var(--color-cinnamon-700);
+  --icon-fill-honey: var(--color-honey-400);
+  --icon-fill-mint: var(--color-mint-400);
+  --icon-fill-berry: var(--color-berry-400);
+  --icon-fill-sky: var(--color-sky-400);
+  --icon-fill-latte: var(--color-coffee-300);
+  --icon-fill-coffee: var(--color-coffee-700);
+  --icon-fill-leaf: var(--color-leaf-400);
+  --icon-fill-cream: var(--color-cream-50);
+  --icon-fill-empty: var(--color-cream-200);
+
+  /* ---- Font ---- */
+  --font-family-base: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  /* ---- Space / size / radius / shadow ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --size-target: 44px;
+  --size-outline: 3px;
+  --size-outline-sm: 2px;
+  --size-focus-width: 3px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
+
+  /* ---- P20 de xuat them (alias, anh xa token cu) ---- */
+  --btn-radius: var(--radius-lg);        /* NUT: bo goc lon */
+  --btn-shadow-rest: var(--shadow-md);   /* NUT nghi: bong day 4px */
+  --btn-shadow-hover: var(--shadow-lg);  /* NUT hover: bong day 6px (nang) */
+  --btn-shadow-press: var(--shadow-sm);  /* NUT nhan: bong day 2px + lun xuong */
+  --label-radius: var(--radius-pill);    /* NHAN: vien bo tron */
+  --label-shadow: none;                  /* NHAN: khong bong */
+  --xp-fill: var(--data-bar);            /* thanh XP: nen honey */
+  --xp-track: var(--data-track);         /* thanh XP: ranh cream */
+  --level-chip-bg: var(--surface-selected);
+  --level-chip-text: var(--text-primary);
+}
+
+* { box-sizing: border-box; }
+html { background: #cbb89a; }
+body {
+  margin: 0;
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-regular);
+  color: var(--text-primary);
+  line-height: var(--line-height-base);
+  padding: var(--space-6);
+}
+
+/* ======== Khung tai lieu ======== */
+.doc-head {
+  max-width: 1280px;
+  margin: 0 auto var(--space-8);
+  background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-lg);
+}
+.doc-head h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-heavy); margin: 0 0 var(--space-2); line-height: var(--line-height-tight); }
+.doc-head p { margin: 0 0 var(--space-2); max-width: 70ch; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.legend span { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); display: inline-flex; align-items: center; gap: var(--space-2); }
+
+.section {
+  max-width: 1340px;
+  margin: 0 auto var(--space-8);
+}
+.section > h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-heavy);
+  margin: 0 0 var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-ink);
+  color: var(--text-inverse);
+  border-radius: var(--radius-md);
+  line-height: var(--line-height-tight);
+}
+.section > p.note { margin: var(--space-2) 0 var(--space-4); color: var(--text-muted); font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+.state-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); margin: var(--space-4) 0 var(--space-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.frame { border: var(--size-outline-sm) dashed var(--border-disabled); border-radius: var(--radius-md); padding: var(--space-3); background: #e4d4ba; }
+.frame > .cap { font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy); color: var(--text-muted); margin-bottom: var(--space-2); display: block; }
+.w390 { width: 390px; }
+.w1280 { width: 1280px; }
+
+/* ======== Icon giu cho ======== */
+.iph {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: 6px; background: var(--icon-fill-honey);
+  font-size: 8px; font-weight: 800; color: var(--text-primary);
+  line-height: 1; overflow: hidden; text-align: center; letter-spacing: -0.2px;
+}
+.iph.lg { width: 32px; height: 32px; font-size: 9px; }
+.iph.xl { width: 48px; height: 48px; font-size: 11px; border-radius: 10px; }
+.iph.sm { width: 16px; height: 16px; font-size: 6px; }
+.iph.mint { background: var(--icon-fill-mint); }
+.iph.berry { background: var(--icon-fill-berry); }
+.iph.sky { background: var(--icon-fill-sky); }
+.iph.latte { background: var(--icon-fill-latte); }
+.iph.coffee { background: var(--icon-fill-coffee); color: var(--text-inverse); }
+.iph.leaf { background: var(--icon-fill-leaf); }
+.iph.cream { background: var(--icon-fill-cream); }
+.iph.empty { background: var(--icon-fill-empty); }
+
+/* ======== NUT ======== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--size-target); padding: 0 var(--space-4);
+  font-family: inherit; font-size: var(--font-size-md); font-weight: var(--font-weight-heavy);
+  color: var(--text-on-accent); background: var(--accent-primary);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-shadow-rest);
+  cursor: pointer; position: relative;
+}
+.btn.mint { background: var(--accent-mint); }
+.btn.danger { background: var(--accent-danger); }
+.btn.secondary { background: var(--surface-panel-solid); }
+.btn.sky { background: var(--accent-info); }
+/* Trang thai - moi trang thai doi DUNG MOT tin hieu */
+.btn.is-hover { box-shadow: var(--btn-shadow-hover); }           /* tin hieu: bong sau hon (nang) */
+.btn.is-press { box-shadow: var(--btn-shadow-press); transform: translateY(2px); } /* tin hieu: lun xuong */
+.btn.is-focus { outline: var(--size-focus-width) solid var(--focus-ring); outline-offset: calc(-1 * (var(--size-outline) + var(--size-focus-width))); border-color: var(--focus-ring); } /* tin hieu: vong focus trong vien */
+.btn.is-disabled { background: var(--surface-disabled); color: var(--text-muted); border-style: dashed; border-color: var(--border-disabled); box-shadow: none; cursor: not-allowed; } /* tin hieu: mo + vien dut */
+
+/* ======== NHAN / BADGE (phang, khong bong) ======== */
+.label {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 2px var(--space-2); min-height: 22px;
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-heavy);
+  color: var(--text-primary); background: var(--surface-selected);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--label-radius);
+  box-shadow: var(--label-shadow);
+}
+.label.ok { background: var(--surface-ok); color: var(--text-ok); }
+.label.warn { background: var(--surface-warning); color: var(--text-warning); }
+.label.danger { background: var(--surface-danger); color: var(--text-danger); }
+.label.info { background: var(--surface-info); color: var(--text-primary); }
+.label.muted { background: var(--surface-disabled); color: var(--text-muted); }
+.label.new { background: var(--accent-mint); color: var(--text-primary); }
+.count { min-width: 20px; height: 20px; padding: 0 5px; justify-content: center; border-radius: var(--radius-pill); background: var(--accent-danger); color: var(--text-primary); border: var(--size-outline-sm) solid var(--border-outline); font-size: var(--font-size-xs); font-weight: 800; box-shadow: none; }
+
+/* ======== Panel chung ======== */
+.panel {
+  width: 100%; background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.panel-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: var(--size-outline-sm) solid var(--border-outline); }
+.panel-head h3 { margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-heavy); flex: 1; line-height: var(--line-height-tight); }
+.panel-body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.group-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-heavy); color: var(--text-muted); margin: var(--space-2) 0 0; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ======== HUD ======== */
+.scene {
+  position: relative; border-radius: var(--radius-md); overflow: hidden;
+  background: linear-gradient(170deg, var(--color-scene-sky) 0%, var(--color-scene-sky) 38%, var(--color-scene-ground) 38%, var(--color-scene-ground) 100%);
+}
+.scene .room { position: absolute; left: 50%; top: 44%; width: 46%; height: 42%; transform: translate(-50%, -50%); background: var(--color-scene-floor); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-sm); }
+.scene .room::before { content: ""; position: absolute; inset: 8% 8% auto 8%; height: 26%; background: var(--color-scene-wall); border: var(--size-outline-sm) solid var(--border-outline); border-radius: 4px; }
+.hud-top { position: absolute; inset: var(--space-3) var(--space-3) auto var(--space-3); display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; align-items: flex-start; }
+.hud-pill { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); padding: var(--space-1) var(--space-3); min-height: var(--size-target); font-weight: var(--font-weight-heavy); }
+.hud-cluster { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); padding: var(--space-1); gap: var(--space-1); }
+.seg .opt { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius-pill); font-weight: var(--font-weight-heavy); font-size: var(--font-size-sm); cursor: pointer; border: var(--size-outline-sm) solid transparent; }
+.seg .opt.on { background: var(--accent-primary); border-color: var(--border-outline); }
+.xp-wrap { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1); min-height: var(--size-target); }
+.level-chip { display: inline-flex; align-items: center; gap: var(--space-1); background: var(--level-chip-bg); color: var(--level-chip-text); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); font-weight: 800; font-size: var(--font-size-sm); padding: 2px var(--space-2); }
+.xp-bar { width: 86px; height: 12px; background: var(--xp-track); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); overflow: hidden; }
+.xp-bar > i { display: block; height: 100%; width: 64%; background: var(--xp-fill); border-right: var(--size-outline-sm) solid var(--border-outline); }
+.xp-num { font-size: var(--font-size-xs); font-weight: 800; color: var(--text-muted); }
+
+.dock { position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%); display: flex; align-items: stretch; gap: var(--space-3); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: var(--space-2) var(--space-3); max-width: calc(100% - 24px); }
+.dock-group { display: flex; gap: var(--space-2); }
+.dock-divider { width: var(--size-outline-sm); background: var(--border-outline); border-radius: 2px; align-self: stretch; }
+.dock-group-label { position: absolute; top: -10px; font-size: 10px; font-weight: 800; color: var(--text-muted); background: var(--surface-panel-solid); padding: 0 var(--space-1); }
+.dock-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 56px; min-height: var(--size-target); padding: var(--space-1) var(--space-2); border: var(--size-outline-sm) solid transparent; border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-xs); font-weight: 800; }
+.dock-item.on { background: var(--surface-selected); border-color: var(--border-outline); }
+.dock-item .count { position: absolute; top: -4px; right: 2px; }
+.ann { position: absolute; z-index: 5; }
+.ann .label { white-space: nowrap; }
+
+/* ======== Hang the (checklist, nhiem vu) ======== */
+.row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.row .grow { flex: 1; min-width: 0; }
+.row .ttl { font-weight: 800; font-size: var(--font-size-sm); }
+.row .sub { font-size: var(--font-size-xs); color: var(--text-muted); font-weight: 700; }
+.check { width: 24px; height: 24px; border: var(--size-outline-sm) solid var(--border-outline); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: var(--surface-panel-solid); }
+.check.done { background: var(--accent-mint); }
+
+.mission { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-panel-solid); }
+.mission.done { background: var(--surface-ok); }
+.mission.miss { background: var(--surface-danger); }
+.mission .m-top { display: flex; align-items: center; gap: var(--space-2); }
+.mission .m-top .ttl { flex: 1; font-weight: 800; font-size: var(--font-size-sm); }
+.bar { height: 14px; background: var(--data-track); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--data-bar); border-right: var(--size-outline-sm) solid var(--border-outline); }
+.bar.ok > i { background: var(--patience-high); }
+.bar.miss > i { background: var(--patience-low); }
+.m-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--font-size-xs); font-weight: 800; }
+.rewards { display: inline-flex; gap: var(--space-1); }
+
+/* ======== Nang cap ======== */
+.up-card { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-panel-solid); }
+.up-card.locked { background: var(--surface-disabled); border-style: dashed; }
+.up-card .grow { flex: 1; min-width: 0; }
+.up-card .eff { font-size: var(--font-size-xs); color: var(--text-muted); font-weight: 800; }
+.dots { display: inline-flex; gap: 3px; margin-top: 3px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; border: var(--size-outline-sm) solid var(--border-outline); background: var(--surface-panel-solid); display: inline-block; }
+.dots i.on { background: var(--accent-primary); }
+
+/* ======== Daily report ======== */
+.tabs { display: flex; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; }
+.tab { min-height: var(--size-target); padding: 0 var(--space-3); display: inline-flex; align-items: center; gap: var(--space-1); border: var(--size-outline-sm) solid var(--border-outline); border-bottom: none; border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--surface-sunken); font-weight: 800; font-size: var(--font-size-sm); color: var(--text-muted); cursor: pointer; }
+.tab.on { background: var(--surface-panel-solid); color: var(--text-primary); }
+.report-body { border-top: var(--size-outline-sm) solid var(--border-outline); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+.kpi-grid.wide { grid-template-columns: repeat(4, 1fr); }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.kpi .k-lbl { font-size: var(--font-size-xs); font-weight: 800; color: var(--text-muted); display: flex; align-items: center; gap: var(--space-1); }
+.kpi .k-val { font-size: var(--font-size-xl); font-weight: 800; line-height: 1.1; }
+.kpi .k-tgt { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+
+.chart { border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface-sunken); }
+.chart h4 { margin: 0 0 var(--space-2); font-size: var(--font-size-sm); font-weight: 800; }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 108px; }
+.bars .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; }
+.bars .col > i { width: 100%; max-width: 20px; background: var(--data-bar); border: var(--size-outline-sm) solid var(--border-outline); border-radius: 3px 3px 0 0; }
+.bars .col.peak > i { background: var(--accent-primary); border-width: var(--size-outline); }
+.bars .col .hr { font-size: 9px; font-weight: 800; color: var(--text-muted); }
+.bars .col.peak .hr { color: var(--text-primary); }
+.chart .peak-tag { margin-top: var(--space-2); }
+
+.sugg { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-panel-solid); }
+.sugg .grow { flex: 1; font-size: var(--font-size-sm); font-weight: 700; }
+
+.levelup-band { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); background: var(--surface-selected); }
+.levelup-band .grow { flex: 1; }
+.levelup-band .big { font-size: var(--font-size-lg); font-weight: 800; line-height: var(--line-height-tight); }
+
+/* ======== Cai dat ======== */
+.set-group { border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-md); overflow: hidden; }
+.set-group > .sg-head { background: var(--surface-ink); color: var(--text-inverse); font-weight: 800; font-size: var(--font-size-sm); padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.set-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-top: var(--size-outline-sm) solid var(--color-cream-200); }
+.set-row:first-of-type { border-top: none; }
+.set-row .field { flex: 1; min-width: 0; }
+.set-row .field .lab { font-weight: 800; font-size: var(--font-size-sm); display: flex; align-items: center; gap: var(--space-2); }
+.set-row .field .hint { font-size: var(--font-size-xs); color: var(--text-muted); font-weight: 700; }
+.slider { position: relative; width: 150px; height: 14px; background: var(--data-track); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); flex: none; }
+.slider > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--data-bar); border-right: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill) 0 0 var(--radius-pill); }
+.slider > b { position: absolute; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: 50%; }
+.seg2 { display: inline-flex; border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-panel-solid); flex: none; }
+.seg2 .opt { min-height: 40px; padding: 0 var(--space-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); font-weight: 800; font-size: var(--font-size-sm); cursor: pointer; border-right: var(--size-outline-sm) solid var(--border-outline); text-align: center; }
+.seg2 .opt:last-child { border-right: none; }
+.seg2 .opt.on { background: var(--accent-primary); }
+.keys { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); font-size: var(--font-size-sm); font-weight: 700; }
+.keys kbd { font-family: inherit; font-weight: 800; background: var(--surface-sunken); border: var(--size-outline-sm) solid var(--border-outline); border-radius: 6px; padding: 0 6px; }
+details.keys-wrap { border-top: var(--size-outline-sm) solid var(--color-cream-200); }
+details.keys-wrap > summary { list-style: none; cursor: pointer; padding: var(--space-3); font-weight: 800; font-size: var(--font-size-sm); display: flex; align-items: center; gap: var(--space-2); min-height: var(--size-target); }
+details.keys-wrap > summary::-webkit-details-marker { display: none; }
+.set-foot { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-4) 0 0; }
+.set-foot .ver { font-size: var(--font-size-xs); font-weight: 800; color: var(--text-muted); flex: 1; }
+.confirm-inline { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--surface-danger); border: var(--size-outline-sm) solid var(--border-outline); border-radius: var(--radius-pill); padding: var(--space-1) var(--space-2); font-size: var(--font-size-sm); font-weight: 800; }
+
+/* ======== Empty / error ======== */
+.state-box { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--text-muted); }
+.state-box .big { font-weight: 800; color: var(--text-primary); }
+.state-box.err { color: var(--text-danger); }
+
+/* ======== Bang cham 3D ======== */
+.score-table { width: 100%; border-collapse: collapse; background: var(--surface-panel-solid); border: var(--size-outline) solid var(--border-outline); border-radius: var(--radius-md); overflow: hidden; }
+.score-table th, .score-table td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: var(--size-outline-sm) solid var(--color-cream-200); font-size: var(--font-size-sm); vertical-align: top; }
+.score-table th { background: var(--surface-ink); color: var(--text-inverse); font-weight: 800; }
+.score { display: inline-flex; gap: 2px; }
+.score i { width: 10px; height: 10px; border-radius: 2px; border: var(--size-outline-sm) solid var(--border-outline); display: inline-block; background: var(--surface-disabled); }
+.score i.on { background: var(--accent-primary); }
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+  <h1>P20 - Thiet ke giao dien Coffee Shop Tycoon 3D</h1>
+  <p>Cac man hinh moi/chinh cua P20: HUD co cap quan va thanh XP, bang Viec co nhiem vu ngay, bang Nang cap theo nhom va the khoa, tab Chi so trong bao cao cuoi ngay, va man Cai dat sap xep lai. Moi mau - co chu - khoang cach lay tu bien CSS anh xa token trong design/tokens.json.</p>
+  <p>Chi tiet quyet dinh, bang cham 3D va danh sach token/nguon tham khao o design/p20/README.md.</p>
+  <div class="legend">
+    <span><span class="iph sm">id</span> O vuong co ten id = cho dat icon 24px (SVG tu atlas), khong phai icon that.</span>
+    <span><span class="label new">P20 moi</span> Danh dau phan them/sua trong P20.</span>
+    <span><span class="btn" style="min-height:28px;padding:0 10px;font-size:13px">Nut</span> vs <span class="label">Nhan</span> xem muc 1.</span>
+  </div>
+</header>
+
+<!-- ============ MUC 1: NUT vs NHAN ============ -->
+<section class="section">
+  <h2>1 - Quy tac Nut va Nhan</h2>
+  <p class="note">Nut = bam duoc: nen dac, vien ink 3px, co BONG DAY (chieu sau), con tro tay. Nhan/badge = chi doc: phang, khong bong, vien 2px, bo tron, chu nho hon. Moi trang thai nut chi doi MOT tin hieu.</p>
+  <div class="frames">
+    <div class="frame" style="width:620px">
+      <span class="cap">Nut - 5 trang thai (moi o doi dung 1 tin hieu)</span>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
+        <div style="text-align:center"><div class="btn"><span class="iph">buy</span>Mua</div><div class="sub" style="font-size:11px;margin-top:6px;font-weight:800;color:var(--text-muted)">Mac dinh - bong 4px</div></div>
+        <div style="text-align:center"><div class="btn is-hover"><span class="iph">buy</span>Mua</div><div class="sub" style="font-size:11px;margin-top:6px;font-weight:800;color:var(--text-muted)">Hover - bong 6px (nang)</div></div>
+        <div style="text-align:center"><div class="btn is-press"><span class="iph">buy</span>Mua</div><div class="sub" style="font-size:11px;margin-top:6px;font-weight:800;color:var(--text-muted)">Nhan - lun xuong, bong 2px</div></div>
+        <div style="text-align:center"><div class="btn is-focus"><span class="iph">buy</span>Mua</div><div class="sub" style="font-size:11px;margin-top:6px;font-weight:800;color:var(--text-muted)">Focus - vong trong vien</div></div>
+        <div style="text-align:center"><div class="btn is-disabled"><span class="iph empty">buy</span>Mua</div><div class="sub" style="font-size:11px;margin-top:6px;font-weight:800;color:var(--text-muted)">Vo hieu - mo, vien dut</div></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px">
+        <span class="btn mint"><span class="iph mint">open</span>Mo cua</span>
+        <span class="btn danger"><span class="iph berry">fire</span>Cho nghi</span>
+        <span class="btn secondary"><span class="iph cream">back</span>Dong</span>
+      </div>
+    </div>
+    <div class="frame" style="width:360px">
+      <span class="cap">Nhan / badge - phang, khong bam duoc</span>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span class="level-chip"><span class="iph sm">lvl</span>Cap 3</span>
+        <span class="label">Ngay 1</span>
+        <span class="label ok"><span class="iph sm mint">ok</span>Tot</span>
+        <span class="label warn"><span class="iph sm">!</span>Can chu y</span>
+        <span class="label danger">Hut</span>
+        <span class="label info">Dang lam</span>
+        <span class="label muted">Chua bat dau</span>
+        <span class="count">5</span>
+        <span class="label">Mo o cap 5</span>
+      </div>
+      <p class="sub" style="font-size:11px;margin-top:12px;font-weight:800;color:var(--text-muted)">Nhan khong co bong day va khong co con tro tay - nguoi dung khong tuong nham la bam duoc.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 2: HUD ============ -->
+<section class="section">
+  <h2>2 - HUD: chip Cap + thanh XP, dock chia 2 nhom</h2>
+  <p class="note">Them chip "Cap N" + thanh XP canh ten ngay (goc trai). Dock chia 2 nhom Van hanh | Phat trien bang vach ngan.</p>
+
+  <div class="state-title">Khung 390px</div>
+  <div class="frames">
+    <div class="frame w390">
+      <span class="cap">390 x 760 - HUD khi Cao diem</span>
+      <div class="scene" style="height:730px">
+        <div class="room"></div>
+        <div class="hud-top" style="flex-direction:column">
+          <div class="hud-cluster">
+            <span class="hud-pill"><span class="iph sm">day</span>Ngay 1</span>
+            <span class="xp-wrap">
+              <span class="level-chip"><span class="iph sm">lvl</span>Cap 3</span>
+              <span class="xp-bar"><i></i></span>
+              <span class="xp-num">320/500</span>
+            </span>
+            <span class="ann" style="position:static"><span class="label new">P20 moi</span></span>
+          </div>
+          <div class="hud-cluster">
+            <span class="hud-pill"><span class="iph sm">time</span>12:01</span>
+            <span class="hud-pill"><span class="iph sm coffee">coin</span>2.863.500d</span>
+            <span class="hud-pill"><span class="iph sm">star</span>3,5</span>
+          </div>
+          <div class="seg">
+            <span class="opt"><span class="iph sm mint">ok</span>Chuan bi</span>
+            <span class="opt on"><span class="iph sm">peak</span>Cao diem</span>
+          </div>
+        </div>
+        <div class="dock">
+          <div class="dock-group">
+            <span class="dock-group-label">Van hanh</span>
+            <span class="dock-item on"><span class="iph">task</span>Viec<span class="count">1</span></span>
+            <span class="dock-item"><span class="iph latte">menu</span>Menu</span>
+            <span class="dock-item"><span class="iph">box</span>Kho<span class="count">5</span></span>
+            <span class="dock-item"><span class="iph sky">staff</span>Nhan vien</span>
+          </div>
+          <div class="dock-divider"></div>
+          <div class="dock-group">
+            <span class="dock-group-label">Phat trien</span>
+            <span class="dock-item"><span class="iph berry">ad</span>Marketing</span>
+            <span class="dock-item"><span class="iph leaf">up</span>Nang cap</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-title">Khung 1280px</div>
+  <div class="frames">
+    <div class="frame w1280">
+      <span class="cap">1280 x 720 - HUD khi Cao diem</span>
+      <div class="scene" style="height:690px">
+        <div class="room"></div>
+        <div class="hud-top">
+          <div class="hud-cluster">
+            <span class="hud-pill"><span class="iph sm">day</span>Ngay 1</span>
+            <span class="xp-wrap">
+              <span class="level-chip"><span class="iph sm">lvl</span>Cap 3</span>
+              <span class="xp-bar"><i></i></span>
+              <span class="xp-num">320/500 XP</span>
+            </span>
+            <span class="hud-pill"><span class="iph sm">time</span>Gio 12:01</span>
+            <div class="seg">
+              <span class="opt"><span class="iph sm mint">ok</span>Chuan bi</span>
+              <span class="opt"><span class="iph sm mint">open</span>Mo cua</span>
+              <span class="opt on"><span class="iph sm">peak</span>Cao diem</span>
+              <span class="opt"><span class="iph sm">close</span>Dong cua</span>
+            </div>
+          </div>
+          <div class="hud-cluster">
+            <span class="hud-pill"><span class="iph sm coffee">coin</span>Tien 2.863.500d</span>
+            <span class="hud-pill"><span class="iph sm">star</span>3,5</span>
+            <div class="seg">
+              <span class="opt"><span class="iph sm">1x</span>1x</span>
+              <span class="opt"><span class="iph sm">2x</span>2x</span>
+              <span class="opt on"><span class="iph sm">4x</span>4x</span>
+            </div>
+            <span class="hud-pill"><span class="iph sm">pause</span>Dung</span>
+            <span class="hud-pill"><span class="iph sm sky">cam</span></span>
+            <span class="hud-pill"><span class="iph sm">set</span></span>
+          </div>
+        </div>
+        <div class="dock">
+          <div class="dock-group">
+            <span class="dock-group-label">Van hanh</span>
+            <span class="dock-item on"><span class="iph lg">task</span>Viec<span class="count">1</span></span>
+            <span class="dock-item"><span class="iph lg latte">menu</span>Menu</span>
+            <span class="dock-item"><span class="iph lg">box</span>Kho<span class="count">5</span></span>
+            <span class="dock-item"><span class="iph lg sky">staff</span>Nhan vien</span>
+          </div>
+          <div class="dock-divider"></div>
+          <div class="dock-group">
+            <span class="dock-group-label">Phat trien</span>
+            <span class="dock-item"><span class="iph lg berry">ad</span>Marketing</span>
+            <span class="dock-item"><span class="iph lg leaf">up</span>Nang cap</span>
+          </div>
+        </div>
+        <span class="ann" style="left:16px;top:84px"><span class="label new">P20 moi: chip Cap + thanh XP</span></span>
+        <span class="ann" style="left:50%;bottom:120px;transform:translateX(-50%)"><span class="label new">P20 moi: dock chia nhom Van hanh | Phat trien</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 3: VIEC ============ -->
+<section class="section">
+  <h2>3 - Bang Viec: checklist + Nhiem vu hom nay</h2>
+  <p class="note">Giu checklist viec van hanh cu, them khu "Nhiem vu hom nay" (3 the: ten, tien do, thuong XP/tien; trang thai Chua / Dang / Xong / Hut).</p>
+
+  <div class="state-title">Khung 390px - mac dinh</div>
+  <div class="frames">
+    <div class="frame w390">
+      <span class="cap">390 - Viec (panel so tu day len)</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg">task</span><h3>Viec hom nay</h3><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+        <div class="panel-body">
+          <p class="group-title">Can lam ngay</p>
+          <div class="row"><span class="check"></span><span class="grow"><span class="ttl">Nhap sua tuoi - sap het</span><div class="sub">Con 5 phan trong kho</div></span><span class="btn" style="min-height:36px;padding:0 12px">Mo Kho</span></div>
+          <div class="row"><span class="check done"><span class="iph sm mint">ok</span></span><span class="grow"><span class="ttl">Xep ca nhan vien</span><div class="sub">Da xep 3 nguoi</div></span><span class="label ok">Xong</span></div>
+
+          <p class="group-title">Nhiem vu hom nay <span class="label new">P20 moi</span></p>
+          <div class="mission">
+            <div class="m-top"><span class="iph">cup</span><span class="ttl">Phuc vu 30 khach</span><span class="label info">Dang lam</span></div>
+            <div class="bar"><i style="width:60%"></i></div>
+            <div class="m-foot"><span>18 / 30 khach</span><span class="rewards"><span class="label">+40 XP</span><span class="label">+120.000d</span></span></div>
+          </div>
+          <div class="mission done">
+            <div class="m-top"><span class="iph mint">star</span><span class="ttl">Giu danh gia tu 4 sao</span><span class="label ok"><span class="iph sm mint">ok</span>Xong</span></div>
+            <div class="bar ok"><i style="width:100%"></i></div>
+            <div class="m-foot"><span>4,2 / 4,0 sao</span><span class="rewards"><span class="label">+30 XP</span></span></div>
+          </div>
+          <div class="mission miss">
+            <div class="m-top"><span class="iph berry">leave</span><span class="ttl">Khong de qua 3 khach bo di</span><span class="label danger">Hut</span></div>
+            <div class="bar miss"><i style="width:100%"></i></div>
+            <div class="m-foot"><span>4 / 3 khach da bo di</span><span class="rewards"><span class="label muted">+25 XP</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame w390">
+      <span class="cap">390 - trang thai Rong</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg">task</span><h3>Viec hom nay</h3><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+        <div class="panel-body">
+          <div class="state-box"><span class="iph xl mint">ok</span><span class="big">Khong co viec gap</span><span>Quan dang chay muot. Nhiem vu hom nay se hien khi mo cua.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame w390">
+      <span class="cap">390 - trang thai Loi</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg">task</span><h3>Viec hom nay</h3><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+        <div class="panel-body">
+          <div class="state-box err"><span class="iph xl berry">!</span><span class="big">Khong tai duoc nhiem vu</span><span>Thu lai hoac tiep tuc choi, nhiem vu se tinh lai cuoi ngay.</span><span class="btn" style="margin-top:8px"><span class="iph">retry</span>Thu lai</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-title">Khung 1280px</div>
+  <div class="frames">
+    <div class="frame w1280">
+      <span class="cap">1280 - Viec (panel 420px neo ben trai, canh 3D)</span>
+      <div class="scene" style="height:560px">
+        <div class="room"></div>
+        <div style="position:absolute;left:24px;top:24px;bottom:24px;width:440px">
+          <div class="panel" style="height:100%">
+            <div class="panel-head"><span class="iph lg">task</span><h3>Viec hom nay</h3><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+            <div class="panel-body">
+              <p class="group-title">Can lam ngay</p>
+              <div class="row"><span class="check"></span><span class="grow"><span class="ttl">Nhap sua tuoi - sap het</span><div class="sub">Con 5 phan trong kho</div></span><span class="btn" style="min-height:36px;padding:0 12px">Mo Kho</span></div>
+              <div class="row"><span class="check done"><span class="iph sm mint">ok</span></span><span class="grow"><span class="ttl">Xep ca nhan vien</span><div class="sub">Da xep 3 nguoi</div></span><span class="label ok">Xong</span></div>
+              <p class="group-title">Nhiem vu hom nay <span class="label new">P20 moi</span></p>
+              <div class="mission">
+                <div class="m-top"><span class="iph">cup</span><span class="ttl">Phuc vu 30 khach</span><span class="label info">Dang lam</span></div>
+                <div class="bar"><i style="width:60%"></i></div>
+                <div class="m-foot"><span>18 / 30 khach</span><span class="rewards"><span class="label">+40 XP</span><span class="label">+120.000d</span></span></div>
+              </div>
+              <div class="mission done">
+                <div class="m-top"><span class="iph mint">star</span><span class="ttl">Giu danh gia tu 4 sao</span><span class="label ok"><span class="iph sm mint">ok</span>Xong</span></div>
+                <div class="bar ok"><i style="width:100%"></i></div>
+                <div class="m-foot"><span>4,2 / 4,0 sao</span><span class="rewards"><span class="label">+30 XP</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 4: NANG CAP ============ -->
+<section class="section">
+  <h2>4 - Bang Nang cap: nhom + the khoa theo cap</h2>
+  <p class="note">Nhom Dung cu / Khong gian / Trang tri. Dong tac dung dinh luong. The khoa hien NHAN "Mo o cap N" (khong phai nut).</p>
+
+  <div class="state-title">Khung 390px</div>
+  <div class="frames">
+    <div class="frame w390">
+      <span class="cap">390 - Nang cap</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg leaf">up</span><h3>Nang cap</h3><span class="hud-pill" style="min-height:32px;box-shadow:none"><span class="iph sm coffee">coin</span>2.863.500d</span></div>
+        <div class="panel-body">
+          <p class="group-title">Dung cu</p>
+          <div class="up-card">
+            <span class="iph xl sky">mach</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">May pha tot hon</span><div class="eff">Danh gia +0,2 sao moi cap</div><span class="dots"><i class="on"></i><i></i><i></i></span></span>
+            <span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>1.500.000d</span>
+          </div>
+          <div class="up-card">
+            <span class="iph xl sky">fast</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">May pha nhanh hon</span><div class="eff">Pha nhanh +20 phan tram moi cap</div><span class="dots"><i class="on"></i><i class="on"></i><i></i></span></span>
+            <span class="btn is-disabled" style="min-height:40px"><span class="iph sm empty">coin</span>Thieu tien</span>
+          </div>
+          <p class="group-title">Khong gian</p>
+          <div class="up-card">
+            <span class="iph xl latte">chair</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Them ban ghe</span><div class="eff">+2 cho ngoi moi cap</div><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></span>
+            <span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>730.000d</span>
+          </div>
+          <div class="up-card locked">
+            <span class="iph xl empty">area</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px;color:var(--text-muted)">Mo rong dien tich</span><div class="eff">+6 cho ngoi, do hap dan +0,1</div></span>
+            <span class="label"><span class="iph sm">lock</span>Mo o cap 5</span>
+          </div>
+          <p class="group-title">Trang tri</p>
+          <div class="up-card">
+            <span class="iph xl leaf">plant</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Cay xanh</span><div class="eff">Do hap dan +0,04, danh gia +0,05</div><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+            <span class="label ok">Da toi da</span>
+          </div>
+          <div class="up-card locked">
+            <span class="iph xl empty">light</span>
+            <span class="grow"><span class="ttl" style="font-weight:800;font-size:14px;color:var(--text-muted)">Den trang tri</span><div class="eff">Do hap dan +0,06 moi cap</div></span>
+            <span class="label"><span class="iph sm">lock</span>Mo o cap 4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-title">Khung 1280px</div>
+  <div class="frames">
+    <div class="frame w1280">
+      <span class="cap">1280 - Nang cap (3 cot nhom)</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg leaf">up</span><h3>Nang cap</h3><span class="hud-pill" style="min-height:32px;box-shadow:none"><span class="iph sm coffee">coin</span>2.863.500d</span><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+        <div class="panel-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <p class="group-title" style="margin:0">Dung cu</p>
+            <div class="up-card"><span class="iph xl sky">mach</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">May pha tot hon</span><div class="eff">Danh gia +0,2 sao/cap</div><span class="dots"><i class="on"></i><i></i><i></i></span></span><span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>1.500.000d</span></div>
+            <div class="up-card"><span class="iph xl sky">fast</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">May pha nhanh hon</span><div class="eff">Pha nhanh +20 phan tram/cap</div><span class="dots"><i class="on"></i><i class="on"></i><i></i></span></span><span class="btn is-disabled" style="min-height:40px">Thieu tien</span></div>
+            <div class="up-card"><span class="iph xl latte">counter</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Quay lon hon</span><div class="eff">Pha nhanh +10 phan tram, hap dan +0,05</div><span class="dots"><i class="on"></i><i></i></span></span><span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>1.000.000d</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <p class="group-title" style="margin:0">Khong gian</p>
+            <div class="up-card"><span class="iph xl latte">chair</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Them ban ghe</span><div class="eff">+2 cho ngoi/cap</div><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></span><span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>730.000d</span></div>
+            <div class="up-card locked"><span class="iph xl empty">out</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px;color:var(--text-muted)">Khu ngoi ngoai troi</span><div class="eff">+4 cho ngoi, hap dan +0,1</div></span><span class="label"><span class="iph sm">lock</span>Mo o cap 4</span></div>
+            <div class="up-card locked"><span class="iph xl empty">area</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px;color:var(--text-muted)">Mo rong dien tich</span><div class="eff">+6 cho ngoi, hap dan +0,1</div></span><span class="label"><span class="iph sm">lock</span>Mo o cap 5</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <p class="group-title" style="margin:0">Trang tri</p>
+            <div class="up-card"><span class="iph xl leaf">plant</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Cay xanh</span><div class="eff">Hap dan +0,04, danh gia +0,05</div><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span></span><span class="label ok">Da toi da</span></div>
+            <div class="up-card"><span class="iph xl coffee">paint</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px">Tranh treo tuong</span><div class="eff">Hap dan +0,05, danh gia +0,05</div><span class="dots"><i class="on"></i><i></i><i></i></span></span><span class="btn" style="min-height:40px"><span class="iph sm coffee">coin</span>400.000d</span></div>
+            <div class="up-card locked"><span class="iph xl empty">light</span><span class="grow"><span class="ttl" style="font-weight:800;font-size:14px;color:var(--text-muted)">Den trang tri</span><div class="eff">Hap dan +0,06/cap</div></span><span class="label"><span class="iph sm">lock</span>Mo o cap 4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 5: DAILY REPORT - CHI SO ============ -->
+<section class="section">
+  <h2>5 - Bao cao cuoi ngay: tab Chi so + bang Len cap tai cho</h2>
+  <p class="note">Them tab "Chi so" (giua Tong ket va Danh gia): luoi KPI co nhan Tot/Can chu y, bieu do khach theo gio, goi y hanh dong. Bang "Len cap" nam ngay trong tab Tong ket (khong modal).</p>
+
+  <div class="state-title">Khung 390px - tab Chi so</div>
+  <div class="frames">
+    <div class="frame w390">
+      <span class="cap">390 - Chi so</span>
+      <div class="panel">
+        <div class="tabs"><span class="tab">Tong ket</span><span class="tab on">Chi so <span class="label new" style="margin-left:4px">moi</span></span><span class="tab">Danh gia</span></div>
+        <div class="report-body">
+          <div class="kpi-grid">
+            <div class="kpi"><span class="k-lbl"><span class="iph sm coffee">f</span>Food cost</span><span class="k-val">31 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">Nguong tot: tu 32 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm sky">l</span>Chi phi luong</span><span class="k-val">38 phan tram</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">Nguong tot: tu 35 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">p</span>Prime cost</span><span class="k-val">69 phan tram</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">Nguong tot: tu 65 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">a</span>Don trung binh</span><span class="k-val">48.000d</span><span class="label muted" style="align-self:flex-start">Tham khao</span><span class="k-tgt">Hom qua 45.000d</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm latte">s</span>Lap ghe</span><span class="k-val">74 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">Nguong tot: tu 70 phan tram tro len</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">w</span>Cho trung binh</span><span class="k-val">4,6 phut</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">Nguong tot: tu 3 phut tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm berry">h</span>Hao hut</span><span class="k-val">3 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">Nguong tot: tu 5 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">m</span>Bien mon</span><span class="k-val">62 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">Nguong tot: tu 60 phan tram tro len</span></div>
+          </div>
+          <div class="chart">
+            <h4>Khach theo gio (07 - 20)</h4>
+            <div class="bars">
+              <div class="col"><i style="height:14%"></i><span class="hr">07</span></div>
+              <div class="col"><i style="height:26%"></i><span class="hr">08</span></div>
+              <div class="col"><i style="height:40%"></i><span class="hr">09</span></div>
+              <div class="col"><i style="height:52%"></i><span class="hr">10</span></div>
+              <div class="col peak"><i style="height:86%"></i><span class="hr">11</span></div>
+              <div class="col peak"><i style="height:100%"></i><span class="hr">12</span></div>
+              <div class="col peak"><i style="height:90%"></i><span class="hr">13</span></div>
+              <div class="col"><i style="height:48%"></i><span class="hr">14</span></div>
+              <div class="col"><i style="height:36%"></i><span class="hr">15</span></div>
+              <div class="col"><i style="height:44%"></i><span class="hr">16</span></div>
+              <div class="col"><i style="height:58%"></i><span class="hr">17</span></div>
+              <div class="col"><i style="height:50%"></i><span class="hr">18</span></div>
+              <div class="col"><i style="height:30%"></i><span class="hr">19</span></div>
+              <div class="col"><i style="height:16%"></i><span class="hr">20</span></div>
+            </div>
+            <div class="peak-tag"><span class="label warn"><span class="iph sm">peak</span>Cao diem 11h - 13h: can them 1 nhan vien</span></div>
+          </div>
+          <p class="group-title">Goi y hanh dong</p>
+          <div class="sugg"><span class="iph sky">staff</span><span class="grow">Thue them phu ca gio cao diem de giam cho</span><span class="btn" style="min-height:40px;padding:0 12px">Nhan vien</span></div>
+          <div class="sugg"><span class="iph leaf">up</span><span class="grow">Nang "May pha nhanh hon" de rut cho trung binh</span><span class="btn" style="min-height:40px;padding:0 12px">Nang cap</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame w390">
+      <span class="cap">390 - tab Tong ket (bang Len cap tai cho)</span>
+      <div class="panel">
+        <div class="tabs"><span class="tab on">Tong ket</span><span class="tab">Chi so</span><span class="tab">Danh gia</span></div>
+        <div class="report-body">
+          <div class="levelup-band">
+            <span class="iph xl">lvl</span>
+            <span class="grow"><span class="big">Len cap 4!</span><div class="sub">Mo khoa: Khu ngoi ngoai troi, Den trang tri</div></span>
+            <span class="label new">P20 moi</span>
+          </div>
+          <div class="row"><span class="grow"><span class="ttl">Doanh thu</span></span><span class="label">+1.284.000d</span></div>
+          <div class="row"><span class="grow"><span class="ttl">Khach phuc vu</span></span><span class="label">42 khach</span></div>
+          <div class="row"><span class="grow"><span class="ttl">Loi nhuan</span></span><span class="label ok">+742.000d</span></div>
+          <div class="xp-wrap" style="box-shadow:none;width:100%;justify-content:space-between"><span class="level-chip"><span class="iph sm">lvl</span>Cap 4</span><span class="xp-bar" style="flex:1;width:auto"><i style="width:18%"></i></span><span class="xp-num">90/700 XP</span></div>
+          <span class="btn mint" style="width:100%"><span class="iph mint">next</span>Sang ngay 2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame w390">
+      <span class="cap">390 - Chi so, trang thai Rong (ngay dau)</span>
+      <div class="panel">
+        <div class="tabs"><span class="tab">Tong ket</span><span class="tab on">Chi so</span><span class="tab">Danh gia</span></div>
+        <div class="report-body">
+          <div class="state-box"><span class="iph xl">chart</span><span class="big">Chua du du lieu</span><span>Choi them vai ngay de co so sanh food cost, luong va cho trung binh.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-title">Khung 1280px - tab Chi so</div>
+  <div class="frames">
+    <div class="frame w1280">
+      <span class="cap">1280 - Chi so (KPI 4 cot)</span>
+      <div class="panel">
+        <div class="tabs"><span class="tab">Tong ket</span><span class="tab on">Chi so</span><span class="tab">Danh gia</span></div>
+        <div class="report-body">
+          <div class="kpi-grid wide">
+            <div class="kpi"><span class="k-lbl"><span class="iph sm coffee">f</span>Food cost</span><span class="k-val">31 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">tu 32 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm sky">l</span>Chi phi luong</span><span class="k-val">38 phan tram</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">tu 35 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">p</span>Prime cost</span><span class="k-val">69 phan tram</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">tu 65 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">a</span>Don trung binh</span><span class="k-val">48.000d</span><span class="label muted" style="align-self:flex-start">Tham khao</span><span class="k-tgt">hom qua 45.000d</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm latte">s</span>Lap ghe</span><span class="k-val">74 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">tu 70 phan tram tro len</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">w</span>Cho trung binh</span><span class="k-val">4,6 phut</span><span class="label warn" style="align-self:flex-start"><span class="iph sm">!</span>Can chu y</span><span class="k-tgt">tu 3 phut tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm berry">h</span>Hao hut</span><span class="k-val">3 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">tu 5 phan tram tro xuong</span></div>
+            <div class="kpi"><span class="k-lbl"><span class="iph sm">m</span>Bien mon</span><span class="k-val">62 phan tram</span><span class="label ok" style="align-self:flex-start"><span class="iph sm mint">ok</span>Tot</span><span class="k-tgt">tu 60 phan tram tro len</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start">
+            <div class="chart">
+              <h4>Khach theo gio (07 - 20)</h4>
+              <div class="bars">
+                <div class="col"><i style="height:14%"></i><span class="hr">07</span></div>
+                <div class="col"><i style="height:26%"></i><span class="hr">08</span></div>
+                <div class="col"><i style="height:40%"></i><span class="hr">09</span></div>
+                <div class="col"><i style="height:52%"></i><span class="hr">10</span></div>
+                <div class="col peak"><i style="height:86%"></i><span class="hr">11</span></div>
+                <div class="col peak"><i style="height:100%"></i><span class="hr">12</span></div>
+                <div class="col peak"><i style="height:90%"></i><span class="hr">13</span></div>
+                <div class="col"><i style="height:48%"></i><span class="hr">14</span></div>
+                <div class="col"><i style="height:36%"></i><span class="hr">15</span></div>
+                <div class="col"><i style="height:44%"></i><span class="hr">16</span></div>
+                <div class="col"><i style="height:58%"></i><span class="hr">17</span></div>
+                <div class="col"><i style="height:50%"></i><span class="hr">18</span></div>
+                <div class="col"><i style="height:30%"></i><span class="hr">19</span></div>
+                <div class="col"><i style="height:16%"></i><span class="hr">20</span></div>
+              </div>
+              <div class="peak-tag"><span class="label warn"><span class="iph sm">peak</span>Cao diem 11h - 13h</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <p class="group-title" style="margin:0">Goi y hanh dong</p>
+              <div class="sugg"><span class="iph sky">staff</span><span class="grow">Thue phu ca gio cao diem</span><span class="btn" style="min-height:40px;padding:0 12px">Nhan vien</span></div>
+              <div class="sugg"><span class="iph leaf">up</span><span class="grow">Nang may pha nhanh hon</span><span class="btn" style="min-height:40px;padding:0 12px">Nang cap</span></div>
+              <div class="sugg"><span class="iph latte">menu</span><span class="grow">Giam gia mon e de ha food cost</span><span class="btn" style="min-height:40px;padding:0 12px">Menu</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 6: CAI DAT ============ -->
+<section class="section">
+  <h2>6 - Cai dat: gom nhom chuc nang tuong dong</h2>
+  <p class="note">Am thanh | Hien thi (chat luong, giam chuyen dong) | Dieu khien (kieu phim camera, toc do xoay, Phim tat so ra) | Tro choi (toc do mac dinh). Chan form: phien ban, Ve mac dinh (xac nhan tai cho), Xong.</p>
+
+  <div class="state-title">Khung 390px</div>
+  <div class="frames">
+    <div class="frame w390">
+      <span class="cap">390 - Cai dat</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg">set</span><h3>Cai dat</h3></div>
+        <div class="panel-body">
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">snd</span>Am thanh</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">music</span>Nhac nen</div></div><div class="slider"><i style="width:50%"></i><b style="left:50%"></b></div><span class="k-tgt" style="width:36px">50 phan tram</span></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">sfx</span>Hieu ung</div><div class="hint">Chuong cua, may pha, tien</div></div><div class="slider"><i style="width:80%"></i><b style="left:80%"></b></div><span class="k-tgt" style="width:36px">80 phan tram</span></div>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">disp</span>Hien thi</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">q</span>Chat luong</div><div class="hint">Cao: bong do, pho dong</div></div><div class="seg2"><span class="opt">Thap</span><span class="opt on">Vua</span><span class="opt">Cao</span></div></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">motion</span>Giam chuyen dong</div><div class="hint">Theo may dung cai dat cua he dieu hanh</div></div><div class="seg2"><span class="opt on">Theo may</span><span class="opt">Luon giam</span></div></div>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">ctrl</span>Dieu khien</div>
+            <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px"><div class="field"><div class="lab"><span class="iph sm">cam</span>Kieu phim camera</div></div><div class="seg2" style="width:100%"><span class="opt on" style="flex:1">Q E xoay<br>WASD / mui ten chay</span><span class="opt" style="flex:1">Q A xoay<br>mui ten chay</span></div></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">rot</span>Toc do xoay</div></div><div class="seg2"><span class="opt">Cham</span><span class="opt on">Vua</span><span class="opt">Nhanh</span></div></div>
+            <details class="keys-wrap"><summary><span class="iph sm">key</span>Phim tat</summary><div class="keys"><span><kbd>W A S D</kbd> di chuyen camera</span><span><kbd>Q E</kbd> xoay camera</span><span><kbd>Space</kbd> tam dung &middot; <kbd>1 2 3</kbd> toc do</span><span><kbd>Home</kbd> dat lai camera &middot; <kbd>Esc</kbd> dong panel</span></div></details>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">game</span>Tro choi</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">spd</span>Toc do khi mo cua</div><div class="hint">Doi duoc bat cu luc nao tren HUD</div></div><div class="seg2"><span class="opt on">1x</span><span class="opt">2x</span><span class="opt">4x</span></div></div>
+          </div>
+          <div class="set-foot">
+            <span class="ver">Phien ban v0.20.0</span>
+            <span class="btn secondary"><span class="iph">reset</span>Ve mac dinh</span>
+            <span class="btn mint"><span class="iph mint">ok</span>Xong</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame w390">
+      <span class="cap">390 - "Ve mac dinh" o trang thai xac nhan tai cho</span>
+      <div class="panel">
+        <div class="panel-head"><span class="iph lg">set</span><h3>Cai dat</h3></div>
+        <div class="panel-body">
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">game</span>Tro choi</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">spd</span>Toc do khi mo cua</div></div><div class="seg2"><span class="opt on">1x</span><span class="opt">2x</span><span class="opt">4x</span></div></div>
+          </div>
+          <div class="set-foot">
+            <span class="ver">Phien ban v0.20.0</span>
+            <span class="confirm-inline"><span class="iph sm">!</span>Dat lai tat ca?<span class="btn secondary" style="min-height:32px;padding:0 10px">Huy</span><span class="btn danger" style="min-height:32px;padding:0 10px">Dat lai</span></span>
+          </div>
+          <p class="sub" style="font-size:11px;font-weight:800;color:var(--text-muted);margin:0">Xac nhan hien ngay tai nut, khong mo modal (theo gu cua anh).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-title">Khung 1280px</div>
+  <div class="frames">
+    <div class="frame w1280">
+      <span class="cap">1280 - Cai dat (2 cot nhom)</span>
+      <div class="panel" style="max-width:900px;margin:0 auto">
+        <div class="panel-head"><span class="iph lg">set</span><h3>Cai dat</h3><span class="btn secondary" style="min-height:36px;padding:0 10px"><span class="iph sm cream">x</span></span></div>
+        <div class="panel-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">snd</span>Am thanh</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">music</span>Nhac nen</div></div><div class="slider"><i style="width:50%"></i><b style="left:50%"></b></div><span class="k-tgt" style="width:36px">50 phan tram</span></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">sfx</span>Hieu ung</div><div class="hint">Chuong cua, may pha, tien</div></div><div class="slider"><i style="width:80%"></i><b style="left:80%"></b></div><span class="k-tgt" style="width:36px">80 phan tram</span></div>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">disp</span>Hien thi</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">q</span>Chat luong</div></div><div class="seg2"><span class="opt">Thap</span><span class="opt on">Vua</span><span class="opt">Cao</span></div></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">motion</span>Giam chuyen dong</div></div><div class="seg2"><span class="opt on">Theo may</span><span class="opt">Luon giam</span></div></div>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">ctrl</span>Dieu khien</div>
+            <div class="set-row" style="flex-direction:column;align-items:stretch;gap:8px"><div class="field"><div class="lab"><span class="iph sm">cam</span>Kieu phim camera</div></div><div class="seg2" style="width:100%"><span class="opt on" style="flex:1">Q E xoay<br>WASD / mui ten chay</span><span class="opt" style="flex:1">Q A xoay<br>mui ten chay</span></div></div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">rot</span>Toc do xoay</div></div><div class="seg2"><span class="opt">Cham</span><span class="opt on">Vua</span><span class="opt">Nhanh</span></div></div>
+            <details class="keys-wrap"><summary><span class="iph sm">key</span>Phim tat</summary><div class="keys"><span><kbd>W A S D</kbd> di chuyen camera</span><span><kbd>Q E</kbd> xoay camera</span><span><kbd>Space</kbd> tam dung &middot; <kbd>1 2 3</kbd> toc do</span></div></details>
+          </div>
+          <div class="set-group">
+            <div class="sg-head"><span class="iph sm">game</span>Tro choi</div>
+            <div class="set-row"><div class="field"><div class="lab"><span class="iph sm">spd</span>Toc do khi mo cua</div><div class="hint">Doi duoc bat cu luc nao tren HUD</div></div><div class="seg2"><span class="opt on">1x</span><span class="opt">2x</span><span class="opt">4x</span></div></div>
+          </div>
+          <div class="set-foot" style="grid-column:1 / -1">
+            <span class="ver">Phien ban v0.20.0</span>
+            <span class="btn secondary"><span class="iph">reset</span>Ve mac dinh</span>
+            <span class="btn mint"><span class="iph mint">ok</span>Xong</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MUC 7: BANG CHAM 3D (tom tat tu README) ============ -->
+<section class="section">
+  <h2>7 - Cham hien trang 3D (tom tat - chi tiet o README)</h2>
+  <p class="note">Diem 1 - 5 va de xuat cho tung muc. Day la ban truc quan; bang day du o design/p20/README.md.</p>
+  <table class="score-table">
+    <thead><tr><th style="width:150px">Hang muc</th><th style="width:90px">Diem</th><th>De xuat P20</th></tr></thead>
+    <tbody>
+      <tr><td>Hinh khoi nhan vat</td><td><span class="score"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span> 2/5</td><td>Bo nhe canh hop (bevel), them co noi dau voi than, ban tay bo tron thay khoi vuong</td></tr>
+      <tr><td>Khuon mat</td><td><span class="score"><i class="on"></i><i></i><i></i><i></i><i></i></span> 1/5</td><td>Them mieng + long may theo tam trang (vui/thuong/gian), bo con mat to hon</td></tr>
+      <tr><td>Dang di</td><td><span class="score"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span> 3/5</td><td>Giu nhip chan theo quang duong; them nghieng nguoi nhe khi re</td></tr>
+      <tr><td>Idle</td><td><span class="score"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span> 2/5</td><td>Them chop mat, tho len xuong, doi chan va nhin quanh lech pha giua cac nhan vat</td></tr>
+      <tr><td>Thao tac pha che</td><td><span class="score"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span> 2/5</td><td>Tach thanh chuoi xay - nen - chiet - rot; dua ly bang hai tay</td></tr>
+      <tr><td>Do dac / may</td><td><span class="score"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span> 3/5</td><td>Bo canh, them chi tiet quay, gia do, hoi nuoc tu may pha</td></tr>
+      <tr><td>Vat lieu</td><td><span class="score"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span> 2/5</td><td>Texture ve bang canvas (van go, gach san) don gian hoa, 0 byte tai them</td></tr>
+      <tr><td>Anh sang</td><td><span class="score"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span> 3/5</td><td>Them RoomEnvironment cho anh sang mem + hemi/sun am; Poly Haven chi tham khao mau</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</body>
+</html>
