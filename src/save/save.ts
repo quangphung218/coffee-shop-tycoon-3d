@@ -1,4 +1,4 @@
-import { levelForXp } from '../sim/data/levels';
+import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
 import { settleActors } from '../sim/index';
 import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progression';
@@ -83,6 +83,8 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
   // Adds shop level, XP and daily missions. The level is taken from the days
   // already played, but never below what keeps every owned upgrade and enabled
   // menu item unlocked, so nothing bought before levelling becomes unusable.
+  // XP is raised to at least that level's threshold so the XP bar is not
+  // negative and the next level-up is not a level the shop already has.
   1: (file) => {
     const state: Raw = isObject(file.state) ? { ...file.state } : {};
     const shopName = typeof state.shopName === 'string' ? state.shopName : '';
@@ -94,6 +96,7 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     if (typeof state.shopLevel !== 'number') {
       state.shopLevel = Math.max(levelForXp(state.xp as number), coverLevel(menu, upgrades));
     }
+    state.xp = Math.max(state.xp as number, xpToReach(state.shopLevel as number));
     if (!Array.isArray(state.missions)) {
       const day = typeof state.day === 'number' ? state.day : 1;
       state.missions = rollMissions(state.seed as number, day, state.shopLevel as number);

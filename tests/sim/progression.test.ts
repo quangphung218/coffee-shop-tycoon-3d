@@ -4,7 +4,9 @@ import { dispatch, isUnlocked, missionProgress, rollMissions, scoreProgression }
 import { MISSION_POOL, XP_PER_SERVED, makeMission } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
 import type { DayStats, GameState, MissionId } from '../../src/sim/types';
-import { playDay } from '../integration/helpers';
+import { settleDay } from '../../src/sim/economy';
+import { updateRating } from '../../src/sim/rating';
+import { playDay, runOpenDay } from '../integration/helpers';
 
 /** A game with a clean, countable day: no missions, no reviews. */
 function dayGame(served: number): GameState {
@@ -226,27 +228,54 @@ describe('missionProgress', () => {
 
   it('food_cost: met at or under the target (lte), missed above it', () => {
     const target = makeMission('food_cost', 1).target;
+    // Normal difficulty prices ingredients at ×1, so ingredientsUsed is the cost in đồng.
     const at = progressOf(withMission('food_cost', (t) => {
       t.revenue = 100_000;
-      t.ingredientCost = target * 1000;
+      t.ingredientsUsed = target * 1000;
     }));
     expect(at).toEqual({ value: target, ratio: 1, met: true });
     const over = progressOf(withMission('food_cost', (t) => {
       t.revenue = 100_000;
-      t.ingredientCost = (target + 2) * 1000;
+      t.ingredientsUsed = (target + 2) * 1000;
     }));
     expect(over.value).toBe(target + 2);
     expect(over.met).toBe(false);
     expect(over.ratio).toBeCloseTo(target / (target + 2), 6);
   });
 
-  it('food_cost: with no revenue it neither passes on its own nor reads as a blow-out', () => {
-    // Customers came but nothing was sold or used: nothing to judge yet, so not met and no bar.
+  it('food_cost: reads the live cost during the day, not the ingredientCost booked at closing', () => {
+    // Mid-day ingredientCost is still 0; only settleDay fills it.
+    const s = withMission('food_cost', (t) => {
+      t.revenue = 100_000;
+      t.ingredientsUsed = 60_000;
+    });
+    expect(s.today.ingredientCost).toBe(0);
+    expect(progressOf(s)).toMatchObject({ value: 60, met: false });
+  });
+
+  it('food_cost: mid-day progress equals the ratio booked when the day is settled', () => {
+    const s = createNewGame('Quán Giá Vốn', 'hard', 20261015);
+    s.missions = [makeMission('food_cost', 1)];
+    expect(dispatch(s, { type: 'apply_restock' })).toBe(true);
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    runOpenDay(s, { untilMinute: 13 * 60 });
+    expect(s.phase).not.toBe('report');
+    expect(s.today.revenue).toBeGreaterThan(0);
+    expect(s.today.ingredientsUsed ?? 0).toBeGreaterThan(0);
+    const live = progressOf(s);
+    const settled = structuredClone(s);
+    settleDay(settled);
+    expect(settled.today.ingredientCost).toBeGreaterThan(0);
+    expect(live.value).toBe(Math.round((settled.today.ingredientCost / settled.today.revenue) * 100));
+    expect(progressOf(settled)).toEqual(live);
+  });
+
+  it('food_cost: with no revenue there is not enough data, so no value, no bar and not met', () => {
     const idle = progressOf(withMission('food_cost'));
-    expect(idle).toEqual({ value: 0, ratio: 0, met: false });
-    // Ingredients used with no sales count as 100%, which misses the target.
-    const unsold = progressOf(withMission('food_cost', (t) => (t.ingredientCost = 12_000)));
-    expect(unsold).toEqual({ value: 100, ratio: 0, met: false });
+    expect(idle).toEqual({ value: null, ratio: 0, met: false });
+    // Ingredients used with no sales yet is still not a judgeable ratio.
+    const unsold = progressOf(withMission('food_cost', (t) => (t.ingredientsUsed = 12_000)));
+    expect(unsold).toEqual({ value: null, ratio: 0, met: false });
   });
 
   it('sell_food: counts croissants and cakes together against the target (gte)', () => {
@@ -258,12 +287,35 @@ describe('missionProgress', () => {
     expect(done).toEqual({ value: target, ratio: 1, met: true });
   });
 
-  it('end_rating: met when the end-of-day rating reaches the target (gte)', () => {
+  it('end_rating: met when the projected end-of-day rating reaches the target (gte)', () => {
     const target = makeMission('end_rating', 1).target;
-    expect(progressOf(withMission('end_rating', (t) => (t.ratingEnd = target))).met).toBe(true);
-    const low = progressOf(withMission('end_rating', (t) => (t.ratingEnd = target - 0.01)));
+    // A flawless day from a 5-star start stays at 5.
+    const good = progressOf(withMission('end_rating', (t) => {
+      t.ratingStart = 5;
+      t.customersServed = 10;
+    }));
+    expect(good).toEqual({ value: 5, ratio: 1, met: true });
+    // From 1 star, a day where everyone walks out cannot reach the target.
+    const low = progressOf(withMission('end_rating', (t) => {
+      t.ratingStart = 1;
+      t.customersLost = 10;
+    }));
     expect(low.met).toBe(false);
-    expect(low.ratio).toBeCloseTo((target - 0.01) / target, 6);
+    expect(low.value!).toBeLessThan(target);
+    expect(low.ratio).toBeCloseTo(low.value! / target, 6);
+  });
+
+  it('end_rating: mid-day value equals the rating updateRating records at closing', () => {
+    const s = createNewGame('Quán Sao', 'normal', 7);
+    s.missions = [makeMission('end_rating', 1)];
+    expect(dispatch(s, { type: 'apply_restock' })).toBe(true);
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    runOpenDay(s, { untilMinute: 12 * 60 });
+    expect(s.today.customersArrived).toBeGreaterThan(0);
+    const live = progressOf(s);
+    const closed = structuredClone(s);
+    updateRating(closed);
+    expect(live.value).toBe(closed.today.ratingEnd);
   });
 
   it('low_abandon: met at or under the target walk-out share (lte)', () => {

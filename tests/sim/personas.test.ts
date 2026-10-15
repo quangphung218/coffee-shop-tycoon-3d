@@ -132,6 +132,30 @@ describe('food add-on', () => {
     expect(foodGain - plainGain).toBe(getMenuItem('cake').price);
   });
 
+  it('skips the add-on when the pastry cannot be made: no negative stock, no charge', () => {
+    const s = openShopWith(['espresso', 'cake']);
+    s.inventory.find((i) => i.id === 'flour')!.qty = 0; // cake needs flour
+    let id = s.nextId;
+    while (addOnRoll(s.seed, id) >= PERSONAS.family.foodChance) id++;
+    const c = waitingCustomer(s, { id, order: 'espresso', persona: 'family', tableId: null });
+    s.nextId = id + 1;
+    const stockBefore = s.inventory.map((i) => ({ ...i }));
+    const usedBefore = s.today.ingredientsUsed ?? 0;
+
+    maybeAddOn(s, c);
+    expect(c.extraItem).toBeUndefined();
+    expect(s.inventory).toEqual(stockBefore);
+    expect(s.inventory.every((i) => i.qty >= 0)).toBe(true);
+    expect(s.today.ingredientsUsed ?? 0).toBe(usedBefore);
+
+    for (const t of s.tables) t.trash = 1; // takeaway: pays at the counter right away
+    const money = s.money;
+    serveCustomer(s, c, 'espresso');
+    expect(s.money).toBe(money + getMenuItem('espresso').price);
+    expect(s.today.sold.cake).toBeUndefined();
+    expect(s.today.revenue).toBe(getMenuItem('espresso').price);
+  });
+
   it('does nothing for a neutral customer from an old save', () => {
     const s = openShopWith(['espresso', 'cake']);
     const c = waitingCustomer(s, { order: 'espresso' }); // no persona field
