@@ -1,5 +1,5 @@
 import { isOpen } from './clock';
-import { angryLeave, seatCustomer, serveCustomer } from './customers';
+import { angryLeave, maybeAddOn, seatCustomer, serveCustomer } from './customers';
 import { getMenuItem, isCoffeeDrink } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake, consume } from './inventory';
@@ -158,6 +158,7 @@ export function finishTask(state: GameState, task: StaffTask): void {
         return;
       }
       consume(state, customer.order);
+      maybeAddOn(state, customer);
       state.orders.push({
         id: state.nextId++,
         customerId: customer.id,

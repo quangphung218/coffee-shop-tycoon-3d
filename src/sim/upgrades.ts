@@ -157,16 +157,16 @@ function addTables(state: GameState, id: UpgradeId): void {
 
 /**
  * Puts every table on the spot of the current floor plan: the n-th table of
- * a zone, by id, takes the zone's n-th spot. Customers who sit at or head
- * for a moved table take the same chair side at its new spot. Used on load,
- * so saves from an older floor plan get the current one.
+ * a zone, by id, takes the zone's n-th spot. Customers who sit at or head for
+ * a table keep their chair side but move onto the current chair offset, even
+ * when the table itself does not move (an older save may have used a different
+ * offset). Used on load, so saves from an older floor plan get the current one.
  */
 export function relayoutTables(state: GameState): void {
   const counts: Record<TableZone, number> = { indoor: 0, expansion: 0, outdoor: 0 };
   for (const t of [...state.tables].sort((a, b) => a.id - b.id)) {
     const zone = tableZone(t.pos);
     const pos = zoneTablePosition(zone, counts[zone]++);
-    if (pos.x === t.pos.x && pos.z === t.pos.z) continue;
     for (const c of state.customers) {
       if (c.tableId !== t.id || !c.target) continue;
       const chair = { x: pos.x + (c.target.x < t.pos.x ? -CHAIR_OFFSET : CHAIR_OFFSET), z: pos.z };

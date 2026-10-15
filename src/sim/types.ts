@@ -236,6 +236,9 @@ export type CustomerState =
   | 'leaving'
   | 'angry_leave';
 
+/** Customer personality, chosen by a hash of the seed and the customer id. */
+export type PersonaId = 'office' | 'student' | 'regular' | 'connoisseur' | 'family';
+
 export interface Customer {
   id: number;
   state: CustomerState;
@@ -250,6 +253,10 @@ export interface Customer {
   timer: number;
   /** Visual variant picked at spawn (outfit color etc.). */
   look: number;
+  /** Personality that shapes the order, patience and review. Absent (old saves) = neutral. */
+  persona?: PersonaId;
+  /** Food ordered alongside the drink; absent when the customer orders no food. */
+  extraItem?: MenuItemId;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';
