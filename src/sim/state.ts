@@ -45,6 +45,13 @@ export function createDayStats(day: number, rating: number): DayStats {
     outOfStock: {},
     ratingStart: rating,
     ratingEnd: rating,
+    arrivalsByHour: new Array(24).fill(0),
+    revenueByHour: new Array(24).fill(0),
+    waitMinutesSum: 0,
+    waitCount: 0,
+    seatMinutesUsed: 0,
+    wasteCost: 0,
+    soldRevenue: {},
   };
 }
 

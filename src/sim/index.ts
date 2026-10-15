@@ -16,10 +16,21 @@ import type { Command, GameState } from './types';
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
 export const MAX_TICKS_PER_STEP = 240;
 
+/** Samples seat use for this open minute: how many seats are occupied right now. */
+function accrueSeatMinutes(state: GameState): void {
+  if (state.today.seatMinutesUsed === undefined) return;
+  let occupied = 0;
+  for (const table of state.tables) occupied += table.occupants.length;
+  state.today.seatMinutesUsed += occupied;
+}
+
 /** One fixed tick: one game minute. */
 function tick(state: GameState): void {
   advanceClock(state);
-  if (state.phase !== 'closing') spawnArrivals(state);
+  if (state.phase !== 'closing') {
+    spawnArrivals(state);
+    accrueSeatMinutes(state);
+  }
   const eventsBefore = state.events.length;
   updatePlayerTasks(state);
   updateStaff(state);
@@ -149,6 +160,7 @@ export {
   toggleMenuItem,
 } from './inventory';
 export { buildDailyReport, closeDay } from './report';
+export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
 export { buyUpgrade, getShopLayout, nextUpgradeCost } from './upgrades';

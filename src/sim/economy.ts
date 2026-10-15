@@ -42,6 +42,19 @@ export function profit(stats: DayStats): number {
   return stats.revenue - stats.ingredientCost - stats.wages - stats.marketingCost;
 }
 
+/** Hour of day (0..23) for a game minute since midnight. */
+export function hourOf(minute: number): number {
+  return Math.floor(minute / 60);
+}
+
+/** Books `amount` đồng of revenue for today and buckets it by the current hour. */
+export function recordRevenue(state: GameState, amount: number): void {
+  state.today.revenue += amount;
+  const hour = hourOf(state.minute);
+  const byHour = state.today.revenueByHour;
+  if (byHour && hour >= 0 && hour < 24) byHour[hour] = (byHour[hour] ?? 0) + amount;
+}
+
 /** Records a marketing expense paid today. Refused when the money does not cover it. */
 export function payMarketing(state: GameState, amount: number): boolean {
   if (!(amount > 0) || state.money < amount) return false;

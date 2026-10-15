@@ -257,6 +257,8 @@ export interface Customer {
   persona?: PersonaId;
   /** Food ordered alongside the drink; absent when the customer orders no food. */
   extraItem?: MenuItemId;
+  /** Game minute the customer came through the door; used to measure wait time. Absent in old saves. */
+  arrivedMinute?: number;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';
@@ -346,6 +348,20 @@ export interface DayStats {
   waitShareSum?: number;
   /** Takeaway customers who could not sit because the free seats were dirty. */
   dirtyTableHits?: number;
+  /** Arrivals bucketed by hour of day (index 0..23). Absent in old saves. */
+  arrivalsByHour?: number[];
+  /** Revenue recognised bucketed by hour of day (index 0..23). Absent in old saves. */
+  revenueByHour?: number[];
+  /** Sum of wait minutes from joining the line to getting the drink, over served customers. Absent in old saves. */
+  waitMinutesSum?: number;
+  /** Count of served customers folded into waitMinutesSum. Absent in old saves. */
+  waitCount?: number;
+  /** Seat-minutes used in opening hours: occupied seats summed once per open minute. Absent in old saves. */
+  seatMinutesUsed?: number;
+  /** Base-price ingredient cost of servings made for customers who then left; a subset of ingredientsUsed. Absent in old saves. */
+  wasteCost?: number;
+  /** Revenue per menu item sold, in đồng. Absent in old saves. */
+  soldRevenue?: Partial<Record<MenuItemId, number>>;
 }
 
 export type SuggestionKind = 'restock' | 'hire_barista' | 'hire_server' | 'hire_cleaner' | 'marketing' | 'upgrade';
@@ -353,6 +369,55 @@ export type SuggestionKind = 'restock' | 'hire_barista' | 'hire_server' | 'hire_
 export interface Suggestion {
   kind: SuggestionKind;
   text: string;
+}
+
+/** How a management metric is doing against its F&B benchmark. */
+export type InsightStatus = 'good' | 'watch' | 'bad';
+
+/** UI panel an insight's advice points the player at. */
+export type InsightPanel = 'menu' | 'staff' | 'upgrades' | 'inventory' | 'marketing';
+
+export type MetricId =
+  | 'food_cost'
+  | 'labor_cost'
+  | 'prime_cost'
+  | 'aov'
+  | 'seat_fill'
+  | 'avg_wait'
+  | 'waste'
+  | 'peak_hour'
+  | 'abandon_rate';
+
+/** One management figure for the day with its benchmark status and an action hint. */
+export interface InsightMetric {
+  id: MetricId;
+  /** Value in the metric's unit (pct, minutes, đồng, hour), or null when it cannot be computed. */
+  value: number | null;
+  /** Benchmark status, or null for informational metrics and uncomputable values. */
+  status: InsightStatus | null;
+  /** Action hint shown when the status is watch or bad; empty string otherwise. */
+  advice: string;
+  /** Panel the UI should open to act on the advice, when there is one. */
+  panel?: InsightPanel;
+}
+
+/** Gross margin of one menu item at today's prices. */
+export interface ItemMargin {
+  id: MenuItemId;
+  /** Sell price minus ingredient cost of one serving, in đồng. */
+  grossProfit: number;
+  /** grossProfit / price as a 0..100 percentage (0 when the price is 0). */
+  marginPct: number;
+  status: InsightStatus;
+}
+
+/** Business insights derived from a day's stats; attached to the daily report. */
+export interface Insights {
+  metrics: InsightMetric[];
+  /** Day gross profit: revenue − COGS, in đồng; null without revenue. */
+  grossProfit: number | null;
+  /** Gross margin per enabled menu item, in menu order. */
+  itemMargins: ItemMargin[];
 }
 
 /** End-of-day summary shown on the Daily Report screen. */
@@ -377,6 +442,8 @@ export interface DailyReport {
   /** Today's reviews, newest last. */
   reviews: Review[];
   suggestions: Suggestion[];
+  /** Management insights for the day; absent when built from a save without the extra day stats. */
+  insights?: Insights;
   /** Today's daily missions with their final progress and status. */
   missions?: Mission[];
   /** XP earned today from service, 4–5 star reviews and completed missions. */

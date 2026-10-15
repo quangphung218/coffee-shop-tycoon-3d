@@ -1,5 +1,6 @@
 import { isOpen } from './clock';
 import { angryLeave, maybeAddOn, seatCustomer, serveCustomer } from './customers';
+import { recordRevenue } from './economy';
 import { getMenuItem, isCoffeeDrink } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake, consume } from './inventory';
@@ -192,7 +193,7 @@ export function finishTask(state: GameState, task: StaffTask): void {
       const table = state.tables.find((t) => t.id === task.targetId);
       if (!table) return;
       state.money += table.cash;
-      state.today.revenue += table.cash;
+      recordRevenue(state, table.cash);
       state.events.push({ type: 'cash', amount: table.cash, pos: { ...table.pos } });
       table.cash = 0;
       return;
