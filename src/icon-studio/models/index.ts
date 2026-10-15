@@ -5,6 +5,7 @@
  */
 import type { Object3D } from 'three';
 import type { IconId } from '../../ui/core/icons';
+import * as E from './equipment';
 import * as G from './glyphs';
 import * as H from './hud';
 import * as I from './items';
@@ -131,6 +132,16 @@ const ICON_MODELS: Readonly<Record<IconId, () => Object3D>> = {
   'i-paintings': S.paintings,
   'i-lights': S.lights,
   'i-window-bar': S.windowBar,
+  // New equipment unlocked by shop level
+  'i-grinder': E.grinder,
+  'i-pastry-case': E.pastryCase,
+  'i-blender': E.blender,
+  'i-ice-maker': E.iceMaker,
+  'i-dishwasher': E.dishwasher,
+  // New drink, shop level and mission
+  'i-frappe': E.frappe,
+  'i-level': E.level,
+  'i-mission': E.mission,
 };
 
 export const MODELS: Readonly<Record<string, () => Object3D>> = { ...ICON_MODELS, ...AVATAR_MODELS };

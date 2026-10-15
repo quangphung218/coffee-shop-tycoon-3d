@@ -987,6 +987,51 @@ legend {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Shop-level chip: level name over an XP bar, sharing the day pill's row. */
+.hud-level {
+  padding-right: var(--space-4);
+}
+.hud-level .level-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.hud-level .level-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+  white-space: nowrap;
+}
+.xp {
+  width: 112px;
+  max-width: 34vw;
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--data-track);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  overflow: hidden;
+}
+.xp-fill {
+  display: block;
+  height: 100%;
+  background: var(--data-bar);
+  transition: width var(--duration-base) var(--easing-standard);
+}
+/* One-shot honey ring when the shop levels up; reduce-motion zeroes it. */
+.hud-level.is-level-up {
+  animation: level-up-flash var(--duration-slow) var(--easing-standard);
+}
+@keyframes level-up-flash {
+  0%,
+  100% {
+    box-shadow: var(--shadow-md);
+  }
+  40% {
+    box-shadow:
+      0 0 0 4px var(--accent-primary),
+      var(--shadow-md);
+  }
+}
 .phases {
   display: flex;
   flex-wrap: wrap;
@@ -1200,6 +1245,15 @@ legend {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-heavy);
   line-height: 1;
+}
+/* Divider between the dock's two groups (Vận hành | Phát triển). */
+.dock-sep {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: var(--size-outline-sm);
+  margin: var(--space-1) 0;
+  background: var(--border-outline);
+  border-radius: var(--radius-pill);
 }
 @media (max-width: 1023px) {
   .dock-btn {

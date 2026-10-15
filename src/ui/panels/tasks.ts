@@ -2,9 +2,11 @@ import { getIngredient } from '../../sim/data/ingredients';
 import { getCampaign } from '../../sim/data/marketing';
 import { getMenuItem } from '../../sim/data/menu';
 import { autoRestockSuggestion, canMake } from '../../sim/inventory';
-import type { GameState, SuggestionKind } from '../../sim/types';
+import type { GameState, Mission, MissionId, SuggestionKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
-import { icon } from '../core/icons';
+import { formatMoney, formatRating } from '../core/format';
+import { MISSION_ICON } from '../core/iconMap';
+import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
@@ -92,9 +94,60 @@ const SUGGESTION_PANEL: Record<SuggestionKind, { panel: string; link: string }> 
   upgrade: { panel: 'upgrades', link: 'Mở Nâng cấp' },
 };
 
+/** Display name and goal phrasing for each daily mission (design/p20 §5). */
+const MISSION_META: Record<MissionId, { title: string; dir: 'gte' | 'lte'; goal: (t: number) => string; measure: (v: number) => string }> = {
+  serve_customers: { title: 'Phục vụ khách', dir: 'gte', goal: (t) => `Mục tiêu ≥ ${t} khách`, measure: (v) => `${v} khách` },
+  no_stockout_loss: { title: 'Không để hết hàng', dir: 'lte', goal: () => 'Mục tiêu 0 đơn lỡ vì hết hàng', measure: (v) => `${v} đơn lỡ` },
+  food_cost: { title: 'Giữ giá vốn thấp', dir: 'lte', goal: (t) => `Mục tiêu ≤ ${t}% giá vốn`, measure: (v) => `${v}%` },
+  sell_food: { title: 'Bán món ăn kèm', dir: 'gte', goal: (t) => `Mục tiêu ≥ ${t} phần ăn`, measure: (v) => `${v} phần` },
+  end_rating: { title: 'Giữ đánh giá cao', dir: 'gte', goal: (t) => `Mục tiêu ≥ ${formatRating(t)} sao`, measure: (v) => `${formatRating(v)} sao` },
+  low_abandon: { title: 'Ít khách bỏ về', dir: 'lte', goal: (t) => `Mục tiêu ≤ ${t}% bỏ về`, measure: (v) => `${v}%` },
+};
+
+const MISSION_STATE: Record<Mission['status'], { label: string; badge: string; icon: IconId }> = {
+  active: { label: 'Đang theo dõi', badge: 'badge-neutral', icon: 'i-todo' },
+  completed: { label: 'Xong', badge: 'badge-ok', icon: 'i-ok' },
+  failed: { label: 'Hụt', badge: 'badge-warn', icon: 'i-warning' },
+};
+
+/** 0..1 bar fill: full when won, how close for a missed "reach" goal, else empty (not yet scored). */
+function missionFill(m: Mission): number {
+  if (m.status === 'completed') return 1;
+  if (m.status === 'failed' && MISSION_META[m.id].dir === 'gte') return m.target > 0 ? Math.min(1, m.progress / m.target) : 0;
+  return 0;
+}
+
+/** One mission card: name, status badge, goal, a progressbar and the XP/cash reward. */
+function missionCard(m: Mission): HTMLElement {
+  const meta = MISSION_META[m.id];
+  const st = MISSION_STATE[m.status];
+  const fill = missionFill(m);
+  const now = Math.round(fill * 100);
+  const valueText = m.status === 'active' ? meta.goal(m.target) : `${meta.measure(m.progress)} · ${meta.goal(m.target)}`;
+  return h(
+    'li',
+    { class: 'mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
+    h(
+      'div',
+      { class: 'mission-head' },
+      h('span', { class: 'mission-icon' }, icon(MISSION_ICON, { size: 24 })),
+      h('p', { class: 'mission-title', text: meta.title }),
+      h('span', { class: `badge ${st.badge}` }, ...withIcon(st.icon, st.label)),
+    ),
+    h('p', { class: 'item-meta', text: valueText }),
+    h(
+      'div',
+      { class: 'progress', attrs: { role: 'progressbar', 'aria-label': meta.title, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(now), 'aria-valuetext': valueText } },
+      h('span', { attrs: { style: `width:${now}%` } }),
+    ),
+    h('p', { class: 'item-meta mission-reward' }, ...withIcon('i-sparkle', `+${m.rewardXp} KN`), ' · ', ...withIcon('i-coin', `+${formatMoney(m.rewardMoney)}`)),
+  );
+}
+
 /**
- * Task Board: today's checklist with done/not-done state, yesterday's report
- * suggestions, and "Mở cửa" (start_day). Unfinished tasks only remind.
+ * Task Board: today's checklist with done/not-done state, today's daily
+ * missions, yesterday's report suggestions, and "Mở cửa" (start_day).
+ * Unfinished tasks only remind.
  */
 export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -103,6 +156,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const summary = h('span');
   const bar = h('span');
   const list = h('ul', { class: 'stack', attrs: { 'aria-label': 'Việc trong ngày' } });
+  const missionTitle = h('h3', { class: 'section-title' }, ...withIcon(MISSION_ICON, 'Nhiệm vụ hôm nay', 24));
+  const missionList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Nhiệm vụ hôm nay' } });
+  const missionEmpty = h('p', { class: 'item-meta mission-empty', text: 'Ván này chưa có nhiệm vụ ngày (lưu từ bản cũ).', hidden: true });
   const sugTitle = h('h3', { class: 'section-title' }, ...withIcon('i-tip', 'Gợi ý từ báo cáo hôm qua', 24));
   const sugList = h('ul', { class: 'stack' });
   const openBtn = h('button', { class: 'btn btn-accent btn-lg btn-block', attrs: { type: 'button', 'data-action': 'open' } }, icon('i-open'), 'Mở cửa');
@@ -150,6 +206,13 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
   w.watch(
+    (s) => JSON.stringify(s.missions),
+    (_, s) => {
+      missionEmpty.hidden = s.missions.length > 0;
+      setChildren(missionList, ...s.missions.map(missionCard));
+    },
+  );
+  w.watch(
     (s) => s.lastReport ?? null,
     (report) => {
       const items = report?.suggestions ?? [];
@@ -169,6 +232,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       { class: 'prep' },
       h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar)),
       list,
+      missionTitle,
+      missionEmpty,
+      missionList,
       sugTitle,
       sugList,
       h('div', { class: 'panel-foot' }, openBtn, why),
