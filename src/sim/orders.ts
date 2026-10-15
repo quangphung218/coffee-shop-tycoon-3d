@@ -34,13 +34,22 @@ export function brewSpeedFor(state: GameState, itemId: MenuItemId): number {
   return speed;
 }
 
+/**
+ * Task minutes kept to two decimals. Brewing and cleaning times are fractional
+ * so a small speed bonus is never rounded away; the unused part of a minute
+ * carries over to the next task (see workMinute).
+ */
+function taskMinutes(minutes: number): number {
+  return Math.max(1, Math.round(minutes * 100) / 100);
+}
+
 export function brewMinutes(state: GameState, itemId: MenuItemId): number {
-  return Math.max(1, Math.round(getMenuItem(itemId).prepMinutes / brewSpeedFor(state, itemId)));
+  return taskMinutes(getMenuItem(itemId).prepMinutes / brewSpeedFor(state, itemId));
 }
 
 /** Minutes to clean a table, cut by the dishwasher's clean-speed bonus. */
 export function cleanMinutes(state: GameState): number {
-  return Math.max(1, Math.round(TASK_MINUTES.clean / (1 + totalUpgradeEffect(state.upgrades).cleanSpeed)));
+  return taskMinutes(TASK_MINUTES.clean / (1 + totalUpgradeEffect(state.upgrades).cleanSpeed));
 }
 
 /** Who works on a task: the player (null) or a staff member's id. */
@@ -225,18 +234,52 @@ export function advanceTask(state: GameState, task: StaffTask, worker: WorkerId,
   return true;
 }
 
+/** Smallest leftover worth carrying into the next task. */
+const MIN_CARRY = 0.005;
+
+/**
+ * Spends `budget` minutes of work through `next()`: when a task finishes
+ * before the budget is used up, the rest goes to the next task, so fractional
+ * task times and staff speeds add up instead of being lost. `next` returns the
+ * task to work on (or null), `drop` removes an invalid task (true keeps looking
+ * for work this minute) and `done` removes and finishes a completed one.
+ */
+export function workMinute(
+  state: GameState,
+  worker: WorkerId,
+  budget: number,
+  next: () => StaffTask | null,
+  drop: () => boolean,
+  done: (task: StaffTask) => void,
+): void {
+  for (let guard = 0; guard < 100 && budget > MIN_CARRY; guard++) {
+    const task = next();
+    if (!task) return;
+    if (!advanceTask(state, task, worker, budget)) {
+      if (drop()) continue;
+      return;
+    }
+    if (task.remaining > 0) return;
+    // Every task takes at least a minute, so the leftover shrinks below the budget.
+    budget = Math.min(budget, -task.remaining);
+    done(task);
+  }
+}
+
 /** One game minute of player work on the head of the task queue. Invalid tasks are skipped. */
 export function updatePlayerTasks(state: GameState): void {
-  while (state.playerTasks.length > 0) {
-    const task = state.playerTasks[0]!;
-    if (!advanceTask(state, task, null, 1)) {
+  workMinute(
+    state,
+    null,
+    1,
+    () => state.playerTasks[0] ?? null,
+    () => {
       state.playerTasks.shift();
-      continue;
-    }
-    if (task.remaining <= 0) {
+      return true;
+    },
+    (task) => {
       state.playerTasks.shift();
       finishTask(state, task);
-    }
-    return;
-  }
+    },
+  );
 }
