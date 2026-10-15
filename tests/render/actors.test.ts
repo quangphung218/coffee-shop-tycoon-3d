@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_ANIMS,
   ANIM_PERIOD,
+  BLINK_PERIOD,
+  EYE_MIN_OPEN,
   MAX_STRIDES_PER_SECOND,
   SPEC_ANIMS,
   STRIDE,
   blendPose,
+  blinkFor,
   poseFor,
   propsFor,
   restPose,
@@ -28,7 +31,7 @@ import {
   popScale,
 } from '../../src/render/actors/labels';
 import { Pool } from '../../src/render/actors/pool';
-import { APRON_COLORS, createCharacter, materialFor } from '../../src/render/actors/rig';
+import { APRON_COLORS, createCharacter, materialFor, type Character } from '../../src/render/actors/rig';
 import {
   ACCEL_MINUTES,
   BRAKE_DISTANCE,
@@ -36,6 +39,7 @@ import {
   CORNER_RADIUS,
   CUSTOMER_ANIM,
   FACE_BACK,
+  IMPATIENT_FRAC,
   MAX_TURN_SPEED,
   SEPARATION_RADIUS,
   WALK_SPEED,
@@ -44,6 +48,7 @@ import {
   createMotion,
   customerAnim,
   customerGoal,
+  customerMood,
   easedStep,
   exitPoint,
   headingOf,
@@ -175,8 +180,56 @@ describe('poseFor', () => {
     expect(propsFor('carry_tray').tray).toBe(true);
     expect(propsFor('serve').tray).toBe(true);
     expect(propsFor('drink').cup).toBe(true);
+    expect(propsFor('handoff').cup).toBe(true);
     expect(propsFor('clean').rag).toBe(true);
     expect(propsFor('walk')).toEqual({ tray: false, cup: false, rag: false });
+  });
+
+  it('works the hands through several moves while brewing', () => {
+    const period = ANIM_PERIOD.brew;
+    // Grind, tamp, pull and pour: the right hand reaches a different spot each beat.
+    const beats = [0.125, 0.375, 0.625, 0.875].map((f) => poseFor('brew', f * period));
+    for (const p of beats) {
+      expect(p.armRX).toBeLessThan(-0.8);
+      expect(Math.abs(p.armRX)).toBeLessThan(3.2);
+    }
+    const distinct = new Set(beats.map((p) => Math.round(p.armRX * 100) / 100));
+    expect(distinct.size).toBeGreaterThanOrEqual(3);
+    // The left hand comes forward to steady the portafilter and pour.
+    expect(poseFor('brew', 0.25 * period).armLX).toBeLessThan(-1);
+  });
+
+  it('offers the cup with both hands when handing off', () => {
+    const p = poseFor('handoff', ANIM_PERIOD.handoff / 2);
+    expect(p.armLX).toBeLessThan(-1);
+    expect(p.armRX).toBeLessThan(-1);
+    expect(p.lean).toBeGreaterThan(0);
+  });
+
+  it('taps a foot and checks a watch when impatient', () => {
+    // A foot lifts somewhere in the loop.
+    const taps = [0.08, 0.25, 0.42].map((f) => poseFor('impatient', f * ANIM_PERIOD.impatient).legR);
+    expect(Math.max(...taps)).toBeGreaterThan(0.1);
+    // Early in the loop the left arm comes up to read the wrist.
+    expect(poseFor('impatient', 0.1 * ANIM_PERIOD.impatient).armLX).toBeLessThan(-0.8);
+  });
+
+  it('blinks on a bounded, per-phase, periodic clock', () => {
+    for (const phase of [0, 1.3, 3.7]) {
+      let closed = false;
+      for (let t = 0; t < BLINK_PERIOD; t += 0.01) {
+        const open = blinkFor(t, phase);
+        expect(open).toBeGreaterThanOrEqual(EYE_MIN_OPEN - 1e-9);
+        expect(open).toBeLessThanOrEqual(1 + 1e-9);
+        if (open < 0.9) closed = true;
+        // Repeats every period.
+        expect(blinkFor(t + BLINK_PERIOD, phase)).toBeCloseTo(open, 9);
+      }
+      expect(closed).toBe(true);
+    }
+    // Different phases close at different moments: not all shut at once.
+    expect(blinkFor(0.05, 0)).not.toBeCloseTo(blinkFor(0.05, 2), 3);
+    expect(blinkFor(Number.NaN, 0)).toBe(1);
   });
 });
 
@@ -228,16 +281,43 @@ describe('sync: customers', () => {
     const queueing = addCustomer(state, { target: { x: 0, z: 0.6 } });
     expect(customerGoal(state, queueing, layout)).toEqual({ pos: { x: 0, z: 0.6 }, face: FACE_BACK, seated: false });
   });
+
+  it('fidgets while waiting with little patience left', () => {
+    expect(customerAnim('queueing', false, false, 0.2)).toBe('impatient');
+    expect(customerAnim('waiting', false, false, 0.2)).toBe('impatient');
+    expect(customerAnim('queueing', false, false, 0.9)).toBe('queue');
+    // Walking or seated overrides the fidget; ordering is not a restless state.
+    expect(customerAnim('queueing', true, false, 0.1)).toBe('walk');
+    expect(customerAnim('waiting', false, true, 0.1)).toBe('sit');
+    expect(customerAnim('ordering', false, false, 0.1)).toBe('idle');
+    // Defaults to patient when no fraction is given.
+    expect(customerAnim('queueing', false, false)).toBe('queue');
+  });
+});
+
+describe('sync: mood', () => {
+  it('reads the expression from state and patience', () => {
+    expect(customerMood('angry_leave', 1)).toBe('angry');
+    expect(customerMood('drinking', 0.1)).toBe('happy');
+    expect(customerMood('leaving', 0.1)).toBe('happy');
+    expect(customerMood('queueing', 0.2)).toBe('impatient');
+    expect(customerMood('waiting', IMPATIENT_FRAC - 0.01)).toBe('impatient');
+    expect(customerMood('entering', 0.1)).toBe('impatient');
+    expect(customerMood('queueing', 0.9)).toBe('neutral');
+    expect(customerMood('waiting', IMPATIENT_FRAC + 0.01)).toBe('neutral');
+    expect(customerMood('ordering', 0.1)).toBe('neutral');
+  });
 });
 
 describe('sync: staff and player', () => {
   it('maps tasks to carry_tray, serve, clean and friends', () => {
     const task = (kind: StaffTaskKind) => ({ kind, targetId: 1, remaining: 1 });
     expect(workerAnim(task('serve'), true)).toBe('carry_tray');
-    expect(workerAnim(task('serve'), false)).toBe('serve');
+    expect(workerAnim(task('serve'), false)).toBe('handoff');
     expect(workerAnim(task('clean'), false)).toBe('clean');
     expect(workerAnim(task('clean'), true)).toBe('walk');
-    expect(workerAnim(task('brew'), false)).toBe('work');
+    expect(workerAnim(task('brew'), false)).toBe('brew');
+    expect(workerAnim(task('collect'), false)).toBe('work');
     expect(workerAnim(task('promote'), false)).toBe('wave');
     expect(workerAnim(null, false)).toBe('idle');
   });
@@ -824,6 +904,39 @@ describe('rig and pool', () => {
     expect(a.head.parent).toBe(a.torso);
     expect(a.armL.parent).toBe(a.torso);
     expect(a.legL.parent).toBe(a.hips);
+  });
+
+  it('stays within the mesh budget and swaps faces in place', () => {
+    const countMeshes = (ch: Character): number => {
+      let n = 0;
+      ch.root.traverse((o) => {
+        if ('geometry' in o) n += 1;
+      });
+      return n;
+    };
+    // Pre-P20 the rig drew 21 meshes; a 30% rise is the budget (merged faces compensate).
+    const BUDGET = Math.ceil(21 * 1.3);
+    const plain = createCharacter({ role: 'customer', look: 0 });
+    const dressed = createCharacter({ role: 'customer', look: 2, persona: 'student' });
+    expect(countMeshes(dressed)).toBeLessThanOrEqual(BUDGET);
+    // The accessory slot always exists, so a persona adds no meshes.
+    expect(countMeshes(dressed)).toBe(countMeshes(plain));
+    // Every mood swaps geometry in place, never adds a mesh.
+    const before = countMeshes(dressed);
+    for (const mood of ['happy', 'impatient', 'angry', 'neutral'] as const) {
+      dressed.setMood(mood);
+      expect(countMeshes(dressed)).toBe(before);
+    }
+    dressed.setMood('angry');
+    expect(dressed.isAngry).toBe(true);
+    dressed.setMood('happy');
+    expect(dressed.isAngry).toBe(false);
+    // Blink and persona accessories build for every persona without error.
+    dressed.setBlink(EYE_MIN_OPEN);
+    dressed.setBlink(1);
+    for (const persona of ['office', 'student', 'regular', 'connoisseur', 'family'] as const) {
+      expect(countMeshes(createCharacter({ role: 'customer', look: 1, persona }))).toBe(before);
+    }
   });
 
   it('reuses released objects instead of creating new ones', () => {
