@@ -127,7 +127,7 @@ function missionView(state: GameState, m: Mission): { now: number; valueText: st
   const meta = MISSION_META[m.id];
   const now = Math.round(missionFill(state, m) * 100);
   const value = m.status === 'active' ? missionProgress(state, m).value : m.progress;
-  return { now, valueText: `${meta.measure(value)} · ${meta.goal(m.target)}` };
+  return { now, valueText: `${value === null ? 'Chưa đủ dữ liệu' : meta.measure(value)} · ${meta.goal(m.target)}` };
 }
 
 /** One mission card: name, status badge, goal, a progressbar and the XP/cash reward. */

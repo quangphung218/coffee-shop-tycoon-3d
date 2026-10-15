@@ -42,16 +42,20 @@ export function clampRating(r: number): number {
   return Math.min(MAX_RATING, Math.max(MIN_RATING, r));
 }
 
+/** `from` moved halfway toward today's score, rounded to 0.01; unchanged on a day without customers. */
+export function nextRating(state: GameState, from: number): number {
+  if (state.today.customersArrived <= 0) return from;
+  const next = from + (dayScore(state) - from) * RATING_STEP;
+  return Math.round(clampRating(next) * 100) / 100;
+}
+
 /**
  * Moves the rating halfway toward today's score and records it as ratingEnd.
  * A day without customers leaves it unchanged. Tomorrow's arrivals scale with
  * the rating through arrivalRate in customers.ts.
  */
 export function updateRating(state: GameState): number {
-  if (state.today.customersArrived > 0) {
-    const next = state.rating + (dayScore(state) - state.rating) * RATING_STEP;
-    state.rating = Math.round(clampRating(next) * 100) / 100;
-  }
+  state.rating = nextRating(state, state.rating);
   state.today.ratingEnd = state.rating;
   return state.rating;
 }

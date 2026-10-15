@@ -6,6 +6,8 @@ import {
   unlocksBetween,
   upgradeUnlockLevel,
 } from './data/levels';
+import { ingredientCostUsed } from './economy';
+import { nextRating } from './rating';
 import { mulberry32 } from './rng';
 import type { GameState, MenuEntry, MenuItemId, Mission, MissionId, Unlocks, UpgradeId } from './types';
 
@@ -29,12 +31,14 @@ interface MissionSpec {
   target: (level: number) => number;
   rewardXp: number;
   rewardMoney: number;
-  /** Measured value for the day. */
-  measure: (state: GameState) => number;
+  /**
+   * Measured value for the day, from fields that are live during the day (not
+   * ones only settleDay fills). Null while it cannot be judged yet (food cost
+   * before any revenue).
+   */
+  measure: (state: GameState) => number | null;
   /** 'gte': reach the target or more; 'lte': stay at or under it. */
   goal: 'gte' | 'lte';
-  /** False while the value cannot be judged yet (food cost before any revenue). */
-  ready?: (state: GameState) => boolean;
 }
 
 function sumValues(rec: Partial<Record<string, number>>): number {
@@ -60,15 +64,9 @@ const SPECS: Record<MissionId, MissionSpec> = {
     target: () => 38,
     rewardXp: 60,
     rewardMoney: 100000,
-    // Without revenue there is no food cost to judge: ingredients bought but not sold count as 100%.
-    measure: (s) =>
-      s.today.revenue > 0
-        ? Math.round((s.today.ingredientCost / s.today.revenue) * 100)
-        : s.today.ingredientCost > 0
-          ? 100
-          : 0,
+    // Live cost of what was used, the same figure settleDay books; null until there is revenue to judge it by.
+    measure: (s) => (s.today.revenue > 0 ? Math.round((ingredientCostUsed(s) / s.today.revenue) * 100) : null),
     goal: 'lte',
-    ready: (s) => s.today.revenue > 0,
   },
   sell_food: {
     target: (lvl) => 2 + lvl,
@@ -81,7 +79,8 @@ const SPECS: Record<MissionId, MissionSpec> = {
     target: (lvl) => Math.round((3.4 + lvl * 0.15) * 10) / 10,
     rewardXp: 50,
     rewardMoney: 80000,
-    measure: (s) => Math.round(s.today.ratingEnd * 100) / 100,
+    // The rating updateRating will record tonight, projected from the live day stats.
+    measure: (s) => nextRating(s, s.today.ratingStart),
     goal: 'gte',
   },
   low_abandon: {
@@ -95,8 +94,8 @@ const SPECS: Record<MissionId, MissionSpec> = {
 };
 
 export interface MissionProgress {
-  /** Today's measured value, in the mission's unit (customers, cups, stars, %). */
-  value: number;
+  /** Today's measured value, in the mission's unit (customers, cups, stars, %); null while there is not enough data. */
+  value: number | null;
   /**
    * How far along the day is, 0..1, for a progress bar. For a 'reach' goal it
    * is value / target; for a 'stay under' goal it is 1 while the value is
@@ -114,7 +113,8 @@ export interface MissionProgress {
 export function missionProgress(state: GameState, mission: Mission): MissionProgress {
   const spec = SPECS[mission.id];
   const value = spec.measure(state);
-  const ready = state.today.customersArrived > 0 && (spec.ready?.(state) ?? true);
+  if (value === null) return { value, ratio: 0, met: false };
+  const ready = state.today.customersArrived > 0;
   const target = mission.target;
   let ratio: number;
   let within: boolean;
@@ -193,7 +193,7 @@ export function scoreProgression(state: GameState): ProgressionResult {
   let missionMoney = 0;
   for (const m of state.missions) {
     const { value, met } = missionProgress(state, m);
-    m.progress = value;
+    m.progress = value ?? 0;
     m.status = met ? 'completed' : 'failed';
     if (met) {
       missionXp += m.rewardXp;
