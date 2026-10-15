@@ -81,12 +81,12 @@ describe('HUD level chip and XP bar', () => {
     return hud.el;
   }
 
-  it('shows the level name and an XP progressbar scaled to the next threshold', () => {
+  it('shows "Cấp N" and an XP progressbar scaled to the next threshold', () => {
     const state = game();
     state.xp = xpToReach(2) / 2;
     const el = makeHud(state);
     const chip = q(el, '[data-stat="level"]');
-    expect(q(chip, '.level-name').textContent).toBe('Cấp 1 · Quán nhỏ');
+    expect(q(chip, '.level-name').textContent).toBe('Cấp 1');
     const bar = q(chip, '[role="progressbar"]');
     expect(bar.getAttribute('aria-valuemin')).toBe('0');
     expect(bar.getAttribute('aria-valuemax')).toBe(String(xpToReach(2)));
@@ -94,6 +94,43 @@ describe('HUD level chip and XP bar', () => {
     expect(bar.getAttribute('aria-valuetext')).toContain('Cấp 2');
     expect(q<HTMLElement>(chip, '.xp-fill').style.width).toBe('50%');
     expect(q(chip, '[data-stat="xp"]').textContent).toBe(`${xpToReach(2) / 2}/${xpToReach(2)}`);
+  });
+
+  it('keeps the level name out of the visible text, in the title and accessible name instead', () => {
+    const state = game();
+    const el = makeHud(state);
+    const chip = q(el, '[data-stat="level"]');
+    expect(chip.textContent).not.toContain('Quán nhỏ');
+    expect(chip.textContent).not.toContain('·');
+    expect(chip.getAttribute('title')).toBe('Cấp 1 · Quán nhỏ');
+    expect(chip.getAttribute('role')).toBe('group');
+    expect(chip.getAttribute('aria-label')).toBe('Cấp 1 · Quán nhỏ');
+
+    state.shopLevel = 2;
+    state.xp = xpToReach(2);
+    hud!.update(state);
+    expect(q(chip, '.level-name').textContent).toBe('Cấp 2');
+    expect(chip.getAttribute('title')).toMatch(/^Cấp 2 · /);
+    expect(chip.textContent).not.toContain(chip.getAttribute('title')!.split(' · ')[1]!);
+  });
+
+  it('lays the chip out on one row: icon, "Cấp N", bar, count', () => {
+    const el = makeHud(game());
+    const chip = q(el, '[data-stat="level"]');
+    const kids = [...chip.children].map((c) => c.className || c.tagName);
+    expect(kids.slice(1)).toEqual(['level-name', 'xp', 'xp-num']);
+  });
+
+  it('narrows the chip at ≤ 640 px so the HUD row does not wrap', async () => {
+    // Vitest stubs .css imports, so read the stylesheet like styles.test.ts does.
+    const fsModule = 'node:fs';
+    const { readFileSync } = (await import(/* @vite-ignore */ fsModule)) as { readFileSync(path: string, encoding: 'utf8'): string };
+    // jsdom swaps the URL class, so use a path from the project root (vitest's cwd).
+    const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const phone = css.slice(css.lastIndexOf('@media (max-width: 640px)'));
+    expect(phone).toMatch(/\.hud-level \.xp-num\s*\{\s*display:\s*none;/);
+    expect(phone).toMatch(/\.hud-level \.xp\s*\{\s*width:\s*var\(--space-8\);/);
+    expect(css).toMatch(/\.hud-level\s*\{[^}]*white-space:\s*nowrap;/);
   });
 
   it('shows the XP count of the current level, e.g. "320/500"', () => {
