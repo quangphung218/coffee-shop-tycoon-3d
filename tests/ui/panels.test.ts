@@ -84,11 +84,11 @@ describe('registration', () => {
 });
 
 describe('menu panel', () => {
-  it('lists the 10 items and locks one that lacks an ingredient, with the reason', () => {
+  it('lists the 11 items and locks one that lacks an ingredient, with the reason', () => {
     const state = game();
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
     const { body, sent } = mount(renderMenuPanel, state);
-    expect(body.querySelectorAll('li.item')).toHaveLength(10);
+    expect(body.querySelectorAll('li.item')).toHaveLength(11);
 
     const mocha = q(body, '[data-item="mocha"]');
     const sw = q<HTMLButtonElement>(mocha, '[role="switch"]');

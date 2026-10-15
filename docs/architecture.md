@@ -151,7 +151,7 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 
 | Khái niệm | Chi tiết |
 | --- | --- |
-| Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ cả 10 món lẫn 10 nâng cấp, kèm id dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) cho hạng mục sau. `isUnlocked(state, kind, id)` so cấp hiện tại với cấp mở khóa. |
+| Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ 11 món và 15 nâng cấp. Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` so cấp hiện tại với cấp mở khóa. |
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP. Cộng lúc `closeDay`; qua ngưỡng `xpToReach` thì lên cấp và phát `level_up`. |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng XP và một ít tiền. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính. |
 

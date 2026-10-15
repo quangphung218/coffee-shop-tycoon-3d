@@ -1,7 +1,7 @@
 import { DOOR_POS, claimSpot } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { buildNavGrid, cellAt, nearestFree } from './nav';
-import { TASK_MINUTES, advanceTask, finishTask, isClaimed } from './orders';
+import { TASK_MINUTES, advanceTask, cleanMinutes, finishTask, isClaimed } from './orders';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
 import { CANDIDATE_COUNT, generateCandidates } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
@@ -192,7 +192,7 @@ export function findJob(state: GameState, member: Staff): StaffTask | null {
       }
       case 'clean': {
         const table = state.tables.find((t) => t.trash > 0 && free('clean', t.id));
-        if (table) return { kind, targetId: table.id, remaining: TASK_MINUTES.clean };
+        if (table) return { kind, targetId: table.id, remaining: cleanMinutes(state) };
         break;
       }
       case 'promote':

@@ -52,11 +52,15 @@ export type MenuItemId =
   | 'latte'
   | 'cappuccino'
   | 'mocha'
+  | 'frappe'
   | 'milk_tea'
   | 'lemon_tea'
   | 'orange_juice'
   | 'croissant'
   | 'cake';
+
+/** Equipment upgrades, a subset of UpgradeId that a shop level unlocks as `tools`. */
+export type ToolId = 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
 
 export type UpgradeId =
   | 'tables'
@@ -68,12 +72,10 @@ export type UpgradeId =
   | 'plants'
   | 'paintings'
   | 'lights'
-  | 'window_bar';
+  | 'window_bar'
+  | ToolId;
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
-
-/** Equipment unlocked by shop level but wired up in a later milestone; kept as plain strings for now. */
-export type ToolId = 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
 
 /** Menu items, upgrades and tools a shop level makes available. */
 export interface Unlocks {
@@ -157,8 +159,20 @@ export interface UpgradeEffect {
   ratingBonus?: number;
   /** Multiplier bonus on arriving customers (0.1 = +10%). */
   appeal?: number;
-  /** Multiplier bonus on preparation speed (0.2 = 20% faster). */
+  /** Multiplier bonus on preparation speed of every item (0.2 = 20% faster). */
   brewSpeed?: number;
+  /** Extra brew-speed bonus for coffee drinks (grinder). */
+  coffeeBrewSpeed?: number;
+  /** Extra brew-speed bonus for cold drinks (blender). */
+  coldBrewSpeed?: number;
+  /** Extra brew-speed bonus for food items (pastry case). */
+  foodBrewSpeed?: number;
+  /** Multiplier bonus on how often customers order food (0.3 = +30%, pastry case). */
+  foodAppeal?: number;
+  /** Multiplier bonus on table-cleaning speed (0.4 = 40% faster, dishwasher). */
+  cleanSpeed?: number;
+  /** Fraction knocked off the price of ice, buying and brewing (0.6 = −60%, ice maker). Clamped to 0.9. */
+  iceCostReduction?: number;
 }
 
 export interface UpgradeDef {

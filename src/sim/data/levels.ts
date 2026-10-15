@@ -6,8 +6,9 @@ export const MAX_SHOP_LEVEL = 6;
 /**
  * Six shop levels, from a corner stall to a famous chain. Each level newly
  * unlocks menu items, upgrades and tools; levels 1..6 together cover every
- * menu item and every upgrade. `tools` are equipment ids a later milestone
- * wires up, listed here so the unlock table is already complete.
+ * menu item and every upgrade. `tools` are equipment upgrades (a subset of
+ * UpgradeId): they gate buying the same way as `upgrades` but stay a separate
+ * list so the UI can present them as equipment.
  */
 export const LEVELS: readonly LevelDef[] = [
   {
@@ -36,7 +37,7 @@ export const LEVELS: readonly LevelDef[] = [
     level: 4,
     name: 'Thương hiệu khu phố',
     xpToReach: 640,
-    unlocks: { menu: ['mocha'], upgrades: ['paintings', 'lights'], tools: ['blender'] },
+    unlocks: { menu: ['mocha', 'frappe'], upgrades: ['paintings', 'lights'], tools: ['blender'] },
   },
   {
     level: 5,
@@ -77,7 +78,8 @@ const MENU_UNLOCK = new Map<MenuItemId, number>();
 const UPGRADE_UNLOCK = new Map<UpgradeId, number>();
 for (const def of LEVELS) {
   for (const id of def.unlocks.menu) if (!MENU_UNLOCK.has(id)) MENU_UNLOCK.set(id, def.level);
-  for (const id of def.unlocks.upgrades) if (!UPGRADE_UNLOCK.has(id)) UPGRADE_UNLOCK.set(id, def.level);
+  // Tools are equipment upgrades; gate buying them by the level that lists them.
+  for (const id of [...def.unlocks.upgrades, ...def.unlocks.tools]) if (!UPGRADE_UNLOCK.has(id)) UPGRADE_UNLOCK.set(id, def.level);
 }
 
 /** Level at which a menu item unlocks (1 when it is not gated). */

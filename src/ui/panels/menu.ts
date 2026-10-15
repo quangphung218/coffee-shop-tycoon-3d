@@ -27,7 +27,7 @@ function popularityDots(p: number): HTMLElement {
 }
 
 /**
- * Menu hôm nay: the 10 items with price, cost, hot/cold, popularity and a
+ * Menu hôm nay: every item with price, cost, hot/cold, popularity and a
  * Bán/Không switch. Items the stock cannot make are locked with the missing
  * ingredient; an item already on sale can still be switched off.
  */
