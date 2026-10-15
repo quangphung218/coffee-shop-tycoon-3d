@@ -29,6 +29,8 @@ const FPS_QUALITIES = ['medium', 'high'];
 const FPS_SECONDS = 10;
 /** A retina laptop screen, so the per-quality pixel-ratio cap matters. */
 const FPS_VIEW = { width: 1280, height: 800, deviceScaleFactor: 2 };
+/** Window while playing up to the peak. */
+const FPS_WAIT_VIEW = { width: 320, height: 240, deviceScaleFactor: 1 };
 /** Day 1 at 4x reaches the peak in about a minute; software WebGL is slower. */
 const PEAK_TIMEOUT_MS = 8 * 60_000;
 
@@ -271,7 +273,8 @@ async function measureFps(cdp, url, quality) {
   const s = (method, params) => cdp.send(method, params, sessionId);
   try {
     await s('Page.enable');
-    await s('Emulation.setDeviceMetricsOverride', { ...FPS_VIEW, mobile: false });
+    // Each frame advances the game by at most 0.1 s, so the day reaches the peak faster in a tiny window.
+    await s('Emulation.setDeviceMetricsOverride', { ...FPS_WAIT_VIEW, mobile: false });
     const settings = { musicVolume: 0, sfxVolume: 0, quality, gameSpeed: 1, cameraKeys: 'qe-wasd' };
     await s('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('cst3d:settings', ${JSON.stringify(JSON.stringify(settings))});` });
     await s('Page.navigate', { url });
@@ -288,6 +291,8 @@ async function measureFps(cdp, url, quality) {
       if (Date.now() > deadline) throw new Error(`${quality}: page did not load`);
       await sleep(100);
     }
+    await s('Emulation.setDeviceMetricsOverride', { ...FPS_VIEW, mobile: false });
+    await sleep(1500);
     const { result } = await s('Runtime.evaluate', { expression: SAMPLE_FRAMES, awaitPromise: true, returnByValue: true });
     return fpsStats(result.value);
   } finally {
