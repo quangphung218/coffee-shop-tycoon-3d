@@ -1,6 +1,6 @@
 import { isOpen } from './clock';
 import { angryLeave, seatCustomer, serveCustomer } from './customers';
-import { getMenuItem } from './data/menu';
+import { getMenuItem, isCoffeeDrink } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake, consume } from './inventory';
 import type { GameState, MenuItemId, Order, StaffTask, StaffTaskKind } from './types';
@@ -18,9 +18,28 @@ export const TASK_MINUTES = {
   clean: 2,
 } as const;
 
+/**
+ * How fast an item is prepared, 1 at the start. `brewSpeed` (fast machine)
+ * speeds up every item; the grinder, blender and pastry case add on top for
+ * coffee drinks, cold drinks and food respectively.
+ */
+export function brewSpeedFor(state: GameState, itemId: MenuItemId): number {
+  const item = getMenuItem(itemId);
+  const e = totalUpgradeEffect(state.upgrades);
+  let speed = 1 + e.brewSpeed;
+  if (item.category === 'food') speed += e.foodBrewSpeed;
+  if (item.temperature === 'cold') speed += e.coldBrewSpeed;
+  if (isCoffeeDrink(item)) speed += e.coffeeBrewSpeed;
+  return speed;
+}
+
 export function brewMinutes(state: GameState, itemId: MenuItemId): number {
-  const speed = 1 + totalUpgradeEffect(state.upgrades).brewSpeed;
-  return Math.max(1, Math.round(getMenuItem(itemId).prepMinutes / speed));
+  return Math.max(1, Math.round(getMenuItem(itemId).prepMinutes / brewSpeedFor(state, itemId)));
+}
+
+/** Minutes to clean a table, cut by the dishwasher's clean-speed bonus. */
+export function cleanMinutes(state: GameState): number {
+  return Math.max(1, Math.round(TASK_MINUTES.clean / (1 + totalUpgradeEffect(state.upgrades).cleanSpeed)));
 }
 
 /** Who works on a task: the player (null) or a staff member's id. */
@@ -86,7 +105,7 @@ export function collectCash(state: GameState, tableId: number): boolean {
 export function cleanTable(state: GameState, tableId: number): boolean {
   const table = state.tables.find((t) => t.id === tableId);
   if (!table || table.trash <= 0) return false;
-  return enqueue(state, 'clean', tableId, TASK_MINUTES.clean);
+  return enqueue(state, 'clean', tableId, cleanMinutes(state));
 }
 
 /** Checks the task can still be done by `worker` and applies its start effects. False drops the task. */

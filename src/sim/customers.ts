@@ -237,9 +237,11 @@ export function pickOrder(state: GameState): MenuItemId | null {
   if (enabled.length === 0) return null;
   const inStock = enabled.filter((id) => canMake(state, id));
   const pool = inStock.length > 0 ? inStock : enabled;
+  const foodBoost = 1 + totalUpgradeEffect(state.upgrades).foodAppeal;
   const weights = pool.map((id) => {
     const def = getMenuItem(id);
-    return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature];
+    const boost = def.category === 'food' ? foodBoost : 1;
+    return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature] * boost;
   });
   return pool[weightedIndex(state, weights)] ?? null;
 }

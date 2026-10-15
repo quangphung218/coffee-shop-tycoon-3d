@@ -2,8 +2,22 @@ import { CLOSING_MINUTE } from './clock';
 import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS, getIngredient } from './data/ingredients';
 import { getMenuItem } from './data/menu';
+import { totalUpgradeEffect } from './data/upgrades';
 import { DAY_START_MINUTE } from './state';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId } from './types';
+
+/** Unit price of an ingredient after equipment discounts (the ice maker cuts ice). */
+export function effectiveUnitPrice(state: GameState, id: IngredientId): number {
+  const base = getIngredient(id).unitPrice;
+  if (id !== 'ice') return base;
+  const cut = Math.min(0.9, totalUpgradeEffect(state.upgrades).iceCostReduction);
+  return base * (1 - cut);
+}
+
+/** Ingredient cost of one serving at current prices (ice maker lowers ice). */
+export function servingCost(state: GameState, itemId: MenuItemId): number {
+  return Math.round(getMenuItem(itemId).ingredients.reduce((sum, a) => sum + effectiveUnitPrice(state, a.id) * a.qty, 0));
+}
 
 /** Safety margin added on top of the expected usage when restocking. */
 export const RESTOCK_BUFFER = 0.2;
@@ -31,7 +45,7 @@ export function canMake(state: GameState, itemId: MenuItemId): boolean {
  */
 export function consume(state: GameState, itemId: MenuItemId): void {
   const def = getMenuItem(itemId);
-  state.today.ingredientsUsed = (state.today.ingredientsUsed ?? 0) + def.cost;
+  state.today.ingredientsUsed = (state.today.ingredientsUsed ?? 0) + servingCost(state, itemId);
   for (const need of def.ingredients) {
     const item = state.inventory.find((i) => i.id === need.id);
     if (!item) continue;
@@ -44,7 +58,7 @@ export function consume(state: GameState, itemId: MenuItemId): void {
 
 /** Purchase price of `qty` units at the current difficulty, in đồng. */
 export function ingredientPrice(state: GameState, id: IngredientId, qty: number): number {
-  return Math.round(getIngredient(id).unitPrice * qty * DIFFICULTIES[state.difficulty].priceMult);
+  return Math.round(effectiveUnitPrice(state, id) * qty * DIFFICULTIES[state.difficulty].priceMult);
 }
 
 export type BuyResult = { ok: true; cost: number } | { ok: false; reason: string };

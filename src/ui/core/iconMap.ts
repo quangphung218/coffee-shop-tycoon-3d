@@ -12,6 +12,8 @@ export const MENU_ICONS: Readonly<Record<MenuItemId, IconId>> = {
   latte: 'i-latte',
   cappuccino: 'i-cappuccino',
   mocha: 'i-mocha',
+  // Reuses the cold-drink icon until u2 draws a dedicated frappe icon.
+  frappe: 'i-cold',
   milk_tea: 'i-bubble-tea',
   lemon_tea: 'i-lemon-tea',
   orange_juice: 'i-orange-juice',
@@ -52,6 +54,12 @@ export const UPGRADE_ICONS: Readonly<Record<UpgradeId, IconId>> = {
   paintings: 'i-paintings',
   lights: 'i-lights',
   window_bar: 'i-window-bar',
+  // Equipment reuses existing icons until u2 draws dedicated ones.
+  grinder: 'i-beans',
+  pastry_case: 'i-croissant',
+  blender: 'i-cold',
+  ice_maker: 'i-ice',
+  dishwasher: 'i-cup',
 };
 
 /** 'report' shares the moon of "Hết ngày". */

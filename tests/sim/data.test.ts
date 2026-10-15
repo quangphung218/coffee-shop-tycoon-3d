@@ -7,9 +7,9 @@ import { STAFF_NAMES } from '../../src/sim/data/staffNames';
 import { UPGRADES, totalUpgradeEffect, upgradeCost } from '../../src/sim/data/upgrades';
 
 describe('menu', () => {
-  it('has the 10 required items with unique ids', () => {
-    expect(MENU).toHaveLength(10);
-    expect(new Set(MENU.map((m) => m.id)).size).toBe(10);
+  it('has the 11 required items with unique ids', () => {
+    expect(MENU).toHaveLength(11);
+    expect(new Set(MENU.map((m) => m.id)).size).toBe(11);
     expect(MENU.map((m) => m.id).sort()).toEqual(
       [
         'americano',
@@ -17,6 +17,7 @@ describe('menu', () => {
         'cappuccino',
         'croissant',
         'espresso',
+        'frappe',
         'latte',
         'lemon_tea',
         'milk_tea',
@@ -93,7 +94,18 @@ describe('upgrades', () => {
     expect(e.capacity).toBe(4);
     expect(e.brewSpeed).toBeCloseTo(0.2);
     expect(e.appeal).toBe(0);
-    expect(totalUpgradeEffect({})).toEqual({ capacity: 0, ratingBonus: 0, appeal: 0, brewSpeed: 0 });
+    expect(totalUpgradeEffect({})).toEqual({
+      capacity: 0,
+      ratingBonus: 0,
+      appeal: 0,
+      brewSpeed: 0,
+      coffeeBrewSpeed: 0,
+      coldBrewSpeed: 0,
+      foodBrewSpeed: 0,
+      foodAppeal: 0,
+      cleanSpeed: 0,
+      iceCostReduction: 0,
+    });
   });
 });
 

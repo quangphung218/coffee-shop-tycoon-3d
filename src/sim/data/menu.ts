@@ -87,6 +87,22 @@ const SPECS: MenuItemSpec[] = [
     popularity: 0.6,
   },
   {
+    id: 'frappe',
+    name: 'Cà phê đá xay',
+    icon: '🥤',
+    category: 'drink',
+    price: 45000,
+    prepMinutes: 5,
+    ingredients: [
+      { id: 'coffee_beans', qty: 18 },
+      { id: 'milk', qty: 120 },
+      { id: 'ice', qty: 200 },
+      { id: 'cup', qty: 1 },
+    ],
+    temperature: 'cold',
+    popularity: 0.7,
+  },
+  {
     id: 'milk_tea',
     name: 'Trà sữa',
     icon: '🧋',
@@ -179,4 +195,9 @@ export function getMenuItem(id: MenuItemId): MenuItemDef {
   const def = BY_ID.get(id);
   if (!def) throw new Error(`Unknown menu item: ${id}`);
   return def;
+}
+
+/** True for drinks made with coffee beans; the grinder speeds these up. */
+export function isCoffeeDrink(def: MenuItemDef): boolean {
+  return def.ingredients.some((a) => a.id === 'coffee_beans');
 }

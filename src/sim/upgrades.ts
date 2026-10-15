@@ -22,9 +22,12 @@ export interface LayoutTable {
   zone: TableZone;
 }
 
+/** espresso and fast brew coffee; the rest are equipment that change the sim. */
+export type MachineKind = 'espresso' | 'fast' | 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
+
 export interface LayoutMachine {
   pos: Vec2;
-  kind: 'espresso' | 'fast';
+  kind: MachineKind;
   /** better_machine level: shinier model, better drinks. */
   quality: number;
 }
@@ -58,6 +61,19 @@ const COUNTER_POS: Vec2 = { x: 0, z: -2 };
 const COUNTER_WIDTH = 3;
 const COUNTER_WIDTH_PER_LEVEL = 1.5;
 const MACHINE_POS: Vec2 = { x: -1, z: -3.3 };
+/**
+ * Where each equipment unit stands on the back counter. They sit between the
+ * espresso machine and the right wall so the extended back counter clears the
+ * back-left planter and both side walls at every combination. Shown only when
+ * owned; all machines share the 'bar' group, so they never collide.
+ */
+const EQUIPMENT_SPOTS: Readonly<Record<Exclude<MachineKind, 'espresso' | 'fast'>, Vec2>> = {
+  grinder: { x: -2.2, z: MACHINE_POS.z },
+  pastry_case: { x: -1.6, z: MACHINE_POS.z },
+  blender: { x: 0.8, z: MACHINE_POS.z },
+  ice_maker: { x: 2, z: MACHINE_POS.z },
+  dishwasher: { x: 3.2, z: MACHINE_POS.z },
+};
 const OUTDOOR_TABLE_X: readonly number[] = [-2.5, 2.5, -2.5 - TABLE_PITCH, 2.5 + TABLE_PITCH];
 const OUTDOOR_TABLE_Z = 7.8;
 /** First expansion column; each expand_area level adds a column of three tables on the indoor rows. */
@@ -211,6 +227,9 @@ export function getShopLayout(state: GameState): ShopLayout {
   const machines: LayoutMachine[] = [{ pos: { ...MACHINE_POS }, kind: 'espresso', quality }];
   for (let i = 0; i < upgradeLevel(state, 'fast_machine'); i++) {
     machines.push({ pos: { x: MACHINE_POS.x + 1.2 * (i + 1), z: MACHINE_POS.z }, kind: 'fast', quality });
+  }
+  for (const kind of Object.keys(EQUIPMENT_SPOTS) as (keyof typeof EQUIPMENT_SPOTS)[]) {
+    if (upgradeLevel(state, kind) > 0) machines.push({ pos: { ...EQUIPMENT_SPOTS[kind] }, kind, quality: upgradeLevel(state, kind) });
   }
   const expandLevel = upgradeLevel(state, 'expand_area');
   return {

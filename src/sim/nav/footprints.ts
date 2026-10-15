@@ -31,10 +31,15 @@ export const BACK_COUNTER_TOP_DEPTH = 0.76;
 export const BACK_COUNTER_MARGIN_LEFT = 1;
 export const BACK_COUNTER_MARGIN_RIGHT = 1.2;
 
-/** Widest part of each machine (its top). */
+/** Widest part of each machine (its top), by kind. */
 export const MACHINE_SIZE = {
   espresso: { width: 0.96, depth: 0.6 },
   fast: { width: 0.64, depth: 0.54 },
+  grinder: { width: 0.4, depth: 0.5 },
+  pastry_case: { width: 0.56, depth: 0.5 },
+  blender: { width: 0.4, depth: 0.5 },
+  ice_maker: { width: 0.5, depth: 0.5 },
+  dishwasher: { width: 0.56, depth: 0.5 },
 } as const;
 
 export const TABLE_RADIUS = 0.4;
