@@ -455,6 +455,142 @@
   border-radius: var(--radius-lg);
 }
 
+/* Insights tab (design/p20 §5). A warn label matches the flat badge family. */
+.badge-warn {
+  background: var(--surface-warning);
+  color: var(--text-warning);
+}
+.rpt-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+.rpt-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
+}
+.rpt-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+}
+.rpt-kpi-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-kpi-target {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Arrivals-by-hour chart: CSS-height bars, no library. */
+.rpt-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.rpt-hour {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rpt-hour-track {
+  width: 100%;
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--data-track);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.rpt-hour-bar {
+  width: 100%;
+  min-height: var(--size-outline);
+  background: var(--data-bar);
+}
+.rpt-hour.is-peak .rpt-hour-bar {
+  background: var(--accent-primary-hover);
+}
+.rpt-hour-label {
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.rpt-hour.is-peak .rpt-hour-label {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-heavy);
+}
+.rpt-peak {
+  margin-top: var(--space-3);
+}
+
+/* Per-item margin table: scrolls sideways on a narrow panel instead of overflowing. */
+.rpt-table-wrap {
+  overflow-x: auto;
+}
+.rpt-margins {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.rpt-margins th,
+.rpt-margins td {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+}
+.rpt-margins thead th {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  border-bottom: var(--size-outline-sm) solid var(--border-outline);
+}
+.rpt-margins tbody tr {
+  border-bottom: var(--size-outline-sm) dotted var(--border-subtle);
+}
+.rpt-margins .is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rpt-margin-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+/* Action suggestions: icon, advice, and a link to the panel that fixes it. */
+.rpt-sugg {
+  display: grid;
+  grid-template-columns: var(--size-target) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+.rpt-sugg-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.rpt-sugg-text {
+  font-size: var(--font-size-sm);
+}
+
 @media (max-width: 640px) {
   .rpt-layer {
     padding: var(--space-4) var(--space-2);

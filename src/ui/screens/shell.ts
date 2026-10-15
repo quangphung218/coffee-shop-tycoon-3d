@@ -11,6 +11,7 @@ import { trackScrollActivity } from '../core/scrollActivity';
 import { Toasts } from '../core/toast';
 import { toastForEvent } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
+import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
 import { createLoadGame } from './loadGame';
 import { createMainMenu } from './mainMenu';
@@ -106,6 +107,13 @@ export function createShell(options: ShellOptions): Shell {
       return ok;
     },
     onRetrySave: () => (state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false }),
+    // An insight's action link leaves the report (next day) and opens the dock panel to act on.
+    onOpenPanel: (panel) => {
+      dispatch({ type: 'next_day' });
+      if (state) hud.update(state);
+      syncReport();
+      openOtherPanel(panel);
+    },
   });
   root.append(hud.el, hud.panelEl, report.el, toasts.el);
 

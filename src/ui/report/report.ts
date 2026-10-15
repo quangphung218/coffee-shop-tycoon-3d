@@ -1,10 +1,11 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { getMenuItem } from '../../sim/data/menu';
-import type { Command, DailyReport, GameState, Review, SuggestionKind } from '../../sim/types';
+import type { Command, DailyReport, GameState, InsightPanel, Review, SuggestionKind } from '../../sim/types';
 import { h, setChildren, trapFocus, Watcher } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
 import { MENU_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { renderInsights } from './insights';
 import { fillReviews, newestFirst, reviewItem, starsEl } from './reviews';
 
 /** Reviews shown on the summary tab. */
@@ -13,12 +14,17 @@ export const REPORT_RECENT_REVIEWS = 3;
 /** Result of a day's autosave, shown in the footer of that day's report. */
 export type SaveStatus = { day: number; ok: true; savedAt: number } | { day: number; ok: false };
 
-export type ReportTab = 'summary' | 'reviews';
+export type ReportTab = 'summary' | 'insights' | 'reviews';
+
+/** Left-to-right tab order, for arrow-key navigation. */
+const TAB_ORDER: readonly ReportTab[] = ['summary', 'insights', 'reviews'];
 
 export interface DailyReportOptions {
   dispatch(cmd: Command): boolean;
   /** Tries the autosave again; the footer shows the returned status. */
   onRetrySave?(): SaveStatus;
+  /** Opens a dock panel from an insight's action link (the report closes first). */
+  onOpenPanel?(panel: InsightPanel): void;
 }
 
 export interface DailyReportView {
@@ -246,9 +252,13 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   const title = h('h3', { id: 'rpt-title' });
   const sub = h('p', { class: 'rpt-sub' });
   const summaryTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-summary', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-summary', 'data-tab': 'summary' } }, ...labelled('i-chart', 'Tổng kết'));
+  const insightsTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-insights', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-insights', 'data-tab': 'insights' } }, ...labelled('i-trend-up', 'Chỉ số'));
   const reviewsTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-reviews', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-reviews', 'data-tab': 'reviews' } });
   const summary = h('div', { class: 'rpt-body', id: 'rpt-summary', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-summary' } });
+  const insights = h('div', { class: 'rpt-body', id: 'rpt-insights', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-insights' } });
   const reviews = h('div', { class: 'rpt-body', id: 'rpt-reviews', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-reviews' } });
+  const tabButtons: Record<ReportTab, HTMLElement> = { summary: summaryTab, insights: insightsTab, reviews: reviewsTab };
+  const tabPanels: Record<ReportTab, HTMLElement> = { summary, insights, reviews };
 
   const save = h('div', { class: 'rpt-save', attrs: { 'data-save': '' } });
   const toggleBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'reviews' } });
@@ -256,15 +266,18 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') } }, ...labelled('i-chart', 'Về Tổng kết'));
 
   summaryTab.addEventListener('click', () => showTab('summary'));
+  insightsTab.addEventListener('click', () => showTab('insights'));
   reviewsTab.addEventListener('click', () => showTab('reviews'));
   toggleBtn.addEventListener('click', () => showTab(tab === 'summary' ? 'reviews' : 'summary'));
   nextBtn.addEventListener('click', () => options.dispatch({ type: 'next_day' }));
-  const tabs = h('div', { class: 'rpt-tabs', attrs: { role: 'tablist', 'aria-label': 'Báo cáo ngày' } }, summaryTab, reviewsTab);
+  const tabs = h('div', { class: 'rpt-tabs', attrs: { role: 'tablist', 'aria-label': 'Báo cáo ngày' } }, summaryTab, insightsTab, reviewsTab);
   tabs.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
-    showTab(tab === 'summary' ? 'reviews' : 'summary');
-    (tab === 'summary' ? summaryTab : reviewsTab).focus();
+    const at = TAB_ORDER.indexOf(tab);
+    const next = TAB_ORDER[(at + (e.key === 'ArrowRight' ? 1 : TAB_ORDER.length - 1)) % TAB_ORDER.length]!;
+    showTab(next);
+    tabButtons[next].focus();
   });
 
   const dialog = h(
@@ -272,6 +285,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     { class: 'rpt-dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rpt-title' } },
     h('div', { class: 'rpt-head' }, h('span', { class: 'rpt-head-icon' }, icon('i-phase-close', { size: 32 })), h('div', { class: 'rpt-head-text' }, title, sub), tabs),
     summary,
+    insights,
     reviews,
     h('div', { class: 'rpt-foot' }, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
   );
@@ -280,12 +294,11 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
 
   function showTab(next: ReportTab): void {
     tab = next;
-    summaryTab.setAttribute('aria-selected', String(next === 'summary'));
-    reviewsTab.setAttribute('aria-selected', String(next === 'reviews'));
-    summaryTab.tabIndex = next === 'summary' ? 0 : -1;
-    reviewsTab.tabIndex = next === 'reviews' ? 0 : -1;
-    summary.hidden = next !== 'summary';
-    reviews.hidden = next !== 'reviews';
+    for (const name of TAB_ORDER) {
+      tabButtons[name].setAttribute('aria-selected', String(name === next));
+      tabButtons[name].tabIndex = name === next ? 0 : -1;
+      tabPanels[name].hidden = name !== next;
+    }
     setChildren(toggleBtn, ...(next === 'summary' ? labelled('i-reviews', 'Xem đánh giá') : labelled('i-chart', 'Về Tổng kết')));
   }
 
@@ -336,6 +349,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
       title.textContent = `Hết ngày ${day} · ${s.shopName}`;
       sub.textContent = `${DIFFICULTIES[s.difficulty].name} · 07:00–21:00`;
       setChildren(summary, ...(r ? renderSummary(r) : [renderBusy(day)]));
+      setChildren(insights, ...(r ? renderInsights(r, (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
       showTab('summary');
       renderSave();
     },
