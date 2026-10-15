@@ -81,17 +81,18 @@ function serveRate(run: Run): number {
 }
 
 /**
- * Week results of the sample strategy at seed 777, measured on 2026-10-14:
- * serve rate easy 0.943, normal 0.960, hard 0.969; end-of-week rating easy
- * 4.39, normal 4.40, hard 4.53. The bands allow ±30% around them so tuning
+ * Week results of the sample strategy at seed 777, measured on 2026-10-15
+ * (after the P20 balance pass: carried-over task minutes, tool and XP tuning):
+ * serve rate easy 0.930, normal 0.957, hard 0.923; end-of-week rating easy
+ * 4.47, normal 4.41, hard 4.54. The bands allow ±30% around them so tuning
  * can move the numbers, but a change that breaks service (most customers
  * walk out) or sinks the rating fails. Bounds are clipped to what the
  * quantity can reach (serve rate ≤ 1, rating ≤ 5).
  */
 const MEASURED: Record<Difficulty, { serveRate: number; rating: number }> = {
-  easy: { serveRate: 0.943, rating: 4.39 },
-  normal: { serveRate: 0.96, rating: 4.4 },
-  hard: { serveRate: 0.969, rating: 4.53 },
+  easy: { serveRate: 0.93, rating: 4.47 },
+  normal: { serveRate: 0.957, rating: 4.41 },
+  hard: { serveRate: 0.923, rating: 4.54 },
 };
 const TOLERANCE = 0.3;
 

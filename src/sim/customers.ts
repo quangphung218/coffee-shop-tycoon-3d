@@ -258,7 +258,9 @@ export function pickOrder(state: GameState, persona?: Persona): MenuItemId | nul
 export function maybeAddOn(state: GameState, customer: Customer): void {
   if (!customer.persona) return;
   const persona = PERSONAS[customer.persona];
-  if (persona.foodChance <= 0 || addOnRoll(state.seed, customer.id) >= persona.foodChance) return;
+  // The pastry case puts food on show, so more customers add something to eat.
+  const chance = Math.min(1, persona.foodChance * (1 + totalUpgradeEffect(state.upgrades).foodAppeal));
+  if (chance <= 0 || addOnRoll(state.seed, customer.id) >= chance) return;
   const foods = state.menu
     .filter((m) => m.enabled && m.id !== customer.order && getMenuItem(m.id).category === 'food' && canMake(state, m.id))
     .map((m) => m.id);

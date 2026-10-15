@@ -14,9 +14,28 @@ const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 const SEED = 777;
 /** Days kept playing after the shop first reaches the top level, to measure a few level-6 days. */
 const EXTRA_AT_TOP = 3;
-/** Safety bound; the sample strategy reaches level 6 well inside it. */
-const DAY_CAP = 40;
-const TOLERANCE = 0.3;
+/** Safety bound; the sample strategy reaches level 6 on Hard well inside it. */
+const DAY_CAP = 50;
+
+// ---------------------------------------------------------------------------
+// Design milestones (P20 brief). The sample strategy below is the yardstick.
+// ---------------------------------------------------------------------------
+
+/** On Normal the shop reaches level 2 on one of these days (inclusive). */
+const NORMAL_LEVEL2_DAYS = { min: 2, max: 4 } as const;
+/** On Normal the shop reaches the top level (6) on one of these days (inclusive). */
+const NORMAL_TOP_LEVEL_DAYS = { min: 20, max: 35 } as const;
+/** Every tool must earn back the price of its first level within this many days on Normal. */
+const MAX_PAYBACK_DAYS = 15;
+
+/*
+ * Measured on 2026-10-15 at seed 777 (day the shop first ends a day at each level):
+ *   easy   L2 2 · L3 5 · L4 9  · L5 13 · L6 19
+ *   normal L2 3 · L3 6 · L4 11 · L5 17 · L6 25
+ *   hard   L2 4 · L3 9 · L4 15 · L5 24 · L6 35
+ * Tool payback on Normal (first level, 16 seeds × 10 days):
+ *   grinder 4.6 · pastry_case 3.1 · blender 5.6 · ice_maker 11.2 · dishwasher 5.4 days.
+ */
 
 // ---------------------------------------------------------------------------
 // Sample strategy: a competent-but-ordinary player.
@@ -51,13 +70,16 @@ function buyAffordable(state: GameState): void {
   }
 }
 
+function hireBarista(state: GameState): void {
+  if (state.staff.some((s) => s.role === 'barista')) return;
+  const candidate = state.candidates[0];
+  if (candidate) dispatch(state, { type: 'hire_staff', candidateId: candidate.id, role: 'barista' });
+}
+
 function morning(state: GameState): void {
   enableUnlocked(state);
   dispatch(state, { type: 'apply_restock' });
-  if (!state.staff.some((s) => s.role === 'barista') && state.money - reserve(state) > 300000) {
-    const candidate = state.candidates[0];
-    if (candidate) dispatch(state, { type: 'hire_staff', candidateId: candidate.id, role: 'barista' });
-  }
+  if (state.money - reserve(state) > 300000) hireBarista(state);
   buyAffordable(state);
 }
 
@@ -107,25 +129,6 @@ function average(values: number[]): number {
   return values.reduce((s, v) => s + v, 0) / values.length;
 }
 
-/**
- * Sample-strategy results at seed 777, measured on 2026-10-15.
- * Day on which the shop first reaches each level (level-ups happen at the end of
- * the day; levels can be skipped in a single jump, so a skipped level shares the
- * day of the jump). The bands allow ±30% so tuning can move the numbers, with a
- * ±2-day floor because the counts are small integers.
- */
-const MEASURED_LEVEL_DAY: Record<Difficulty, Record<number, number>> = {
-  easy: { 2: 1, 3: 2, 4: 2, 5: 3, 6: 5 },
-  normal: { 2: 1, 3: 1, 4: 2, 5: 3, 6: 5 },
-  hard: { 2: 1, 3: 2, 4: 3, 5: 4, 6: 6 },
-};
-
-/** True when `actual` is within ±30% of `measured` (at least ±2 days for small integers). */
-function withinDayBand(actual: number, measured: number): boolean {
-  const slack = Math.max(2, Math.ceil(measured * TOLERANCE));
-  return actual >= Math.max(1, measured - slack) && actual <= measured + slack;
-}
-
 describe('level and tool economic balance', { timeout: 120_000 }, () => {
   const runs = Object.fromEntries(DIFFICULTIES.map((d) => [d, simulate(d)])) as Record<Difficulty, Run>;
 
@@ -151,13 +154,30 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     expect(isOverDebtLimit(normal.state)).toBe(false);
   });
 
-  it('takes a sensible number of days to reach each level (±30%)', () => {
+  it('reaches level 2 and level 6 on Normal inside the design milestones', () => {
+    const { levelDay } = runs.normal;
+    expect(levelDay[2]).toBeGreaterThanOrEqual(NORMAL_LEVEL2_DAYS.min);
+    expect(levelDay[2]).toBeLessThanOrEqual(NORMAL_LEVEL2_DAYS.max);
+    expect(levelDay[MAX_SHOP_LEVEL]).toBeGreaterThanOrEqual(NORMAL_TOP_LEVEL_DAYS.min);
+    expect(levelDay[MAX_SHOP_LEVEL]).toBeLessThanOrEqual(NORMAL_TOP_LEVEL_DAYS.max);
+  });
+
+  it('levels up faster on Easy and slower on Hard than on Normal', () => {
+    for (let level = 2; level <= MAX_SHOP_LEVEL; level++) {
+      const easy = runs.easy.levelDay[level]!;
+      const normal = runs.normal.levelDay[level]!;
+      const hard = runs.hard.levelDay[level]!;
+      expect(easy, `easy level ${level}`).toBeLessThanOrEqual(normal);
+      expect(hard, `hard level ${level}`).toBeGreaterThanOrEqual(normal);
+    }
+    expect(runs.easy.levelDay[MAX_SHOP_LEVEL]).toBeLessThan(runs.normal.levelDay[MAX_SHOP_LEVEL]!);
+    expect(runs.hard.levelDay[MAX_SHOP_LEVEL]).toBeGreaterThan(runs.normal.levelDay[MAX_SHOP_LEVEL]!);
+  });
+
+  it('reaches every level in order, one level-up day after another', () => {
     for (const d of DIFFICULTIES) {
-      const measured = MEASURED_LEVEL_DAY[d];
-      for (let level = 2; level <= MAX_SHOP_LEVEL; level++) {
-        const actual = runs[d].levelDay[level];
-        expect(actual, `${d} level ${level}`).toBeDefined();
-        expect(withinDayBand(actual!, measured[level]!), `${d} level ${level}: ${actual} vs ~${measured[level]}`).toBe(true);
+      for (let level = 3; level <= MAX_SHOP_LEVEL; level++) {
+        expect(runs[d].levelDay[level]!, `${d} level ${level}`).toBeGreaterThanOrEqual(runs[d].levelDay[level - 1]!);
       }
     }
   });
@@ -197,45 +217,51 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
   });
 
   // -------------------------------------------------------------------------
-  // Tool payback. Each tool's "incremental daily profit" is measured by playing
-  // one identical day with and without it from the same busy, brew-bottlenecked
-  // level-6 shop, averaged over fixed seeds. payback = price / that profit.
-  //
-  // FINDING (measured 2026-10-15, normal difficulty, seeds below): no equipment
-  // tool pays back within the 15-day target the brief asks for. The throughput
-  // tools help only when brewing is the bottleneck and their effect is lost in
-  // day-to-day variance (grinder ≈ 21 days, blender ≈ 29 days); pastry_case is
-  // net-negative with a single barista; ice_maker only shaves ~2.6k đồng/day off
-  // ingredient cost (≈ 380 days); dishwasher has no profit effect at all unless
-  // cleaning is the bottleneck. See the report's open issues. These assertions
-  // pin that reality (robustly) rather than forcing the 15-day target red.
+  // Tool payback. A level-6 Normal shop is run with the sample strategy but
+  // without any tool, then forked: one copy buys the first level of a tool,
+  // the control does not, and both play PAYBACK_FORK_DAYS days restocking as
+  // suggested. Rating and arrivals carry over between days, so the effect of
+  // more customers shows up. payback = price / mean daily profit gain over
+  // the seeds.
   // -------------------------------------------------------------------------
   describe('tool payback on Normal', () => {
     const TOOLS: readonly ToolId[] = ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'];
-    const PAYBACK_SEEDS = [777, 101, 202, 303, 404, 505, 606, 808];
+    const PAYBACK_SEEDS = [777, 101, 202, 303, 404, 505, 606, 808, 909, 111, 222, 333, 444, 555, 666, 999];
+    const WARMUP_DAYS = 8;
+    const PAYBACK_FORK_DAYS = 10;
 
-    /** Warms up a constrained level-6 shop: one barista, starting seats, no upgrades. */
+    /** A grown level-6 shop: one barista and every affordable non-tool upgrade. */
     function warmup(seed: number): GameState {
       const s = createNewGame('Quán', 'normal', seed);
-      for (let day = 1; day <= 20; day++) {
+      s.xp = 1e6;
+      s.shopLevel = MAX_SHOP_LEVEL;
+      for (let day = 1; day <= WARMUP_DAYS; day++) {
         enableUnlocked(s);
         dispatch(s, { type: 'apply_restock' });
-        if (!s.staff.some((st) => st.role === 'barista')) {
-          const c = s.candidates[0];
-          if (c) dispatch(s, { type: 'hire_staff', candidateId: c.id, role: 'barista' });
+        hireBarista(s);
+        for (const def of UPGRADES) {
+          if ((TOOLS as readonly UpgradeId[]).includes(def.id)) continue;
+          while ((nextUpgradeCost(s, def.id) ?? Infinity) < s.money - reserve(s)) {
+            if (!dispatch(s, { type: 'buy_upgrade', upgradeId: def.id })) break;
+          }
         }
         playDay(s);
         dispatch(s, { type: 'next_day' });
-        if (s.shopLevel >= MAX_SHOP_LEVEL && day >= 12) break;
       }
       return s;
     }
 
-    function oneDayProfit(state: GameState): number {
-      enableUnlocked(state);
-      dispatch(state, { type: 'apply_restock' });
-      playDay(state);
-      return state.lastReport!.profit;
+    /** Mean daily profit over the fork days; profit excludes the one-off upgrade cost. */
+    function meanProfit(state: GameState): number {
+      let total = 0;
+      for (let day = 0; day < PAYBACK_FORK_DAYS; day++) {
+        enableUnlocked(state);
+        dispatch(state, { type: 'apply_restock' });
+        playDay(state);
+        total += state.lastReport!.profit;
+        dispatch(state, { type: 'next_day' });
+      }
+      return total / PAYBACK_FORK_DAYS;
     }
 
     interface Payback {
@@ -250,19 +276,15 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     for (const seed of PAYBACK_SEEDS) {
       const base = warmup(seed);
       expect(base.shopLevel, `warmup seed ${seed}`).toBe(MAX_SHOP_LEVEL);
-      // Settle a common morning so both forks start from identical stock.
-      enableUnlocked(base);
-      dispatch(base, { type: 'apply_restock' });
-      const control = structuredClone(base);
-      const controlProfit = oneDayProfit(control);
+      const controlProfit = meanProfit(structuredClone(base));
       for (const tool of TOOLS) {
         const fork = structuredClone(base);
-        dispatch(fork, { type: 'buy_upgrade', upgradeId: tool });
-        const profit = oneDayProfit(fork);
+        const cost = nextUpgradeCost(fork, tool)!;
+        expect(dispatch(fork, { type: 'buy_upgrade', upgradeId: tool }), `${tool} seed ${seed}`).toBe(true);
+        const profit = meanProfit(fork);
         if (!Number.isFinite(profit)) anyNonFinite = true;
         if (fork.money <= -debtLimit(fork)) anyInsolvent = true;
-        // profit() excludes the one-off upgrade cost, so this is the operating-profit effect.
-        const rec = paybacks.get(tool) ?? { meanDelta: 0, cost: nextUpgradeCost(fork, tool) ?? Infinity, days: 0 };
+        const rec = paybacks.get(tool) ?? { meanDelta: 0, cost, days: 0 };
         rec.meanDelta += (profit - controlProfit) / PAYBACK_SEEDS.length;
         paybacks.set(tool, rec);
       }
@@ -274,29 +296,15 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
       expect(anyInsolvent).toBe(false);
     });
 
-    it('does not let any tool systematically lose more than day-to-day variance', () => {
-      // A tool may not pay back, but owning one must not drain profit beyond the
-      // ordinary daily swing (~±250k đồng; mean over seeds is well inside that).
+    it(`earns back every tool within ${MAX_PAYBACK_DAYS} days`, () => {
       for (const tool of TOOLS) {
-        expect(paybacks.get(tool)!.meanDelta, tool).toBeGreaterThan(-150000);
+        const p = paybacks.get(tool)!;
+        expect(p.meanDelta, `${tool} daily gain`).toBeGreaterThan(0);
+        expect(p.days, `${tool}: ${Math.round(p.cost)} / ${Math.round(p.meanDelta)} per day`).toBeLessThanOrEqual(MAX_PAYBACK_DAYS);
       }
     });
 
-    it('still has at least one tool that pays back within a reasonable horizon', () => {
-      // Tools are not worthless: the throughput tools do earn back their price,
-      // just not inside 15 days. At least one clears a 60-day horizon.
-      const best = Math.min(...[...paybacks.values()].map((p) => p.days));
-      expect(best).toBeLessThanOrEqual(60);
-    });
-
-    it('does not meet the 15-day payback target for any tool (balance shortfall)', () => {
-      // Documents the finding: with a well-run shop no tool returns its price in
-      // operating profit within 15 days. If tuning fixes this, update the test.
-      const within15 = TOOLS.filter((t) => paybacks.get(t)!.days <= 15);
-      expect(within15).toEqual([]);
-    });
-
-    it('proves the ice maker cuts ingredient cost even though it pays back slowly', () => {
+    it('proves the ice maker cuts ingredient cost without changing the day', () => {
       // The ice maker changes no timing, so both forks serve the exact same day;
       // the only difference is a lower ingredient cost. Clean, noise-free signal.
       const base = warmup(SEED);
@@ -312,16 +320,6 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
       expect(b.customersServed).toBe(a.customersServed);
       expect(b.revenue).toBe(a.revenue);
       expect(b.ingredientCost).toBeLessThan(a.ingredientCost);
-      // The saving is real but small, so the 1M đồng maker is far from a 15-day payback.
-      const payback = paybacks.get('ice_maker')!;
-      expect(payback.meanDelta).toBeGreaterThan(0);
-      expect(payback.days).toBeGreaterThan(15);
-    });
-
-    it('shows the dishwasher adds no profit without a cleaning bottleneck', () => {
-      // A single barista brews slower than tables need cleaning, so faster
-      // cleaning changes nothing here: the dishwasher's daily profit delta is ~0.
-      expect(Math.abs(paybacks.get('dishwasher')!.meanDelta)).toBeLessThan(1000);
     });
   });
 });

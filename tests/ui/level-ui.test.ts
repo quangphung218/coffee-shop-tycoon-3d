@@ -79,14 +79,14 @@ describe('HUD level chip and XP bar', () => {
 
   it('shows the level name and an XP progressbar scaled to the next threshold', () => {
     const state = game();
-    state.xp = 60;
+    state.xp = xpToReach(2) / 2;
     const el = makeHud(state);
     const chip = q(el, '[data-stat="level"]');
     expect(q(chip, '.level-name').textContent).toBe('Cấp 1 · Quán nhỏ');
     const bar = q(chip, '[role="progressbar"]');
     expect(bar.getAttribute('aria-valuemin')).toBe('0');
     expect(bar.getAttribute('aria-valuemax')).toBe(String(xpToReach(2)));
-    expect(bar.getAttribute('aria-valuenow')).toBe('60');
+    expect(bar.getAttribute('aria-valuenow')).toBe(String(xpToReach(2) / 2));
     expect(bar.getAttribute('aria-valuetext')).toContain('Cấp 2');
     expect(q<HTMLElement>(chip, '.xp-fill').style.width).toBe('50%');
   });

@@ -1,5 +1,6 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getIngredient } from './data/ingredients';
+import { upgradeUnlockLevel } from './data/levels';
 import { getMenuItem } from './data/menu';
 import { UPGRADES, upgradeCost } from './data/upgrades';
 import { profit, settleDay, totalWages } from './economy';
@@ -75,6 +76,8 @@ export function buildSuggestions(state: GameState, outOfStock: readonly MenuItem
   }
   let best: { name: string; cost: number } | null = null;
   for (const def of UPGRADES) {
+    // Only what the shop level lets the player buy.
+    if (upgradeUnlockLevel(def.id) > state.shopLevel) continue;
     const cost = upgradeCost(def, state.upgrades[def.id] ?? 0, priceMult);
     if (cost !== null && (best === null || cost < best.cost)) best = { name: def.name, cost };
   }

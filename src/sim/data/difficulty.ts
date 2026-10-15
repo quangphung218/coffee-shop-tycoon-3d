@@ -9,6 +9,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
     patienceMult: 1.3,
     priceMult: 0.9,
     startRating: 3.5,
+    xpMult: 1.25,
   },
   normal: {
     id: 'normal',
@@ -18,6 +19,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
     patienceMult: 1,
     priceMult: 1,
     startRating: 3,
+    xpMult: 1,
   },
   hard: {
     id: 'hard',
@@ -27,5 +29,6 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
     patienceMult: 0.75,
     priceMult: 1.15,
     startRating: 2.5,
+    xpMult: 0.8,
   },
 };

@@ -164,5 +164,12 @@ export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
 export { buyUpgrade, getShopLayout, nextUpgradeCost } from './upgrades';
-export { isUnlocked, rollMissions, scoreProgression, type ProgressionResult } from './progression';
+export {
+  isUnlocked,
+  missionProgress,
+  rollMissions,
+  scoreProgression,
+  type MissionProgress,
+  type ProgressionResult,
+} from './progression';
 export { LEVELS, MAX_SHOP_LEVEL, levelDef, levelForXp, xpToReach } from './data/levels';

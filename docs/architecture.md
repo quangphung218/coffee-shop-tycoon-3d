@@ -152,8 +152,9 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | Khái niệm | Chi tiết |
 | --- | --- |
 | Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ 11 món và 15 nâng cấp. Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` so cấp hiện tại với cấp mở khóa. |
-| XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP. Cộng lúc `closeDay`; qua ngưỡng `xpToReach` thì lên cấp và phát `level_up`. |
-| Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng XP và một ít tiền. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính. |
+| XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP; tổng nhân `xpMult` của độ khó (Dễ 1,25 · Vừa 1 · Khó 0,8). Cộng lúc `closeDay`; qua ngưỡng `xpToReach` (cấp 2–6: 1100, 3500, 7000, 12000, 19000) thì lên cấp và phát `level_up`. Mốc thiết kế: chiến lược mẫu ở Vừa lên cấp 2 vào ngày 2–4, cấp 6 vào ngày 20–35 (`tests/integration/level-balance.test.ts`). |
+| Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng 50–70 XP và 80.000–120.000 đ. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính; `food_cost` cần có doanh thu mới tính đạt. |
+| Tiến độ nhiệm vụ | `missionProgress(state, mission)` trả `{ value, ratio, met }` từ số liệu đang chạy của ngày: `value` theo đơn vị nhiệm vụ, `ratio` 0..1 cho thanh tiến độ (nhiệm vụ "đạt tối thiểu" là `value / target`; nhiệm vụ "giữ dưới ngưỡng" là 1 khi còn trong ngưỡng, giảm khi vượt), `met` là kết quả nếu ngày kết thúc lúc đó. Hàm thuần, `closeDay` chấm bằng chính hàm này. |
 
 ### Nâng cấp và dụng cụ
 
@@ -163,7 +164,7 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | --- | --- | --- |
 | `capacity` | Thêm chỗ ngồi (thêm bàn vào bố cục) | `upgrades.ts` (`addTables`) |
 | `appeal` | +% khách đến | `customers.ts` |
-| `foodAppeal` | +% khách gọi thêm món ăn | `customers.ts` |
+| `foodAppeal` | +% khách gọi món ăn và mua kèm món ăn | `customers.ts` (`pickOrder`, `maybeAddOn`) |
 | `brewSpeed` | Pha mọi món nhanh hơn | `orders.ts` (`brewSpeedFor`) |
 | `coffeeBrewSpeed` | Pha đồ cà phê nhanh hơn | `orders.ts` |
 | `coldBrewSpeed` | Pha đồ lạnh nhanh hơn | `orders.ts` |
@@ -172,7 +173,9 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | `iceCostReduction` | Giảm chi phí đá cho đồ lạnh | `inventory.ts` |
 | `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
 
-Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`.
+Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`).
+
+Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, giữ 2 chữ số thập phân. Người chơi và nhân viên làm theo ngân sách phút (`workMinute` trong `orders.ts`): việc xong giữa phút thì phần còn lại chuyển sang việc kế tiếp, nên mọi mức tăng tốc, kể cả cấp 1, đều rút ngắn thời gian thật.
 
 ### Trạng thái kho
 
@@ -277,7 +280,8 @@ Mỗi slot là JSON:
 - `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (2). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán.
 - Migration 1→2 thêm `shopLevel`, `xp`, `missions` và `seed`: cấp tính từ số khách đã phục vụ trong `history`, nhưng không thấp hơn cấp đủ để mọi món đang bật và nâng cấp đã mua vẫn mở khóa, nên save cũ không mất quyền đã có.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
-- Sau khi nâng, `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
+- Sau khi nâng, menu được bổ sung các món có trong `MENU` mà save chưa có (ví dụ `frappe` với save viết trước khi có món này), ở trạng thái tắt và giá mặc định. Bước này chạy với mọi save, kể cả save v2. Món đã có giữ nguyên giá và trạng thái bật/tắt.
+- Tiếp đó `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
 
