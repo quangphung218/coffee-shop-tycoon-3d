@@ -293,10 +293,10 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 128,5 kB | 44,8 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 54,8 kB | 8,7 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 72,5 kB | 27,1 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 496,5 kB | 124,2 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 162,6 kB | 56,4 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 62,8 kB | 10,0 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 84,3 kB | 31,2 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 502,0 kB | 125,7 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `icons3d/atlas@1x.webp` hoặc `atlas@2x.webp` (một trong hai, theo mật độ điểm ảnh) | 100,8 kB / 280,9 kB | (đã nén) | Khi icon đầu tiên hiện; không chặn Main Menu |
 

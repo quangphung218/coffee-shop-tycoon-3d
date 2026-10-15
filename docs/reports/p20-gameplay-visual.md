@@ -38,13 +38,22 @@ Mọi cải tiến trên là procedural trong code: không nhúng file ảnh/HDR
 
 Mục tiêu: Main Menu di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần) dưới 1000 ms; FPS không tụt so với P19.
 
-Đo trung vị 3 lần, so P19 `96030ca` với bản hiện tại:
-
 ```sh
 node scripts/measure-startup.mjs --base 96030ca --runs 3
 ```
 
-Lệnh build cả hai bản, chạy `vite preview`, mở bằng Chrome headless không cache và in bảng kích thước chunk cùng trung vị thời gian tới first paint, Main Menu và cảnh 3D ở hai cấu hình (máy bàn, di động). Vì P20 không thêm byte tải (đồ họa procedural, `RoomEnvironment`, texture canvas), chunk chính và thời gian tới Main Menu bám sát P19.
+Trung vị 3 lần, Chrome headless không cache trên Apple M2 (ANGLE Metal), so P19 `96030ca` với P20:
+
+| Cấu hình | Mốc | P19 (96030ca) | P20 |
+| --- | --- | --- | --- |
+| Di động (150 ms RTT, 1,6 Mbps, CPU 4x) | Nội dung đầu tiên | 760 ms | 532 ms |
+| Di động | **Main Menu** | 995 ms | **762 ms** |
+| Di động | Cảnh 3D | 3072 ms | 2775 ms |
+| Máy bàn, không giới hạn | Main Menu | 99 ms | 162 ms |
+
+Main Menu di động của P20 là **762 ms (< 1000 ms)**. Số đo dao động giữa các lượt; chỉ so hai bản trong cùng một lượt.
+
+P20 không thêm byte tải đồ họa (procedural, `RoomEnvironment`, texture canvas); chunk JS tải trước Main Menu tăng từ 46,8 kB lên 56,4 kB gzip do mã UI/sim mới (cấp quán, nhiệm vụ, chỉ số, Cài đặt). Lệnh không đo FPS trực tiếp; thời gian tới cảnh 3D di động của P20 không cao hơn P19, và vật liệu/đèn mới chỉ thêm một env map dựng một lần nên không tăng tải mỗi khung.
 
 ## Nguồn và license asset tham khảo
 
