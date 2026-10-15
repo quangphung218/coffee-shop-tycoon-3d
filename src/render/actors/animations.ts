@@ -19,10 +19,16 @@ export type AnimName =
   | 'drink'
   | 'sit'
   | 'work'
-  | 'wave';
+  | 'wave'
+  | 'brew'
+  | 'handoff'
+  | 'impatient';
+
+/** Face expression; the rig swaps the brows and mouth to match. */
+export type Mood = 'happy' | 'neutral' | 'impatient' | 'angry';
 
 export const SPEC_ANIMS: readonly AnimName[] = ['idle', 'walk', 'carry_tray', 'serve', 'clean', 'angry_leave'];
-export const ALL_ANIMS: readonly AnimName[] = [...SPEC_ANIMS, 'queue', 'drink', 'sit', 'work', 'wave'];
+export const ALL_ANIMS: readonly AnimName[] = [...SPEC_ANIMS, 'queue', 'drink', 'sit', 'work', 'wave', 'brew', 'handoff', 'impatient'];
 
 /** Joint angles and offsets for one frame. */
 export interface Pose {
@@ -56,6 +62,10 @@ export const ANIM_PERIOD: Readonly<Record<AnimName, number>> = {
   sit: 5,
   work: 1.2,
   wave: 1.4,
+  // Four beats of the brew: grind, tamp, pull, pour.
+  brew: 4.8,
+  handoff: 1.6,
+  impatient: 1.2,
 };
 
 /** Animations whose loop is driven by distance walked rather than time. */
@@ -99,9 +109,14 @@ export function poseFor(anim: AnimName, t: number, out?: Pose): Pose {
   const p = restPose(out);
   switch (anim) {
     case 'idle':
+      // Breathes, shifts its weight from foot to foot and glances slowly around;
+      // the per-character phase offset (index.ts) keeps a crowd out of lockstep.
       p.hipsY = Math.sin(a) * 0.008;
+      p.twist = Math.sin(a) * 0.03;
       p.headX = Math.sin(a) * 0.04;
-      p.headY = Math.sin(a * 2) * 0.12;
+      p.headY = Math.sin(a * 0.5) * 0.18 + Math.sin(a * 2) * 0.05;
+      p.legL = Math.max(0, s) * 0.03;
+      p.legR = Math.max(0, -s) * 0.03;
       p.armLX = Math.sin(a) * 0.04;
       p.armRX = -Math.sin(a) * 0.04;
       break;
@@ -209,6 +224,43 @@ export function poseFor(anim: AnimName, t: number, out?: Pose): Pose {
       p.headY = s * 0.15;
       p.hipsY = Math.abs(s) * 0.01;
       break;
+    case 'brew':
+      // One loop reads as four moves: grind, tamp, pull the lever, pour. Built
+      // from smooth harmonics of the phase so it stays continuous and periodic.
+      p.lean = 0.14;
+      p.headX = 0.22;
+      p.twist = 0.04 * Math.sin(a);
+      // Right hand works four moves per loop; the two harmonics make each differ.
+      p.armRX = -1.2 - 0.25 * Math.sin(a) - 0.15 * Math.sin(a * 2);
+      p.armRZ = 0.12 + 0.1 * Math.cos(a * 2);
+      // Left hand steadies the portafilter, then comes forward to hold the cup.
+      p.armLX = -0.85 - 0.5 * Math.max(0, Math.sin(a));
+      p.armLZ = 0.14;
+      break;
+    case 'handoff': {
+      // Offers the cup forward with both hands, gives a small bow, straightens.
+      const reach = 0.5 - 0.5 * c;
+      p.lean = 0.12 * reach;
+      p.armLX = -1.15 - 0.25 * reach;
+      p.armRX = -1.15 - 0.25 * reach;
+      p.armLZ = 0.22;
+      p.armRZ = 0.22;
+      p.headX = 0.12 + 0.08 * reach;
+      break;
+    }
+    case 'impatient': {
+      // Taps a foot, shifts, and glances at a wrist watch once a loop.
+      const tap = Math.max(0, Math.sin(a * 3));
+      p.legR = tap * 0.35;
+      p.hipsY = -tap * 0.004;
+      const check = phase < 0.4 ? Math.sin((phase / 0.4) * Math.PI) : 0;
+      p.armLX = -0.3 - check * 1.1;
+      p.armLZ = 0.1;
+      p.headX = 0.05 + check * 0.25;
+      p.headY = Math.sin(a) * 0.2;
+      p.twist = Math.sin(a * 0.5) * 0.03;
+      break;
+    }
   }
   return p;
 }
@@ -313,7 +365,26 @@ export interface PropSet {
 export function propsFor(anim: AnimName): PropSet {
   return {
     tray: anim === 'carry_tray' || anim === 'serve',
-    cup: anim === 'drink',
+    cup: anim === 'drink' || anim === 'handoff',
     rag: anim === 'clean',
   };
+}
+
+/** Seconds between blinks and how long the lid stays shut. */
+export const BLINK_PERIOD = 4;
+export const BLINK_CLOSE = 0.13;
+/** Vertical eye scale at the bottom of a blink (never fully zero). */
+export const EYE_MIN_OPEN = 0.1;
+
+/**
+ * Eye-open scale in [EYE_MIN_OPEN, 1] at `t` seconds, shifted by `phase` so
+ * neighbouring characters do not blink together. A pure function of time: one
+ * quick close-open every BLINK_PERIOD, open the rest of the time.
+ */
+export function blinkFor(t: number, phase: number): number {
+  if (!Number.isFinite(t)) return 1;
+  const u = (((t + phase) % BLINK_PERIOD) + BLINK_PERIOD) % BLINK_PERIOD;
+  if (u > BLINK_CLOSE) return 1;
+  const k = Math.sin((u / BLINK_CLOSE) * Math.PI);
+  return 1 - (1 - EYE_MIN_OPEN) * k;
 }

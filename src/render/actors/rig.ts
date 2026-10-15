@@ -1,12 +1,16 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, type BufferGeometry } from 'three';
-import type { StaffRole } from '../../sim/types';
-import { propsFor, type AnimName, type Bounce, type Pose } from './animations';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import type { PersonaId, StaffRole } from '../../sim/types';
+import { propsFor, type AnimName, type Bounce, type Mood, type Pose } from './animations';
 
 /**
  * Low-poly people built from boxes in nested Groups:
  * root → bounce → hips → (legs, torso → (arms, head)). Every character shares the same
  * geometries and one cached Lambert material per colour, so a character costs
- * a handful of draw calls and no new GPU buffers.
+ * a handful of draw calls and no new GPU buffers. The chunky parts are lightly
+ * bevelled (RoundedBoxGeometry) so edges catch the light; the brows and mouth of
+ * each mood are merged into one geometry, so a whole face is a single draw call.
  */
 
 /** Who the character is: a customer, a staff role, or the player (who wears a cap). */
@@ -16,6 +20,8 @@ export interface CharacterOptions {
   role: CharacterRole;
   /** Visual variant (shirt, hair, skin); any integer. */
   look: number;
+  /** Customer personality; adds a persona accessory (bag, backpack, scarf). Absent = none. */
+  persona?: PersonaId;
 }
 
 /** Standing hip height; the legs are this long. */
@@ -38,11 +44,31 @@ export const APRON_COLORS: Readonly<Record<Exclude<CharacterRole, 'customer'>, n
 };
 const STAFF_SHIRT = 0xfff9f0;
 const CAP_COLOR = 0xe05a4f;
-const ANGRY_SKIN = 0xe8604c;
+/** A gentle flush while storming out; softer than a full red so it reads cartoon, not alarming. */
+const ANGRY_SKIN = 0xe3917c;
 const TRAY_COLOR = 0x9aa3ab;
 const CUP_COLOR = 0xf7f3ea;
 const COFFEE_COLOR = 0x6b4226;
 const RAG_COLOR = 0x5bc0de;
+const SHOE_COLOR = 0x2a211c;
+const FACE_INK = 0x2a211c;
+
+/** The four expressions a face can take. */
+const MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry'];
+
+/** A persona accessory: which merged geometry, its colour and where it sits on the torso. */
+interface Accessory {
+  geo: string;
+  color: number;
+  pos: readonly [number, number, number];
+}
+const ACCESSORIES: Partial<Record<PersonaId, Accessory>> = {
+  office: { geo: 'acc_briefcase', color: 0x5c3a26, pos: [0.3, -0.08, 0.1] },
+  student: { geo: 'acc_backpack', color: 0x3d9be9, pos: [0, 0.2, -0.17] },
+  connoisseur: { geo: 'acc_scarf', color: 0xd8457a, pos: [0, 0.42, 0] },
+};
+/** Accessory geometry shown (hidden) for a customer without one, so every rig shares it. */
+const DEFAULT_ACCESSORY = 'acc_scarf';
 
 const materials = new Map<number, MeshLambertMaterial>();
 
@@ -58,27 +84,81 @@ export function materialFor(color: number): MeshLambertMaterial {
 
 let geometries: Record<string, BufferGeometry> | null = null;
 
+/** Builds the merged brows-and-mouth geometry for one mood (local to the head). */
+function faceGeometry(mood: Mood): BufferGeometry {
+  const Z = 0.142;
+  const BROW_Y = 0.205;
+  const EYE_X = 0.07;
+  const MOUTH_Y = 0.072;
+  const parts: BufferGeometry[] = [];
+  const brow = (x: number, dy: number, rot: number): void => {
+    parts.push(new BoxGeometry(0.075, 0.016, 0.02).rotateZ(rot).translate(x, BROW_Y + dy, Z));
+  };
+  // A curved mouth from three boxes: dir +1 smiles, -1 frowns, 0 is a flat line.
+  const mouth = (dir: number): void => {
+    parts.push(new BoxGeometry(0.06, 0.02, 0.02).translate(0, MOUTH_Y - dir * 0.006, Z));
+    if (dir === 0) return;
+    parts.push(new BoxGeometry(0.035, 0.02, 0.02).rotateZ(-dir * 0.6).translate(0.045, MOUTH_Y + dir * 0.012, Z));
+    parts.push(new BoxGeometry(0.035, 0.02, 0.02).rotateZ(dir * 0.6).translate(-0.045, MOUTH_Y + dir * 0.012, Z));
+  };
+  switch (mood) {
+    case 'happy':
+      brow(-EYE_X, 0.012, 0);
+      brow(EYE_X, 0.012, 0);
+      mouth(1);
+      break;
+    case 'impatient':
+      brow(-EYE_X, -0.004, 0.14);
+      brow(EYE_X, -0.004, -0.14);
+      parts.push(new BoxGeometry(0.07, 0.018, 0.02).rotateZ(0.1).translate(0.006, MOUTH_Y, Z));
+      break;
+    case 'angry':
+      brow(-EYE_X, -0.01, 0.42);
+      brow(EYE_X, -0.01, -0.42);
+      mouth(-1);
+      break;
+    default:
+      brow(-EYE_X, 0, 0);
+      brow(EYE_X, 0, 0);
+      mouth(0);
+      break;
+  }
+  const merged = mergeGeometries(parts);
+  for (const p of parts) p.dispose();
+  if (!merged) throw new Error('rig: could not merge face geometry');
+  return merged;
+}
+
 /** Box geometries shared by every character, built once. Each is offset so its Group pivot sits at the joint. */
 function sharedGeometry(): Record<string, BufferGeometry> {
   if (geometries) return geometries;
   const box = (w: number, h: number, d: number, y = 0, z = 0): BufferGeometry => new BoxGeometry(w, h, d).translate(0, y, z);
+  // Lightly bevelled box for the chunky limbs and body, so edges catch the light.
+  const rbox = (w: number, h: number, d: number, y = 0, z = 0, r = 0.025): BufferGeometry =>
+    new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3)).translate(0, y, z);
   geometries = {
-    leg: box(0.13, HIPS_Y, 0.15, -HIPS_Y / 2),
-    body: box(0.36, 0.42, 0.22, 0.21),
+    leg: rbox(0.13, HIPS_Y, 0.15, -HIPS_Y / 2),
+    shoe: rbox(0.15, 0.08, 0.22, -HIPS_Y + 0.04, 0.04, 0.03),
+    body: rbox(0.36, 0.42, 0.22, 0.21, 0, 0.04),
     apron: box(0.3, 0.38, 0.02, 0.17, 0.12),
-    arm: box(0.1, 0.36, 0.11, -0.18),
-    hand: box(0.1, 0.08, 0.1, -0.4),
-    head: box(0.3, 0.28, 0.27, 0.14),
-    hair: box(0.32, 0.09, 0.29, 0.29),
-    eye: box(0.04, 0.05, 0.02, 0.16, 0.14),
+    neck: new CylinderGeometry(0.075, 0.09, 0.12, 10).translate(0, 0.42, 0),
+    arm: rbox(0.1, 0.36, 0.11, -0.18),
+    hand: rbox(0.1, 0.09, 0.1, -0.4, 0, 0.045),
+    head: rbox(0.3, 0.28, 0.27, 0.14, 0, 0.045),
+    hair: rbox(0.32, 0.1, 0.29, 0.29, 0, 0.04),
+    eye: box(0.045, 0.055, 0.03),
     cap: new CylinderGeometry(0.17, 0.17, 0.08, 8).translate(0, 0.33, 0),
     brim: box(0.24, 0.02, 0.14, 0.3, 0.17),
     tray: new CylinderGeometry(0.2, 0.2, 0.02, 10),
     cup: new CylinderGeometry(0.05, 0.04, 0.11, 8).translate(0, 0.055, 0),
     coffee: new CylinderGeometry(0.045, 0.045, 0.01, 8).translate(0, 0.11, 0),
     rag: box(0.14, 0.03, 0.12),
+    acc_briefcase: box(0.18, 0.14, 0.06),
+    acc_backpack: rbox(0.26, 0.3, 0.12, 0, 0, 0.04),
+    acc_scarf: box(0.34, 0.07, 0.3),
     hitbox: box(0.6, 1.45, 0.6, 0.72),
   };
+  for (const mood of MOODS) geometries[`face_${mood}`] = faceGeometry(mood);
   return geometries;
 }
 
@@ -126,17 +206,23 @@ export class Character {
 
   private readonly body: Mesh;
   private readonly apron: Mesh;
+  private readonly neck: Mesh;
   private readonly headMesh: Mesh;
   private readonly hair: Mesh;
   private readonly cap: Group;
   private readonly arms: Mesh[];
   private readonly hands: Mesh[];
   private readonly legs: Mesh[];
+  private readonly shoes: Mesh[];
+  private readonly eyes: Mesh[];
+  private readonly face: Mesh;
+  private readonly accessory: Mesh;
   private readonly tray: Group;
   private readonly cup: Group;
   private readonly rag: Mesh;
   private skin = SKINS[0]!;
   private angry = false;
+  private mood: Mood = 'neutral';
 
   constructor(opts: CharacterOptions) {
     const g = sharedGeometry();
@@ -145,15 +231,17 @@ export class Character {
     this.hips.position.y = HIPS_Y;
 
     this.legs = [mesh(g.leg!, 0), mesh(g.leg!, 0)];
+    this.shoes = [mesh(g.shoe!, SHOE_COLOR), mesh(g.shoe!, SHOE_COLOR)];
     this.legL.position.x = -0.09;
     this.legR.position.x = 0.09;
-    this.legL.add(this.legs[0]!);
-    this.legR.add(this.legs[1]!);
+    this.legL.add(this.legs[0]!, this.shoes[0]!);
+    this.legR.add(this.legs[1]!, this.shoes[1]!);
     this.hips.add(this.legL, this.legR, this.torso);
 
     this.body = mesh(g.body!, 0);
     this.apron = mesh(g.apron!, 0);
-    this.torso.add(this.body, this.apron);
+    this.neck = mesh(g.neck!, this.skin);
+    this.torso.add(this.body, this.apron, this.neck);
 
     this.arms = [mesh(g.arm!, 0), mesh(g.arm!, 0)];
     this.hands = [mesh(g.hand!, 0), mesh(g.hand!, 0)];
@@ -166,14 +254,18 @@ export class Character {
     this.head.position.y = 0.43;
     this.headMesh = mesh(g.head!, 0);
     this.hair = mesh(g.hair!, 0);
-    const eyeL = mesh(g.eye!, 0x2a211c);
-    const eyeR = mesh(g.eye!, 0x2a211c);
-    eyeL.position.x = -0.07;
-    eyeR.position.x = 0.07;
+    this.eyes = [mesh(g.eye!, FACE_INK), mesh(g.eye!, FACE_INK)];
+    this.eyes[0]!.position.set(-0.07, 0.16, 0.14);
+    this.eyes[1]!.position.set(0.07, 0.16, 0.14);
+    this.face = mesh(g.face_neutral!, FACE_INK);
     this.cap = new Group();
     this.cap.add(mesh(g.cap!, CAP_COLOR), mesh(g.brim!, CAP_COLOR));
-    this.head.add(this.headMesh, this.hair, eyeL, eyeR, this.cap);
+    this.head.add(this.headMesh, this.hair, this.eyes[0]!, this.eyes[1]!, this.face, this.cap);
     this.torso.add(this.head);
+
+    this.accessory = mesh(g[DEFAULT_ACCESSORY]!, 0xd8457a);
+    this.accessory.visible = false;
+    this.torso.add(this.accessory);
 
     // Tray rides in front of the chest between both hands.
     this.tray = new Group();
@@ -207,6 +299,7 @@ export class Character {
 
   /** Dresses the character for a role and look; reuses the shared materials. */
   setLook(opts: CharacterOptions): void {
+    const g = sharedGeometry();
     this.role = opts.role;
     this.look = opts.look;
     const look = opts.look;
@@ -218,20 +311,48 @@ export class Character {
     for (const arm of this.arms) arm.material = materialFor(shirt);
     for (const leg of this.legs) leg.material = materialFor(pants);
     for (const hand of this.hands) hand.material = materialFor(this.skin);
+    this.neck.material = materialFor(this.skin);
     this.hair.material = materialFor(pick(HAIRS, look * 5 + 2));
     this.apron.visible = !customer;
     if (!customer) this.apron.material = materialFor(APRON_COLORS[opts.role as Exclude<CharacterRole, 'customer'>]);
     this.cap.visible = opts.role === 'player';
     this.hair.visible = opts.role !== 'player';
+    // Reset the face to neutral; a pooled body may have left angry or smiling.
     this.angry = false;
+    this.mood = 'neutral';
+    this.face.geometry = g.face_neutral!;
     this.headMesh.material = materialFor(this.skin);
+    for (const eye of this.eyes) eye.scale.y = 1;
+
+    const acc = customer && opts.persona ? ACCESSORIES[opts.persona] : undefined;
+    if (acc) {
+      this.accessory.geometry = g[acc.geo]!;
+      this.accessory.material = materialFor(acc.color);
+      this.accessory.position.set(acc.pos[0], acc.pos[1], acc.pos[2]);
+    }
+    this.accessory.visible = acc !== undefined;
   }
 
   /** Red face while storming out. */
   setAngry(angry: boolean): void {
-    if (angry === this.angry) return;
-    this.angry = angry;
-    this.headMesh.material = materialFor(angry ? ANGRY_SKIN : this.skin);
+    this.setMood(angry ? 'angry' : 'neutral');
+  }
+
+  /** Swaps the brows and mouth to the mood, and flushes the face red when angry. */
+  setMood(mood: Mood): void {
+    if (mood === this.mood) return;
+    this.mood = mood;
+    this.face.geometry = sharedGeometry()[`face_${mood}`]!;
+    const angry = mood === 'angry';
+    if (angry !== this.angry) {
+      this.angry = angry;
+      this.headMesh.material = materialFor(angry ? ANGRY_SKIN : this.skin);
+    }
+  }
+
+  /** Scales the eyes shut for a blink; `open` is 1 fully open, near 0 shut. */
+  setBlink(open: number): void {
+    for (const eye of this.eyes) eye.scale.y = open;
   }
 
   get isAngry(): boolean {
