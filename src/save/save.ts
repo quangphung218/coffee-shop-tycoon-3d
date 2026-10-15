@@ -1,10 +1,12 @@
+import { levelForXp } from '../sim/data/levels';
 import { settleActors } from '../sim/index';
+import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progression';
 import { createDayStats } from '../sim/state';
-import type { GameState } from '../sim/types';
+import type { GameState, MenuEntry, UpgradeId } from '../sim/types';
 import { relayoutTables } from '../sim/upgrades';
 import { defaultStorage, type StorageLike } from './storage';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const SAVE_KEY_PREFIX = 'cst3d:save:';
 export const SAVE_SLOTS = ['auto', '1', '2', '3'] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -77,6 +79,26 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     }
     return { version: 1, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // Adds shop level, XP and daily missions. The level is taken from the days
+  // already played, but never below what keeps every owned upgrade and enabled
+  // menu item unlocked, so nothing bought before levelling becomes unusable.
+  1: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    const shopName = typeof state.shopName === 'string' ? state.shopName : '';
+    const menu = Array.isArray(state.menu) ? (state.menu as MenuEntry[]) : [];
+    const upgrades = isObject(state.upgrades) ? (state.upgrades as Partial<Record<UpgradeId, number>>) : {};
+    const history = Array.isArray(state.history) ? (state.history as { customersServed?: number }[]) : [];
+    if (typeof state.seed !== 'number') state.seed = deriveSeed(shopName);
+    if (typeof state.xp !== 'number') state.xp = historyXp(history);
+    if (typeof state.shopLevel !== 'number') {
+      state.shopLevel = Math.max(levelForXp(state.xp as number), coverLevel(menu, upgrades));
+    }
+    if (!Array.isArray(state.missions)) {
+      const day = typeof state.day === 'number' ? state.day : 1;
+      state.missions = rollMissions(state.seed as number, day, state.shopLevel as number);
+    }
+    return { version: 2, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
+  },
 };
 
 /** Brings a parsed save of any known version up to SAVE_VERSION. */
@@ -117,7 +139,11 @@ function isValidState(s: unknown): s is GameState {
     typeof s.money === 'number' &&
     typeof s.rating === 'number' &&
     typeof s.rngState === 'number' &&
+    typeof s.seed === 'number' &&
+    typeof s.shopLevel === 'number' &&
+    typeof s.xp === 'number' &&
     typeof s.nextId === 'number' &&
+    Array.isArray(s.missions) &&
     Array.isArray(s.menu) &&
     Array.isArray(s.inventory) &&
     Array.isArray(s.customers) &&
