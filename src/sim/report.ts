@@ -3,10 +3,11 @@ import { getIngredient } from './data/ingredients';
 import { getMenuItem } from './data/menu';
 import { UPGRADES, upgradeCost } from './data/upgrades';
 import { profit, settleDay, totalWages } from './economy';
+import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
-import type { DailyReport, GameState, MenuItemId, Suggestion } from './types';
+import type { DailyReport, GameState, Insights, MenuItemId, Suggestion } from './types';
 
 export const TOP_SELLERS = 3;
 export const REPORT_REVIEWS = 5;
@@ -27,8 +28,12 @@ function hasRole(state: GameState, role: string): boolean {
   return state.staff.some((s) => s.role === role);
 }
 
-/** Action hints for tomorrow, from simple rules over today's numbers. */
-export function buildSuggestions(state: GameState, outOfStock: readonly MenuItemId[]): Suggestion[] {
+/**
+ * Action hints for tomorrow, from simple rules over today's numbers. When
+ * insights are given, the upgrade hint points at more tables while seats are
+ * the bottleneck; the suggestion kinds stay the same so the UI never breaks.
+ */
+export function buildSuggestions(state: GameState, outOfStock: readonly MenuItemId[], insights?: Insights): Suggestion[] {
   const t = state.today;
   const out: Suggestion[] = [];
 
@@ -59,6 +64,15 @@ export function buildSuggestions(state: GameState, outOfStock: readonly MenuItem
   // Keep tomorrow's wages and restock in hand before spending on upgrades.
   const reserve = totalWages(state) + restock.totalCost;
   const priceMult = DIFFICULTIES[state.difficulty].priceMult;
+  const seatFillBad = insights?.metrics.find((m) => m.id === 'seat_fill')?.status === 'bad';
+  if (seatFillBad) {
+    const tablesDef = UPGRADES.find((u) => u.id === 'tables');
+    const cost = tablesDef ? upgradeCost(tablesDef, state.upgrades.tables ?? 0, priceMult) : null;
+    if (tablesDef && cost !== null && state.money - reserve >= cost) {
+      out.push({ kind: 'upgrade', text: `Ghế hay kín chỗ: nâng cấp ${tablesDef.name}` });
+      return out;
+    }
+  }
   let best: { name: string; cost: number } | null = null;
   for (const def of UPGRADES) {
     const cost = upgradeCost(def, state.upgrades[def.id] ?? 0, priceMult);
@@ -84,6 +98,7 @@ export function buildDailyReport(state: GameState, prog?: ProgressionResult): Da
     .map(([id, qty]) => ({ id, qty }));
   const ranOut = (Object.keys(t.outOfStock) as MenuItemId[]).filter((id) => (t.outOfStock[id] ?? 0) > 0);
   const outOfStock = [...new Set([...ranOut, ...blockedMenuItems(state)])];
+  const insights = buildInsights(state, t);
   return {
     day: t.day,
     revenue: t.revenue,
@@ -100,7 +115,8 @@ export function buildDailyReport(state: GameState, prog?: ProgressionResult): Da
     ratingStart: t.ratingStart,
     ratingEnd: t.ratingEnd,
     reviews: state.reviews.filter((r) => r.day === t.day).slice(-REPORT_REVIEWS),
-    suggestions: buildSuggestions(state, outOfStock),
+    suggestions: buildSuggestions(state, outOfStock, insights),
+    insights,
     missions: state.missions,
     xpGained: prog?.xpGained ?? 0,
     levelUp: prog?.levelUp,

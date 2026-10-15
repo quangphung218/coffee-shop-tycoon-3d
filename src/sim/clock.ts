@@ -1,4 +1,5 @@
 import { rollWeather } from './customers';
+import { recordRevenue } from './economy';
 import { rollMissions } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
@@ -53,7 +54,7 @@ export function closeUp(state: GameState): void {
   for (const table of state.tables) {
     if (table.cash > 0) {
       state.money += table.cash;
-      state.today.revenue += table.cash;
+      recordRevenue(state, table.cash);
       state.events.push({ type: 'cash', amount: table.cash, pos: { ...table.pos } });
       table.cash = 0;
     }

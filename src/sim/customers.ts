@@ -2,7 +2,8 @@ import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
 import { totalUpgradeEffect } from './data/upgrades';
-import { canMake, consume } from './inventory';
+import { hourOf, recordRevenue } from './economy';
+import { canMake, consume, servingCost } from './inventory';
 import { customerMultiplier } from './marketing';
 import {
   CHAIR_OFFSET,
@@ -305,9 +306,13 @@ export function spawnCustomer(state: GameState): Customer | null {
     timer: ENTER_MINUTES,
     look: randInt(state, 0, 7),
     persona: persona.id,
+    arrivedMinute: state.minute,
   };
   state.customers.push(customer);
   state.today.customersArrived += 1;
+  const hour = hourOf(state.minute);
+  const byHour = state.today.arrivalsByHour;
+  if (byHour && hour >= 0 && hour < 24) byHour[hour] = (byHour[hour] ?? 0) + 1;
   state.events.push({ type: 'doorbell', customerId: customer.id });
   return customer;
 }
@@ -360,7 +365,14 @@ function startLeaving(state: GameState, customer: Customer, next: 'leaving' | 'a
 
 /** Customer storms out: drops their orders and the player's tasks for them. */
 export function angryLeave(state: GameState, customer: Customer, reason: 'patience' | 'out_of_stock'): void {
-  const orderIds = new Set(state.orders.filter((o) => o.customerId === customer.id).map((o) => o.id));
+  const theirOrders = state.orders.filter((o) => o.customerId === customer.id);
+  // Drinks already brewed for a customer who leaves are wasted ingredients.
+  if (state.today.wasteCost !== undefined) {
+    let waste = theirOrders.reduce((s, o) => s + servingCost(state, o.itemId), 0);
+    if (customer.extraItem) waste += servingCost(state, customer.extraItem);
+    state.today.wasteCost += waste;
+  }
+  const orderIds = new Set(theirOrders.map((o) => o.id));
   state.orders = state.orders.filter((o) => !orderIds.has(o.id));
   state.playerTasks = state.playerTasks.filter((t) => {
     if (t.kind === 'take_order') return t.targetId !== customer.id;
@@ -386,6 +398,18 @@ function extraPrice(state: GameState, customer: Customer): number {
   return customer.extraItem ? sellPrice(state, customer.extraItem) : 0;
 }
 
+/** Adds a sale's đồng to the per-item revenue tally, when the day tracks it. */
+function recordSale(state: GameState, itemId: MenuItemId, price: number): void {
+  if (state.today.soldRevenue) state.today.soldRevenue[itemId] = (state.today.soldRevenue[itemId] ?? 0) + price;
+}
+
+/** Records how long a served customer waited, from the door to getting the drink. */
+function recordWait(state: GameState, customer: Customer): void {
+  if (customer.arrivedMinute === undefined || state.today.waitMinutesSum === undefined || state.today.waitCount === undefined) return;
+  state.today.waitMinutesSum += Math.max(0, state.minute - customer.arrivedMinute);
+  state.today.waitCount += 1;
+}
+
 /**
  * Hands the drink over. Seated customers start drinking; customers without a
  * clean seat take it away and pay at the counter.
@@ -394,6 +418,7 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
   state.today.customersServed += 1;
   state.today.sold[itemId] = (state.today.sold[itemId] ?? 0) + 1;
   if (customer.extraItem) state.today.sold[customer.extraItem] = (state.today.sold[customer.extraItem] ?? 0) + 1;
+  recordWait(state, customer);
   state.events.push({ type: 'served', customerId: customer.id, itemId });
   if (seatCustomer(state, customer)) {
     customer.state = 'drinking';
@@ -401,10 +426,13 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
     customer.timer = Math.max(1, Math.round(randInt(state, DRINK_MINUTES[0], DRINK_MINUTES[1]) * sitMult));
     return;
   }
-  const price = sellPrice(state, itemId) + extraPrice(state, customer);
-  state.money += price;
-  state.today.revenue += price;
-  state.events.push({ type: 'cash', amount: price, pos: { ...customer.pos } });
+  const drinkPrice = sellPrice(state, itemId);
+  const extra = extraPrice(state, customer);
+  state.money += drinkPrice + extra;
+  recordRevenue(state, drinkPrice + extra);
+  recordSale(state, itemId, drinkPrice);
+  if (customer.extraItem) recordSale(state, customer.extraItem, extra);
+  state.events.push({ type: 'cash', amount: drinkPrice + extra, pos: { ...customer.pos } });
   startLeaving(state, customer, 'leaving');
 }
 
@@ -412,8 +440,12 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
 function payAtTable(state: GameState, customer: Customer): void {
   const table = state.tables.find((t) => t.id === customer.tableId);
   if (table && customer.order) {
-    table.cash += sellPrice(state, customer.order) + extraPrice(state, customer);
+    const drinkPrice = sellPrice(state, customer.order);
+    const extra = extraPrice(state, customer);
+    table.cash += drinkPrice + extra;
     table.trash += 1;
+    recordSale(state, customer.order, drinkPrice);
+    if (customer.extraItem) recordSale(state, customer.extraItem, extra);
   }
   startLeaving(state, customer, 'leaving');
 }
