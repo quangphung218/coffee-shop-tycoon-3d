@@ -30,9 +30,11 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | Tính năng | Chi tiết |
 | --- | --- |
 | Vòng ngày | Chuẩn bị → mở cửa → cao điểm → đóng cửa → Daily Report. |
-| Quản lý quán | Bật/tắt món, nhập nguyên liệu, tuyển và phân vai nhân viên, chạy marketing, mua nâng cấp. |
+| Quản lý quán | Bật/tắt món, nhập nguyên liệu, tuyển và phân vai nhân viên, chạy marketing, mua nâng cấp và dụng cụ (máy xay, tủ bánh, máy xay sinh tố…). |
+| Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–6, mỗi cấp mở thêm món, nâng cấp và dụng cụ. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
+| Chỉ số kinh doanh | Daily Report có tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
 | Tự phục vụ | Bấm khách, quầy hay bàn trong cảnh để nhận order, pha, mang đồ, thu tiền, dọn bàn. |
-| Khách và đánh giá | Khách xếp hàng, gọi món, bỏ về khi chờ lâu; để lại review 1–5 sao. |
+| Khách và đánh giá | Khách có cá tính (văn phòng, sinh viên, khách quen, sành cà phê, gia đình) đổi gu món và độ kiên nhẫn; xếp hàng, bỏ về khi chờ lâu, để lại review 1–5 sao. |
 | Cảnh 3D | Quán, nhân vật và phố sinh bằng code; đèn ấm buổi tối; 3 mức đồ họa. |
 | Âm thanh | Tổng hợp bằng Web Audio, không dùng file âm thanh. |
 | Lưu game | Slot tự động cuối ngày và 3 slot lưu tay trong trình duyệt. |
@@ -63,10 +65,10 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **Ván mới**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): mở các bảng ở dock giữa đáy màn hình (Việc, Menu, Kho, Nhân viên, Marketing, Nâng cấp), rồi bấm **Mở cửa** trên HUD.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD hiện cấp quán và thanh XP cạnh ngày. Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; bảng **Nâng cấp** khóa món chưa tới cấp. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
-5. **Daily Report**: xem lãi/lỗ, thu chi, khách, món bán chạy, rating, review và gợi ý; game tự lưu trước khi báo cáo hiện. Bấm **Ngày tiếp theo** để sang ngày mới.
+5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Nhiệm vụ xong và lên cấp hiện trong Tổng kết. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới.
 
 Bảng **Đánh giá** ở dock liệt kê các review gần nhất bất cứ lúc nào.
 
@@ -104,6 +106,7 @@ Version đang chạy (vd `v0.1.0`) hiện ở chân Main Menu và cuối màn C�
 
 - Lưu trong `localStorage` của trình duyệt: slot tự động (ghi cuối mỗi ngày) và 3 slot lưu tay trong menu Tạm dừng.
 - **Tải game** ở Main Menu mở mọi slot; slot hỏng được báo, không bị xóa.
+- Định dạng lưu là phiên bản 2. Save từ bản cũ tự nâng khi tải: tính cấp quán từ lịch sử đã chơi và thêm nhiệm vụ ngày, giữ nguyên tiền và mọi món, nâng cấp đã mua (chi tiết ở [docs/architecture.md](docs/architecture.md#save-schema)).
 
 ## Cấu trúc thư mục
 
