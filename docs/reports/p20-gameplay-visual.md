@@ -8,7 +8,7 @@ Báo cáo P20: chấm hiện trạng 3D rồi cải tiến, cấp quán/nhiệm 
 npm run media:p20
 ```
 
-Lệnh dựng mười hai bảng vào `docs/media/`, mỗi bảng ghép P19 cạnh P20 cùng seed, khoanh chỗ đã đổi (P19 nét đứt cam, P20 nét liền xanh); cách chạy ở [docs/media.md](../media.md#ảnh-trướcsau-p20). Lần chạy cuối xong trong 328 s, không cảnh báo `!!`.
+Lệnh dựng mười hai bảng vào `docs/media/`, mỗi bảng ghép P19 cạnh P20 cùng seed, khoanh chỗ đã đổi (P19 nét đứt cam, P20 nét liền xanh); cách chạy ở [docs/media.md](../media.md#ảnh-trướcsau-p20). Lần chạy cuối dựng xong bảng ở giây 244, không cảnh báo `!!`.
 
 | | |
 | --- | --- |
