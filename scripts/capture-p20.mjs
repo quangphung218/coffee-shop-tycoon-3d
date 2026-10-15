@@ -55,6 +55,12 @@ const SUBJECT_WAIT_MS = 60_000;
 const HIRES = 3;
 /** 1280 window used for the game boards, a little taller so the Daily Report fits. */
 const DESK = { width: 1280, height: 800 };
+/**
+ * Window while only waiting for the game clock. Slow frames slow the day down
+ * (each frame advances the sim by a capped step), so drawing a tiny window
+ * between shots plays the day several times faster.
+ */
+const IDLE = { width: 320, height: 240 };
 /** Shop name the New Game screen starts with; the prepared saves use it too. */
 const SHOP_NAME = 'Coffee Shop';
 /** The five pieces of equipment P20 adds (ToolId in src/sim/types.ts). */
@@ -472,6 +478,11 @@ async function gameSession(browser, url, sim, { who, lockedId, save, needMood })
   const dockBtn = (id) => page.locator(`.dock [data-panel="${id}"]`);
   const panelBody = () => page.locator('#ui-panel .panel-body');
   const texts = () => page.evaluate(measureTexts);
+  const idle = () => page.setViewportSize(IDLE);
+  const wake = async () => {
+    await page.setViewportSize(DESK);
+    await sleep(800);
+  };
   try {
     await enterDay(page, url, save);
     progress(who, 'day 1, preparation');
@@ -513,10 +524,12 @@ async function gameSession(browser, url, sim, { who, lockedId, save, needMood })
     await page.locator('[data-action="open"]').click();
     await page.locator('[data-speed="4"]').click();
     progress(who, 'opened at 4x');
+    await idle();
 
     // Peak: the scene, then the two close-ups.
     await page.waitForFunction(() => document.querySelector('.phases li[data-phase="peak"]')?.getAttribute('aria-current') === 'step', null, { timeout: DAY_TIMEOUT_MS });
     await clockAt(page, '12:00');
+    await wake();
     progress(who, 'peak, 12:00');
     await cameraHome(page, ZOOM_WHEEL);
     let peakPng;
@@ -529,10 +542,12 @@ async function gameSession(browser, url, sim, { who, lockedId, save, needMood })
     const mood = await closeUp(page, { kind: 'customer', needMood, ...counter, ...MOOD_SHOT });
     progress(who, mood ? 'customer close-up' : 'no customer with a mood');
     await cameraHome(page, ZOOM_WHEEL);
+    await idle();
 
     // Daily Report: the summary (numbers, and the level-up band where it exists), then the Chỉ số tab.
     const report = page.locator('.rpt-layer:not([hidden])');
     await report.waitFor({ timeout: DAY_TIMEOUT_MS });
+    await wake();
     progress(who, 'Daily Report');
     await page.locator('[data-block="money"]').first().waitFor();
     await sleep(1200);
