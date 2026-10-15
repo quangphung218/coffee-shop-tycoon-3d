@@ -137,6 +137,8 @@ export class AmbientView {
     this.reducedMotion = options.reducedMotion ?? mediaReducedMotion();
     this.config = ambientFor(this.quality, this.reducedMotion());
     this.steam = new Steam(puffTexture());
+    // Named so scripts/capture-p20.mjs can tell when an order is brewing.
+    this.steam.group.name = 'machine-steam';
     this.steam.group.scale.setScalar(STEAM_SCALE);
     this.shop.root.add(this.steam.group);
     this.syncLights();

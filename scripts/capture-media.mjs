@@ -613,7 +613,7 @@ async function khoSession(browser, url, focus) {
  * puts each label off the rings with a leader line, and a legend with the
  * notes below.
  */
-async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop, scale }) {
+async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop, scale, avoid = [], gutter = 0 }) {
   const INK = '#2b1d14';
   const COLOR = { before: '#e07a5f', after: '#2fb898' };
   const LINE = '#f2c14e';
@@ -632,7 +632,8 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
   for (const [i, img] of imgs.entries()) {
     const w = Math.round(crop.w * SCALE);
     panels.push({ img, x: px, w, h: Math.round(crop.h * SCALE), title: frames[i].title, side: frames[i].side });
-    px += w + PAD;
+    // A `gutter` right of each frame holds labels that would cover the frame's text.
+    px += w + gutter + PAD;
   }
   // Frame CSS px (deviceScaleFactor 1) to board px, relative to a panel's left edge and the image top.
   const sx = (x) => (x - crop.x) * SCALE;
@@ -739,10 +740,16 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
   const placed = [];
   const hits = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const rings = ringRects.flat();
-  const clash = (a) => placed.some((b) => hits(a, b)) || rings.some((b) => hits(a, b));
+  // Text on the frames (`avoid`, frame CSS px) that labels must not cover.
+  const texts = avoid.flatMap((a) => {
+    const p = panels[a.frame];
+    return a.boxes.filter(Boolean).map((b) => ({ x: p.x + sx(b.x), y: top + sy(b.y), w: b.w * SCALE, h: b.h * SCALE }));
+  });
+  const clash = (a) => placed.some((b) => hits(a, b)) || rings.some((b) => hits(a, b)) || texts.some((b) => hits(a, b));
+  const overText = [];
   for (const [i, m] of marks.entries()) {
     const p = panels[m.frame];
-    const text = wrap(ctx, m.label, p.w - 26);
+    const text = wrap(ctx, m.label, Math.max(p.w, gutter) - 26);
     const tw = Math.max(...text.map((t) => ctx.measureText(t).width)) + 18;
     const th = 8 + LABEL_LINE * text.length;
     const own = ringRects[i];
@@ -753,17 +760,20 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
     const cx = (x0 + x1) / 2;
     const cy = (y0 + y1) / 2;
     const at = (x, y) => ({
-      x: Math.min(p.x + p.w - tw - 4, Math.max(p.x + 4, x)),
+      x: Math.min(p.x + p.w + gutter - tw - 4, Math.max(p.x + 4, x)),
       y: Math.min(top + p.h - th - 4, Math.max(top + 4, y)),
       w: tw,
       h: th,
     });
     const tries = [];
+    // With a gutter, first in it level with the rings, then further up and down.
+    if (gutter > 0) for (let k = 0; k < 24; k++) tries.push(at(p.x + p.w + 10, cy - th / 2 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (th / 2 + 2)));
     for (let k = 0; k < 12; k++) {
       const d = 6 + k * (th + 4);
       tries.push(at(cx - tw / 2, y0 - th - d), at(cx - tw / 2, y1 + d), at(x0 - tw - 6 - k * 24, cy - th / 2), at(x1 + 6 + k * 24, cy - th / 2));
     }
     const spot = tries.find((t) => !clash(t)) ?? tries[0];
+    if (texts.some((b) => hits(spot, b))) overText.push(m.label);
     placed.push(spot);
     // Leader from the label's nearest edge point to the rings' box.
     const lx = Math.min(Math.max(cx, spot.x), spot.x + tw);
@@ -823,7 +833,7 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
     fy += ROW;
     ctx.fillText(line, PAD, fy);
   }
-  return canvas.toDataURL('image/png').split(',')[1];
+  return { png: canvas.toDataURL('image/png').split(',')[1], overText };
 }
 
 /** Width and height of a PNG, from its header. */
@@ -845,18 +855,24 @@ function cropAround(boxes, pad, { w, h }) {
  * Writes docs/media/<out>: `frames` ({ png, title, side }) side by side with
  * the marks ({ frame, boxes, label }) ringed and labelled. Every frame shows
  * the same crop: the rings and `include` boxes grown by `pad`, enlarged up to
- * `maxScale` so the row fits BOARD_WIDTH. Prints the rings per label and
- * warns with !! for a label with nothing to ring.
+ * `maxScale` so the row fits BOARD_WIDTH. Labels keep off the `avoid` text
+ * boxes ({ frame, boxes }), using a `gutter` px strip right of each frame when
+ * needed. Prints the rings per label and warns with !! for a label with
+ * nothing to ring or one that still covers text.
  */
-async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25, names = { before: `P18 (${P18_COMMIT})`, after: 'P19' } }) {
+async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25, names = { before: `P18 (${P18_COMMIT})`, after: 'P19' }, avoid = [], gutter = 0 }) {
   const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) }));
   const ringed = kept.filter((m) => m.boxes.length > 0);
-  const crop = cropAround([...ringed.flatMap((m) => m.boxes), ...include.filter(Boolean)], pad, pngSize(frames[0].png));
-  const room = (BOARD_WIDTH - 24 * (frames.length + 1)) / frames.length;
+  // The largest frame bounds the crop, so a ring on a taller frame (a longer form) is not cut off.
+  const sizes = frames.map((f) => pngSize(f.png));
+  const bounds = { w: Math.max(...sizes.map((s) => s.w)), h: Math.max(...sizes.map((s) => s.h)) };
+  const crop = cropAround([...ringed.flatMap((m) => m.boxes), ...include.filter(Boolean)], pad, bounds);
+  const room = (BOARD_WIDTH - 24 * (frames.length + 1) - gutter * frames.length) / frames.length;
   const scale = Math.min(maxScale, room / crop.w);
   const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
+  let overText = [];
   try {
-    const png = await page.evaluate(drawBoard, {
+    const board = await page.evaluate(drawBoard, {
       frames: frames.map((f) => ({ ...f, png: f.png.toString('base64') })),
       marks: ringed,
       lines,
@@ -865,14 +881,18 @@ async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend =
       names,
       crop,
       scale,
+      avoid,
+      gutter,
     });
-    writeFileSync(join(OUT, out), Buffer.from(png, 'base64'));
+    overText = board.overText;
+    writeFileSync(join(OUT, out), Buffer.from(board.png, 'base64'));
   } finally {
     await page.close();
   }
   console.log(`${out}: ${ringed.map((m) => `${frames[m.frame].side} "${m.label}" ×${m.boxes.length}`).join(', ')}`);
   const missing = kept.filter((m) => m.boxes.length === 0);
   if (missing.length > 0) console.warn(`!! ${out}: nothing to ring for ${missing.map((m) => `"${m.label}"`).join(', ')}`);
+  if (overText.length > 0) console.warn(`!! ${out}: label covers text for ${overText.map((l) => `"${l}"`).join(', ')}`);
 }
 
 /** Metres to 2 decimals with a decimal comma, e.g. 1,32 or 2. */

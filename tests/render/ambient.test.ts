@@ -12,7 +12,9 @@ import {
   swayAngle,
   warmGlow,
 } from '../../src/render/scene/ambient';
+import { environmentEnabled } from '../../src/render/scene/environment';
 import { GLASS_MATERIAL } from '../../src/render/scene/parts';
+import { fillOf, LIGHT_BUDGET, lightingFor, P19_LIGHTING, totalLightOf } from '../../src/render/scene/renderer';
 import { ShopView } from '../../src/render/scene/shop';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, nextUpgradeCost } from '../../src/sim/upgrades';
@@ -218,6 +220,31 @@ describe('ambient by quality', () => {
     ambient.update(state, 0, 0.3);
     expect(pose(shop)).toEqual(before);
     ambient.dispose();
+  });
+});
+
+describe('scene light budget', () => {
+  it('keeps the total light of every quality within the P19 budget', () => {
+    expect(LIGHT_BUDGET).toBeCloseTo(3.4);
+    for (const q of QUALITIES) expect(totalLightOf(lightingFor(q))).toBeLessThanOrEqual(LIGHT_BUDGET + 1e-9);
+  });
+
+  it('keeps the sun at least as strong against the fill as P19, so faces keep their contrast', () => {
+    const p19 = P19_LIGHTING.sun / fillOf(P19_LIGHTING);
+    for (const q of QUALITIES) {
+      const l = lightingFor(q);
+      expect(l.sun / fillOf(l)).toBeGreaterThanOrEqual(p19 - 1e-9);
+    }
+  });
+
+  it('uses the environment map only where the quality builds it, as a small part of the fill', () => {
+    for (const q of QUALITIES) {
+      const l = lightingFor(q);
+      expect(l.env > 0).toBe(environmentEnabled(q));
+      expect(l.env).toBeLessThanOrEqual(0.15);
+      expect(l.hemi).toBeGreaterThan(0);
+    }
+    expect(lightingFor('low')).toEqual(P19_LIGHTING);
   });
 });
 
