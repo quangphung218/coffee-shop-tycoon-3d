@@ -3,11 +3,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { xpToReach } from '../../src/sim/data/levels';
 import { createNewGame } from '../../src/sim/state';
-import type { Command, GameState, Mission } from '../../src/sim/types';
+import type { ActiveCampaign, Command, DailyReport, GameState, Mission, Staff, Unlocks } from '../../src/sim/types';
 import { createHud } from '../../src/ui/hud/hud';
 import type { PanelContext, PanelHandle, PanelRender } from '../../src/ui/hud/panels';
+import { openTaskCount, registerPrepPanels } from '../../src/ui/panels';
+import { renderMenuPanel } from '../../src/ui/panels/menu';
 import { renderTasksPanel } from '../../src/ui/panels/tasks';
 import { UPGRADE_GROUPS, renderUpgradesPanel } from '../../src/ui/panels/upgrades';
+import { registerReviewsPanel } from '../../src/ui/report';
+import { renderSummary } from '../../src/ui/report/report';
 
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
@@ -89,6 +93,15 @@ describe('HUD level chip and XP bar', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe(String(xpToReach(2) / 2));
     expect(bar.getAttribute('aria-valuetext')).toContain('Cấp 2');
     expect(q<HTMLElement>(chip, '.xp-fill').style.width).toBe('50%');
+    expect(q(chip, '[data-stat="xp"]').textContent).toBe(`${xpToReach(2) / 2}/${xpToReach(2)}`);
+  });
+
+  it('shows the XP count of the current level, e.g. "320/500"', () => {
+    const state = game();
+    state.shopLevel = 2;
+    state.xp = xpToReach(2) + 320;
+    const el = makeHud(state);
+    expect(q(el, '[data-stat="xp"]').textContent).toBe(`320/${xpToReach(3) - xpToReach(2)}`);
   });
 
   it('reports the top level as full and capped', () => {
@@ -156,6 +169,25 @@ describe('daily missions in the Task Board', () => {
     expect(q(active, '.mission-reward').textContent).toContain('40.000đ');
   });
 
+  it('fills the bar of an active mission from today\'s live progress', () => {
+    const state = withMissions(game(), [{ id: 'serve_customers', target: 20, progress: 0, rewardXp: 60, rewardMoney: 100000, status: 'active' }]);
+    const { body, handle } = mount(renderTasksPanel, state);
+    const bar = (): HTMLElement => q(body, '.mission[data-mission="serve_customers"] [role="progressbar"]');
+    expect(bar().getAttribute('aria-valuenow')).toBe('0');
+    state.today.customersArrived = 12;
+    state.today.customersServed = 10;
+    (handle as PanelHandle).update!(state);
+    expect(bar().getAttribute('aria-valuenow')).toBe('50');
+    expect(bar().getAttribute('aria-valuetext')).toContain('10 khách');
+  });
+
+  it('labels an active mission with a clock icon on a flat badge', () => {
+    const { body } = mount(renderTasksPanel, withMissions(game(), sample.map((m) => ({ ...m }))));
+    const badge = q(body, '.mission[data-status="active"] .badge');
+    expect(badge.classList.contains('badge-neutral')).toBe(true);
+    expect(q(badge, '.ic').dataset.icon).toBe('i-clock');
+  });
+
   it('shows a note instead of cards when an old save has no missions', () => {
     const { body } = mount(renderTasksPanel, withMissions(game(), []));
     expect(body.querySelectorAll('.mission')).toHaveLength(0);
@@ -170,6 +202,142 @@ describe('daily missions in the Task Board', () => {
     state.missions[2]!.progress = 4;
     (handle as PanelHandle).update!(state);
     expect(q(body, '.mission[data-mission="sell_food"]').getAttribute('data-status')).toBe('completed');
+  });
+});
+
+describe('Việc badge', () => {
+  it('counts only the unfinished checklist, never the daily missions, and reaches 0', () => {
+    const state = game();
+    for (const item of state.inventory) item.qty = 1_000_000;
+    state.staff = [{ id: 1, name: 'An', role: 'barista' } as unknown as Staff];
+    state.campaigns = [{ id: 'flyers', daysLeft: 2 } as unknown as ActiveCampaign];
+    expect(state.missions.filter((m) => m.status === 'active')).toHaveLength(3);
+    expect(openTaskCount(state)).toBe(0);
+  });
+});
+
+describe('menu level locks', () => {
+  it('shows "Mở ở cấp N" with a disabled switch and its reason, and sends nothing', () => {
+    const state = game();
+    for (const item of state.inventory) item.qty = 1_000_000;
+    const { body, sent, handle } = mount(renderMenuPanel, state);
+    const row = q(body, '[data-item="cappuccino"]');
+    expect(row.classList.contains('is-locked')).toBe(true);
+    const label = q(row, '[data-lock="level"]');
+    expect(label.hidden).toBe(false);
+    expect(label.textContent).toContain('Mở ở cấp 2');
+    expect(label.tagName).toBe('SPAN');
+    const sw = q<HTMLButtonElement>(row, '[role="switch"]');
+    expect(sw.getAttribute('aria-disabled')).toBe('true');
+    expect(q(document, `#${sw.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa ở Cấp 2');
+    sw.click();
+    expect(sent).toHaveLength(0);
+
+    // An unlocked item is not level-locked.
+    expect(q(body, '[data-item="latte"] [data-lock="level"]').hidden).toBe(true);
+
+    // Reaching the level clears the lock in place.
+    state.shopLevel = 2;
+    (handle as PanelHandle).update!(state);
+    expect(q(body, '[data-item="cappuccino"] [data-lock="level"]').hidden).toBe(true);
+    expect(q(body, '[data-item="cappuccino"] [role="switch"]').getAttribute('aria-disabled')).not.toBe('true');
+  });
+
+  it('lets an item an old save already sells be switched off', () => {
+    const state = game();
+    for (const item of state.inventory) item.qty = 1_000_000;
+    const entry = state.menu.find((m) => m.id === 'cake')!;
+    entry.enabled = true;
+    const { body } = mount(renderMenuPanel, state);
+    expect(q(body, '[data-item="cake"] [data-lock="level"]').hidden).toBe(true);
+    expect(q(body, '[data-item="cake"] [role="switch"]').getAttribute('aria-disabled')).not.toBe('true');
+  });
+});
+
+describe('daily report: missions, XP and level-up', () => {
+  const unlocks: Unlocks = { menu: ['cappuccino'], upgrades: ['fast_machine'], tools: ['grinder'] };
+
+  function report(over: Partial<DailyReport> = {}): DailyReport {
+    return {
+      day: 3,
+      revenue: 1_200_000,
+      ingredientCost: 300_000,
+      wages: 200_000,
+      marketingCost: 0,
+      profit: 700_000,
+      money: 2_600_000,
+      customersArrived: 50,
+      customersServed: 45,
+      customersLost: 5,
+      topSellers: [],
+      outOfStock: [],
+      ratingStart: 3.8,
+      ratingEnd: 3.9,
+      reviews: [],
+      suggestions: [],
+      ...over,
+    };
+  }
+
+  function summary(r: DailyReport): HTMLElement {
+    const root = document.createElement('div');
+    root.append(...renderSummary(r));
+    document.body.append(root);
+    return root;
+  }
+
+  it('lists each mission as reached or missed with its reward, and the XP earned', () => {
+    const root = summary(
+      report({
+        missions: [
+          { id: 'serve_customers', target: 25, progress: 45, rewardXp: 60, rewardMoney: 100000, status: 'completed' },
+          { id: 'food_cost', target: 38, progress: 45, rewardXp: 60, rewardMoney: 100000, status: 'failed' },
+        ],
+        xpGained: 150,
+      }),
+    );
+    const list = q(root, '[data-block="missions"]');
+    const done = q(list, '[data-mission="serve_customers"]');
+    expect(q(done, '.badge').textContent).toContain('Đạt');
+    expect(done.textContent).toContain('45 khách');
+    expect(done.textContent).toContain('+60 KN');
+    expect(done.textContent).toContain('100.000đ');
+    expect(q(list, '[data-mission="food_cost"] .badge').textContent).toContain('Hụt');
+    expect(root.textContent).toContain('đạt 1/2');
+    expect(q(root, '[data-block="xp"]').textContent).toContain('+150 KN');
+    expect(root.querySelector('[data-block="level-up"]')).toBeNull();
+  });
+
+  it('shows a "Lên cấp N" band in place with the unlocks', () => {
+    const root = summary(report({ missions: [], xpGained: 300, levelUp: { level: 2, unlocks } }));
+    const band = q(root, '[data-block="level-up"]');
+    expect(band.closest('[role="dialog"]')).toBeNull();
+    expect(band.textContent).toContain('Lên cấp 2');
+    expect(band.textContent).toContain('Cappuccino');
+    expect(band.textContent).toContain('Dụng cụ');
+  });
+
+  it('says so when an old save has no missions or XP in its report', () => {
+    const root = summary(report());
+    expect(root.querySelector('[data-block="missions"]')).toBeNull();
+    expect(root.querySelector('[data-block="xp"]')).toBeNull();
+    expect(root.querySelector('[data-block="level-up"]')).toBeNull();
+    expect(root.textContent).toContain('lưu từ bản cũ');
+  });
+});
+
+describe('dock groups', () => {
+  // The 390 px CSS (divider takes no grid cell) is checked in styles.test.ts.
+  it('puts Đánh giá in its own group after Phát triển, behind a divider', () => {
+    const hud = createHud({ dispatch: () => true, getState: () => game(), onPause() {}, onSettings() {}, onResetCamera() {} });
+    const offs = [registerPrepPanels(), registerReviewsPanel()];
+    try {
+      const order = [...hud.el.querySelectorAll('.dock > *')].map((el) => (el.classList.contains('dock-sep') ? '|' : (el as HTMLElement).dataset.panel));
+      expect(order).toEqual(['tasks', 'menu', 'inventory', 'staff', '|', 'marketing', 'upgrades', '|', 'reviews']);
+    } finally {
+      offs.forEach((off) => off());
+      hud.dispose();
+    }
   });
 });
 

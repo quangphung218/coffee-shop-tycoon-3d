@@ -49,6 +49,14 @@ describe('Settings screen', () => {
     expect(titles).toEqual(['Âm thanh', 'Hiển thị', 'Điều khiển', 'Trò chơi']);
   });
 
+  it('marks Giảm chuyển động with its own icon, not the Pause icon', () => {
+    const screen = open();
+    const row = q(screen.el, 'input[data-setting="reducedMotion"]').closest('.set-row');
+    const icons = [...row!.querySelectorAll<HTMLElement>('.ic')].map((i) => i.dataset.icon);
+    expect(icons).toContain('i-rest');
+    expect(icons).not.toContain('i-pause');
+  });
+
   it('gives every control a one-line purpose', () => {
     const screen = open();
     for (const row of screen.el.querySelectorAll('.set-row')) {
