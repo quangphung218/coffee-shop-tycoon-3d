@@ -164,7 +164,14 @@ async function gameContext(browser, viewport, save) {
 async function enterDay(page, url, save) {
   const newGame = await openMenu(page, url);
   if (!save) return startEasyDay(page, newGame);
-  await page.getByRole('button', { name: 'Tiếp tục', exact: true }).click();
+  // The button's name also carries the slot detail ("Coffee Shop · Ngày 1").
+  const resume = page.getByRole('button', { name: /^Tiếp tục/ });
+  try {
+    await resume.waitFor({ timeout: 10_000 });
+  } catch {
+    throw new Error(`no Tiếp tục on the Main Menu: the media save in ${save.key} did not load (wrong format for this build?)`);
+  }
+  await resume.click();
   await page.locator('[data-action="open"]').waitFor();
 }
 
