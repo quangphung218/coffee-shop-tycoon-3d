@@ -95,17 +95,17 @@ Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 
 | File | Nội dung |
 | --- | --- |
-| `hud-dock-p20.png` | HUD lúc Chuẩn bị: chip "Cấp N" + thanh XP và vạch chia nhóm dock. |
+| `hud-dock-p20.png` | HUD lúc Chuẩn bị, cắt lấy hàng HUD trên và dock: chip "Cấp N" + thanh XP, hai vạch chia nhóm dock. Nhãn nằm ở dải trống ngoài giao diện. |
 | `dock-390-p20.png` | Dock ở 390 px: vạch chia không chiếm ô, Đánh giá nhóm riêng. |
 | `tasks-missions-p20.png` | Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ. |
 | `upgrades-locks-p20.png` | Bảng Nâng cấp ở Cấp 1: chia nhóm Dụng cụ / Không gian / Trang trí và nhãn "Mở ở cấp N". |
 | `report-insights-p20.png` | Daily Report: tab Tổng kết P19 có số liệu cạnh tab Chỉ số P20 với KPI ngành F&B. |
 | `report-levelup-p20.png` | Daily Report: tab Tổng kết P19 cạnh tab Tổng kết P20 có băng "Lên cấp N". |
 | `settings-390-p20.png`, `settings-1280-p20.png` | Cài đặt ở 390 px và 1280 px, chụp cả form: nhóm Hiển thị + Giảm chuyển động, nhóm Điều khiển, Phím tắt trong ô xổ. |
-| `brew-closeup-p20.png` | Camera trước mặt nhân viên đứng ở máy espresso lúc đang pha: mặt biểu cảm và tư thế pha. |
-| `customer-mood-p20.png` | Camera trước mặt khách giờ cao điểm: mặt vui / sốt ruột. |
+| `brew-closeup-p20.png` | Ba khung: P19, P20 lúc tay hạ (khoanh lông mày + miệng), P20 lúc hai tay đưa lên máy (khoanh tay). Camera nhìn thẳng vào mặt nhân viên đứng ở máy espresso, ngang tầm mặt, trên mặt hai quầy; mọi thứ phía trước tay bị cắt bỏ. |
+| `customer-mood-p20.png` | Camera nhìn thẳng vào mặt khách giờ cao điểm: mặt vui / sốt ruột. |
 | `tools-p20.png` | Quầy sau nhìn thẳng: 5 dụng cụ mới, mỗi cái khoanh kèm tên. |
-| `peak-p20.png` | Giờ cao điểm: vật liệu chuẩn, env map nhẹ, quầy chi tiết hơn. |
+| `peak-p20.png` | Giờ cao điểm: vân gỗ chỉ trên quầy, bàn, ghế, sàn; máy pha, cỏ, tường trơn màu; env map nhẹ. |
 
 Đổi commit gốc bằng `P20_BASE`, seed bằng `MEDIA_SEED`, cổng bằng `MEDIA_PORT` (xem [Tùy chọn](#tùy-chọn)). Lệnh in dung lượng từng file và cảnh báo `!!` khi:
 
@@ -116,6 +116,8 @@ Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 | `rings a flat area` | Vòng khoanh nằm trên vùng gần như một màu (độ lệch màu < 8), tức vùng trống. |
 | `label covers text` | Nhãn vẫn đè lên chữ của khung dù đã thử cả dải lề bên phải. |
 | `no barista brewing`, `no customer with a mood` | Trong 60 s giờ cao điểm không có người phù hợp cho cận cảnh; bảng đó bị bỏ. |
+| `the head turns away from the camera` | Ở cận cảnh, hướng đầu lệch hướng camera quá 45° (cos < 0,7). |
+| `the face is hidden`, `a hand is hidden` | Ở cận cảnh, dưới 60% ô mặt (dưới 30% ô tay) là của nhân vật: vật khác che. Script vẽ lại khung không có nhân vật và đếm điểm ảnh đổi màu. |
 
 ### Đo FPS
 

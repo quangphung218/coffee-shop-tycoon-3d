@@ -12,12 +12,12 @@ Lệnh dựng mười hai bảng vào `docs/media/`, mỗi bảng ghép P19 cạ
 
 | | |
 | --- | --- |
-| ![HUD: chip Cấp N + thanh XP và vạch chia nhóm dock](../media/hud-dock-p20.png)<br>HUD: chip "Cấp N" + thanh XP, vạch chia Vận hành \| Phát triển \| Đánh giá | ![Dock 390 px](../media/dock-390-p20.png)<br>Dock 390 px: vạch chia không chiếm ô, Đánh giá nhóm riêng |
+| ![HUD: chip Cấp N + thanh XP và vạch chia nhóm dock](../media/hud-dock-p20.png)<br>HUD + dock: chip "Cấp N" + thanh XP, vạch chia Vận hành \| Phát triển \| Đánh giá | ![Dock 390 px](../media/dock-390-p20.png)<br>Dock 390 px: vạch chia không chiếm ô, Đánh giá nhóm riêng |
 | ![Bảng Việc: nhiệm vụ ngày](../media/tasks-missions-p20.png)<br>Bảng Việc: mục "Nhiệm vụ hôm nay" ba thẻ | ![Bảng Nâng cấp: nhóm và khóa](../media/upgrades-locks-p20.png)<br>Nâng cấp: nhóm Dụng cụ/Không gian/Trang trí, nhãn "Mở ở cấp 2" |
 | ![Daily Report: Tổng kết P19 và tab Chỉ số P20](../media/report-insights-p20.png)<br>Báo cáo: Tổng kết P19 có số liệu ↔ tab Chỉ số P20 với KPI F&B | ![Daily Report: băng Lên cấp](../media/report-levelup-p20.png)<br>Báo cáo: băng "Lên cấp 2 · Quán quen" và món mở khóa |
 | ![Cài đặt 390 px](../media/settings-390-p20.png)<br>Cài đặt 390 px (cả form): Hiển thị + Giảm chuyển động, Điều khiển, Phím tắt trong ô xổ | ![Cài đặt 1280 px](../media/settings-1280-p20.png)<br>Cài đặt 1280 px: cùng cấu trúc mới |
-| ![Cận cảnh pha chế](../media/brew-closeup-p20.png)<br>Barista lúc máy đang pha: mặt có lông mày, miệng và tư thế pha | ![Khách có tâm trạng](../media/customer-mood-p20.png)<br>Khách: mặt đổi theo tâm trạng (P19 chỉ 2 chấm) |
-| ![Năm dụng cụ mới](../media/tools-p20.png)<br>Quầy sau: máy xay hạt, tủ bánh, máy xay sinh tố, máy làm đá, máy rửa ly | ![Giờ cao điểm](../media/peak-p20.png)<br>Giờ cao điểm: vật liệu chuẩn, env map nhẹ, màu tường/sàn/cỏ giữ như P19 |
+| ![Cận cảnh pha chế](../media/brew-closeup-p20.png)<br>Barista lúc máy đang pha, camera nhìn thẳng mặt: lông mày, miệng (tay hạ) và hai tay đưa lên máy | ![Khách có tâm trạng](../media/customer-mood-p20.png)<br>Khách: mặt đổi theo tâm trạng (P19 chỉ 2 chấm) |
+| ![Năm dụng cụ mới](../media/tools-p20.png)<br>Quầy sau: máy xay hạt, tủ bánh, máy xay sinh tố, máy làm đá, máy rửa ly | ![Giờ cao điểm](../media/peak-p20.png)<br>Giờ cao điểm: vân gỗ chỉ trên quầy, bàn, ghế, sàn; máy pha, tường, cỏ trơn màu |
 
 ## Chấm 3D: hiện trạng P19 → P20
 
