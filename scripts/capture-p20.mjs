@@ -84,6 +84,10 @@ const BODY_Y = [0, 1.36];
 
 const shot = (page) => page.screenshot({ style: HIDE_TOASTS });
 
+const START = Date.now();
+/** Progress line with seconds since start, so a run stopped by a time limit shows where it was. */
+const progress = (who, what) => console.log(`[${Math.round((Date.now() - START) / 1000)} s] ${who}: ${what}`);
+
 /** One save file in localStorage form: key and JSON text. */
 function saveText(save, state) {
   const data = new Map();
@@ -128,8 +132,12 @@ async function loadSim(root) {
       .machines.filter((m) => TOOL_IDS.includes(m.kind))
       .map((m) => ({ kind: m.kind, pos: m.pos, name: data.getUpgrade(m.kind).name, size: footprints.MACHINE_SIZE[m.kind] }));
 
+    // The first upgrade a level-1 shop cannot buy yet, shown on the Nâng cấp board of both builds.
+    const lockedId = data.UPGRADES.find((u) => levels.upgradeUnlockLevel(u.id) > 1)?.id ?? null;
+
     return JSON.parse(
       JSON.stringify({
+        lockedId,
         counter: layout.counter,
         machines: layout.machines,
         tools,
@@ -458,7 +466,7 @@ async function ringSpread({ png, boxes }) {
  * point short of level 2 so the report shows the level-up band. `lockedId`
  * picks the same locked upgrade on both builds.
  */
-async function gameSession(browser, url, sim, { lockedId, save, needMood }) {
+async function gameSession(browser, url, sim, { who, lockedId, save, needMood }) {
   const context = await gameContext(browser, DESK, save);
   const page = await context.newPage();
   const dockBtn = (id) => page.locator(`.dock [data-panel="${id}"]`);
@@ -466,6 +474,7 @@ async function gameSession(browser, url, sim, { lockedId, save, needMood }) {
   const texts = () => page.evaluate(measureTexts);
   try {
     await enterDay(page, url, save);
+    progress(who, 'day 1, preparation');
 
     // HUD + dock during preparation.
     await sleep(500);
@@ -503,10 +512,12 @@ async function gameSession(browser, url, sim, { lockedId, save, needMood }) {
 
     await page.locator('[data-action="open"]').click();
     await page.locator('[data-speed="4"]').click();
+    progress(who, 'opened at 4x');
 
     // Peak: the scene, then the two close-ups.
     await page.waitForFunction(() => document.querySelector('.phases li[data-phase="peak"]')?.getAttribute('aria-current') === 'step', null, { timeout: DAY_TIMEOUT_MS });
     await clockAt(page, '12:00');
+    progress(who, 'peak, 12:00');
     await cameraHome(page, ZOOM_WHEEL);
     let peakPng;
     const peakSnap = await measured(page, async () => (peakPng = await shot(page)));
@@ -514,12 +525,15 @@ async function gameSession(browser, url, sim, { lockedId, save, needMood }) {
     const espresso = sim.machines.find((m) => m.kind === 'espresso') ?? sim.machines[0];
     const counter = { counterX: sim.counter.pos.x, counterZ: sim.counter.pos.z };
     const brew = await closeUp(page, { kind: 'brewer', machine: espresso.pos, ...counter, ...BREW_SHOT });
+    progress(who, brew ? 'barista close-up' : 'no barista brewing');
     const mood = await closeUp(page, { kind: 'customer', needMood, ...counter, ...MOOD_SHOT });
+    progress(who, mood ? 'customer close-up' : 'no customer with a mood');
     await cameraHome(page, ZOOM_WHEEL);
 
     // Daily Report: the summary (numbers, and the level-up band where it exists), then the Chỉ số tab.
     const report = page.locator('.rpt-layer:not([hidden])');
     await report.waitFor({ timeout: DAY_TIMEOUT_MS });
+    progress(who, 'Daily Report');
     await page.locator('[data-block="money"]').first().waitFor();
     await sleep(1200);
     // The dialog opens scrolled to its buttons; bring the top of the summary (level-up band, then the numbers) into view.
@@ -831,16 +845,20 @@ async function main() {
       ignoreDefaultArgs: ['--hide-scrollbars'],
     });
 
-    console.log('capturing P20 (working tree)…');
-    const cur = await gameSession(browser, urlFor(PORT), sim, { lockedId: null, save: sim.saves.levelUp, needMood: true });
+    // Both builds play their day side by side (each in its own context), so the run takes one day, not two.
+    progress('both', 'playing day 1 on P20 and P19');
+    const [cur, base] = await Promise.all([
+      gameSession(browser, urlFor(PORT), sim, { who: 'P20', lockedId: sim.lockedId, save: sim.saves.levelUp, needMood: true }),
+      gameSession(browser, urlFor(BASE_PORT), sim, { who: 'P19', lockedId: sim.lockedId, save: null, needMood: false }),
+    ]);
+    progress('both', 'settings, tools and dock');
     const curSet = await settingsSession(browser, urlFor(PORT));
-    const curTools = await toolsSession(browser, urlFor(PORT), sim, sim.saves.tools);
-    const curDock = await dockSession(browser, urlFor(PORT));
-    console.log(`capturing P19 (${P20_BASE})…`);
-    const base = await gameSession(browser, urlFor(BASE_PORT), sim, { lockedId: cur.lockedId, save: null, needMood: false });
     const baseSet = await settingsSession(browser, urlFor(BASE_PORT));
+    const curTools = await toolsSession(browser, urlFor(PORT), sim, sim.saves.tools);
     const baseTools = await toolsSession(browser, urlFor(BASE_PORT), sim, null);
+    const curDock = await dockSession(browser, urlFor(PORT));
     const baseDock = await dockSession(browser, urlFor(BASE_PORT));
+    progress('both', 'drawing boards');
 
     files = await makeP20Boards(browser, { cur, base, curSet, baseSet, curTools, baseTools, curDock, baseDock, sim });
   } finally {
