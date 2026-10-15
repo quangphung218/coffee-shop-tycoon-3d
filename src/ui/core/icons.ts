@@ -44,6 +44,10 @@ export const ICON_IDS = [
   'i-flyer', 'i-happy-hour', 'i-social', 'i-kol',
   // Nâng cấp
   'i-tables', 'i-machine', 'i-fast-machine', 'i-counter', 'i-outdoor', 'i-expand', 'i-plants', 'i-paintings', 'i-lights', 'i-window-bar',
+  // Dụng cụ mới (tools mở theo cấp quán)
+  'i-grinder', 'i-pastry-case', 'i-blender', 'i-ice-maker', 'i-dishwasher',
+  // Món mới, cấp quán và nhiệm vụ
+  'i-frappe', 'i-level', 'i-mission',
 ] as const;
 
 export type IconId = (typeof ICON_IDS)[number];

@@ -12,8 +12,7 @@ export const MENU_ICONS: Readonly<Record<MenuItemId, IconId>> = {
   latte: 'i-latte',
   cappuccino: 'i-cappuccino',
   mocha: 'i-mocha',
-  // Reuses the cold-drink icon until u2 draws a dedicated frappe icon.
-  frappe: 'i-cold',
+  frappe: 'i-frappe',
   milk_tea: 'i-bubble-tea',
   lemon_tea: 'i-lemon-tea',
   orange_juice: 'i-orange-juice',
@@ -54,13 +53,16 @@ export const UPGRADE_ICONS: Readonly<Record<UpgradeId, IconId>> = {
   paintings: 'i-paintings',
   lights: 'i-lights',
   window_bar: 'i-window-bar',
-  // Equipment reuses existing icons until u2 draws dedicated ones.
-  grinder: 'i-beans',
-  pastry_case: 'i-croissant',
-  blender: 'i-cold',
-  ice_maker: 'i-ice',
-  dishwasher: 'i-cup',
+  grinder: 'i-grinder',
+  pastry_case: 'i-pastry-case',
+  blender: 'i-blender',
+  ice_maker: 'i-ice-maker',
+  dishwasher: 'i-dishwasher',
 };
+
+/** HUD chip of the shop level, and the daily-mission cards. */
+export const LEVEL_ICON: IconId = 'i-level';
+export const MISSION_ICON: IconId = 'i-mission';
 
 /** 'report' shares the moon of "Hết ngày". */
 export const PHASE_ICONS: Readonly<Record<Phase, IconId>> = {
