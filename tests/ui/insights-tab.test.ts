@@ -173,6 +173,20 @@ describe('Daily Report — Chỉ số tab', () => {
     expect(empty.textContent).toContain('phiên bản cũ');
   });
 
+  it('shows "—" and "Chưa đủ dữ liệu" for a metric the day could not supply', () => {
+    const base = insights();
+    const metrics = base.metrics.map((m) => (m.id === 'waste' || m.id === 'food_cost' ? { ...m, value: null, status: null, advice: '' } : m));
+    const { el } = mount(report({ insights: { ...base, metrics } }));
+    for (const id of ['waste', 'food_cost']) {
+      expect(text(el, `[data-metric="${id}"] .rpt-kpi-value`), id).toBe('—');
+      expect(text(el, `[data-metric="${id}"] .rpt-kpi-status`), id).toContain('Chưa đủ dữ liệu');
+      expect(text(el, `[data-metric="${id}"] .rpt-kpi-status`), id).not.toContain('Tốt');
+    }
+    // Metrics with a value keep their normal label.
+    expect(text(el, '[data-metric="labor_cost"] .rpt-kpi-value')).toBe('38%');
+    expect(text(el, '[data-metric="labor_cost"] .rpt-kpi-status')).toContain('Cần chú ý');
+  });
+
   it('hides the chart with a note when the save lacks the hourly stat', () => {
     const { el } = mount(report({ insights: insights({ arrivalsByHour: undefined }) }));
     expect(el.querySelector('.rpt-chart-bars')).toBeNull();

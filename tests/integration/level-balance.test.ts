@@ -4,7 +4,7 @@ import { UPGRADES } from '../../src/sim/data/upgrades';
 import { debtLimit, isOverDebtLimit, totalWages } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
-import { isUnlocked } from '../../src/sim/progression';
+import { MISSIONS_PER_DAY, isUnlocked } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
 import { nextUpgradeCost } from '../../src/sim/upgrades';
 import type { DailyReport, Difficulty, GameState, ToolId, UpgradeId } from '../../src/sim/types';
@@ -36,6 +36,14 @@ const MAX_PAYBACK_DAYS = 15;
  * Tool payback on Normal (first level, 16 seeds × 10 days):
  *   grinder 4.6 · pastry_case 3.1 · blender 5.6 · ice_maker 11.2 · dishwasher 5.4 days.
  */
+
+/**
+ * Share of daily missions completed with the sample strategy at seed 777,
+ * measured on 2026-10-15 (easy 60/66 over 22 days, normal 76/84 over 28,
+ * hard 105/114 over 38). The test allows ±30% of these.
+ */
+const MISSION_RATE_MEASURED: Readonly<Record<Difficulty, number>> = { easy: 0.909, normal: 0.905, hard: 0.921 };
+const MISSION_RATE_TOLERANCE = 0.3;
 
 // ---------------------------------------------------------------------------
 // Sample strategy: a competent-but-ordinary player.
@@ -208,11 +216,12 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     }
   });
 
-  it('completes most daily missions on every difficulty', () => {
+  it('completes daily missions at the measured rate (±30%) on every difficulty', () => {
     for (const d of DIFFICULTIES) {
-      const avg = average(runs[d].recs.map((r) => r.missionsDone));
-      // At least one of the three daily missions, on average, is comfortably cleared.
-      expect(avg, d).toBeGreaterThanOrEqual(1);
+      const rate = average(runs[d].recs.map((r) => r.missionsDone)) / MISSIONS_PER_DAY;
+      const measured = MISSION_RATE_MEASURED[d];
+      expect(rate, d).toBeGreaterThanOrEqual(measured * (1 - MISSION_RATE_TOLERANCE));
+      expect(rate, d).toBeLessThanOrEqual(Math.min(1, measured * (1 + MISSION_RATE_TOLERANCE)));
     }
   });
 

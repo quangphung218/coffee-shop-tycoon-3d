@@ -5,6 +5,7 @@ import { saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, loadSettings, type Settings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { INGREDIENTS } from '../../src/sim/data/ingredients';
+import { dispatch as simDispatch } from '../../src/sim/index';
 import { createNewGame as createGameState } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { Watcher } from '../../src/ui/core/dom';
@@ -20,6 +21,7 @@ import { createNewGame, validateShopName } from '../../src/ui/screens/newGame';
 import { createSettings } from '../../src/ui/screens/settings';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 import INDEX_HTML from '../../index.html?raw';
+import { playDay } from '../integration/helpers';
 
 // Vitest stubs .css imports (even ?raw) to '' and the project has no Node
 // types, so read the files through a dynamically named node:fs import.
@@ -954,6 +956,38 @@ describe('Shell', () => {
     shell.startGame(game());
     shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
     expect(root.querySelector('.toasts [role="alert"]')?.textContent).toContain('Không tự lưu được');
+  });
+
+  it('follows an insight link from the report: next day, report hidden, the linked panel open', () => {
+    const offPanels = registerPrepPanels();
+    try {
+      const played = game('Gợi Ý');
+      expect(simDispatch(played, { type: 'apply_restock' })).toBe(true);
+      playDay(played);
+      const report = played.lastReport!;
+      // Pin one flagged metric with a panel link so the action list always has it.
+      report.insights!.metrics = report.insights!.metrics.map((m) =>
+        m.id === 'seat_fill' ? { ...m, status: 'bad', advice: 'Ghế gần kín: thêm bàn.', panel: 'upgrades' } : m,
+      );
+      const { root, shell } = boot();
+      shell.startGame(played);
+      expect(shell.state?.phase).toBe('report');
+      expect(shell.report.visible).toBe(true);
+      const day = shell.state!.day;
+
+      q<HTMLButtonElement>(shell.report.el, '[role="tab"][data-tab="insights"]').click();
+      q<HTMLButtonElement>(shell.report.el, '[data-metric="seat_fill"] button[data-goto="upgrades"]').click();
+
+      expect(shell.state?.phase).toBe('preparation');
+      expect(shell.state?.day).toBe(day + 1);
+      expect(shell.report.visible).toBe(false);
+      expect(shell.report.el.hidden).toBe(true);
+      expect(shell.hud.openPanelId).toBe('upgrades');
+      expect(shell.hud.panelEl.hidden).toBe(false);
+      expect(q(root, '.dock [data-panel="upgrades"]').getAttribute('aria-pressed')).toBe('true');
+    } finally {
+      offPanels();
+    }
   });
 
   it('saves into a slot from the pause overlay and goes back to the menu', () => {
