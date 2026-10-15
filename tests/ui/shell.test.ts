@@ -426,7 +426,8 @@ describe('HUD', () => {
     check();
     expect([...hud.el.querySelectorAll<HTMLElement>('[data-speed] .ic')].map((u) => u.dataset.icon)).toEqual(['i-speed-1', 'i-speed-2', 'i-speed-4']);
     expect(hud.el.querySelector('[data-action="pause"]')).toBeTruthy();
-    expect(hud.el.querySelectorAll('.hud .hud-stat b')[1]?.textContent).toBe('07:00');
+    const clockPill = [...hud.el.querySelectorAll<HTMLElement>('.hud .hud-stat')].find((p) => p.querySelector('[data-icon="i-clock"]'));
+    expect(clockPill?.querySelector('b')?.textContent).toBe('07:00');
     state.phase = 'report';
     hud.update(state);
     check();
