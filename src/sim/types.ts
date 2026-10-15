@@ -411,6 +411,22 @@ export interface ItemMargin {
   status: InsightStatus;
 }
 
+/** Profit of one menu item sold today: price, cost and how many sold. */
+export interface ItemProfit {
+  id: MenuItemId;
+  /** Servings sold today. */
+  qty: number;
+  /** Sell price per serving, in đồng. */
+  price: number;
+  /** Ingredient cost per serving at today's prices, in đồng. */
+  cost: number;
+  /** (price − cost) / price as a 0..100 percentage (0 when the price is 0). */
+  marginPct: number;
+  /** Day gross profit for the item: (price − cost) × qty, in đồng. */
+  grossProfit: number;
+  status: InsightStatus;
+}
+
 /** Business insights derived from a day's stats; attached to the daily report. */
 export interface Insights {
   metrics: InsightMetric[];
@@ -418,6 +434,10 @@ export interface Insights {
   grossProfit: number | null;
   /** Gross margin per enabled menu item, in menu order. */
   itemMargins: ItemMargin[];
+  /** Profit per item sold today, highest day gross profit first. */
+  itemProfits: ItemProfit[];
+  /** Arrivals bucketed by hour of day (index 0..23). Absent when the save lacks the hourly stat. */
+  arrivalsByHour?: number[];
 }
 
 /** End-of-day summary shown on the Daily Report screen. */

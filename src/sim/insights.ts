@@ -14,7 +14,7 @@ import {
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { servingCost } from './inventory';
-import type { DayStats, GameState, InsightMetric, InsightPanel, InsightStatus, Insights, ItemMargin } from './types';
+import type { DayStats, GameState, InsightMetric, InsightPanel, InsightStatus, Insights, ItemMargin, ItemProfit, MenuItemId } from './types';
 
 /** `part / whole` as a 0..100 percentage, or null when there is no base to divide by. */
 function pct(part: number, whole: number): number | null {
@@ -52,6 +52,18 @@ export function buildInsights(state: GameState, stats: DayStats): Insights {
       return { id: m.id, grossProfit, marginPct, status: upperStatus(marginPct, ITEM_MARGIN_PCT) };
     });
   const worstMargin = itemMargins.reduce<ItemMargin | null>((w, m) => (w === null || m.marginPct < w.marginPct ? m : w), null);
+
+  // Profit per item actually sold today, including any item since switched off.
+  const priceOf = (id: MenuItemId): number => state.menu.find((m) => m.id === id)?.price ?? getMenuItem(id).price;
+  const itemProfits: ItemProfit[] = (Object.entries(stats.sold) as [MenuItemId, number][])
+    .filter(([, qty]) => qty > 0)
+    .map(([id, qty]) => {
+      const price = priceOf(id);
+      const cost = itemCost(state, id);
+      const marginPct = price > 0 ? ((price - cost) / price) * 100 : 0;
+      return { id, qty, price, cost, marginPct, grossProfit: (price - cost) * qty, status: upperStatus(marginPct, ITEM_MARGIN_PCT) };
+    })
+    .sort((a, b) => b.grossProfit - a.grossProfit || a.id.localeCompare(b.id));
 
   const metrics: InsightMetric[] = [];
 
@@ -140,5 +152,5 @@ export function buildInsights(state: GameState, stats: DayStats): Insights {
     ...hint(abandonStatus, 'Nhiều khách bỏ về: tuyển thêm nhân viên hoặc nhập đủ nguyên liệu để phục vụ kịp.', 'staff'),
   });
 
-  return { metrics, grossProfit: revenue > 0 ? revenue - cogs : null, itemMargins };
+  return { metrics, grossProfit: revenue > 0 ? revenue - cogs : null, itemMargins, itemProfits, arrivalsByHour: stats.arrivalsByHour };
 }
