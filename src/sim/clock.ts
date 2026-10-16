@@ -1,8 +1,10 @@
 import { rollWeather } from './customers';
+import { weekUnlockDay } from './data/week';
 import { recordRevenue } from './economy';
-import { rollMissions } from './progression';
+import { rollMissions, weekDay } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
+import { grantUpgradeLevel, upgradeLevel } from './upgrades';
 import type { GameState, Phase } from './types';
 
 /** Peak windows [start, end) in game minutes: 11:00–13:00 and 17:00–19:00. */
@@ -92,5 +94,24 @@ export function startNextDay(state: GameState): boolean {
   state.today = createDayStats(state.day, state.rating);
   state.missions = rollMissions(state.seed, state.day, state.shopLevel);
   setPhase(state, 'preparation');
+  openWeekDay(state);
   return true;
+}
+
+/**
+ * Morning of a week day: announces what the calendar opens today and, on the
+ * expansion day, gives the shop its side room (expand_area level 1) for free.
+ */
+function openWeekDay(state: GameState): void {
+  if (!state.week) return;
+  const entry = weekUnlockDay(weekDay(state));
+  if (!entry) return;
+  const { menu, upgrades, tools } = entry.unlocks;
+  if (menu.length + upgrades.length + tools.length > 0) {
+    state.events.push({ type: 'week_unlocks', day: entry.day, unlocks: entry.unlocks });
+  }
+  if (entry.expandShop && upgradeLevel(state, 'expand_area') < 1) {
+    grantUpgradeLevel(state, 'expand_area');
+    state.events.push({ type: 'notify', level: 'success', text: 'Quán mở rộng!' });
+  }
 }
