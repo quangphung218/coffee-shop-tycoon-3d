@@ -116,6 +116,11 @@ export function createShell(options: ShellOptions): Shell {
     const r = autosave(game, storage);
     return r.ok ? { day, ok: true, savedAt: r.value.savedAt } : { day, ok: false };
   }
+  // "Thử lưu lại" on the Daily Report and "Thử lại" on the week end save the same day;
+  // each tells the other screen the new result.
+  function retryAutosave(): SaveStatus {
+    return state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false };
+  }
   const report = createDailyReport({
     dispatch: (cmd) => {
       const ok = dispatch(cmd);
@@ -125,7 +130,11 @@ export function createShell(options: ShellOptions): Shell {
       if (!report.visible) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
       return ok;
     },
-    onRetrySave: () => (state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false }),
+    onRetrySave: () => {
+      const r = retryAutosave();
+      weekEnd.setSaveStatus(r);
+      return r;
+    },
     // An insight's action link leaves the report (next day) and opens the dock panel to act on.
     onOpenPanel: (panel) => {
       dispatch({ type: 'next_day' });
@@ -157,6 +166,7 @@ export function createShell(options: ShellOptions): Shell {
     screens.show(null);
     hud.update(state);
     report.setSaveStatus(null);
+    weekEnd.setSaveStatus(null);
     syncReport();
     options.onGameStart?.(state);
     if (!report.visible) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
@@ -250,21 +260,24 @@ export function createShell(options: ShellOptions): Shell {
       subtitle: () => (state ? `${state.shopName} · Ngày ${state.day} · ${formatClock(state.minute)} · ${phaseLabel(state.phase)}` : ''),
     }),
   );
-  screens.add(
-    'weekEnd',
-    createWeekEnd({
-      getState: () => state,
-      // A new week for the same shop name and difficulty, on a fresh seed.
-      onReplay: () => {
-        if (!state) return;
-        const finished = state;
-        logPlay('replay');
-        options.onReplay?.(finished);
-        startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
-      },
-      onMenu: showMenu,
-    }),
-  );
+  const weekEnd = createWeekEnd({
+    getState: () => state,
+    // A new week for the same shop name and difficulty, on a fresh seed.
+    onReplay: () => {
+      if (!state) return;
+      const finished = state;
+      logPlay('replay');
+      options.onReplay?.(finished);
+      startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
+    },
+    onMenu: showMenu,
+    onRetrySave: () => {
+      const r = retryAutosave();
+      report.setSaveStatus(r);
+      return r;
+    },
+  });
+  screens.add('weekEnd', weekEnd);
 
   function onKeyDown(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -351,6 +364,7 @@ export function createShell(options: ShellOptions): Shell {
           logPlay('day_end');
           const r = runAutosave(state, event.day);
           report.setSaveStatus(r);
+          weekEnd.setSaveStatus(r);
           toasts.show(
             r.ok
               ? { level: 'success', icon: 'i-save', title: `Đã tự lưu ngày ${event.day}` }
