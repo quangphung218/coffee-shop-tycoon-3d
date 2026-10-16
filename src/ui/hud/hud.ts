@@ -1,8 +1,12 @@
+import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
-import type { Command, GameState, Phase } from '../../sim/types';
+import { DAY_EVENTS } from '../../sim/data/week';
+import { weekDay } from '../../sim/progression';
+import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
+import { todayPlan } from '../../sim/week';
 import { h, setChildren, Watcher } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
-import { LEVEL_ICON, PHASE_ICONS } from '../core/iconMap';
+import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId, type IconSize } from '../core/icons';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
 
@@ -45,6 +49,47 @@ const PHASE_ORDER: Record<Phase, number> = { preparation: 0, opening: 1, peak: 2
 
 export function phaseLabel(phase: Phase): string {
   return phase === 'report' ? 'Tổng kết' : (PHASE_STEPS.find((s) => s.phase === phase)?.label ?? phase);
+}
+
+export const WEATHER_LABELS: Readonly<Record<Weather, string>> = { sunny: 'Nắng', rainy: 'Mưa', hot: 'Nóng' };
+
+/** Short event names for the HUD chip and the Task Board; DAY_EVENTS holds the long ones. */
+export const DAY_EVENT_LABELS: Readonly<Record<DayEventId, string>> = {
+  none: 'Ngày thường',
+  grand_opening: 'Khai trương',
+  fair: 'Hội chợ',
+  supplier_hike: 'Tăng giá nhập',
+};
+
+/** A multiplier as a signed percent: 1.4 → "+40%", 0.75 → "-25%". */
+function percent(mult: number): string {
+  const p = Math.round((mult - 1) * 100);
+  return p > 0 ? `+${p}%` : `${p}%`;
+}
+
+/** What the weather does to the day: "khách -25%, đồ nóng bán chạy". */
+export function weatherEffect(weather: Weather): string {
+  const mult = WEATHER_ARRIVALS[weather];
+  const arrivals = mult === 1 ? 'khách như thường' : `khách ${percent(mult)}`;
+  if (weather === 'rainy') return `${arrivals}, đồ nóng bán chạy`;
+  if (weather === 'hot') return `${arrivals}, đồ lạnh bán chạy`;
+  return arrivals;
+}
+
+/** What a day event does: "khách +40%", "giá nhập và giá vốn +25%"; '' for none. */
+export function dayEventEffect(event: DayEventId): string {
+  const def = DAY_EVENTS[event];
+  const parts: string[] = [];
+  if (def.arrivalMult !== 1) parts.push(`khách ${percent(def.arrivalMult)}`);
+  if (def.ingredientPriceMult !== 1) parts.push(`giá nhập và giá vốn ${percent(def.ingredientPriceMult)}`);
+  return parts.join(', ');
+}
+
+/** "3/7" while the game plays a week day; null for older saves and after the week. */
+export function weekDayLabel(state: GameState): string | null {
+  const day = weekDay(state);
+  if (!state.week || day < 1 || day > state.week.length) return null;
+  return `${day}/${state.week.length}`;
 }
 
 interface Note {
@@ -93,7 +138,33 @@ export function createHud(actions: HudActions): Hud {
 
   const day = h('b');
   const clock = h('b');
-  w.text(day, (s) => String(s.day)).text(clock, (s) => formatClock(s.minute));
+  w.text(day, (s) => weekDayLabel(s) ?? String(s.day)).text(clock, (s) => formatClock(s.minute));
+
+  // Today's weather and event chips next to the day, during a week. The words
+  // are on screen; the title and accessible name add what they do to the day.
+  const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'weather' } });
+  const eventChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'event' } });
+  const weekChips = h('div', { class: 'hud-stat hud-week', hidden: true, attrs: { role: 'group', 'aria-label': 'Hôm nay' } }, weatherChip, eventChip);
+  const fillChip = (chip: HTMLElement, id: IconId, label: string, effect: string): void => {
+    const desc = effect ? `${label}: ${effect}` : label;
+    chip.title = desc;
+    chip.setAttribute('aria-label', desc);
+    setChildren(chip, icon(id, { size: 16 }), h('span', { class: 'week-chip-label', text: label }));
+  };
+  w.watch(
+    (s) => {
+      const plan = todayPlan(s);
+      return plan && weekDayLabel(s) ? `${s.weather}|${plan.event}` : '';
+    },
+    (key, s) => {
+      const plan = todayPlan(s);
+      weekChips.hidden = !key || !plan;
+      if (!key || !plan) return;
+      fillChip(weatherChip, WEATHER_ICONS[s.weather], WEATHER_LABELS[s.weather], weatherEffect(s.weather));
+      eventChip.hidden = plan.event === 'none';
+      if (plan.event !== 'none') fillChip(eventChip, DAY_EVENT_ICONS[plan.event], DAY_EVENT_LABELS[plan.event], dayEventEffect(plan.event));
+    },
+  );
 
   // Shop level chip on one row, next to the day (design/p20 §5): "Cấp N", the
   // XP bar and its count. The level's name ("Quán nhỏ") lives only in the
@@ -421,6 +492,7 @@ export function createHud(actions: HudActions): Hud {
       'div',
       { class: 'hud-left' },
       pill(h('small', { text: 'Ngày' }), day),
+      weekChips,
       levelChip,
       pill(icon('i-clock'), h('small', { text: 'Giờ' }), clock),
       h('ol', { class: 'phases', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li)),
