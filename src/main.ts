@@ -17,6 +17,7 @@ import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
 import { readAssets, sceneProgress, watchDownloads, type SceneStage } from './ui/core/loadProgress';
+import { enableHdIcons, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
 import { registerPrepPanels } from './ui/panels';
 import { registerReviewsPanel } from './ui/report';
@@ -84,6 +85,8 @@ async function retryWorldModule(): Promise<WorldModule> {
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // three.js and the 3D world load as a separate chunk while the menu comes up.
   const worldModule = import('./render/scene');
+  // Menu icons use the small @1x atlas; the @2x one waits for the scene.
+  watchIconAtlas();
   const assets = readAssets();
   const scene = new SceneGate({ status: 'loading', progress: 0, slow: false });
   const storage = defaultStorage();
@@ -184,6 +187,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         canvas.classList.add('is-ready');
         scene.set({ status: 'ready', progress: 1, slow: false });
         performance.mark('cst:world');
+        void enableHdIcons();
       })
       .catch((err: unknown) => {
         console.error('3D scene failed to load', err);
