@@ -51,13 +51,22 @@ UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D lo
 
 | Module | Nội dung |
 | --- | --- |
-| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`, theo thứ tự ô trong atlas). `iconCell(id, size)` tính vị trí ô từ số đo lưới trong `atlas.json` (`small` cho lưới 24 px): ô 24 px khi `size` là 16 hoặc 24, ô 48 px khi 32, 48 hoặc bỏ trống; test so từng ô với bảng `icons` và `smallIcons` của file đó. `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô theo cỡ. `loadIconAtlas()` tải ảnh @2x một lần, `drawIcon()` chép ô 48 px lên canvas. |
+| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`, theo thứ tự ô trong atlas). `iconCell(id, size)` tính vị trí ô từ số đo lưới trong `atlas.json` (`small` cho lưới 24 px): ô 24 px khi `size` là 16 hoặc 24, ô 48 px khi 32, 48 hoặc bỏ trống; test so từng ô với bảng `icons` và `smallIcons` của file đó. `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô theo cỡ. `watchIconAtlas()` tải ảnh @1x rồi gắn `html.icons-ready`; lỗi thì thử lại một lần khi trình duyệt có mạng lại (`online`). `enableHdIcons()` tải ảnh @2x qua `loadIconAtlas()` rồi gắn `html.icons-hd`; lỗi thì giữ @1x. `loadIconAtlas()` tải ảnh @2x một lần (dùng chung với nhãn 3D), `drawIcon()` chép ô 48 px lên canvas. |
 | `src/ui/core/iconMap.ts` | Ánh xạ id của sim (món, nguyên liệu, marketing, nâng cấp, pha, vai, lý do review) sang icon. `avatarIcon(staffId)` trả ô `i-avatar-<n>` theo `AVATAR_LOOKS`. Trường `icon` emoji trong `src/sim/data` giữ nguyên nhưng không còn được hiển thị. |
-| `src/ui/styles/ui.css` (`.ic`) | Kích thước ô theo class: `.ic` 24 px, `.ic-sm` 16, `.ic-lg` 32, `.ic-xl` 48. Nền `image-set(@1x 1x, @2x 2x)`; `icon()` đặt `--ic-size`, `--ic-pos` theo %, nên ô to nhỏ bao nhiêu cũng vừa. Icon trong nút nảy, nghiêng khi hover và co lại khi nhấn; tắt khi `prefers-reduced-motion`. |
+| `src/ui/styles/ui.css` (`.ic`) | Kích thước ô theo class: `.ic` 24 px, `.ic-sm` 16, `.ic-lg` 32, `.ic-xl` 48. Nền theo class trên `<html>` (bảng dưới); `icon()` đặt `--ic-size`, `--ic-pos` theo %, nên ô to nhỏ bao nhiêu cũng vừa. Icon trong nút nảy, nghiêng khi hover và co lại khi nhấn; tắt khi `prefers-reduced-motion`. |
 | `src/render/actors/labels.ts` | Nhãn món và mặt cảm xúc trên đầu khách trong cảnh 3D: vẽ bong bóng, rồi `drawIcon()` từ atlas @2x khi ảnh tải xong. |
 | `src/ui/core/iconSvg.ts` | Bộ icon SVG phẳng gốc từ `design/t237-cartoon/icons/index.html`; chỉ icon studio dùng để so cũ và mới (bảng `--sheet`, `public/icons3d/svg.json` cho trang xem icon), game không import. |
 
-Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh. URL ảnh tương đối (`icons3d/…` trong JS, `/icons3d/…` trong CSS do Vite đổi theo `base: './'`).
+Thứ tự tải atlas (`src/main.ts`):
+
+| Lúc | Việc | Ô `.ic` hiện |
+| --- | --- | --- |
+| Đầu `start()`, cùng lúc `import('./render/scene')` | `watchIconAtlas()` tải `atlas@1x.webp` | Ô chờ: nền `--color-cream-200`, viền `--border-strong`, bo 30%, đứng yên |
+| @1x tải xong (`html.icons-ready`) | | Ô của atlas @1x |
+| Sau `performance.mark('cst:world')` | `enableHdIcons()` tải `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
+| @2x tải xong (`html.icons-hd`) | | `image-set(@1x 1x, @2x 2x)`: màn 2x lấy @2x |
+
+Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và @2x không tranh băng thông với chunk cảnh 3D. URL ảnh tương đối (`icons3d/…` trong JS, `/icons3d/…` trong CSS do Vite đổi theo `base: './'`).
 
 Thêm icon:
 
@@ -193,7 +202,7 @@ Mọi ván mới chơi một tuần 7 ngày có lịch mở khóa, sự kiện, 
 | `iceCostReduction` | Giảm chi phí đá cho đồ lạnh | `inventory.ts` |
 | `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
 
-Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`).
+Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 80k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
 
 Gỡ trang trí (`removeDecor`) chỉ áp cho `plants`, `paintings`, `lights` (`isRemovableDecor`: `decor` không có `capacity`): giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% giá của cấp đó theo `priceMult`. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
 
@@ -265,6 +274,17 @@ stateDiagram-v2
 ```
 
 - Cá tính (`persona`, `src/sim/data/personas.ts`): chọn lúc đến bằng hash của seed và id khách (không rút từ RNG), tỷ lệ theo giờ và thời tiết. 5 kiểu (văn phòng, sinh viên, khách quen, người sành cà phê, gia đình) đổi trọng số món, hệ số kiên nhẫn, thời gian ngồi, xác suất gọi kèm bánh (`extraItem`, cộng doanh thu và nguyên liệu), độ khắt khe và câu chữ review. Trường tùy chọn; save cũ thiếu thì coi là trung tính.
+- Hình cá tính trong cảnh 3D (`src/render/actors/`, chỉ phần vẽ: tốc độ đi và đường đi như nhau, sim không đọc):
+
+  | Cá tính | Phụ kiện (`ACCESSORIES`, `rig.ts`) | Dáng đi (`PERSONA_GAITS`, `animations.ts`) | Lúc đứng chờ (`stylePose`) |
+  | --- | --- | --- | --- |
+  | Văn phòng | Cặp da | Bước ngắn, nhanh, cúi đầu | Xem điện thoại |
+  | Sinh viên | Ba lô | Nảy, vung tay mạnh | Ngả người, tay đút túi, gật gù |
+  | Khách quen | Mũ len tím (thay tóc) | Bình thường | Bình thường |
+  | Sành cà phê | Khăn quàng | Chậm, thẳng lưng, ngẩng cằm | Chắp tay sau lưng |
+  | Gia đình | Túi vải vàng tay trái | Thong thả | Nhìn quanh |
+
+  Mỗi nhân vật dùng chung một ô mesh phụ kiện, không đổ bóng. Chất lượng Thấp hoặc Giảm chuyển động giữ tư thế, bỏ gật, nhìn quanh và nảy. Khách sốt ruột (`impatient`) khoanh tay, gõ chân, mỗi vòng gỡ tay ra xem đồng hồ.
 - Kiên nhẫn (`patience`) chỉ giảm khi xếp hàng và chờ đồ.
 - `served` và `angry` sinh trải nghiệm: khách để lại review (1–5 sao, lý do `ReviewReason`) với xác suất 30% khi được phục vụ, 60% khi bỏ đi.
 - Game giữ tối đa 30 review (`MAX_REVIEWS`).
@@ -346,7 +366,8 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 1. `index.html` vẽ màn hình chờ `#boot` (CSS và SVG inline: linh vật ly, thanh tiến độ, %, một mẹo chơi; không chờ font) ngay khi HTML tới. Bản build dời `<link rel="stylesheet">` xuống dưới `#boot`, nên màn chờ không đợi CSS; JS vẫn chỉ chạy khi CSS đã tải.
 2. Script inline dưới `#boot` lấp thanh theo file đã tải xong (Resource Timing), tính theo dung lượng: chunk chính và CSS. Sau 5 s chưa xong thì đổi dòng chữ thành "Mạng đang chậm…"; script hoặc stylesheet tải lỗi thì hiện "Không tải được game" và nút **Thử lại** (tải lại trang).
 3. Chunk chính (UI, sim, save, audio) chạy `createShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`.
-4. `main.ts` gọi `import('./render/scene')` ngay đầu `start()`. Sau khi menu đã vẽ, `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
+4. `main.ts` gọi `import('./render/scene')` và `watchIconAtlas()` (atlas @1x) ngay đầu `start()`. Sau khi menu đã vẽ, `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
+5. Sau `cst:world`, `enableHdIcons()` tải atlas @2x cho icon trên màn 2x và nhãn 3D ([Icon và font](#icon-và-font)).
 
 Danh sách file và dung lượng do plugin `cst-loading-screen` trong `vite.config.ts` ghi vào `window.__cstAssets` lúc build: `boot` (cho Main Menu) và `scene` (chunk `src/render` và `three`). Lúc `npm run dev` hai danh sách rỗng: thanh màn chờ đứng yên, thanh cảnh 3D chỉ nhảy theo bước.
 
@@ -367,12 +388,13 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 162,6 kB | 56,4 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 62,8 kB | 10,0 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 84,3 kB | 31,2 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 502,0 kB | 125,7 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 194,6 kB | 67,2 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 70,2 kB | 11,4 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 87,3 kB | 32,4 kB | Sau khi chunk chính chạy |
+| `three-*.js` | 502,0 kB | 126,1 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
-| `icons3d/atlas@1x.webp` hoặc `atlas@2x.webp` (một trong hai, theo mật độ điểm ảnh) | 100,8 kB / 280,9 kB | (đã nén) | Khi icon đầu tiên hiện; không chặn Main Menu |
+| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Đầu `start()`, cùng lúc chunk cảnh; không chặn Main Menu |
+| `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
@@ -397,6 +419,15 @@ Số đo thay đổi giữa các lượt đo; chỉ so các bản trong cùng m�
 | Máy bàn, không giới hạn | Mặt tiền, đèn ấm, điều hướng, icon 3D | 112 ms | 361 ms | 599 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `07439cf` | 780 ms | 1165 ms | 3181 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Mặt tiền, đèn ấm, điều hướng, icon 3D | 476 ms | 669 ms | 2515 ms |
+
+Lượt đo bản có ô chờ icon và atlas @2x sau `cst:world`, so với v0.4.0 `f720b6f`, trung vị 5 lần ([docs/media/p22-perf.txt](media/p22-perf.txt)):
+
+| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu hiện | Cảnh 3D hiện |
+| --- | --- | --- | --- | --- |
+| Máy bàn, không giới hạn | `f720b6f` | 92 ms | 67 ms | 272 ms |
+| Máy bàn, không giới hạn | Ô chờ icon, @2x sau cảnh | 76 ms | 134 ms | 285 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `f720b6f` | 288 ms | 890 ms | 2773 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Ô chờ icon, @2x sau cảnh | 364 ms | 1008 ms | 3050 ms |
 
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 

@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -107,6 +107,14 @@ Mười hai bảng, tất cả trong `docs/media/`, ghi đè mỗi lần chạy:
 | `tools-p20.png` | Quầy sau nhìn thẳng: 5 dụng cụ mới, mỗi cái khoanh kèm tên. |
 | `peak-p20.png` | Giờ cao điểm: vân gỗ chỉ trên quầy, bàn, ghế, sàn; máy pha, cỏ, tường trơn màu; env map nhẹ. |
 
+Chụp Cài đặt cả form (`captureSettingsForm()` trong `scripts/capture-media.mjs`, dùng cho `media:p20` và `media:p21`):
+
+1. Chèn style tạm bỏ giới hạn cao của `.settings-sheet` và vùng cuộn `.settings-body`.
+2. Kéo cao cửa sổ cho vừa cả form (tối đa 3 lần, vì form đổi bố cục khi cửa sổ cao lên).
+3. Chụp và đo trong bố cục đó, rồi gỡ style.
+
+Bản cũ không có `.settings-body` vẫn chụp như cũ.
+
 Đổi commit gốc bằng `P20_BASE`, seed bằng `MEDIA_SEED`, cổng bằng `MEDIA_PORT` (xem [Tùy chọn](#tùy-chọn)). Lệnh in dung lượng từng file và cảnh báo `!!` khi:
 
 | Cảnh báo | Nghĩa |
@@ -163,7 +171,7 @@ npm run media:p21
 1. Sim của bản hiện tại chơi một tuần Vừa, seed `12345`, theo chiến lược của `tests/integration/week.test.ts` (nhập hàng theo gợi ý, tự phục vụ một mình), và in bảng 7 ngày cùng kết quả tuần.
 2. Từ tuần đó dựng hai ván, nạp vào cả hai bản qua **Tiếp tục**: sáng ngày đầu tiên từ ngày 2 có hội chợ (hay sự kiện khác), đã mua Cây xanh cấp 1; và báo cáo cuối ngày 7.
 3. Ở sáng ngày đó, khổ 1280×800: chụp HUD, bảng Việc, bảng Nâng cấp (cuộn tới Cây xanh), bảng Menu.
-4. Bản hiện tại mở cửa ở 4x tới giờ cao điểm rồi về Main Menu, chụp Cài đặt cả form, và ghi JSON trong Số liệu chơi ra `docs/media/playlog-p21.json`. Bản v0.2.0 chụp Cài đặt từ Main Menu.
+4. Bản hiện tại mở cửa ở 4x tới giờ cao điểm rồi về Main Menu, chụp Cài đặt cả form (cách chụp ở [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), và ghi JSON trong Số liệu chơi ra `docs/media/playlog-p21.json`. Bản v0.2.0 chụp Cài đặt từ Main Menu.
 5. Ở 1280 px và 390 px, nạp ván cuối ngày 7: chụp báo cáo ngày 7, rồi (bản hiện tại) bấm **Xem kết tuần** và chụp màn kết tuần. Cửa sổ được kéo cao cho vừa cả hộp thoại.
 
 Bảy bảng và một file JSON trong `docs/media/`, ghi đè mỗi lần chạy:
@@ -184,6 +192,73 @@ Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20). Chỉ
 P21_WEEK_ONLY=1 node scripts/capture-p21.mjs
 ```
 
+## Review tuần P22
+
+```sh
+npm run review:p22
+```
+
+Lệnh build bản hiện tại, mở `vite preview` ở một cổng trống, rồi `scripts/review-p22.mjs` chơi một tuần Vừa (seed từ `MEDIA_SEED`, mặc định `3758375936`) ở hai khổ cùng lúc: 390×844 (điện thoại, tỉ lệ điểm ảnh 3, cảm ứng) và 1440×900. Yêu cầu: Playwright/Chromium (không cần ffmpeg).
+
+1. Sim của bản hiện tại dựng ván sáng ngày 2–7 theo chiến lược của `tests/integration/week.test.ts` (nhập hàng theo gợi ý, tự phục vụ) và in bảng 7 ngày.
+2. Ngày 1: đo Main Menu lúc `cst:menu` (ô icon trống, atlas đã tải chưa), **Ván mới**, mở mọi bảng trên dock, **Mở cửa** ở 4x, chụp cao điểm 11:00 và hàng chờ 11:45, rồi các tab Daily Report.
+3. Ngày 2–7: nạp ván qua **Tiếp tục**, chụp HUD và bảng Việc, nhập hàng và thuê 2 nhân viên qua UI, mở cửa ở 4x, chụp cao điểm. Ngày 7 chụp thêm báo cáo và màn kết tuần.
+4. Mỗi màn được đo: tràn ngang, vùng bấm < 44 px, chữ < 12 px, phần tử che nhau, nút bấm không trúng (bị che), số toast; cao điểm đo FPS 10 s, người bước tại chỗ > 5 s và số kiểu ngoại hình.
+
+File tạo ra, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `docs/reports/p22-review/390/*.jpg`, `*.png`, `docs/reports/p22-review/1440/*.png` | Ảnh từng màn, tên `d<ngày>-<màn>` (`d0` là Main Menu). |
+| `docs/reports/p22-review/metrics.json` | Bảng tuần, số đo Main Menu, từng màn, từng cao điểm, nút bị che, các lượt chạy. |
+| `docs/reports/p22-review/findings.json` | Vấn đề rút từ số đo: `id`, `area`, `title`, `evidence`, `impact`, `effort`, `ratio` (= impact / effort), `high` (ratio ≥ 1,5). |
+
+| Biến | Mặc định | Tác dụng |
+| --- | --- | --- |
+| `REVIEW_TIMEOUT_MS` | `1200000` (20 phút) | Giới hạn cả lượt chạy; quá hạn thì dừng, vẫn ghi `metrics.json` và `findings.json` với `error`. |
+| `REVIEW_STEP_MS` | `180000` (3 phút) | Giới hạn một bước; bước chờ đồng hồ game dùng 5 phút (tới cao điểm) và 8 phút (tới báo cáo). |
+| `REVIEW_DAYS` | `1-7` | Chỉ chơi một số ngày (`1`, `2-4`); Main Menu đi cùng ngày 1. Ngày khác giữ số đo cũ trong `metrics.json`. |
+| `REVIEW_VIEWPORTS` | `390,1440` | Chỉ chơi một khổ (`390` hoặc `1440`); khổ kia giữ số đo cũ. |
+| `REVIEW_SERIAL` | (trống) | `1` để chơi hai khổ lần lượt: FPS sạch hơn, lâu gấp đôi. |
+| `REVIEW_PORT` | cổng trống | Cố định cổng `vite preview`. |
+| `REVIEW_QUALITY` | `medium` | Mức đồ họa của trang. |
+| `REVIEW_SIM_ONLY` | (trống) | `1` để chỉ dựng ván và in bảng tuần, không mở trình duyệt. |
+
+Chạy từng phần khi một lượt dài quá giới hạn lệnh:
+
+```sh
+REVIEW_DAYS=1 npm run review:p22
+REVIEW_DAYS=2-4 npm run review:p22
+REVIEW_DAYS=5-7 npm run review:p22
+```
+
+FPS đo bằng Chromium headless vẽ WebGL bằng phần mềm (SwiftShader), hai khổ vẽ cùng lúc: chỉ là mức sàn, không so được với máy có GPU. Đo FPS để so hai bản bằng `scripts/measure-startup.mjs` ([Đo FPS](#đo-fps)).
+
+## Ảnh trước/sau P22
+
+```sh
+npm run media:p22
+```
+
+Lệnh build bản hiện tại, xuất v0.4.0 `f720b6f` ra thư mục tạm và build nó, mở `vite preview` cho bản hiện tại ở `4173` và v0.4.0 ở `4174`, rồi `scripts/capture-p22.mjs` chụp cả hai bản cùng ván, cùng khổ, cùng góc máy. v0.4.0 khoanh nét đứt cam, P22 nét liền xanh. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `f720b6f`.
+
+1. Sim dựng ván sáng ngày 2 của tuần review (Vừa, seed của `review:p22`).
+2. Main Menu ở 390×844 lúc `cst:menu`, atlas icon bị giữ lại như mạng chậm: đếm ô trống và ô chờ.
+3. Bảng Kho ở 390×844 trên ván ngày 2: chân bảng, nút Gợi ý, số dòng hàng chạm được.
+4. Mở cửa ở 4x tới cao điểm, tìm khách theo phụ kiện, mặt sốt ruột và lúc đứng yên trong hàng (tối đa 150 s), chụp cận cả người.
+
+Mỗi mục `fixed` trong `docs/reports/p22-review/fixed-ui.json` và `fixed-actors.json` có một bảng; mục không có hàm dựng bảng trong `scripts/capture-p22.mjs` thì lệnh dừng trước khi chụp. Các bảng trong `docs/media/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ màu kem. |
+| `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, chân bảng cuộn sau danh sách. |
+| `actors-persona-motion-p22.png` | Khách văn phòng và sinh viên đứng chờ: dáng chờ chung ở v0.4.0, cầm điện thoại và tay đút túi ở P22; nhãn ghi góc tay, đầu, thân. |
+| `actors-persona-accessory-p22.png` | Khách quen và gia đình: không phụ kiện ở v0.4.0, mũ len và túi vải ở P22; nhãn ghi cỡ phụ kiện. |
+| `actors-impatient-silhouette-p22.png` | Khách sốt ruột: tay buông ở v0.4.0, khoanh tay ở P22; nhãn ghi góc tay và nhịp chân. |
+
+Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm `no subject within 150 s` (không tìm được khách cho cận cảnh; khung đó bị bỏ) và bảng trên 600 kB sau 4 lần thu nhỏ.
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -195,6 +270,8 @@ P21_WEEK_ONLY=1 node scripts/capture-p21.mjs
 | `P21_BASE` | `77c8387` | Commit "trước" mà `npm run media:p21` so với bản hiện tại. |
 | `P21_SEED` | `12345` | Seed của tuần mà `npm run media:p21` chơi để dựng ván. |
 | `P21_WEEK_ONLY` | (trống) | `1` để `scripts/capture-p21.mjs` chỉ in bảng tuần rồi dừng. |
+| `P22_BASE` | `f720b6f` | Commit "trước" mà `npm run media:p22` so với bản hiện tại. |
+| `P22_SEED` | seed của `review:p22` | Seed của tuần mà `npm run media:p22` dựng ván ngày 2. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
 
@@ -215,6 +292,11 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
 | `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `[data-block="money"]`, `[data-block="level-up"]`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). Cận cảnh 3D dựa vào nhóm `machine-steam` và thứ tự khối của nhân vật trong `src/render/actors/rig.ts` (xem `aimAt()`). |
 | `npm run media:p21` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện tuần đã đổi; sửa selector trong `scripts/capture-p21.mjs` (`.hud-week`, `.week-today`, `[data-week="unlocks"]`, `[data-remove]`, `[data-policy="price"]`, `[data-action="week-end"]`, `[data-screen="weekEnd"] [data-block]`, `section.playlog`) hoặc nhãn nút **Về Main Menu**. |
+| `review-p22: over REVIEW_TIMEOUT_MS (…), stopping` | Lượt chạy quá 20 phút; chạy từng phần bằng `REVIEW_DAYS`, hoặc tăng `REVIEW_TIMEOUT_MS`. Số đo đã có vẫn được ghi. |
+| `review:p22` hết thời gian một bước chờ cao điểm hay báo cáo | WebGL phần mềm vẽ chậm làm ngày game chậm theo; chạy `REVIEW_VIEWPORTS=390` rồi `REVIEW_VIEWPORTS=1440`, hoặc `MEDIA_HEADED=1`. |
+| `no P22 board for <id>: add a builder in scripts/capture-p22.mjs` | `fixed-ui.json` hoặc `fixed-actors.json` có mục mới; thêm hàm dựng bảng cho id đó trong `fixedBoards()`. |
+| `git archive f720b6f failed` hoặc `vite build of f720b6f failed` | Như dòng `d643d89` ở trên: `git fetch --unshallow`, hoặc `npm ci` rồi thử lại. |
+| `!! <bảng>-p22.png: no subject within 150 s` | Cao điểm không có khách hợp cận cảnh (cá tính, mặt sốt ruột, đứng yên); chạy lại, hoặc đổi `P22_SEED`. |
 
 ## Kiểm lề và CLS
 
