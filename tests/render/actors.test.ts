@@ -1,4 +1,4 @@
-import { Raycaster, Scene, Vector3 } from 'three';
+import { Raycaster, Scene, Vector3, type Mesh } from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   ALL_ANIMS,
@@ -6,14 +6,18 @@ import {
   BLINK_PERIOD,
   EYE_MIN_OPEN,
   MAX_STRIDES_PER_SECOND,
+  PERSONA_GAITS,
   SPEC_ANIMS,
   STRIDE,
   blendPose,
   blinkFor,
+  bounceFor,
+  gaitFor,
   poseFor,
   propsFor,
   restPose,
   strideCycles,
+  stylePose,
   type AnimName,
   type Pose,
 } from '../../src/render/actors/animations';
@@ -31,7 +35,7 @@ import {
   popScale,
 } from '../../src/render/actors/labels';
 import { Pool } from '../../src/render/actors/pool';
-import { APRON_COLORS, createCharacter, materialFor, type Character } from '../../src/render/actors/rig';
+import { ACCESSORIES, APRON_COLORS, createCharacter, materialFor, type Character } from '../../src/render/actors/rig';
 import {
   ACCEL_MINUTES,
   BRAKE_DISTANCE,
@@ -70,7 +74,7 @@ import {
 import { dispatch, step } from '../../src/sim';
 import { CHAIR_OFFSET, buildNavGrid, cellAt, cellCenter, findPath, isWalkable, nearestFree, type NavGrid } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
-import type { Customer, CustomerState, GameState, StaffTaskKind, Vec2 } from '../../src/sim/types';
+import type { Customer, CustomerState, GameState, PersonaId, StaffTaskKind, Vec2 } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
 
 const CUSTOMER_STATES: readonly CustomerState[] = [
@@ -212,6 +216,24 @@ describe('poseFor', () => {
     expect(Math.max(...taps)).toBeGreaterThan(0.1);
     // Early in the loop the left arm comes up to read the wrist.
     expect(poseFor('impatient', 0.1 * ANIM_PERIOD.impatient).armLX).toBeLessThan(-0.8);
+  });
+
+  it('crosses the arms when impatient, a silhouette unlike the calm queue', () => {
+    for (const f of [0.5, 0.7, 0.9]) {
+      const p = poseFor('impatient', f * ANIM_PERIOD.impatient);
+      // Both arms forward and drawn in across the body.
+      expect(p.armLX).toBeLessThan(-0.6);
+      expect(p.armRX).toBeLessThan(-0.6);
+      expect(p.armLZ).toBeLessThan(0);
+      expect(p.armRZ).toBeLessThan(0);
+      const q = poseFor('queue', f * ANIM_PERIOD.queue);
+      const armGap = Math.abs(p.armLX - q.armLX) + Math.abs(p.armRX - q.armRX) + Math.abs(p.armLZ - q.armLZ) + Math.abs(p.armRZ - q.armRZ);
+      expect(armGap).toBeGreaterThan(1.5);
+    }
+    // The tapping foot lifts clearly higher than the queue's weight shift.
+    const tap = Math.max(...[0.05, 0.08, 0.12].map((f) => poseFor('impatient', f * ANIM_PERIOD.impatient).legR));
+    const shift = Math.max(...[0.1, 0.25, 0.4, 0.6, 0.75].map((f) => poseFor('queue', f * ANIM_PERIOD.queue).legR));
+    expect(tap).toBeGreaterThan(shift * 4);
   });
 
   it('blinks on a bounded, per-phase, periodic clock', () => {
@@ -714,6 +736,95 @@ describe('animations: stride and blend', () => {
   });
 });
 
+describe('animations: persona style', () => {
+  const PERSONAS: readonly PersonaId[] = ['office', 'student', 'regular', 'connoisseur', 'family'];
+  /** Personas told apart by how they move; the regular is told apart by the beanie. */
+  const MOVERS: readonly PersonaId[] = ['office', 'student', 'connoisseur', 'family'];
+  const styled = (persona: PersonaId | undefined, anim: AnimName, t: number, calm = false): Pose =>
+    stylePose(persona, anim, t, calm, poseFor(anim, t));
+  const gap = (a: Pose, b: Pose): number => {
+    const bv = poseValues(b);
+    return poseValues(a).reduce((sum, v, i) => sum + Math.abs(v - bv[i]!), 0);
+  };
+
+  it('gives each moving persona its own walk and its own wait in the queue', () => {
+    for (const anim of ['walk', 'queue', 'idle'] as const) {
+      const t = ANIM_PERIOD[anim] * 0.3;
+      const plain = poseFor(anim, t);
+      for (const p of MOVERS) expect(gap(styled(p, anim, t), plain)).toBeGreaterThan(0.1);
+      for (let i = 0; i < MOVERS.length; i++) {
+        for (let j = i + 1; j < MOVERS.length; j++) {
+          expect(gap(styled(MOVERS[i], anim, t), styled(MOVERS[j], anim, t))).toBeGreaterThan(0.1);
+        }
+      }
+    }
+    // Office workers keep the head down, connoisseurs the chin up.
+    expect(styled('office', 'queue', 1).headX).toBeGreaterThan(poseFor('queue', 1).headX + 0.2);
+    expect(styled('connoisseur', 'walk', 0.2).headX).toBeLessThan(poseFor('walk', 0.2).headX - 0.1);
+    // Connoisseurs walk with the hands clasped behind the back.
+    const stroll = styled('connoisseur', 'walk', 0.2);
+    expect(stroll.armLX).toBeGreaterThan(0.3);
+    expect(stroll.armRX).toBeGreaterThan(0.3);
+  });
+
+  it('keeps the walk symmetric, finite and periodic for every persona', () => {
+    for (const p of PERSONAS) {
+      for (const anim of ['walk', 'queue', 'idle'] as const) {
+        const period = ANIM_PERIOD[anim];
+        for (const t of [0, 0.21, 1.3, -2.2, Number.NaN]) {
+          const a = poseValues(styled(p, anim, t));
+          for (const v of a) expect(Number.isFinite(v)).toBe(true);
+          const b = poseValues(styled(p, anim, t + period));
+          if (Number.isFinite(t)) a.forEach((v, i) => expect(b[i]).toBeCloseTo(v, 6));
+        }
+      }
+      const step = styled(p, 'walk', ANIM_PERIOD.walk / 4);
+      expect(step.legL).toBeCloseTo(-step.legR, 6);
+      expect(Math.abs(step.legL)).toBeGreaterThan(0.25);
+    }
+  });
+
+  it('leaves staff, the player and the other animations alone', () => {
+    for (const anim of ALL_ANIMS) {
+      expect(styled(undefined, anim, 0.7)).toEqual(poseFor(anim, 0.7));
+    }
+    for (const anim of ['brew', 'carry_tray', 'angry_leave', 'impatient', 'drink', 'sit'] as const) {
+      for (const p of PERSONAS) expect(styled(p, anim, 0.7)).toEqual(poseFor(anim, 0.7));
+    }
+    expect(gaitFor(undefined).stride).toBe(STRIDE);
+    expect(gaitFor('regular')).toEqual(gaitFor(undefined));
+  });
+
+  it('keeps the posture but drops the extra movement with reduced motion', () => {
+    const period = ANIM_PERIOD.queue;
+    const offsets = (calm: boolean): number[][] =>
+      [0.1, 0.35, 0.6, 0.85].map((f) => {
+        const s = poseValues(styled('student', 'queue', f * period, calm));
+        return poseValues(poseFor('queue', f * period)).map((v, i) => s[i]! - v);
+      });
+    // Calm: the student's habit is a fixed offset from the plain wait (hands in pockets), no nodding.
+    const calm = offsets(true);
+    for (const row of calm) row.forEach((v, i) => expect(v).toBeCloseTo(calm[0]![i]!, 9));
+    expect(calm[0]!.some((v) => Math.abs(v) > 0.05)).toBe(true);
+    // Full motion: the nod changes from moment to moment.
+    const full = offsets(false);
+    expect(full.some((row) => row.some((v, i) => Math.abs(v - full[0]![i]!) > 0.02))).toBe(true);
+  });
+
+  it('sets the step rate and hop per persona, within the stride cap', () => {
+    // Over the same ground office workers take more, quicker steps than connoisseurs.
+    const steps = (p: PersonaId): number => strideCycles(0.5, 1, PERSONA_GAITS[p].stride);
+    expect(steps('office')).toBeGreaterThan(steps('connoisseur') * 1.3);
+    for (const p of PERSONAS) expect(strideCycles(100, 0.1, PERSONA_GAITS[p].stride)).toBeCloseTo(0.1 * MAX_STRIDES_PER_SECOND);
+    // Students bounce higher mid-step than office workers; calm still shrinks it.
+    const mid = ANIM_PERIOD.walk / 4;
+    const lift = (p: PersonaId, calm = false): number => bounceFor('walk', mid, 0, calm, undefined, PERSONA_GAITS[p].hop).lift;
+    expect(lift('student')).toBeGreaterThan(lift('office') * 2);
+    expect(lift('student', true)).toBeLessThan(lift('student') / 2);
+    expect(bounceFor('walk', mid, 0, false).lift).toBeCloseTo(lift('regular'), 9);
+  });
+});
+
 describe('sync: separation', () => {
   it('eases walkers apart without pushing anyone into furniture', () => {
     const state = fullShop();
@@ -937,6 +1048,32 @@ describe('rig and pool', () => {
     for (const persona of ['office', 'student', 'regular', 'connoisseur', 'family'] as const) {
       expect(countMeshes(createCharacter({ role: 'customer', look: 1, persona }))).toBe(before);
     }
+  });
+
+  it('gives every persona its own accessory from the one shared slot', () => {
+    type Slot = { accessory: Mesh; hair: Mesh };
+    const slot = (ch: Character): Slot => ch as unknown as Slot;
+    const seen = new Set<string>();
+    for (const persona of ['office', 'student', 'regular', 'connoisseur', 'family'] as const) {
+      const ch = createCharacter({ role: 'customer', look: 1, persona });
+      const acc = slot(ch).accessory;
+      expect(acc.visible).toBe(true);
+      expect(acc.material).toBe(materialFor(ACCESSORIES[persona].color));
+      seen.add(`${acc.geometry.uuid}:${ACCESSORIES[persona].color}`);
+    }
+    expect(seen.size).toBe(5);
+    // The beanie rides on the head and covers the hair; a pooled body handed to
+    // another persona puts the slot back on the torso and shows the hair again.
+    const ch = createCharacter({ role: 'customer', look: 1, persona: 'regular' });
+    expect(slot(ch).accessory.parent).toBe(ch.head);
+    expect(slot(ch).hair.visible).toBe(false);
+    ch.setLook({ role: 'customer', look: 1, persona: 'student' });
+    expect(slot(ch).accessory.parent).toBe(ch.torso);
+    expect(slot(ch).hair.visible).toBe(true);
+    // Staff never wear one.
+    ch.setLook({ role: 'barista', look: 1, persona: 'family' });
+    expect(slot(ch).accessory.visible).toBe(false);
+    expect(slot(ch).hair.visible).toBe(true);
   });
 
   it('reuses released objects instead of creating new ones', () => {

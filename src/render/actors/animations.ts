@@ -1,5 +1,7 @@
+import type { PersonaId } from '../../sim/types';
+
 /**
- * Code-driven character animations. poseFor() is a pure function of the
+ * Code-driven character animations. poseFor()is a pure function of the
  * animation and its phase, so every pose can be tested without three.
  *
  * Angles are radians. Arms and legs swing around x (positive = toward the
@@ -249,13 +251,17 @@ export function poseFor(anim: AnimName, t: number, out?: Pose): Pose {
       break;
     }
     case 'impatient': {
-      // Taps a foot, shifts, and glances at a wrist watch once a loop.
+      // Arms crossed, taps a foot hard, and uncrosses to glance at a wrist
+      // watch once a loop: a silhouette that reads from the isometric camera.
       const tap = Math.max(0, Math.sin(a * 3));
-      p.legR = tap * 0.35;
-      p.hipsY = -tap * 0.004;
+      p.legR = tap * 0.5;
+      p.hipsY = -tap * 0.006;
+      p.lean = -0.04;
       const check = phase < 0.4 ? Math.sin((phase / 0.4) * Math.PI) : 0;
-      p.armLX = -0.3 - check * 1.1;
-      p.armLZ = 0.1;
+      p.armRX = -0.75;
+      p.armRZ = -0.35;
+      p.armLX = -0.75 - check * 0.65;
+      p.armLZ = -0.35 + check * 0.45;
       p.headX = 0.05 + check * 0.25;
       p.headY = Math.sin(a) * 0.2;
       p.twist = Math.sin(a * 0.5) * 0.03;
@@ -292,8 +298,116 @@ export const MAX_STRIDES_PER_SECOND = 3;
  * in step with the distance, so slow walking takes slow steps and feet do
  * not slide, up to MAX_STRIDES_PER_SECOND.
  */
-export function strideCycles(moved: number, dtReal: number): number {
-  return Math.max(0, Math.min(moved / STRIDE, dtReal * MAX_STRIDES_PER_SECOND));
+export function strideCycles(moved: number, dtReal: number, stride = STRIDE): number {
+  return Math.max(0, Math.min(moved / stride, dtReal * MAX_STRIDES_PER_SECOND));
+}
+
+/**
+ * How a customer personality carries itself while walking. Looks only: the
+ * walking speed and the path stay the same for everyone, so the sim and the
+ * week's results never see it.
+ */
+export interface Gait {
+  /** World units per stride loop; shorter is quicker steps over the same ground. */
+  stride: number;
+  /** Scales the leg and arm swing of the walk. */
+  swing: number;
+  /** Added torso lean (positive forward) and head nod (positive looks down). */
+  lean: number;
+  head: number;
+  /** Scales the hop of each step (bounceFor). */
+  hop: number;
+}
+
+const PLAIN_GAIT: Gait = { stride: STRIDE, swing: 1, lean: 0, head: 0, hop: 1 };
+
+/**
+ * Office workers hurry with short steps and the head down, students bounce
+ * along, connoisseurs stroll upright with the chin up, families amble.
+ */
+export const PERSONA_GAITS: Readonly<Record<PersonaId, Gait>> = {
+  office: { stride: 0.72, swing: 0.75, lean: 0.1, head: 0.1, hop: 0.6 },
+  student: { stride: 1, swing: 1.3, lean: -0.02, head: -0.04, hop: 1.7 },
+  regular: PLAIN_GAIT,
+  connoisseur: { stride: 1.05, swing: 0.5, lean: -0.05, head: -0.14, hop: 0.45 },
+  family: { stride: 0.95, swing: 0.85, lean: 0.03, head: 0.04, hop: 0.8 },
+};
+
+/** Gait of a persona; staff, the player and customers without one walk plainly. */
+export function gaitFor(persona: PersonaId | undefined): Gait {
+  return persona ? PERSONA_GAITS[persona] : PLAIN_GAIT;
+}
+
+/** Animations a persona restyles: the plain walk and the two standing waits. */
+const STYLED_ANIMS: ReadonlySet<AnimName> = new Set<AnimName>(['walk', 'queue', 'idle']);
+
+/**
+ * Restyles `p` (a pose of `anim` at `t` from poseFor) for a customer
+ * personality, in place: the walk's swing and lean, and a standing habit while
+ * waiting (office checks a phone, student bobs to music, connoisseur clasps
+ * hands behind the back, family looks all around). `calm` (low quality or
+ * reduced motion) keeps the posture but drops the extra movement. Any other
+ * animation, or no persona, is left as it is.
+ */
+export function stylePose(persona: PersonaId | undefined, anim: AnimName, t: number, calm: boolean, p: Pose): Pose {
+  if (!persona || !STYLED_ANIMS.has(anim)) return p;
+  const g = PERSONA_GAITS[persona];
+  const period = ANIM_PERIOD[anim];
+  const a = Number.isFinite(t) ? ((((t % period) + period) % period) / period) * TAU : 0;
+  const move = calm ? 0 : 1;
+  p.lean += g.lean;
+  p.headX += g.head;
+  if (anim === 'walk') {
+    p.legL *= g.swing;
+    p.legR *= g.swing;
+    p.armLX *= g.swing;
+    p.armRX *= g.swing;
+    // The arm carrying a bag (rig.ts ACCESSORIES) hangs still beside it.
+    if (persona === 'office') p.armRX = 0.05;
+    if (persona === 'family') p.armLX = 0.05;
+    if (persona === 'connoisseur') {
+      p.armLX = 0.45;
+      p.armRX = 0.45;
+      p.armLZ = 0.12;
+      p.armRZ = 0.12;
+    }
+    return p;
+  }
+  switch (persona) {
+    case 'office':
+      // Reads a phone held in front, head down; glances around less.
+      p.armRX = -1.05;
+      p.armRZ = -0.15;
+      p.headX += 0.22;
+      p.headY *= 0.3;
+      break;
+    case 'student':
+      // Leans back with the hands in the back pockets, nodding along to music.
+      p.lean -= 0.05;
+      p.armLX = 0.25;
+      p.armRX = 0.25;
+      p.armLZ = 0;
+      p.armRZ = 0;
+      p.headX += Math.sin(a * 4) * 0.08 * move;
+      p.twist += Math.sin(a * 2) * 0.05 * move;
+      break;
+    case 'connoisseur':
+      // Hands clasped behind the back, upright, studying the menu board.
+      p.armLX = 0.45;
+      p.armRX = 0.45;
+      p.armLZ = 0.12;
+      p.armRZ = 0.12;
+      p.headY *= 0.5;
+      break;
+    case 'family':
+      // Looks all around the room.
+      p.headY *= 1 + 0.7 * move;
+      p.twist *= 1 + move;
+      break;
+    default:
+      break;
+  }
+  return p;
 }
 
 /** Whole-body squash and stretch on top of the pose, scaled around the feet. */
@@ -319,19 +433,21 @@ const HOP_STRETCH = 0.04;
  * Bounce of `anim`. Moving animations hop once per step from `phase` (the
  * same stride clock as poseFor) and squash on landing; standing ones bob
  * every IDLE_BOUNCE_PERIOD of `idleTime`; seated ones stay still. `calm`
- * shrinks the motion to CALM_BOUNCE. Written into `out` when given.
+ * shrinks the motion to CALM_BOUNCE. `hopScale` scales the step hop (a
+ * persona's Gait.hop). Written into `out` when given.
  */
-export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm: boolean, out?: Bounce): Bounce {
+export function bounceFor(anim: AnimName, phase: number, idleTime: number, calm: boolean, out?: Bounce, hopScale = 1): Bounce {
   const k = calm ? CALM_BOUNCE : 1;
   let sy = 1;
   let lift = 0;
   if (MOVING_ANIMS.has(anim)) {
     const period = ANIM_PERIOD[anim];
     const t = Number.isFinite(phase) ? phase / period : 0;
+    const kh = k * hopScale;
     // Two steps per stride: |sin| is 0 at each footfall and 1 mid-air.
     const hop = Math.abs(Math.sin(t * TAU));
-    lift = hop * HOP_HEIGHT * k;
-    sy = 1 + k * (HOP_STRETCH * hop - LAND_SQUASH * (1 - hop) ** 4);
+    lift = hop * HOP_HEIGHT * kh;
+    sy = 1 + kh * (HOP_STRETCH * hop - LAND_SQUASH * (1 - hop) ** 4);
   } else if (!SEATED_ANIMS.has(anim)) {
     const a = Number.isFinite(idleTime) ? (idleTime / IDLE_BOUNCE_PERIOD) * TAU : 0;
     // 0 → 1 → 0 over one breath: sinks to 0.96 while the lift drops to 0.
