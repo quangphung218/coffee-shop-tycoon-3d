@@ -59,7 +59,7 @@ Lệnh nạp cùng ván của tuần trên (sáng ngày 4: mưa, hội chợ; v�
 | ![HUD: Ngày 4/7 và chip Mưa, Hội chợ](../media/hud-week-p21.png)<br>HUD ghi "Ngày 4/7", thêm chip thời tiết và sự kiện của hôm nay. | ![Bảng Việc: khối Hôm nay](../media/tasks-unlocks-p21.png)<br>Bảng Việc có thêm khối Hôm nay ở đầu, gồm dòng "Mới mở khóa hôm nay: Mocha, Tranh treo tường, Đèn trang trí". |
 | ![Nâng cấp: nút Gỡ trên Cây xanh](../media/decor-remove-p21.png)<br>Thẻ trang trí đã mua có nút "Gỡ (+150.000đ)", bấm hai lần tại chỗ. | ![Menu: Mức giá](../media/price-policy-p21.png)<br>Bảng Menu có thêm Mức giá Rẻ / Chuẩn / Cao, đổi tại chỗ, dòng gợi ý ghi tác động. |
 | ![Kết tuần 1280 px](../media/week-end-1280-p21.png)<br>1280 px: báo cáo ngày 7 của v0.2.0 chỉ có "Ngày tiếp theo"; P21 có màn kết tuần với điểm, cúp, doanh thu và sao so mục tiêu, bảng 7 ngày, nút Chơi lại. | ![Kết tuần 390 px](../media/week-end-390-p21.png)<br>390 px: cùng màn kết tuần, bảng 7 ngày xuống dòng và hai nút xếp dọc. |
-| ![Cài đặt: Số liệu chơi](../media/settings-playlog-p21.png)<br>Cài đặt có thêm nhóm Số liệu chơi: lần dừng gần nhất (ngày, pha, giờ game), Xuất JSON và Xoá. | |
+| ![Cài đặt: Số liệu chơi](../media/settings-playlog-p21.png)<br>v0.2.0 hết form ở dòng Phiên bản; P21 thêm nhóm Số liệu chơi: lần dừng gần nhất (ngày, pha, giờ game), Xuất JSON và Xoá. | |
 
 ## Số liệu chơi
 
@@ -68,15 +68,15 @@ Lệnh nạp cùng ván của tuần trên (sáng ngày 4: mưa, hội chợ; v�
 ```json
 {
   "version": 1,
-  "exportedAt": 1760400091162,
+  "exportedAt": 1760400119746,
   "entries": [
-    { "v": 1, "run": "8d0b3304-f20c-4e4e-84d3-3ebb6f37505e", "kind": "run_start", "day": 4, "phase": "preparation", "minute": 420, "at": 1760400013054 },
-    { "v": 1, "run": "8d0b3304-f20c-4e4e-84d3-3ebb6f37505e", "kind": "phase", "day": 4, "phase": "opening", "minute": 420, "at": 1760400053944 },
-    { "v": 1, "run": "8d0b3304-f20c-4e4e-84d3-3ebb6f37505e", "kind": "phase", "day": 4, "phase": "peak", "minute": 660, "at": 1760400086275 },
-    { "v": 1, "run": "8d0b3304-f20c-4e4e-84d3-3ebb6f37505e", "kind": "quit_to_menu", "day": 4, "phase": "peak", "minute": 660, "at": 1760400088639 }
+    { "v": 1, "run": "9a650cba-1074-4848-b472-243e7f452762", "kind": "run_start", "day": 4, "phase": "preparation", "minute": 420, "at": 1760400013262 },
+    { "v": 1, "run": "9a650cba-1074-4848-b472-243e7f452762", "kind": "phase", "day": 4, "phase": "opening", "minute": 420, "at": 1760400080588 },
+    { "v": 1, "run": "9a650cba-1074-4848-b472-243e7f452762", "kind": "phase", "day": 4, "phase": "peak", "minute": 660, "at": 1760400114613 },
+    { "v": 1, "run": "9a650cba-1074-4848-b472-243e7f452762", "kind": "quit_to_menu", "day": 4, "phase": "peak", "minute": 660, "at": 1760400116141 }
   ],
   "lastStops": [
-    { "run": "8d0b3304-f20c-4e4e-84d3-3ebb6f37505e", "kind": "quit_to_menu", "day": 4, "phase": "peak", "minute": 660, "at": 1760400088639 }
+    { "run": "9a650cba-1074-4848-b472-243e7f452762", "kind": "quit_to_menu", "day": 4, "phase": "peak", "minute": 660, "at": 1760400116141 }
   ]
 }
 ```
