@@ -16,10 +16,14 @@
 // minutes), REVIEW_STEP_MS for one step (default 3 minutes; waits for the
 // game clock get PEAK_TIMEOUT_MS and DAY_TIMEOUT_MS). REVIEW_SERIAL=1 plays
 // the two viewports one after the other instead of side by side (cleaner FPS,
-// twice as long). REVIEW_SIM_ONLY=1 builds the saves and prints the week, no
-// browser.
+// twice as long). REVIEW_DAYS plays only some days ("1", "2-4"; default
+// "1-7", the Main Menu goes with day 1) and keeps the other days of an
+// existing metrics.json; REVIEW_VIEWPORTS ("390" or "1440") does the same
+// for one viewport. REVIEW_QUALITY is the graphics setting (default
+// medium, the game's default). REVIEW_SIM_ONLY=1 builds the saves and prints
+// the week, no browser.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +63,23 @@ const MIN_FPS = 55;
 /** Ratio impact/effort from which a finding counts as 'high'. */
 const HIGH = 1.5;
 const HIDE_TOASTS = '.toasts { display: none !important; }';
+/** Graphics setting of every page; capture-media's SETTINGS use high, players start on medium. */
+const QUALITY = process.env.REVIEW_QUALITY ?? 'medium';
+
+/** Week days to play, from REVIEW_DAYS ("3", "2-4"; default all 7). */
+function parseDays(text) {
+  const m = /^(\d)(?:-(\d))?$/.exec(text.trim());
+  if (!m) throw new Error(`REVIEW_DAYS "${text}" is not "N" or "N-M" with days 1–7`);
+  const from = Number(m[1]);
+  const to = Number(m[2] ?? m[1]);
+  if (from < 1 || to > 7 || from > to) throw new Error(`REVIEW_DAYS "${text}" is outside 1–7`);
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+}
+const DAYS = parseDays(process.env.REVIEW_DAYS ?? '1-7');
+/** Viewports to play, from REVIEW_VIEWPORTS ("390", "1440" or "390,1440", the default). */
+const ACTIVE = (process.env.REVIEW_VIEWPORTS ?? '390,1440').split(',').map((s) => s.trim());
+/** Day of a metrics key or shot file ("390/d3-peak", "d0-menu-first.png"); day 0 (Main Menu) goes with day 1. */
+const dayOf = (key) => Math.max(1, Number(/(?:^|\/)d(\d)/.exec(key)?.[1] ?? 1));
 
 const START = Date.now();
 const progress = (who, what) => console.log(`[${Math.round((Date.now() - START) / 1000)} s] ${who}: ${what}`);
@@ -68,6 +89,8 @@ const metrics = {
   difficulty: DIFFICULTY,
   commit: '',
   parallel: process.env.REVIEW_SERIAL !== '1',
+  quality: QUALITY,
+  runs: [],
   notes: [
     'Headless Chromium with SwiftShader (software WebGL): FPS is a floor, not what a GPU gets.',
     'With parallel=true both viewports render at once, so each FPS is lower than alone.',
@@ -471,6 +494,11 @@ async function waitPeak(page, vp) {
 
 async function gameContext(browser, vp, save) {
   const context = await newContext(browser, vp.context);
+  // After newContext's own script, so this quality wins.
+  await context.addInitScript((quality) => {
+    const s = JSON.parse(localStorage.getItem('cst3d:settings') ?? '{}');
+    localStorage.setItem('cst3d:settings', JSON.stringify({ ...s, quality }));
+  }, QUALITY);
   await context.addInitScript(observeThree);
   await context.addInitScript(reviewProbes);
   if (save) await context.addInitScript(({ key, text }) => localStorage.setItem(key, text), save);
@@ -649,16 +677,32 @@ async function weekEnd(browser, vp, url, save) {
 }
 
 async function playViewport(browser, vp, url, week) {
-  rmSync(join(OUT, vp.name), { recursive: true, force: true });
-  mkdirSync(join(OUT, vp.name), { recursive: true });
-  progress(vp.name, 'day 1');
-  await dayOne(browser, vp, url);
-  for (let day = 2; day <= 7; day++) {
+  const dir = join(OUT, vp.name);
+  mkdirSync(dir, { recursive: true });
+  // Only the shots of the days played now; the other days stay from earlier runs.
+  for (const f of readdirSync(dir)) if (DAYS.includes(dayOf(f))) rmSync(join(dir, f));
+  for (const day of DAYS) {
     progress(vp.name, `day ${day}`);
-    await laterDay(browser, vp, url, day, week.mornings[day]);
+    if (day === 1) await dayOne(browser, vp, url);
+    else await laterDay(browser, vp, url, day, week.mornings[day]);
+    if (day === 7) await weekEnd(browser, vp, url, week.end);
+    writeReport();
   }
-  await weekEnd(browser, vp, url, week.end);
   progress(vp.name, 'done');
+}
+
+/** With REVIEW_DAYS, keeps what an earlier run measured on the other days. */
+function keepOtherDays() {
+  const file = join(OUT, 'metrics.json');
+  if (!existsSync(file)) return;
+  const old = JSON.parse(readFileSync(file, 'utf8'));
+  const redone = (vp, day) => ACTIVE.includes(vp) && DAYS.includes(day);
+  const keep = (obj) => Object.fromEntries(Object.entries(obj ?? {}).filter(([k]) => !redone(k.split('/')[0], dayOf(k))));
+  metrics.screens = keep(old.screens);
+  metrics.peaks = keep(old.peaks);
+  metrics.menu = Object.fromEntries(Object.entries(old.menu ?? {}).filter(([vp]) => !redone(vp, 1)));
+  metrics.steps = (old.steps ?? []).filter((s) => s.who !== 'sim' && !redone(s.who, Number(/day (\d)/.exec(s.name)?.[1] ?? 1)));
+  metrics.runs = old.runs ?? [];
 }
 
 // --- Findings from the numbers. ---
@@ -757,17 +801,21 @@ async function main() {
     browser = null;
     server = null;
   };
-  const total = setTimeout(() => {
-    console.error(`review-p22: over REVIEW_TIMEOUT_MS (${TOTAL_MS} ms), stopping`);
-    metrics.error = `timeout after ${TOTAL_MS} ms`;
+  // metrics.json is only written once the other days of an earlier run are merged in.
+  let merged = false;
+  const stop = (why, code) => {
+    console.error(`review-p22: ${why}, stopping`);
+    metrics.error = why;
     try {
-      writeReport();
+      if (merged) writeReport();
     } catch {
-      // keep the timeout message
+      // keep the first message
     }
-    void cleanup().finally(() => process.exit(1));
-  }, TOTAL_MS);
-  process.once('SIGINT', () => void cleanup().finally(() => process.exit(130)));
+    void cleanup().finally(() => process.exit(code));
+  };
+  const total = setTimeout(() => stop(`over REVIEW_TIMEOUT_MS (${TOTAL_MS} ms)`, 1), TOTAL_MS);
+  process.once('SIGINT', () => stop('SIGINT', 130));
+  process.once('SIGTERM', () => stop('SIGTERM', 143));
   try {
     metrics.commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
     const week = await step('sim', 'week saves', loadWeek);
@@ -776,21 +824,27 @@ async function main() {
     console.table(week.rows);
     if (process.env.REVIEW_SIM_ONLY === '1') return;
     mkdirSync(OUT, { recursive: true });
+    const playing = VIEWPORTS.filter((vp) => ACTIVE.includes(vp.name));
+    if (playing.length === 0) throw new Error(`REVIEW_VIEWPORTS "${ACTIVE.join(',')}" names none of ${VIEWPORTS.map((v) => v.name).join(', ')}`);
+    if (DAYS.length < 7 || playing.length < VIEWPORTS.length) keepOtherDays();
+    metrics.runs = metrics.runs.filter((r) => !(r.days.every((d) => DAYS.includes(d)) && (r.viewports ?? []).every((v) => ACTIVE.includes(v))));
+    metrics.runs.push({ days: DAYS, viewports: playing.map((v) => v.name), commit: metrics.commit, quality: QUALITY, parallel: metrics.parallel });
+    merged = true;
     server = await startPreview(ROOT, PORT);
     browser = await chromium.launch({
       headless: process.env.MEDIA_HEADED !== '1',
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
     const url = urlFor(PORT);
-    if (metrics.parallel) await Promise.all(VIEWPORTS.map((vp) => playViewport(browser, vp, url, week)));
-    else for (const vp of VIEWPORTS) await playViewport(browser, vp, url, week);
+    if (metrics.parallel) await Promise.all(playing.map((vp) => playViewport(browser, vp, url, week)));
+    else for (const vp of playing) await playViewport(browser, vp, url, week);
   } catch (err) {
     metrics.error = String(err?.stack ?? err);
     throw err;
   } finally {
     clearTimeout(total);
     await cleanup();
-    if (process.env.REVIEW_SIM_ONLY !== '1') writeReport();
+    if (merged) writeReport();
   }
 }
 
