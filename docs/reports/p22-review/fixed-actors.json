@@ -18,7 +18,8 @@
       "impact": 2,
       "effort": 1,
       "change": "rig.ts ACCESSORIES: regular wears a plum beanie (on the head, hides the hair mesh), family carries a mustard tote at the left hand; both reuse the one accessory mesh slot.",
-      "drawCalls": "Mesh count per character unchanged; regular draws the beanie instead of the hair (net 0), family draws one more mesh, like office and student already did.",
+      "drawCalls": "Mesh count per character unchanged; regular draws the beanie instead of the hair (net 0), family draws one more mesh, like office and student already did. The accessory casts no shadow, so at high quality (the only one with shadows) a persona adds no shadow draw call.",
+      "fps": "First measure-startup --base f720b6f --runs 3 --fps-only (M2, before the shadow change): medium 25.1 vs 23.6 (+6.5%), high 22.0 vs 25.3 (-13.2%), with runs of one build spreading 21.7-26.8 FPS.",
       "tests": ["tests/render/actors.test.ts > rig and pool > gives every persona its own accessory from the one shared slot"]
     },
     {
