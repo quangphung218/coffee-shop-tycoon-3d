@@ -7,6 +7,7 @@ import {
   clearPlayLog,
   exportPlayLog,
   readPlayLog,
+  readPlayLogStatus,
   type PlayLogEntry,
 } from '../../src/save/playlog';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
@@ -94,6 +95,40 @@ describe('play log', () => {
     appendPlayLog(entry(), storage);
     expect(clearPlayLog(storage)).toBe(true);
     expect(readPlayLog(storage)).toEqual([]);
+  });
+
+  it('drops lines whose run is not an id, so a shop name never lands in the log', () => {
+    const storage = createMemoryStorage();
+    expect(appendPlayLog(entry({ run: 'Quán Của Tôi' }), storage)).toBe(false);
+    expect(appendPlayLog(entry({ run: 'x'.repeat(41) }), storage)).toBe(false);
+    expect(appendPlayLog(entry({ run: '3f2504e0-4f89-11d3-9a0c-0305e82c3301' }), storage)).toBe(true);
+    expect(appendPlayLog(entry({ run: 'k2j9x0abcmq7z' }), storage)).toBe(true);
+    storage.setItem(
+      PLAYLOG_KEY,
+      JSON.stringify({ v: 1, entries: [entry({ run: 'Quán Của Tôi' }), entry({ run: 'run-b' })] }),
+    );
+    expect(readPlayLog(storage).map((e) => e.run)).toEqual(['run-b']);
+    expect(exportPlayLog(storage, 1)).not.toContain('Quán');
+  });
+
+  it('reports blocked storage when reading throws', () => {
+    const blocked: StorageLike = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+    expect(readPlayLogStatus(blocked)).toEqual({ ok: false, reason: 'blocked' });
+  });
+
+  it('reports corrupt data on broken JSON, and ok on a missing log', () => {
+    const storage = createMemoryStorage();
+    expect(readPlayLogStatus(storage)).toEqual({ ok: true, entries: [] });
+    storage.setItem(PLAYLOG_KEY, '{not json');
+    expect(readPlayLogStatus(storage)).toEqual({ ok: false, reason: 'corrupt' });
+    storage.setItem(PLAYLOG_KEY, JSON.stringify({ v: 1, entries: 'nope' }));
+    expect(readPlayLogStatus(storage)).toEqual({ ok: false, reason: 'corrupt' });
   });
 
   it('never throws when storage fails', () => {
