@@ -1,4 +1,4 @@
-import type { MenuItemId, Unlocks, UpgradeId } from '../types';
+import type { DayEventId, MenuItemId, Unlocks, UpgradeId } from '../types';
 import { levelDef } from './levels';
 
 /** Days in a week of play. */
@@ -42,3 +42,33 @@ export function dayUnlockDay(kind: 'menu' | 'upgrade', id: MenuItemId | UpgradeI
   }
   return Infinity;
 }
+
+export interface DayEventDef {
+  id: DayEventId;
+  name: string;
+  description: string;
+  /** Multiplier on customer arrivals for the day. */
+  arrivalMult: number;
+  /** Multiplier on ingredient prices for the day: buying and the cost of servings made. */
+  ingredientPriceMult: number;
+}
+
+/** Day events of the week; the plan picks one per day (rollWeekPlan in src/sim/week.ts). */
+export const DAY_EVENTS: Readonly<Record<DayEventId, DayEventDef>> = {
+  none: { id: 'none', name: 'Ngày thường', description: 'Không có sự kiện', arrivalMult: 1, ingredientPriceMult: 1 },
+  grand_opening: {
+    id: 'grand_opening',
+    name: 'Khai trương',
+    description: 'Khách tò mò ghé thử quán mới',
+    arrivalMult: 1.15,
+    ingredientPriceMult: 1,
+  },
+  fair: { id: 'fair', name: 'Hội chợ', description: 'Phố đông, khách tăng mạnh', arrivalMult: 1.4, ingredientPriceMult: 1 },
+  supplier_hike: {
+    id: 'supplier_hike',
+    name: 'Nhà cung cấp tăng giá',
+    description: 'Nguyên liệu đắt hơn trong ngày',
+    arrivalMult: 1,
+    ingredientPriceMult: 1.25,
+  },
+};

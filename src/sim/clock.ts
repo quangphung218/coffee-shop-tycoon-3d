@@ -6,6 +6,7 @@ import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
 import { grantUpgradeLevel, upgradeLevel } from './upgrades';
 import type { GameState, Phase } from './types';
+import { todayPlan } from './week';
 
 /** Peak windows [start, end) in game minutes: 11:00–13:00 and 17:00–19:00. */
 export const PEAK_WINDOWS: readonly (readonly [number, number])[] = [
@@ -90,7 +91,10 @@ export function startNextDay(state: GameState): boolean {
   state.day += 1;
   state.minute = DAY_START_MINUTE;
   state.tickAccumulator = 0;
+  // Always roll, so the RNG sequence stays the same; the week plan then sets the weather.
   state.weather = rollWeather(state);
+  const plan = todayPlan(state);
+  if (plan) state.weather = plan.weather;
   state.today = createDayStats(state.day, state.rating);
   state.missions = rollMissions(state.seed, state.day, state.shopLevel);
   setPhase(state, 'preparation');

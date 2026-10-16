@@ -474,11 +474,24 @@ export interface DailyReport {
   levelUp?: { level: number; unlocks: Unlocks };
 }
 
+/** Event of a week day; shifts arrivals or ingredient prices (DAY_EVENTS in src/sim/data/week.ts). */
+export type DayEventId = 'none' | 'grand_opening' | 'fair' | 'supplier_hike';
+
+/** Weather and event planned for one day of the week. */
+export interface DayPlan {
+  /** Day of the week, 1..7. */
+  day: number;
+  weather: Weather;
+  event: DayEventId;
+}
+
 /** A 7-day week of play; menu items and upgrades also open by its calendar (src/sim/data/week.ts). */
 export interface WeekState {
   length: 7;
   /** Game day the week began on; week day 1 is this day. */
   startedDay: number;
+  /** Weather and event of each week day, rolled from the seed (rollWeekPlan). */
+  plan: DayPlan[];
 }
 
 export interface ActiveCampaign {

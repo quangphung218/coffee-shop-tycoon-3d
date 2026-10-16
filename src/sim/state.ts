@@ -6,6 +6,7 @@ import { WEEK_LENGTH } from './data/week';
 import { rollMissions } from './progression';
 import { normalizeSeed, pick, randInt, randRange, type RngHolder } from './rng';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId, Staff, Table } from './types';
+import { rollWeekPlan } from './week';
 
 /** 07:00 */
 export const DAY_START_MINUTE = 7 * 60;
@@ -138,7 +139,7 @@ export function createNewGame(shopName: string, difficulty: Difficulty, seed: nu
     today: createDayStats(1, diff.startRating),
     history: [],
     reviews: [],
-    week: { length: WEEK_LENGTH, startedDay: 1 },
+    week: { length: WEEK_LENGTH, startedDay: 1, plan: rollWeekPlan(normSeed) },
     events: [],
     nextId,
   };

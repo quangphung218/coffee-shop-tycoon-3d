@@ -35,7 +35,29 @@ Sáng ngày 7, nếu quán chưa có Mở rộng diện tích thì được tặ
 
 ## Sự kiện và thời tiết
 
-Thời tiết mỗi ngày là nắng, mưa hoặc nóng; ngày 1 luôn nắng. Mưa giảm khách còn 0,75 lần, nóng tăng lên 1,1 lần. Tuần chưa có sự kiện theo ngày.
+Mỗi ngày trong tuần có một thời tiết và một sự kiện, lập sẵn khi tạo ván (`state.week.plan`, hàm `rollWeekPlan` trong `src/sim/week.ts`). Hệ số sự kiện nằm trong `DAY_EVENTS` (`src/sim/data/week.ts`).
+
+| Biến số | Khách tới | Giá nguyên liệu |
+| --- | --- | --- |
+| Nắng | ×1 | ×1 |
+| Mưa | ×0,75 | ×1 |
+| Nóng | ×1,1 | ×1 |
+| Khai trương | ×1,15 | ×1 |
+| Hội chợ | ×1,4 | ×1 |
+| Nhà cung cấp tăng giá | ×1 | ×1,25 |
+| Ngày thường (không sự kiện) | ×1 | ×1 |
+
+Hệ số thời tiết và sự kiện nhân với nhau, rồi nhân vào tốc độ khách tới (`arrivalRate`). Giá nguyên liệu tăng áp dụng cho cả giá mua gói và giá vốn các phần làm ra trong ngày đó.
+
+Luật sinh lịch:
+
+- Ngày 1 luôn nắng và khai trương.
+- Ngày 2–7 rút thời tiết (nắng 50%, mưa 25%, nóng 25%) và sự kiện (ngày thường 40%, hội chợ 30%, tăng giá 30%); rút lại khi ra nắng và ngày thường.
+- Hai ngày liền nhau không cùng cặp thời tiết và sự kiện.
+- Tuần có ít nhất một ngày mưa, một hội chợ và một ngày tăng giá.
+- Tuần sai luật thì rút lại cả tuần. Mỗi lần rút dùng hash của seed và ngày, không dùng `rngState`, nên cùng seed luôn ra cùng lịch.
+
+Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` vẫn rút thời tiết ngẫu nhiên và không có sự kiện.
 
 ## Mục tiêu tuần
 
