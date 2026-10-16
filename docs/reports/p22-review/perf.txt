@@ -192,5 +192,27 @@ Same-run gaps on mobile (state minus base), all states:
 | f289da8, --runs 9 | +17 ms | +53 ms |
 | fix, --runs 9 | +85 ms | -486 ms |
 
-On this machine the base itself shows the Main Menu at 1151-1163 ms,
+### fix, measured again
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 9
+Exit code: 0
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 76 ms | 127 ms | 260 ms |
+| working tree | Desktop, no throttling | 76 ms | 145 ms | 260 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 380 ms | 1083 ms | 3210 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 432 ms | 1167 ms | 2698 ms |
+
+(Chunk tables as in the run above.) The +84 ms menu gap repeats, so it is
+not noise. With the atlas out of the way the scene chunks arrive about
+500 ms earlier, and their parse and evaluation now land in the menu's
+first frames. Next change: main.ts asks for import('./render/scene') only
+after afterPaint(), once the menu has painted.
+
+### fix 2 (scene import after the menu paint)
+
+(output pending)
+
+On this machine the base itself shows the Main Menu at 1083-1163 ms,
 so the absolute < 1000 ms target is out of reach for any build here.
