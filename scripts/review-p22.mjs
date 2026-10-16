@@ -19,11 +19,13 @@
 // twice as long). REVIEW_DAYS plays only some days ("1", "2-4"; default
 // "1-7", the Main Menu goes with day 1) and keeps the other days of an
 // existing metrics.json; REVIEW_VIEWPORTS ("390" or "1440") does the same
-// for one viewport. REVIEW_QUALITY is the graphics setting (default
+// for one viewport; metrics.json is merged again at every write. The build is
+// served on a free port (REVIEW_PORT pins one). REVIEW_QUALITY is the graphics setting (default
 // medium, the game's default). REVIEW_SIM_ONLY=1 builds the saves and prints
 // the week, no browser.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as createNetServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +34,6 @@ import { FIXED_NOW, newContext, observeThree, startPreview, urlFor } from './cap
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const OUT = join(ROOT, 'docs', 'reports', 'p22-review');
-const PORT = Number(process.env.REVIEW_PORT ?? 4173);
 const TOTAL_MS = Number(process.env.REVIEW_TIMEOUT_MS ?? 20 * 60_000);
 const STEP_MS = Number(process.env.REVIEW_STEP_MS ?? 3 * 60_000);
 /** Open at 4x until the 11:00 peak: about 30 s with a fast renderer. */
@@ -90,7 +91,8 @@ const metrics = {
   commit: '',
   parallel: process.env.REVIEW_SERIAL !== '1',
   quality: QUALITY,
-  runs: [],
+  /** This run (days, viewports, error); mergedMetrics() lists it in `runs` with the earlier ones. */
+  run: null,
   notes: [
     'Headless Chromium with SwiftShader (software WebGL): FPS is a floor, not what a GPU gets.',
     'With parallel=true both viewports render at once, so each FPS is lower than alone.',
@@ -691,23 +693,38 @@ async function playViewport(browser, vp, url, week) {
   progress(vp.name, 'done');
 }
 
-/** With REVIEW_DAYS, keeps what an earlier run measured on the other days. */
-function keepOtherDays() {
+/**
+ * This run's metrics on top of what metrics.json on disk holds for the other
+ * days and viewports (read again at every write, so runs of other days that
+ * wrote in between are kept).
+ */
+function mergedMetrics() {
   const file = join(OUT, 'metrics.json');
-  if (!existsSync(file)) return;
-  const old = JSON.parse(readFileSync(file, 'utf8'));
+  let old = {};
+  try {
+    if (existsSync(file)) old = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    // unreadable: write this run alone
+  }
   const redone = (vp, day) => ACTIVE.includes(vp) && DAYS.includes(day);
   const keep = (obj) => Object.fromEntries(Object.entries(obj ?? {}).filter(([k]) => !redone(k.split('/')[0], dayOf(k))));
-  metrics.screens = keep(old.screens);
-  metrics.peaks = keep(old.peaks);
-  metrics.menu = Object.fromEntries(Object.entries(old.menu ?? {}).filter(([vp]) => !redone(vp, 1)));
-  metrics.steps = (old.steps ?? []).filter((s) => s.who !== 'sim' && !redone(s.who, Number(/day (\d)/.exec(s.name)?.[1] ?? 1)));
-  metrics.runs = old.runs ?? [];
+  const covered = (r) => r.days.every((d) => DAYS.includes(d)) && (r.viewports ?? []).every((v) => ACTIVE.includes(v));
+  const { run, ...own } = metrics;
+  return {
+    ...own,
+    notes: [...own.notes],
+    screens: { ...keep(old.screens), ...own.screens },
+    peaks: { ...keep(old.peaks), ...own.peaks },
+    menu: { ...Object.fromEntries(Object.entries(old.menu ?? {}).filter(([vp]) => !redone(vp, 1))), ...own.menu },
+    steps: [...(old.steps ?? []).filter((s) => s.who !== 'sim' && !redone(s.who, Number(/day (\d)/.exec(s.name)?.[1] ?? 1))), ...own.steps],
+    runs: [...(old.runs ?? []).filter((r) => !covered(r)), ...(run ? [run] : [])],
+  };
 }
 
 // --- Findings from the numbers. ---
 
-function findings() {
+/** Findings from `metrics` (the merged metrics of every run); adds notes to it. */
+function findings(metrics) {
   const out = [];
   const add = (f) => out.push({ ...f, ratio: Math.round((f.impact / f.effort) * 100) / 100, high: f.impact / f.effort >= HIGH });
   const screens = Object.entries(metrics.screens);
@@ -784,12 +801,25 @@ function findings() {
 
 function writeReport() {
   mkdirSync(OUT, { recursive: true });
-  writeFileSync(join(OUT, 'metrics.json'), `${JSON.stringify(metrics, null, 2)}\n`);
-  const list = findings();
+  const all = mergedMetrics();
+  const list = findings(all);
+  writeFileSync(join(OUT, 'metrics.json'), `${JSON.stringify(all, null, 2)}\n`);
   writeFileSync(join(OUT, 'findings.json'), `${JSON.stringify(list, null, 2)}\n`);
   const high = list.filter((f) => f.high).length;
-  console.log(`ok docs/reports/p22-review/metrics.json (${Object.keys(metrics.screens).length} screens)`);
+  console.log(`ok docs/reports/p22-review/metrics.json (${Object.keys(all.screens).length} screens)`);
   console.log(`ok docs/reports/p22-review/findings.json (${list.length} findings, ${high} high)`);
+}
+
+/** A local TCP port nobody listens on right now. */
+function freePort() {
+  return new Promise((resolveIt, reject) => {
+    const srv = createNetServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolveIt(port));
+    });
+  });
 }
 
 async function main() {
@@ -801,11 +831,12 @@ async function main() {
     browser = null;
     server = null;
   };
-  // metrics.json is only written once the other days of an earlier run are merged in.
+  // metrics.json is only written once this run has a record (after the sim saves).
   let merged = false;
   const stop = (why, code) => {
     console.error(`review-p22: ${why}, stopping`);
     metrics.error = why;
+    if (metrics.run) metrics.run.error = why;
     try {
       if (merged) writeReport();
     } catch {
@@ -826,20 +857,21 @@ async function main() {
     mkdirSync(OUT, { recursive: true });
     const playing = VIEWPORTS.filter((vp) => ACTIVE.includes(vp.name));
     if (playing.length === 0) throw new Error(`REVIEW_VIEWPORTS "${ACTIVE.join(',')}" names none of ${VIEWPORTS.map((v) => v.name).join(', ')}`);
-    if (DAYS.length < 7 || playing.length < VIEWPORTS.length) keepOtherDays();
-    metrics.runs = metrics.runs.filter((r) => !(r.days.every((d) => DAYS.includes(d)) && (r.viewports ?? []).every((v) => ACTIVE.includes(v))));
-    metrics.runs.push({ days: DAYS, viewports: playing.map((v) => v.name), commit: metrics.commit, quality: QUALITY, parallel: metrics.parallel });
+    metrics.run = { days: DAYS, viewports: playing.map((v) => v.name), commit: metrics.commit, quality: QUALITY, parallel: metrics.parallel, error: null };
     merged = true;
-    server = await startPreview(ROOT, PORT);
+    // A free port of its own: startPreview() would take another run's preview on a busy port for its own.
+    const port = process.env.REVIEW_PORT ? Number(process.env.REVIEW_PORT) : await freePort();
+    server = await startPreview(ROOT, port);
     browser = await chromium.launch({
       headless: process.env.MEDIA_HEADED !== '1',
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
-    const url = urlFor(PORT);
+    const url = urlFor(port);
     if (metrics.parallel) await Promise.all(playing.map((vp) => playViewport(browser, vp, url, week)));
     else for (const vp of playing) await playViewport(browser, vp, url, week);
   } catch (err) {
     metrics.error = String(err?.stack ?? err);
+    if (metrics.run) metrics.run.error = metrics.error;
     throw err;
   } finally {
     clearTimeout(total);
