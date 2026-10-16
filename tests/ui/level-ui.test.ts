@@ -256,6 +256,8 @@ describe('Việc badge', () => {
 describe('menu level locks', () => {
   it('shows "Mở ở cấp N" with a disabled switch and its reason, and sends nothing', () => {
     const state = game();
+    // Without a week only the level opens items ("Mở ngày N" is in decor-policies.test.ts).
+    delete state.week;
     for (const item of state.inventory) item.qty = 1_000_000;
     const { body, sent, handle } = mount(renderMenuPanel, state);
     const row = q(body, '[data-item="cappuccino"]');
@@ -388,6 +390,7 @@ describe('upgrade level locks', () => {
 
   it('shows "Mở ở cấp N" with a disabled Mua for a tool above the shop level', () => {
     const state = game();
+    delete state.week;
     state.money = 10_000_000;
     const { body, sent, handle } = mount(renderUpgradesPanel, state);
     const grinder = q(body, '[data-upgrade="grinder"]');

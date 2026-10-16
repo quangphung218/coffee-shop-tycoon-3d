@@ -1,5 +1,5 @@
 import { totalWages } from '../../sim/economy';
-import { policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
+import { canChangePolicy, policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
 import { MAX_STAFF, ROLE_NAMES, rolePlan } from '../../sim/staff';
 import type { GameState, PolicyLevel, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
@@ -7,6 +7,7 @@ import { formatMoney } from '../core/format';
 import { avatarIcon, ROLE_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
+import { lockPolicyChoice } from './menu';
 import { dropdown, inlineConfirm, keepFocus, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon, type DropdownOption } from './widgets';
 
 export const ROLE_ORDER: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'marketer', 'none'];
@@ -67,7 +68,7 @@ export function roleForHire(state: GameState): StaffRole {
  * Nhân viên: staff with wage, speed, busy/free badge, a role dropdown and an
  * in-place "Cho nghỉ" confirm; today's candidates with "Tuyển"; the
  * Auto-assign switch and the Mức lương choice. Wages are shown at the chosen
- * Mức lương. Usable in every phase.
+ * Mức lương. Usable in every phase; Mức lương changes only while preparing.
  */
 export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -94,10 +95,20 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
 
   // Mức lương: a trade-off set in place; the hint gives the day's wage bill and work speed.
   const wageTitleId = uid('wage-policy');
-  const wageSeg = segmented('Mức lương', 'wage', WAGE_OPTIONS, (level) => send({ type: 'set_policy', policy: 'wage', level }));
+  // Set while preparing only; once open the choice is locked with the reason under it.
+  const wageSeg = segmented('Mức lương', 'wage', WAGE_OPTIONS, (level) => {
+    const s = ctx.getState();
+    if (s && canChangePolicy(s)) send({ type: 'set_policy', policy: 'wage', level });
+    else if (s) wageSeg.set(policyLevel(s, 'wage'));
+  });
   wageSeg.el.removeAttribute('aria-label');
   wageSeg.el.setAttribute('aria-labelledby', wageTitleId);
   const wageHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'wage' } });
+  const wageWhy = reasonLine(false);
+  w.watch(
+    (s) => canChangePolicy(s),
+    (_, s) => lockPolicyChoice(wageSeg.el, wageWhy, s),
+  );
   w.watch(
     (s) => `${policyLevel(s, 'wage')}|${s.staff.map((m) => m.wagePerDay).join()}`,
     (_, s) => {
@@ -234,7 +245,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       h(
         'div',
         { class: 'setting', attrs: { 'data-policy': 'wage' } },
-        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: wageTitleId }, ...withIcon('i-coin', 'Mức lương', 24)), wageHint),
+        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: wageTitleId }, ...withIcon('i-coin', 'Mức lương', 24)), wageHint, wageWhy),
         wageSeg.el,
       ),
       h('p', { class: 'intro intro-icon' }, icon('i-people', { size: 16 }), teamCount),

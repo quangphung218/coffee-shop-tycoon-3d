@@ -76,11 +76,16 @@ export function weatherEffect(weather: Weather): string {
   return arrivals;
 }
 
-/** What a day event does: "khách +40%", "giá nhập và giá vốn +25%"; '' for none. */
+/**
+ * What a day event does: "lượt ghé tăng tới +40%", "giá nhập và giá vốn +25%";
+ * '' for none. A boost raises walk-ins, not served customers (seats and
+ * patience cap those), hence "tới".
+ */
 export function dayEventEffect(event: DayEventId): string {
   const def = DAY_EVENTS[event];
   const parts: string[] = [];
-  if (def.arrivalMult !== 1) parts.push(`khách ${percent(def.arrivalMult)}`);
+  if (def.arrivalMult > 1) parts.push(`lượt ghé tăng tới ${percent(def.arrivalMult)}`);
+  else if (def.arrivalMult < 1) parts.push(`khách ${percent(def.arrivalMult)}`);
   if (def.ingredientPriceMult !== 1) parts.push(`giá nhập và giá vốn ${percent(def.ingredientPriceMult)}`);
   return parts.join(', ');
 }

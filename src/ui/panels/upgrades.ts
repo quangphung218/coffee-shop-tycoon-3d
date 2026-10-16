@@ -1,6 +1,7 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { upgradeUnlockLevel } from '../../sim/data/levels';
 import { getUpgrade, upgradeCost, UPGRADES } from '../../sim/data/upgrades';
+import { isUnlocked, weekDay } from '../../sim/progression';
 import { DECOR_REFUND_SHARE, isRemovableDecor, nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
 import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
@@ -8,6 +9,7 @@ import { formatMoney } from '../core/format';
 import { UPGRADE_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
+import { unlockHint } from './menu';
 import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
 
 /** Heading per upgrade `category` (design/p20 §4): equipment / space / decor. */
@@ -141,22 +143,22 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         ),
       );
     });
-    const need = upgradeUnlockLevel(id);
     w.watch(
-      (s) => `${s.shopLevel}|${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}`,
+      (s) => `${s.shopLevel}|${weekDay(s)}|${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}`,
       (_, s) => {
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
         level.textContent = `Cấp ${lv}/${def.maxLevel} · ${def.description}`;
-        // Locked below its unlock level: a flat "Mở ở cấp N" label, Mua disabled with the reason.
-        const locked = lv === 0 && s.shopLevel < need;
+        // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
+        const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
         if (locked) {
+          const opens = unlockHint(s, 'upgrade', id);
           side.className = 'badge badge-neutral';
-          setIconText(side, 'i-lock', `Mở ở cấp ${need}`);
+          setIconText(side, 'i-lock', opens.badge);
           if (!li.querySelector('.confirm')) actions.hidden = false;
           setAriaDisabled(buy, true);
-          setReason(why, buy, `Mở khóa ở Cấp ${need}.`);
+          setReason(why, buy, opens.reason);
           return;
         }
         if (cost === null) {
