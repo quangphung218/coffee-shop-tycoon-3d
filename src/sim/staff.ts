@@ -2,6 +2,7 @@ import { DOOR_POS, claimSpot } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { buildNavGrid, cellAt, nearestFree } from './nav';
 import { TASK_MINUTES, cleanMinutes, finishTask, isClaimed, workMinute } from './orders';
+import { staffSpeedMult } from './policies';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
 import { CANDIDATE_COUNT, generateCandidates } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
@@ -264,18 +265,24 @@ export function placeStaff(state: GameState): void {
   for (const member of state.staff) member.pos = spots.get(member.id) ?? member.pos;
 }
 
+/** Work done per minute: the member's speed times the wage policy multiplier. */
+export function workSpeed(state: GameState, member: Staff): number {
+  return member.speed * staffSpeedMult(state);
+}
+
 /** One game minute of work for one staff member, at their speed. */
 function work(state: GameState, member: Staff): void {
   member.task ??= findJob(state, member);
   const task = member.task;
+  const speed = workSpeed(state, member);
   if (task && task.kind === 'promote') {
-    task.remaining -= member.speed;
+    task.remaining -= speed;
     if (task.remaining <= 0) task.remaining = PROMOTE_MINUTES;
   } else if (task) {
     workMinute(
       state,
       member.id,
-      member.speed,
+      speed,
       () => {
         member.task ??= findJob(state, member);
         // Promoting is a role of its own; it never shares a minute with other work.

@@ -494,6 +494,13 @@ export interface WeekState {
   plan: DayPlan[];
 }
 
+/** Trade-off decisions the player sets (effects in src/sim/policies.ts). */
+export type PolicyId = 'price' | 'wage';
+
+export type PolicyLevel = 'low' | 'standard' | 'high';
+
+export type Policies = Record<PolicyId, PolicyLevel>;
+
 export interface ActiveCampaign {
   id: MarketingId;
   daysLeft: number;
@@ -548,6 +555,8 @@ export interface GameState {
   lastReport?: DailyReport | null;
   /** The 7-day week a new game plays; absent in older saves, which unlock by shop level only. */
   week?: WeekState;
+  /** Price and wage decisions; absent (older saves) = standard. */
+  policies?: Policies;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -565,6 +574,8 @@ export type Command =
   | { type: 'assign_role'; staffId: number; role: StaffRole }
   | { type: 'set_auto_assign'; enabled: boolean }
   | { type: 'buy_upgrade'; upgradeId: UpgradeId }
+  | { type: 'remove_decor'; upgradeId: UpgradeId }
+  | { type: 'set_policy'; policy: PolicyId; level: PolicyLevel }
   | { type: 'start_campaign'; campaignId: MarketingId }
   | { type: 'set_speed'; speed: number }
   | { type: 'set_paused'; paused: boolean }
