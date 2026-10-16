@@ -76,7 +76,7 @@ Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sá
 Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết quả vào `state.week.result`:
 
 - Doanh thu = tổng `revenue` của 7 ngày tuần (`history` và hôm nay).
-- Sao = `state.rating` lúc đóng ngày 7.
+- Sao = `state.rating` lúc đóng ngày 7, làm tròn 1 chữ số thập phân như số hiển thị; đạt khi sao ≥ mục tiêu sao.
 - Điểm = round(60 × min(1, doanh thu / mục tiêu) + 40 × min(1, sao / mục tiêu sao)), từ 0 tới 100.
 - Cúp: điểm ≥ 90 được 3, ≥ 70 được 2, ≥ 40 được 1, còn lại 0.
 - `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
