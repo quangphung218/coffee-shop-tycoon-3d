@@ -68,7 +68,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD hiện cấp quán và thanh XP cạnh ngày. Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; bảng **Menu** khóa món chưa tới cấp, bảng **Nâng cấp** khóa dụng cụ chưa tới cấp (nhãn "Mở ở cấp N"). Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
-5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới.
+5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem kết tuần**: màn kết tuần hiện doanh thu và sao so mục tiêu, điểm 0–100, 0–3 cúp, bảng 7 ngày; **Chơi lại** mở ván mới cùng tên quán và độ khó, **Về menu** (hoặc `Esc`) về Main Menu.
 
 Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần nhất bất cứ lúc nào.
 

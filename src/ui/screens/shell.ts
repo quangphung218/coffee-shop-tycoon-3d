@@ -18,8 +18,9 @@ import { createMainMenu } from './mainMenu';
 import { createNewGame } from './newGame';
 import { createPause } from './pause';
 import { createSettings, type SettingsScreen } from './settings';
+import { createWeekEnd } from './weekEnd';
 
-export type ShellScreen = 'menu' | 'newGame' | 'load' | 'settings' | 'pause';
+export type ShellScreen = 'menu' | 'newGame' | 'load' | 'settings' | 'pause' | 'weekEnd';
 
 export interface ShellOptions {
   /** The #ui overlay element. */
@@ -36,6 +37,8 @@ export interface ShellOptions {
   onMenu?(): void;
   /** Seed for new games. */
   seed?(): number;
+  /** "Chơi lại" on the week-end screen, called with the finished game before the new one starts. */
+  onReplay?(finished: GameState): void;
 }
 
 export interface Shell {
@@ -61,8 +64,8 @@ export interface Shell {
 }
 
 /**
- * Owns the overlay UI: main menu, new game, load, settings, pause, HUD and
- * toasts, plus the keyboard shortcuts (Space, 1/2/3, Home, Esc).
+ * Owns the overlay UI: main menu, new game, load, settings, pause, week end,
+ * HUD and toasts, plus the keyboard shortcuts (Space, 1/2/3, Home, Esc).
  */
 export function createShell(options: ShellOptions): Shell {
   const storage = options.storage ?? defaultStorage();
@@ -113,6 +116,10 @@ export function createShell(options: ShellOptions): Shell {
       if (state) hud.update(state);
       syncReport();
       openOtherPanel(panel);
+    },
+    onWeekEnd: () => {
+      screens.show('weekEnd');
+      syncReport();
     },
   });
   root.append(hud.el, hud.panelEl, report.el, toasts.el);
@@ -221,6 +228,20 @@ export function createShell(options: ShellOptions): Shell {
       onSettings: openSettings,
       onMenu: showMenu,
       subtitle: () => (state ? `${state.shopName} · Ngày ${state.day} · ${formatClock(state.minute)} · ${phaseLabel(state.phase)}` : ''),
+    }),
+  );
+  screens.add(
+    'weekEnd',
+    createWeekEnd({
+      getState: () => state,
+      // A new week for the same shop name and difficulty, on a fresh seed.
+      onReplay: () => {
+        if (!state) return;
+        const finished = state;
+        options.onReplay?.(finished);
+        startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
+      },
+      onMenu: showMenu,
     }),
   );
 

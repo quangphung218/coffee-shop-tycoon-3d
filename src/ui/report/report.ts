@@ -28,6 +28,8 @@ export interface DailyReportOptions {
   onRetrySave?(): SaveStatus;
   /** Opens a dock panel from an insight's action link (the report closes first). */
   onOpenPanel?(panel: InsightPanel): void;
+  /** The week is scored (state.week.result): the main button opens the week-end screen instead of next_day. */
+  onWeekEnd?(): void;
 }
 
 export interface DailyReportView {
@@ -318,7 +320,7 @@ function renderBusy(day: number): HTMLElement {
 /**
  * End-of-day overlay after the Daily Report of design/t237-cartoon: tabs
  * "Tổng kết" and "Đánh giá", the autosave status, "Xem đánh giá" and
- * "Ngày tiếp theo" (next_day).
+ * "Ngày tiếp theo" (next_day), or "Xem kết tuần" once the week is scored.
  */
 export function createDailyReport(options: DailyReportOptions): DailyReportView {
   const w = new Watcher<GameState>();
@@ -326,6 +328,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   let shown = false;
   let saveStatus: SaveStatus | null = null;
   let day = 0;
+  let weekEnded = false;
 
   const title = h('h3', { id: 'rpt-title' });
   const sub = h('p', { class: 'rpt-sub' });
@@ -347,7 +350,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   insightsTab.addEventListener('click', () => showTab('insights'));
   reviewsTab.addEventListener('click', () => showTab('reviews'));
   toggleBtn.addEventListener('click', () => showTab(tab === 'summary' ? 'reviews' : 'summary'));
-  nextBtn.addEventListener('click', () => options.dispatch({ type: 'next_day' }));
+  nextBtn.addEventListener('click', () => (weekEnded ? options.onWeekEnd?.() : options.dispatch({ type: 'next_day' })));
   const tabs = h('div', { class: 'rpt-tabs', attrs: { role: 'tablist', 'aria-label': 'Báo cáo ngày' } }, summaryTab, insightsTab, reviewsTab);
   tabs.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -438,6 +441,15 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     (_, s) => {
       setChildren(reviewsTab, ...labelled('i-reviews', `Đánh giá (${s.reviews.length})`));
       fillReviews(reviews, s.reviews, backBtn());
+    },
+  );
+  // After week day 7 next_day is refused: the main button leads to the week-end screen.
+  w.watch(
+    (s) => s.week?.result !== undefined,
+    (ended) => {
+      weekEnded = ended;
+      nextBtn.setAttribute('data-action', ended ? 'week-end' : 'next-day');
+      setChildren(nextBtn, ...(ended ? labelled('i-trophy', 'Xem kết tuần') : labelled('i-next-day', 'Ngày tiếp theo')));
     },
   );
   showTab('summary');
