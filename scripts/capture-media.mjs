@@ -77,6 +77,16 @@ const GLOW_RECHECK_MS = 2000;
 const HIDE_UI = '.hud-layer, .toasts { display: none !important; }';
 /** Toasts would cover the shop and the panels in still images; the clip keeps them. */
 const HIDE_TOASTS = '.toasts { display: none !important; }';
+/**
+ * Since v0.4.0 only .settings-body scrolls inside a sheet capped at the
+ * window; while the Cài đặt form is shot it grows to its full height instead.
+ * Builds without .settings-body match nothing here.
+ */
+const SETTINGS_UNCLIP = `
+  .settings-sheet { max-height: none !important; }
+  .settings-body { flex: none !important; max-height: none !important; overflow: visible !important; }
+  .ui-screen.is-sheet { overflow: auto !important; }
+`;
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
 const DAY_TIMEOUT_MS = 8 * 60_000;
 /** Commit of the P18 build and screenshots the P19 boards compare against (git archive, git show). */
@@ -263,6 +273,53 @@ function freeze(page) {
         wait();
       }),
   );
+}
+
+/**
+ * Runs in the page. Height the window needs so the whole visible Cài đặt form
+ * is on screen: the form plus its layer's padding, and whatever its scrolling
+ * parents or inner scroll areas still hide.
+ */
+function settingsFitHeight() {
+  const form = [...document.querySelectorAll('form')].find((f) => f.offsetParent !== null && f.querySelector('.section-title'));
+  if (!form) return 0;
+  let extra = 0;
+  for (let e = form; e; e = e.parentElement) extra = Math.max(extra, e.scrollHeight - e.clientHeight);
+  for (const e of form.querySelectorAll('*')) if (getComputedStyle(e).overflowY !== 'visible') extra = Math.max(extra, e.scrollHeight - e.clientHeight);
+  const fit = Math.ceil(document.documentElement.clientHeight + extra);
+  const layer = form.parentElement;
+  const cs = layer ? getComputedStyle(layer) : null;
+  const pad = cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0;
+  return Math.max(fit, Math.ceil(form.getBoundingClientRect().height + pad));
+}
+
+/**
+ * Shoots the Cài đặt `form` (a locator) whole at `width`: lifts the sheet's
+ * inner scroll (SETTINGS_UNCLIP), grows the window from `minHeight` until
+ * the form fits, takes the shot and runs `measure()` (boxes, texts) in that
+ * same layout, then takes the style off again. The window keeps its size.
+ * Returns { png, height, ...measure() }.
+ */
+async function captureSettingsForm(page, form, { width, minHeight, measure }) {
+  const style = await page.addStyleTag({ content: SETTINGS_UNCLIP });
+  try {
+    await page.setViewportSize({ width, height: minHeight });
+    await sleep(200);
+    let height = minHeight;
+    // The form can reflow once the window grows (layer padding, centring); settle in a few steps.
+    for (let i = 0; i < 3; i++) {
+      const need = await page.evaluate(settingsFitHeight);
+      if (need <= height) break;
+      height = need;
+      await page.setViewportSize({ width, height });
+      await sleep(200);
+    }
+    await sleep(100);
+    const png = await form.screenshot();
+    return { png, height, ...(await measure()) };
+  } finally {
+    await style.evaluate((el) => el.remove());
+  }
 }
 
 function thaw(page) {
@@ -1499,6 +1556,7 @@ export {
   startEasyDay,
   freeze,
   thaw,
+  captureSettingsForm,
   measured,
   sceneSnapshot,
   project,

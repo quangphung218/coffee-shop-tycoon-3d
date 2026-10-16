@@ -1,52 +1,52 @@
 {
   "version": 1,
-  "exportedAt": 1760400119746,
+  "exportedAt": 1760400313886,
   "entries": [
     {
       "v": 1,
-      "run": "9a650cba-1074-4848-b472-243e7f452762",
+      "run": "2eb400c4-4ee3-47f4-9d99-d71df5dc3ec7",
       "kind": "run_start",
       "day": 4,
       "phase": "preparation",
       "minute": 420,
-      "at": 1760400013262
+      "at": 1760400040189
     },
     {
       "v": 1,
-      "run": "9a650cba-1074-4848-b472-243e7f452762",
+      "run": "2eb400c4-4ee3-47f4-9d99-d71df5dc3ec7",
       "kind": "phase",
       "day": 4,
       "phase": "opening",
       "minute": 420,
-      "at": 1760400080588
+      "at": 1760400244778
     },
     {
       "v": 1,
-      "run": "9a650cba-1074-4848-b472-243e7f452762",
+      "run": "2eb400c4-4ee3-47f4-9d99-d71df5dc3ec7",
       "kind": "phase",
       "day": 4,
       "phase": "peak",
       "minute": 660,
-      "at": 1760400114613
+      "at": 1760400305988
     },
     {
       "v": 1,
-      "run": "9a650cba-1074-4848-b472-243e7f452762",
+      "run": "2eb400c4-4ee3-47f4-9d99-d71df5dc3ec7",
       "kind": "quit_to_menu",
       "day": 4,
       "phase": "peak",
       "minute": 660,
-      "at": 1760400116141
+      "at": 1760400310802
     }
   ],
   "lastStops": [
     {
-      "run": "9a650cba-1074-4848-b472-243e7f452762",
+      "run": "2eb400c4-4ee3-47f4-9d99-d71df5dc3ec7",
       "kind": "quit_to_menu",
       "day": 4,
       "phase": "peak",
       "minute": 660,
-      "at": 1760400116141
+      "at": 1760400310802
     }
   ]
 }

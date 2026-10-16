@@ -15,7 +15,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { buildRef, FIXED_NOW, makeBoard, newContext, openMenu, OUT, PHONE, sizeMb, startPreview, urlFor } from './capture-media.mjs';
+import { buildRef, captureSettingsForm, FIXED_NOW, makeBoard, newContext, openMenu, OUT, PHONE, sizeMb, startPreview, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** The v0.2.0 release the boards compare against (git archive). */
@@ -377,14 +377,14 @@ async function settingsShot(page, { after }) {
   await page.setViewportSize(DESK);
   await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
   await page.getByText('Âm thanh', { exact: true }).waitFor();
-  await sleep(200);
-  const height = Math.max(DESK.height, await page.evaluate(fitHeight, null));
-  if (height > DESK.height) await page.setViewportSize({ width: DESK.width, height });
-  await sleep(300);
   // By accessible name (aria-labelledby), so the hidden new-game form never matches.
   const form = page.getByRole('form', { name: 'Cài đặt' });
-  const sels = { playlog: 'section.playlog', summary: '.playlog-summary', actions: '.playlog-actions', game: '.app-version' };
-  const out = { png: await form.screenshot(), boxes: await page.evaluate(measureBoxes, { sels, form: true }), texts: await page.evaluate(measureTexts, { form: true }), height };
+  const sels = { title: 'h2', foot: '.foot', playlog: 'section.playlog', summary: '.playlog-summary', actions: '.playlog-actions', game: '.app-version' };
+  const out = await captureSettingsForm(page, form, {
+    width: DESK.width,
+    minHeight: DESK.height,
+    measure: async () => ({ boxes: await page.evaluate(measureBoxes, { sels, form: true }), texts: await page.evaluate(measureTexts, { form: true }) }),
+  });
   if (after) out.json = await page.evaluate(() => document.querySelector('pre.playlog-json')?.textContent ?? '');
   return out;
 }
@@ -557,7 +557,8 @@ async function makeP21Boards(browser, { cur, base, curSet, baseSet, ends, week }
       { frame: 1, boxes: [curSet.boxes.summary], label: 'Lần dừng gần nhất: ngày, pha, giờ game (mới)' },
       { frame: 1, boxes: [curSet.boxes.actions], label: '"Xuất JSON" và "Xoá" (bấm 2 lần)' },
     ],
-    include: [curSet.boxes.playlog, baseSet.boxes.game],
+    // Title to footer of both forms, so the board shows each form whole.
+    include: [curSet.boxes.title, curSet.boxes.foot, curSet.boxes.playlog, baseSet.boxes.title, baseSet.boxes.foot, baseSet.boxes.game],
     pad: 40,
     maxScale: 1,
     avoid: avoidTexts(baseSet, curSet),
