@@ -49,6 +49,28 @@ describe('Settings screen', () => {
     expect(titles).toEqual(['Âm thanh', 'Hiển thị', 'Điều khiển', 'Trò chơi']);
   });
 
+  it('keeps the title and footer outside the one scrolling body', () => {
+    const screen = open();
+    expect(screen.el.classList.contains('is-sheet')).toBe(true);
+    const form = q(screen.el, 'form.settings-sheet');
+    expect([...form.children].map((c) => c.className)).toEqual(['settings-head', 'settings-body', 'foot settings-foot']);
+    expect(q(form, '.settings-head h2').textContent).toContain('Cài đặt');
+    expect(button(q(form, '.settings-foot'), 'Xong')).toBeTruthy();
+    expect(button(q(form, '.settings-foot'), 'Về mặc định')).toBeTruthy();
+  });
+
+  it('wraps every group in its own section directly under the body', () => {
+    const screen = open();
+    const body = q(screen.el, '.settings-body');
+    const groups = [...body.querySelectorAll(':scope > .set-group')];
+    expect(groups).toHaveLength(5);
+    for (const g of groups) {
+      const title = q(g, ':scope > .section-title, :scope > .playlog-title');
+      expect(g.getAttribute('aria-labelledby')).toBe(title.id);
+    }
+    for (const row of screen.el.querySelectorAll('.set-row')) expect(row.parentElement?.classList.contains('set-group')).toBe(true);
+  });
+
   it('marks Giảm chuyển động with its own icon, not the Pause icon', () => {
     const screen = open();
     const row = q(screen.el, 'input[data-setting="reducedMotion"]').closest('.set-row');
