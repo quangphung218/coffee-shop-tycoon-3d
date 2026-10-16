@@ -1,0 +1,42 @@
+P22 startup regression on mobile (150 ms RTT, 1.6 Mbps, CPU 4x)
+
+Target: Main Menu < 1000 ms, 3D scene <= base (f720b6f) in the same run.
+
+Starting point: node scripts/measure-startup.mjs --base f720b6f --runs 5
+at the integration head (docs/media/p22-perf.txt):
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 288 ms | 890 ms | 2773 ms |
+| integration head | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 364 ms | 1008 ms | 3050 ms |
+
+## States
+
+The app code (src, index.html, public) of f289da8 and the integration head
+b5b95c1 is the same, so f289da8 stands for the head before the fix.
+
+| State | App change against f720b6f | Command |
+| --- | --- | --- |
+| fcdd7fa | f1 only: icon placeholders, watchIconAtlas() at the start of start(), @2x after cst:world | node scripts/measure-startup.mjs --base f720b6f --runs 9 (detached worktree at fcdd7fa) |
+| f289da8 | f1 + f5 persona gaits and accessories + f3/f4 data and CSS | same, worktree at f289da8 |
+| fix | f289da8 + @1x atlas only after the scene chunk is in, fetchPriority low | node scripts/measure-startup.mjs --base f720b6f --runs 9, then --runs 5 --fps-only |
+
+## Suspects
+
+(a) watchIconAtlas() ran at the start of start(), so atlas@1x.webp (116 kB)
+shared the 1.6 Mbps link with three-*.js (126 kB gzip) and the render chunk.
+f720b6f only fetched the atlas through CSS after the first .ic painted.
+Fix: main.ts calls watchIconAtlas() once import('./render/scene') settles
+(loaded or failed); the Image asks with fetchPriority = 'low'. Menu boxes
+keep the placeholder tile until then.
+
+(b) f5 accessories (beanie, tote) use materialFor(), the shared
+MeshLambertMaterial({ flatShading: true }) cache, like every other rig part,
+and two merged box geometries. Same material type and parameters means the
+same shader program, so compileAsync in prepare() compiles no new variant;
+castShadow = false on the accessory changes no program either. No code
+change for (b) unless the fcdd7fa/f289da8 numbers below show a gap.
+
+## Results
+
+(fcdd7fa, f289da8 and fix outputs go here, copied in full from the runs.)
