@@ -556,7 +556,8 @@ legend {
 }
 
 /* Settings */
-.section-title {
+.section-title,
+.playlog-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   color: var(--text-muted);
@@ -802,6 +803,28 @@ legend {
 }
 #ui p.app-version {
   margin-top: var(--space-4);
+}
+/* Số liệu chơi: summary line, the JSON tucked in a details, then the actions. */
+.playlog-summary {
+  margin-top: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+}
+/* Wraps instead of scrolling inside; the screen itself scrolls. */
+.playlog-json {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-sunken);
+  border: var(--size-border-thin) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.playlog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
 }
 
 /* Save slots */
