@@ -1,6 +1,6 @@
 # Tuần 7 ngày
 
-Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày, và ngày 7 mở rộng quán. Lịch nằm trong `src/sim/data/week.ts` (`WEEK_UNLOCKS`).
+Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày, ngày 7 mở rộng quán, sự kiện và thời tiết theo ngày, mục tiêu và chấm điểm cuối tuần. Lịch nằm trong `src/sim/data/week.ts` (`WEEK_UNLOCKS`).
 
 ## Lịch mở khoá
 
@@ -61,4 +61,24 @@ Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` v
 
 ## Mục tiêu tuần
 
-Tuần chưa có mục tiêu doanh thu, số sao hay màn kết tuần.
+Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/sim/data/week.ts`, lưu ở `state.week.goal`):
+
+| Độ khó | Doanh thu 7 ngày | Số sao cuối tuần |
+| --- | --- | --- |
+| Dễ | 28.000.000 | 3,8 |
+| Vừa | 26.500.000 | 4,0 |
+| Khó | 23.000.000 | 4,2 |
+
+Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001. Doanh thu trung bình: Dễ khoảng 22,6 triệu, Vừa 21,2 triệu, Khó 18,2 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
+
+### Chấm điểm
+
+Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết quả vào `state.week.result`:
+
+- Doanh thu = tổng `revenue` của 7 ngày tuần (`history` và hôm nay).
+- Sao = `state.rating` lúc đóng ngày 7.
+- Điểm = round(60 × min(1, doanh thu / mục tiêu) + 40 × min(1, sao / mục tiêu sao)), từ 0 tới 100.
+- Cúp: điểm ≥ 90 được 3, ≥ 70 được 2, ≥ 40 được 1, còn lại 0.
+- `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
+
+Sim phát `week_ended` (`result`) ngay sau `dayEnded`. Từ đó `next_day` trả `false`; giao diện chuyển sang màn kết tuần, nút Chơi lại tạo ván mới. Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp như trước.

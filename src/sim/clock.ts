@@ -78,15 +78,22 @@ export function closeUp(state: GameState): void {
  * and emits 'dayEnded' (the UI autosaves on it).
  */
 export function endOfDay(state: GameState): void {
+  const scored = state.week?.result;
   closeDay(state);
   setPhase(state, 'report');
   state.events.push({ type: 'notify', level: 'info', text: `Kết thúc ngày ${state.day}` });
   state.events.push({ type: 'dayEnded', day: state.day });
+  const result = state.week?.result;
+  if (result && result !== scored) state.events.push({ type: 'week_ended', result });
 }
 
-/** Leaves the report and starts the next day in preparation. Returns false outside 'report'. */
+/**
+ * Leaves the report and starts the next day in preparation. Returns false
+ * outside 'report' and once the week is scored (the UI shows the week's end).
+ */
 export function startNextDay(state: GameState): boolean {
   if (state.phase !== 'report') return false;
+  if (state.week?.result) return false;
   state.history.push(state.today);
   state.day += 1;
   state.minute = DAY_START_MINUTE;

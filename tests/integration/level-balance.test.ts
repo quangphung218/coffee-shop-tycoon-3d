@@ -127,6 +127,8 @@ function simulate(difficulty: Difficulty, seed = SEED): Run {
     const report = state.lastReport!;
     recs.push({ level: playedLevel, report, missionsDone: (report.missions ?? []).filter((m) => m.status === 'completed').length });
     for (let l = 2; l <= state.shopLevel; l++) if (!(l in levelDay)) levelDay[l] = day;
+    // Play on past the scored week (next_day is refused once week day 7 ends).
+    delete state.week?.result;
     dispatch(state, { type: 'next_day' });
     if (state.shopLevel >= MAX_SHOP_LEVEL && ++extra > EXTRA_AT_TOP) break;
   }
@@ -255,6 +257,8 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
           }
         }
         playDay(s);
+        // Play on past the scored week (next_day is refused once week day 7 ends).
+        delete s.week?.result;
         dispatch(s, { type: 'next_day' });
       }
       return s;
@@ -268,6 +272,7 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
         dispatch(state, { type: 'apply_restock' });
         playDay(state);
         total += state.lastReport!.profit;
+        delete state.week?.result;
         dispatch(state, { type: 'next_day' });
       }
       return total / PAYBACK_FORK_DAYS;

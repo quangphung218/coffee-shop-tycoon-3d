@@ -67,6 +67,8 @@ function simulateWeek(difficulty: Difficulty, strategy: Strategy, seed = SEED): 
     playDay(state, { onMinute: watch });
     watch(state);
     reports.push(state.lastReport!);
+    // Play on past the scored week (next_day is refused once week day 7 ends).
+    delete state.week?.result;
     expect(dispatch(state, { type: 'next_day' })).toBe(true);
   }
   return { state, days: state.history, reports, minMoney, overDebt };

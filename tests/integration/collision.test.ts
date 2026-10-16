@@ -349,6 +349,8 @@ function soakWeek(difficulty: Difficulty, config: Config, render: boolean, days 
       },
     });
     soak.days.push(fingerprint(state));
+    // Play on past the scored week (next_day is refused once week day 7 ends).
+    delete state.week?.result;
     expect(dispatch(state, { type: 'next_day' })).toBe(true);
   }
   return soak;
