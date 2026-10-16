@@ -379,7 +379,7 @@ async function settingsShot(page, { after }) {
   await page.getByText('Âm thanh', { exact: true }).waitFor();
   // By accessible name (aria-labelledby), so the hidden new-game form never matches.
   const form = page.getByRole('form', { name: 'Cài đặt' });
-  const sels = { playlog: 'section.playlog', summary: '.playlog-summary', actions: '.playlog-actions', game: '.app-version' };
+  const sels = { title: 'h2', foot: '.foot', playlog: 'section.playlog', summary: '.playlog-summary', actions: '.playlog-actions', game: '.app-version' };
   const out = await captureSettingsForm(page, form, {
     width: DESK.width,
     minHeight: DESK.height,
@@ -557,7 +557,8 @@ async function makeP21Boards(browser, { cur, base, curSet, baseSet, ends, week }
       { frame: 1, boxes: [curSet.boxes.summary], label: 'Lần dừng gần nhất: ngày, pha, giờ game (mới)' },
       { frame: 1, boxes: [curSet.boxes.actions], label: '"Xuất JSON" và "Xoá" (bấm 2 lần)' },
     ],
-    include: [curSet.boxes.playlog, baseSet.boxes.game],
+    // Title to footer of both forms, so the board shows each form whole.
+    include: [curSet.boxes.title, curSet.boxes.foot, curSet.boxes.playlog, baseSet.boxes.title, baseSet.boxes.foot, baseSet.boxes.game],
     pad: 40,
     maxScale: 1,
     avoid: avoidTexts(baseSet, curSet),
