@@ -292,7 +292,7 @@ function measureScreen({ phone, minTarget, minFont }) {
     dock: '.dock',
     panel: '#ui-panel',
     toast: '.toasts .toast, .toasts > *',
-    report: '.rpt-layer:not([hidden]) .rpt-dialog',
+    // The Daily Report is a modal over a scrim: it covers the HUD and dock on purpose.
     note: '.hud-note',
   };
   const parts = [];
@@ -788,7 +788,8 @@ function findings(metrics) {
       add({ id: `ui-small-text-${v}-${++n}`, area: 'ui', title: `Chữ ${g.item.fontSize} px (< ${MIN_FONT}): ${k.replace(/ @[\d.]+$/, '')}`, evidence: [...g.evidence], impact: g.item.fontSize < 11 ? 2 : 1, effort: 1, viewport: v });
     }
     n = 0;
-    for (const [k, g] of group(v, (s) => s.overlaps, (o) => `${o.a}/${o.b}`)) {
+    // 'report' overlaps come from runs before the modal was left out of the groups.
+    for (const [k, g] of group(v, (s) => s.overlaps.filter((o) => o.a !== 'report' && o.b !== 'report'), (o) => `${o.a}/${o.b}`)) {
       const toast = g.item.a === 'toast' || g.item.b === 'toast';
       add({ id: `layout-overlap-${v}-${++n}`, area: 'layout', title: `Che nhau ${k}: ${g.item.aEl} và ${g.item.bEl} (${g.item.area} px²)`, evidence: [...g.evidence], impact: toast ? 1 : 2, effort: toast ? 1 : 2, viewport: v });
     }
