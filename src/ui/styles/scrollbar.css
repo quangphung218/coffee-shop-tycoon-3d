@@ -1,6 +1,6 @@
 /* Thin cartoon scrollbars on every UI scroll area (ui.css overflow: auto):
-   full-screen layers (menu, Load, Settings, Pause, Daily Report) and panel
-   bodies (prep panels, Reviews). The thumb stays clear until the area is
+   full-screen layers (menu, Load, Pause, Daily Report), the Settings body and
+   panel bodies (prep panels, Reviews). The thumb stays clear until the area is
    hovered, holds focus, or scrolls (.is-scrolling from core/scrollActivity.ts). */
 
 /* Registered so the thumb colour can fade instead of popping in. */
@@ -11,6 +11,7 @@
 }
 
 .ui-screen,
+.settings-body,
 .panel-body {
   --sb-thumb: transparent;
   --sb-thumb-shown: color-mix(in srgb, var(--border-outline) 45%, transparent);
@@ -21,15 +22,24 @@
   scrollbar-gutter: stable;
   transition: --sb-thumb var(--duration-base) var(--easing-standard);
 }
+/* Settings rows line up with the fixed title and footer: the gutter, where
+   the platform reserves one, is mirrored on the left. */
+.settings-body {
+  scrollbar-gutter: stable both-edges;
+}
 .ui-screen:hover,
 .ui-screen:focus-within,
 .ui-screen.is-scrolling,
+.settings-body:hover,
+.settings-body:focus-within,
+.settings-body.is-scrolling,
 .panel-body:hover,
 .panel-body:focus-within,
 .panel-body.is-scrolling {
   --sb-thumb: var(--sb-thumb-shown);
 }
 .ui-screen.is-scrolling,
+.settings-body.is-scrolling,
 .panel-body.is-scrolling {
   --sb-thumb: var(--sb-thumb-active);
 }
@@ -39,15 +49,18 @@
    properties above. */
 @supports not (scrollbar-color: auto) {
   .ui-screen::-webkit-scrollbar,
+  .settings-body::-webkit-scrollbar,
   .panel-body::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   .ui-screen::-webkit-scrollbar-track,
+  .settings-body::-webkit-scrollbar-track,
   .panel-body::-webkit-scrollbar-track {
     background: transparent;
   }
   .ui-screen::-webkit-scrollbar-thumb,
+  .settings-body::-webkit-scrollbar-thumb,
   .panel-body::-webkit-scrollbar-thumb {
     background: transparent;
     border: var(--size-outline-sm) solid transparent;
@@ -56,6 +69,9 @@
   .ui-screen:hover::-webkit-scrollbar-thumb,
   .ui-screen:focus-within::-webkit-scrollbar-thumb,
   .ui-screen.is-scrolling::-webkit-scrollbar-thumb,
+  .settings-body:hover::-webkit-scrollbar-thumb,
+  .settings-body:focus-within::-webkit-scrollbar-thumb,
+  .settings-body.is-scrolling::-webkit-scrollbar-thumb,
   .panel-body:hover::-webkit-scrollbar-thumb,
   .panel-body:focus-within::-webkit-scrollbar-thumb,
   .panel-body.is-scrolling::-webkit-scrollbar-thumb {
@@ -66,6 +82,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ui-screen,
+  .settings-body,
   .panel-body {
     transition: none;
   }
