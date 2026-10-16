@@ -5,10 +5,12 @@
  * the 32 and 48 px sizes, and a 24 px one drawn for small sizes (thicker
  * ink, no fine detail) for 16 and 24 px.
  *
- * The DOM shows a cell as the background of an empty box (ui.css `.ic`
- * loads the atlas through image-set, so a 2x screen gets the @2x image);
- * the canvas (3D labels) copies the cell out of the @2x image with
- * drawImage. The atlas loads on its own: nothing waits for it, and the box
+ * The DOM shows a cell as the background of an empty box. Until the @1x
+ * atlas has loaded (watchIconAtlas, `html.icons-ready`) ui.css draws a plain
+ * placeholder tile; once the 3D scene is up, enableHdIcons switches `.ic` to
+ * image-set so a 2x screen gets the @2x image (`html.icons-hd`) without
+ * taking bandwidth from three.js. The canvas (3D labels) copies the cell out
+ * of the @2x image with drawImage. Nothing waits for the atlas, and the box
  * has its final size before it arrives.
  */
 // Named imports only: Vite tree-shakes the rest of the JSON (the per-icon table).
@@ -162,6 +164,44 @@ export function loadIconAtlas(): Promise<HTMLImageElement> {
     img.src = ICON_ATLAS_URLS[2];
   });
   return atlasImage;
+}
+
+/** Class on <html> once the @1x atlas has loaded: ui.css drops the placeholder tile and draws the cells. */
+export const ICONS_READY_CLASS = 'icons-ready';
+/** Class on <html> once the @2x atlas has loaded after the 3D scene: ui.css lets 2x screens use it. */
+export const ICONS_HD_CLASS = 'icons-hd';
+
+/**
+ * Loads the @1x atlas, the one every screen starts with, and marks `root`
+ * with ICONS_READY_CLASS when it is in. On error the placeholders stay and
+ * the load is tried once more when the browser comes back `online`.
+ */
+export function watchIconAtlas(root: HTMLElement = document.documentElement, win: Window = window): void {
+  let retried = false;
+  const load = (): void => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => root.classList.add(ICONS_READY_CLASS);
+    img.onerror = () => {
+      if (retried) return;
+      retried = true;
+      win.addEventListener('online', load, { once: true });
+    };
+    img.src = ICON_ATLAS_URLS[1];
+  };
+  load();
+}
+
+/**
+ * Call once the 3D scene is on screen: loads the @2x atlas (shared with the
+ * 3D labels) and then marks `root` with ICONS_HD_CLASS, so the switch never
+ * shows an empty box. A failed load keeps the @1x icons.
+ */
+export function enableHdIcons(root: HTMLElement = document.documentElement, load: () => Promise<unknown> = loadIconAtlas): Promise<void> {
+  return load().then(
+    () => void root.classList.add(ICONS_HD_CLASS),
+    () => {},
+  );
 }
 
 /** Copies the cell of `id` from a loaded atlas image into a `size` px square at (x, y). False when there is no cell. */

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ATLAS from '../../public/icons3d/atlas.json';
 import DESIGN from '../../design/t237-cartoon/icons/index.html?raw';
+import MAIN_TS from '../../src/main.ts?raw';
 import { INGREDIENTS } from '../../src/sim/data/ingredients';
 import { MARKETING } from '../../src/sim/data/marketing';
 import { MENU } from '../../src/sim/data/menu';
@@ -19,7 +20,19 @@ import {
   ROLE_ICONS,
   UPGRADE_ICONS,
 } from '../../src/ui/core/iconMap';
-import { AVATAR_CELLS as AVATAR_CELL_COUNT, drawIcon, ICON_ATLAS_URLS, ICON_IDS, icon, iconCell, isIconId } from '../../src/ui/core/icons';
+import {
+  AVATAR_CELLS as AVATAR_CELL_COUNT,
+  drawIcon,
+  enableHdIcons,
+  ICON_ATLAS_URLS,
+  ICON_IDS,
+  ICONS_HD_CLASS,
+  ICONS_READY_CLASS,
+  icon,
+  iconCell,
+  isIconId,
+  watchIconAtlas,
+} from '../../src/ui/core/icons';
 import { ICON_SYMBOLS, iconSvgMarkup } from '../../src/ui/core/iconSvg';
 
 /** id → body of every <symbol> in a markup string. */
@@ -127,6 +140,80 @@ describe('drawIcon()', () => {
     expect(calls).toEqual([[c.x * 2, c.y * 2, c.w * 2, c.h * 2, 10, 20, 64, 64]]);
     expect(drawIcon(ctx, atlas, 'i-avatar-99', 0, 0, 64)).toBe(false);
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('atlas loading order', () => {
+  /** Every Image the code under test creates, so a test can fire its load or error. */
+  let images: HTMLImageElement[] = [];
+  const RealImage = globalThis.Image;
+
+  beforeEach(() => {
+    images = [];
+    globalThis.Image = class extends RealImage {
+      constructor() {
+        super();
+        images.push(this);
+      }
+    } as typeof Image;
+  });
+
+  afterEach(() => {
+    globalThis.Image = RealImage;
+  });
+
+  const freshRoot = (): HTMLElement => document.createElement('html');
+
+  it('marks the page icons-ready once the @1x atlas has loaded, and only then', () => {
+    const root = freshRoot();
+    watchIconAtlas(root, window);
+    expect(images).toHaveLength(1);
+    expect(images[0]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
+    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
+    images[0]!.onload?.(new Event('load'));
+    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(true);
+    expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
+  });
+
+  it('keeps the placeholders when the atlas fails, and tries once more when back online', () => {
+    const root = freshRoot();
+    const win = new EventTarget() as Window;
+    watchIconAtlas(root, win);
+    images[0]!.onerror?.(new Event('error'));
+    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
+    expect(images).toHaveLength(1);
+    win.dispatchEvent(new Event('online'));
+    expect(images).toHaveLength(2);
+    expect(images[1]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
+    images[1]!.onerror?.(new Event('error'));
+    win.dispatchEvent(new Event('online'));
+    expect(images).toHaveLength(2);
+    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
+  });
+
+  it('adds icons-hd only after the @2x atlas has loaded, and never on a failed load', async () => {
+    const root = freshRoot();
+    let done!: () => void;
+    const pending = enableHdIcons(root, () => new Promise<void>((resolve) => (done = resolve)));
+    await Promise.resolve();
+    expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
+    done();
+    await pending;
+    expect(root.classList.contains(ICONS_HD_CLASS)).toBe(true);
+
+    const failed = freshRoot();
+    await enableHdIcons(failed, () => Promise.reject(new Error('offline')));
+    expect(failed.classList.contains(ICONS_HD_CLASS)).toBe(false);
+  });
+
+  it('is started by main.ts: @1x with the menu, @2x only after the 3D scene is ready', () => {
+    const start = MAIN_TS.indexOf('function start(');
+    const world = MAIN_TS.indexOf("performance.mark('cst:world')");
+    const menu = MAIN_TS.indexOf("performance.mark('cst:menu')");
+    expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeGreaterThan(start);
+    expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeLessThan(menu);
+    expect(MAIN_TS.indexOf('enableHdIcons()')).toBeGreaterThan(world);
+    expect(MAIN_TS.match(/enableHdIcons\(\)/g)).toHaveLength(1);
   });
 });
 

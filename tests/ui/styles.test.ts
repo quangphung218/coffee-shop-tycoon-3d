@@ -95,11 +95,22 @@ describe('ui.css icons (3D atlas)', () => {
     }
   });
 
-  it('draws the cell from the @1x/@2x atlas in public/icons3d', () => {
+  it('draws the cell from the @1x atlas once ready, and the @2x one only after the 3D scene', () => {
     const ic = body('.ic');
-    expect(ic).toContain("image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x)");
+    expect(ic).not.toContain('background-image');
+    expect(body('html.icons-ready .ic')).toContain("background-image: url('/icons3d/atlas@1x.webp')");
+    expect(body('html.icons-hd .ic')).toContain("image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x)");
+    expect(uiCss.match(/atlas@2x/g)).toHaveLength(1);
     expect(ic).toMatch(/background-size:\s*var\(--ic-size/);
     expect(ic).toMatch(/background-position:\s*var\(--ic-pos/);
+  });
+
+  it('shows a still cream tile with a thin ink line until the atlas is in, without changing the box', () => {
+    const wait = body('html:not(.icons-ready, .icons-hd) .ic');
+    expect(wait).toMatch(/background-color:\s*var\(--color-cream-200\)/);
+    expect(wait).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--border-strong\)/);
+    expect(wait).toMatch(/border-radius:/);
+    expect(wait).not.toMatch(/animation|width|height|border:|margin|padding/);
   });
 
   it('hops on hover and squashes on press, and holds still for reduced motion', () => {

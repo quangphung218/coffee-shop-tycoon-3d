@@ -30,19 +30,31 @@
 }
 /* 3D icons (src/ui/core/icons.ts): one cell of the atlas in public/icons3d;
    icon() sets --ic-size/--ic-pos per cell in %, so any box size works.
-   The box has its size before the atlas loads, so nothing moves. */
+   The box has its size before the atlas loads, so nothing moves: until
+   html.icons-ready (@1x loaded) it is a still placeholder tile, and the @2x
+   image only comes in with html.icons-hd, after the 3D scene. */
 .ic {
   display: inline-block;
   flex: none;
   width: var(--size-icon-md);
   height: var(--size-icon-md);
   vertical-align: middle;
-  background-image: url('/icons3d/atlas@1x.webp');
-  background-image: image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x);
   background-repeat: no-repeat;
   background-size: var(--ic-size, 0 0);
   background-position: var(--ic-pos, 0 0);
   transition: transform var(--duration-fast) var(--easing-bounce);
+}
+html:not(.icons-ready, .icons-hd) .ic {
+  border-radius: 30%;
+  background-color: var(--color-cream-200);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+html.icons-ready .ic {
+  background-image: url('/icons3d/atlas@1x.webp');
+}
+html.icons-hd .ic {
+  background-image: url('/icons3d/atlas@1x.webp');
+  background-image: image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x);
 }
 .ic-sm {
   width: var(--size-icon-sm);
