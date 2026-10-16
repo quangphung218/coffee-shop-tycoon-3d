@@ -200,16 +200,19 @@ function measureTexts(arg) {
 function measureBoxes(arg) {
   let ox = 0;
   let oy = 0;
+  let root = document;
   if (arg.form) {
     const form = [...document.querySelectorAll('form')].find((f) => f.offsetParent !== null && f.querySelector('.section-title'));
     if (!form) return {};
     const r = form.getBoundingClientRect();
     ox = r.left;
     oy = r.top;
+    // Only inside the visible form: hidden screens may carry the same classes.
+    root = form;
   }
   const find = (sel) =>
     typeof sel === 'string'
-      ? document.querySelector(sel)
+      ? root.querySelector(sel)
       : [...document.querySelectorAll('button')].find((b) => b.offsetParent !== null && (b.textContent || '').includes(sel.button));
   const out = {};
   for (const [name, sel] of Object.entries(arg.sels)) {
@@ -554,8 +557,8 @@ async function makeP21Boards(browser, { cur, base, curSet, baseSet, ends, week }
       { frame: 1, boxes: [curSet.boxes.summary], label: 'Lần dừng gần nhất: ngày, pha, giờ game (mới)' },
       { frame: 1, boxes: [curSet.boxes.actions], label: '"Xuất JSON" và "Xoá" (bấm 2 lần)' },
     ],
-    include: [curSet.boxes.playlog],
-    pad: 20,
+    include: [curSet.boxes.playlog, baseSet.boxes.game],
+    pad: 40,
     maxScale: 1,
     avoid: avoidTexts(baseSet, curSet),
     gutter: GUTTER,
