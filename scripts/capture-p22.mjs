@@ -585,7 +585,8 @@ async function menuSession(browser, url, who) {
   await context.addInitScript(iconProbe);
   const page = await context.newPage();
   try {
-    await page.goto(url);
+    // Not until `load`: the held atlas is a CSS background in v0.4.0, so the page never finishes loading.
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'Ván mới', exact: true }).waitFor();
     await page.waitForFunction(() => window.__p22Icons !== undefined, null, { timeout: 30_000 });
     await sleep(600);
