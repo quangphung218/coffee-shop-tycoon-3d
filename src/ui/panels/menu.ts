@@ -1,17 +1,18 @@
 import { getIngredient } from '../../sim/data/ingredients';
-import { menuUnlockLevel } from '../../sim/data/levels';
+import { menuUnlockLevel, upgradeUnlockLevel } from '../../sim/data/levels';
 import { MENU } from '../../sim/data/menu';
+import { dayUnlockDay } from '../../sim/data/week';
 import { sellPrice } from '../../sim/customers';
 import { stockOf } from '../../sim/inventory';
-import { policyLevel, PRICE_POLICY } from '../../sim/policies';
-import { isUnlocked } from '../../sim/progression';
-import type { GameState, MenuItemDef, PolicyLevel } from '../../sim/types';
-import { h, uid, Watcher } from '../core/dom';
+import { canChangePolicy, policyLevel, PRICE_POLICY } from '../../sim/policies';
+import { isUnlocked, weekDay } from '../../sim/progression';
+import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
+import { h, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { MENU_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { linkBtn, reasonLine, segmented, sender, setReason, toggle, withIcon } from './widgets';
+import { linkBtn, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon } from './widgets';
 
 const PRICE_OPTIONS: readonly { value: PolicyLevel; label: string }[] = [
   { value: 'low', label: 'Rẻ' },
@@ -32,6 +33,32 @@ export function pricePolicyHint(level: PolicyLevel): string {
   return `${name}: ${signedPct(p.priceMult - 1)} tiền mỗi ly, ${mood} (${signedDec(p.stars)} sao), ${crowd} (${signedPct(p.arrivals - 1)}).`;
 }
 
+/** Reason under a Mức giá / Mức lương choice that is locked for the day. */
+export const POLICY_LOCKED_HINT = 'Đổi lúc chuẩn bị ngày mai.';
+
+/**
+ * Locks a Mức giá / Mức lương choice outside preparation (aria-disabled on the
+ * group and its radios) with the reason under it; unlocks it while preparing.
+ */
+export function lockPolicyChoice(seg: HTMLElement, why: HTMLElement, state: GameState): void {
+  const locked = !canChangePolicy(state);
+  setAriaDisabled(seg, locked);
+  for (const radio of seg.querySelectorAll<HTMLElement>('input')) setAriaDisabled(radio, locked);
+  setReason(why, seg, locked ? POLICY_LOCKED_HINT : null);
+}
+
+/**
+ * Badge and reason for an item or upgrade that is not open yet: "Mở ngày N"
+ * while the week's calendar will open it on a later day, else "Mở ở cấp N".
+ * Reaching the level first opens it, so a still-locked item waits for the day.
+ */
+export function unlockHint(state: GameState, kind: 'menu' | 'upgrade', id: MenuItemId | UpgradeId): { badge: string; reason: string } {
+  const day = state.week ? dayUnlockDay(kind, id) : Infinity;
+  if (day !== Infinity && day > weekDay(state)) return { badge: `Mở ngày ${day}`, reason: `Mở khóa vào ngày ${day} của tuần.` };
+  const level = kind === 'menu' ? menuUnlockLevel(id as MenuItemId) : upgradeUnlockLevel(id as UpgradeId);
+  return { badge: `Mở ở cấp ${level}`, reason: `Mở khóa ở Cấp ${level}.` };
+}
+
 /** Why an item cannot be made from the stock, or null when it can. */
 export function lockReason(state: GameState, item: MenuItemDef): string | null {
   const missing = item.ingredients.filter((need) => stockOf(state, need.id) < need.qty);
@@ -50,10 +77,11 @@ function popularityDots(p: number): HTMLElement {
 }
 
 /**
- * Menu hôm nay: the Mức giá choice, then every item with the price at that
- * level, cost, hot/cold, popularity and a
+ * Menu hôm nay: the Mức giá choice (locked outside preparation), then every
+ * item with the price at that level, cost, hot/cold, popularity and a
  * Bán/Không switch. Items the stock cannot make are locked with the missing
- * ingredient; items above the shop level show "Mở ở cấp N" and stay off. An
+ * ingredient; items not open yet show "Mở ngày N" or "Mở ở cấp N" (unlockHint)
+ * and stay off. An
  * item already on sale can still be switched off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
@@ -64,10 +92,16 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
 
   // Mức giá: a trade-off set in place; the hint names what it gains and costs.
   const priceTitleId = uid('price-policy');
-  const priceSeg = segmented('Mức giá', 'price', PRICE_OPTIONS, (level) => send({ type: 'set_policy', policy: 'price', level }));
+  // Set while preparing only; once open the choice is locked with the reason under it.
+  const priceSeg = segmented('Mức giá', 'price', PRICE_OPTIONS, (level) => {
+    const s = ctx.getState();
+    if (s && canChangePolicy(s)) send({ type: 'set_policy', policy: 'price', level });
+    else if (s) priceSeg.set(policyLevel(s, 'price'));
+  });
   priceSeg.el.removeAttribute('aria-label');
   priceSeg.el.setAttribute('aria-labelledby', priceTitleId);
   const priceHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'price' } });
+  const priceWhy = reasonLine(false);
   w.watch(
     (s) => policyLevel(s, 'price'),
     (level) => {
@@ -75,10 +109,14 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       priceHint.textContent = pricePolicyHint(level);
     },
   );
+  w.watch(
+    (s) => canChangePolicy(s),
+    (_, s) => lockPolicyChoice(priceSeg.el, priceWhy, s),
+  );
   const priceRow = h(
     'div',
     { class: 'setting', attrs: { 'data-policy': 'price' } },
-    h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: priceTitleId }, ...withIcon('i-coin', 'Mức giá', 24)), priceHint),
+    h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: priceTitleId }, ...withIcon('i-coin', 'Mức giá', 24)), priceHint, priceWhy),
     priceSeg.el,
   );
 
@@ -86,9 +124,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     const why = reasonLine();
     const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }));
     const lockBadge = h('span', { class: 'badge badge-danger', hidden: true }, ...withIcon('i-lock', 'Khóa'));
-    // Below its unlock level: a flat "Mở ở cấp N" label (design/p20 §5), not a button.
-    const need = menuUnlockLevel(item.id);
-    const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } }, ...withIcon('i-lock', `Mở ở cấp ${need}`));
+    // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label (design/p20 §5), not a button.
+    const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
     const meta = h('p', { class: 'item-meta' });
     const toStock = linkBtn('Nhập ở Kho', 'inventory');
     toStock.hidden = true;
@@ -116,7 +153,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     w.watch(
       (s) => {
         const entry = s.menu.find((m) => m.id === item.id);
-        return `${entry?.enabled ? 1 : 0}|${sellPrice(s, item.id)}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}`;
+        return `${entry?.enabled ? 1 : 0}|${sellPrice(s, item.id)}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}|${weekDay(s)}`;
       },
       (_, s) => {
         const entry = s.menu.find((m) => m.id === item.id);
@@ -129,11 +166,13 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
         meta.textContent = `Giá ${formatMoney(price)} · vốn ${formatMoney(item.cost)} · lãi ${formatMoney(price - item.cost)}/ly · biên ${margin}%`;
         li.classList.toggle('is-locked', levelLocked || !!locked);
-        levelBadge.hidden = !levelLocked;
+        const opens = levelLocked ? unlockHint(s, 'menu', item.id) : null;
+        levelBadge.hidden = !opens;
+        if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
         lockBadge.hidden = !locked;
         toStock.hidden = !locked;
         sw.set(enabled, levelLocked || (!!locked && !enabled));
-        setReason(why, sw.el, levelLocked ? `Mở khóa ở Cấp ${need}.` : locked, 'i-lock');
+        setReason(why, sw.el, opens ? opens.reason : locked, 'i-lock');
       },
     );
     return li;

@@ -110,7 +110,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `remove_decor` | Gỡ 1 cấp cây, tranh hay đèn, hoàn 50% giá cấp đó; cấp 0 hay món không gỡ được trả `false`. |
-| `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). |
+| `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). Chỉ trong pha `preparation`; pha khác trả `false` kèm `notify`. |
 | `set_speed`, `set_paused` | Nhịp game. |
 | `take_order`, `brew`, `deliver`, `collect_cash`, `clean_table` | Người chơi tự phục vụ (từ cảnh 3D). |
 

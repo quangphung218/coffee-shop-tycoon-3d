@@ -23,6 +23,27 @@ function middlingDay(s: GameState): void {
   s.today.waitShareSum = 4;
 }
 
+describe('placing decor', () => {
+  it('buying plants raises the rating bonus, appeal, day score and arrivals', () => {
+    const s = rich();
+    middlingDay(s);
+    const before = {
+      bonus: totalUpgradeEffect(s.upgrades).ratingBonus ?? 0,
+      appeal: totalUpgradeEffect(s.upgrades).appeal ?? 0,
+      score: dayScore(s),
+      arrivals: arrivalRate(s),
+    };
+
+    expect(dispatch(s, { type: 'buy_upgrade', upgradeId: 'plants' })).toBe(true);
+
+    const after = totalUpgradeEffect(s.upgrades);
+    expect(after.ratingBonus ?? 0).toBeGreaterThan(before.bonus);
+    expect(after.appeal ?? 0).toBeGreaterThan(before.appeal);
+    expect(dayScore(s)).toBeGreaterThan(before.score);
+    expect(arrivalRate(s)).toBeGreaterThan(before.arrivals);
+  });
+});
+
 describe('remove_decor', () => {
   it('takes plants down one level, refunds half that level and lowers the bonuses', () => {
     const s = rich();

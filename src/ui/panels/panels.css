@@ -416,6 +416,22 @@
 .setting .seg {
   box-shadow: none;
 }
+/* Locked outside preparation: the chosen level stays readable, nothing reacts. */
+.setting .seg[aria-disabled='true'] {
+  background: var(--surface-disabled);
+  border-style: dashed;
+  border-color: var(--border-disabled);
+}
+.setting .seg[aria-disabled='true'] .seg-opt span {
+  cursor: not-allowed;
+}
+.setting .seg[aria-disabled='true'] .seg-opt input:not(:checked) + span {
+  color: var(--text-muted);
+  background: none;
+}
+.setting .seg[aria-disabled='true'] .seg-opt input + span:active {
+  transform: none;
+}
 
 /* Dropdown (menu sổ): a level-4 control like the stepper buttons. */
 .dd {

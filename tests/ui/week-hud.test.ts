@@ -60,18 +60,20 @@ describe('HUD during a week', () => {
     const event = chip(el, 'event');
     expect(event.hidden).toBe(false);
     expect(event.textContent).toBe('Khai trương');
-    expect(event.getAttribute('aria-label')).toBe('Khai trương: khách +15%');
-    expect(event.title).toBe('Khai trương: khách +15%');
+    expect(event.getAttribute('aria-label')).toBe('Khai trương: lượt ghé tăng tới +15%');
+    expect(event.title).toBe('Khai trương: lượt ghé tăng tới +15%');
   });
 
-  it('shows the fair chip, with its arrival boost, on a fair day', () => {
+  it('shows the fair chip, with its walk-in boost as a ceiling, on a fair day', () => {
     const state = game();
     const fair = state.week!.plan.find((p) => p.event === 'fair')!;
     const el = mountHud(onWeekDay(state, fair.day));
     expect(el.querySelector('.hud-left > .hud-stat')!.textContent).toBe(`Ngày${fair.day}/7`);
     const event = chip(el, 'event');
     expect(event.textContent).toBe('Hội chợ');
-    expect(event.getAttribute('aria-label')).toBe('Hội chợ: khách +40%');
+    expect(event.getAttribute('aria-label')).toBe('Hội chợ: lượt ghé tăng tới +40%');
+    expect(event.title).toBe('Hội chợ: lượt ghé tăng tới +40%');
+    expect(event.title).not.toContain('khách +40%');
   });
 
   it('names the supplier hike by its price rise', () => {
@@ -110,6 +112,14 @@ describe('Task Board "Hôm nay" block', () => {
     expect(block.querySelector('[data-week="tomorrow"]')!.textContent).toContain(
       { sunny: 'Nắng', rainy: 'Mưa', hot: 'Nóng' }[tomorrow.weather],
     );
+  });
+
+  it('gives the fair the same walk-in ceiling as the HUD chip', () => {
+    const state = game();
+    const fair = state.week!.plan.find((p) => p.event === 'fair')!;
+    const line = mountTasks(onWeekDay(state, fair.day)).querySelector('[data-week="event"]')!.textContent;
+    expect(line).toContain('(lượt ghé tăng tới +40%)');
+    expect(line).not.toContain('khách +40%');
   });
 
   it("names what today's calendar opens", () => {
