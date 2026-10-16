@@ -1,0 +1,86 @@
+[
+  {
+    "id": "layout-blocked-suggest-390",
+    "area": "layout",
+    "title": "Nút \"suggest\" bị che, không bấm được (ngày 2, 5, 7): <div class=\"foot-sum\">…</div> from <div class=\"panel-foot\">…</div> subtree intercepts pointer events",
+    "evidence": [
+      "390/d2-blocked-suggest.jpg",
+      "blocked.390/d2-suggest",
+      "390/d5-blocked-suggest.jpg",
+      "blocked.390/d5-suggest",
+      "390/d7-blocked-suggest.jpg",
+      "blocked.390/d7-suggest"
+    ],
+    "impact": 3,
+    "effort": 1,
+    "viewport": "390",
+    "ratio": 3,
+    "high": true
+  },
+  {
+    "id": "ui-icons-blank-1440",
+    "area": "ui",
+    "title": "5/5 ô icon trống lúc Main Menu hiện (atlas@1x chưa tải)",
+    "evidence": [
+      "1440/d0-menu-first.png",
+      "menu.1440.icons"
+    ],
+    "impact": 2,
+    "effort": 1,
+    "viewport": "1440",
+    "ratio": 2,
+    "high": true
+  },
+  {
+    "id": "ui-icons-blank-390",
+    "area": "ui",
+    "title": "5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải)",
+    "evidence": [
+      "390/d0-menu-first.png",
+      "menu.390.icons"
+    ],
+    "impact": 2,
+    "effort": 1,
+    "viewport": "390",
+    "ratio": 2,
+    "high": true
+  },
+  {
+    "id": "perf-fps-1440",
+    "area": "perf",
+    "title": "FPS cao điểm 3 (< 55) ở 7/7 ngày (SwiftShader)",
+    "evidence": [
+      "peaks.1440/d1.fps",
+      "peaks.1440/d2.fps",
+      "peaks.1440/d3.fps",
+      "peaks.1440/d4.fps",
+      "peaks.1440/d5.fps",
+      "peaks.1440/d6.fps",
+      "peaks.1440/d7.fps"
+    ],
+    "impact": 3,
+    "effort": 3,
+    "viewport": "1440",
+    "ratio": 1,
+    "high": false
+  },
+  {
+    "id": "perf-fps-390",
+    "area": "perf",
+    "title": "FPS cao điểm 2.4 (< 55) ở 7/7 ngày (SwiftShader)",
+    "evidence": [
+      "peaks.390/d1.fps",
+      "peaks.390/d2.fps",
+      "peaks.390/d3.fps",
+      "peaks.390/d4.fps",
+      "peaks.390/d5.fps",
+      "peaks.390/d6.fps",
+      "peaks.390/d7.fps"
+    ],
+    "impact": 3,
+    "effort": 3,
+    "viewport": "390",
+    "ratio": 1,
+    "high": false
+  }
+]

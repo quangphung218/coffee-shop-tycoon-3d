@@ -1,0 +1,2353 @@
+{
+  "seed": 3758375936,
+  "difficulty": "normal",
+  "commit": "f3e8b3a",
+  "parallel": true,
+  "quality": "medium",
+  "notes": [
+    "Headless Chromium with SwiftShader (software WebGL): FPS is a floor, not what a GPU gets.",
+    "With parallel=true both viewports render at once, so each FPS is lower than alone.",
+    "stuckWalking: the sim state has no window hook; counted from the three.js scene (window.__THREE_DEVTOOLS__) as people whose legs swing (rotation range > 0.15 rad) while they move < 0.05 m for > 5 s.",
+    "looks: distinct sets of visible mesh colours per person drawn, staff included."
+  ],
+  "week": {
+    "rows": [
+      {
+        "day": 1,
+        "weather": "sunny",
+        "event": "grand_opening",
+        "arrived": 112,
+        "revenue": 2150000,
+        "ingredientCost": 670750,
+        "money": 3940000,
+        "rating": 3.39
+      },
+      {
+        "day": 2,
+        "weather": "rainy",
+        "event": "supplier_hike",
+        "arrived": 85,
+        "revenue": 2630000,
+        "ingredientCost": 1016940,
+        "money": 4975000,
+        "rating": 3.88
+      },
+      {
+        "day": 3,
+        "weather": "hot",
+        "event": "none",
+        "arrived": 118,
+        "revenue": 3305000,
+        "ingredientCost": 1042450,
+        "money": 7805000,
+        "rating": 3.99
+      },
+      {
+        "day": 4,
+        "weather": "rainy",
+        "event": "fair",
+        "arrived": 119,
+        "revenue": 3360000,
+        "ingredientCost": 1063300,
+        "money": 10375000,
+        "rating": 3.97
+      },
+      {
+        "day": 5,
+        "weather": "rainy",
+        "event": "supplier_hike",
+        "arrived": 96,
+        "revenue": 2905000,
+        "ingredientCost": 1119847,
+        "money": 11848750,
+        "rating": 4.13
+      },
+      {
+        "day": 6,
+        "weather": "rainy",
+        "event": "none",
+        "arrived": 96,
+        "revenue": 2935000,
+        "ingredientCost": 924950,
+        "money": 14388750,
+        "rating": 4.23
+      },
+      {
+        "day": 7,
+        "weather": "sunny",
+        "event": "supplier_hike",
+        "arrived": 120,
+        "revenue": 3605000,
+        "ingredientCost": 1410379,
+        "money": 16906250,
+        "rating": 4.14
+      }
+    ],
+    "result": {
+      "revenue": 20890000,
+      "revenueTarget": 26500000,
+      "stars": 4.1,
+      "starsTarget": 4,
+      "score": 87,
+      "cups": 2,
+      "days": [
+        {
+          "day": 1,
+          "revenue": 2150000,
+          "customersServed": 75,
+          "weather": "sunny",
+          "event": "grand_opening"
+        },
+        {
+          "day": 2,
+          "revenue": 2630000,
+          "customersServed": 81,
+          "weather": "rainy",
+          "event": "supplier_hike"
+        },
+        {
+          "day": 3,
+          "revenue": 3305000,
+          "customersServed": 110,
+          "weather": "hot",
+          "event": "none"
+        },
+        {
+          "day": 4,
+          "revenue": 3360000,
+          "customersServed": 108,
+          "weather": "rainy",
+          "event": "fair"
+        },
+        {
+          "day": 5,
+          "revenue": 2905000,
+          "customersServed": 90,
+          "weather": "rainy",
+          "event": "supplier_hike"
+        },
+        {
+          "day": 6,
+          "revenue": 2935000,
+          "customersServed": 91,
+          "weather": "rainy",
+          "event": "none"
+        },
+        {
+          "day": 7,
+          "revenue": 3605000,
+          "customersServed": 112,
+          "weather": "sunny",
+          "event": "supplier_hike"
+        }
+      ]
+    }
+  },
+  "menu": {
+    "390": {
+      "menuMs": 129,
+      "worldMs": 369,
+      "icons": {
+        "at": 129,
+        "visible": 5,
+        "blank": 5,
+        "atlas": "atlas@2x",
+        "atlasLoaded": false
+      },
+      "atlas": [
+        {
+          "file": "atlas@2x.webp",
+          "at": 124
+        }
+      ],
+      "toastMaxDay1": 3
+    },
+    "1440": {
+      "menuMs": 132,
+      "worldMs": 359,
+      "icons": {
+        "at": 132,
+        "visible": 5,
+        "blank": 5,
+        "atlas": "atlas@1x",
+        "atlasLoaded": false
+      },
+      "atlas": [
+        {
+          "file": "atlas@1x.webp",
+          "at": 126
+        },
+        {
+          "file": "atlas@2x.webp",
+          "at": 359
+        }
+      ],
+      "toastMaxDay1": 3
+    }
+  },
+  "screens": {
+    "390/d0-menu-first": {
+      "viewport": "390",
+      "name": "d0-menu-first",
+      "file": "390/d0-menu-first.png",
+      "bytes": 283994,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.54
+    },
+    "1440/d0-menu-first": {
+      "viewport": "1440",
+      "name": "d0-menu-first",
+      "file": "1440/d0-menu-first.png",
+      "bytes": 224678,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d0-menu-ready": {
+      "viewport": "390",
+      "name": "d0-menu-ready",
+      "file": "390/d0-menu-ready.png",
+      "bytes": 257906,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.54
+    },
+    "1440/d0-menu-ready": {
+      "viewport": "1440",
+      "name": "d0-menu-ready",
+      "file": "1440/d0-menu-ready.png",
+      "bytes": 224935,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-new-game": {
+      "viewport": "390",
+      "name": "d1-new-game",
+      "file": "390/d1-new-game.png",
+      "bytes": 286399,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.901
+    },
+    "1440/d1-new-game": {
+      "viewport": "1440",
+      "name": "d1-new-game",
+      "file": "1440/d1-new-game.png",
+      "bytes": 118689,
+      "oversize": false,
+      "clock": "",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-hud": {
+      "viewport": "390",
+      "name": "d1-hud",
+      "file": "390/d1-hud.jpg",
+      "bytes": 241507,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.422
+    },
+    "1440/d1-hud": {
+      "viewport": "1440",
+      "name": "d1-hud",
+      "file": "1440/d1-hud.png",
+      "bytes": 258823,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-tasks": {
+      "viewport": "390",
+      "name": "d1-panel-tasks",
+      "file": "390/d1-panel-tasks.jpg",
+      "bytes": 258700,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-tasks": {
+      "viewport": "1440",
+      "name": "d1-panel-tasks",
+      "file": "1440/d1-panel-tasks.png",
+      "bytes": 323982,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d1-panel-menu": {
+      "viewport": "1440",
+      "name": "d1-panel-menu",
+      "file": "1440/d1-panel-menu.png",
+      "bytes": 333581,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-menu": {
+      "viewport": "390",
+      "name": "d1-panel-menu",
+      "file": "390/d1-panel-menu.jpg",
+      "bytes": 271314,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-inventory": {
+      "viewport": "1440",
+      "name": "d1-panel-inventory",
+      "file": "1440/d1-panel-inventory.png",
+      "bytes": 331006,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-inventory": {
+      "viewport": "390",
+      "name": "d1-panel-inventory",
+      "file": "390/d1-panel-inventory.jpg",
+      "bytes": 261377,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-staff": {
+      "viewport": "1440",
+      "name": "d1-panel-staff",
+      "file": "1440/d1-panel-staff.png",
+      "bytes": 324620,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-staff": {
+      "viewport": "390",
+      "name": "d1-panel-staff",
+      "file": "390/d1-panel-staff.jpg",
+      "bytes": 266750,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-marketing": {
+      "viewport": "1440",
+      "name": "d1-panel-marketing",
+      "file": "1440/d1-panel-marketing.png",
+      "bytes": 335953,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-marketing": {
+      "viewport": "390",
+      "name": "d1-panel-marketing",
+      "file": "390/d1-panel-marketing.jpg",
+      "bytes": 270585,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-upgrades": {
+      "viewport": "1440",
+      "name": "d1-panel-upgrades",
+      "file": "1440/d1-panel-upgrades.png",
+      "bytes": 328078,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-upgrades": {
+      "viewport": "390",
+      "name": "d1-panel-upgrades",
+      "file": "390/d1-panel-upgrades.jpg",
+      "bytes": 258260,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-panel-reviews": {
+      "viewport": "1440",
+      "name": "d1-panel-reviews",
+      "file": "1440/d1-panel-reviews.png",
+      "bytes": 290982,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d1-panel-reviews": {
+      "viewport": "390",
+      "name": "d1-panel-reviews",
+      "file": "390/d1-panel-reviews.jpg",
+      "bytes": 250921,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d1-peak": {
+      "viewport": "1440",
+      "name": "d1-peak",
+      "file": "1440/d1-peak.png",
+      "bytes": 251825,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": null
+    },
+    "390/d1-peak": {
+      "viewport": "390",
+      "name": "d1-peak",
+      "file": "390/d1-peak.jpg",
+      "bytes": 233538,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.385
+    },
+    "1440/d1-queue": {
+      "viewport": "1440",
+      "name": "d1-queue",
+      "file": "1440/d1-queue.png",
+      "bytes": 255926,
+      "oversize": false,
+      "clock": "11:50",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": null
+    },
+    "390/d1-queue": {
+      "viewport": "390",
+      "name": "d1-queue",
+      "file": "390/d1-queue.jpg",
+      "bytes": 234337,
+      "oversize": false,
+      "clock": "11:56",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.385
+    },
+    "1440/d1-report-summary": {
+      "viewport": "1440",
+      "name": "d1-report-summary",
+      "file": "1440/d1-report-summary.png",
+      "bytes": 187770,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 112480,
+          "box": {
+            "x": 340,
+            "y": 32,
+            "w": 760,
+            "h": 148
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 56202,
+          "box": {
+            "x": 408,
+            "y": 798,
+            "w": 624,
+            "h": 90
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 3836,
+          "box": {
+            "x": 340,
+            "y": 134,
+            "w": 83,
+            "h": 46
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": null
+    },
+    "1440/d1-report-insights": {
+      "viewport": "1440",
+      "name": "d1-report-insights",
+      "file": "1440/d1-report-insights.png",
+      "bytes": 185232,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 112480,
+          "box": {
+            "x": 340,
+            "y": 32,
+            "w": 760,
+            "h": 148
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 56202,
+          "box": {
+            "x": 408,
+            "y": 798,
+            "w": 624,
+            "h": 90
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 3836,
+          "box": {
+            "x": 340,
+            "y": 134,
+            "w": 83,
+            "h": 46
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": null
+    },
+    "390/d1-report-summary": {
+      "viewport": "390",
+      "name": "d1-report-summary",
+      "file": "390/d1-report-summary.png",
+      "bytes": 357252,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 127368,
+          "box": {
+            "x": 12,
+            "y": 16,
+            "w": 366,
+            "h": 348
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 59292,
+          "box": {
+            "x": 12,
+            "y": 670,
+            "w": 366,
+            "h": 162
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 23424,
+          "box": {
+            "x": 12,
+            "y": 300,
+            "w": 366,
+            "h": 64
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": 1
+    },
+    "1440/d1-report-reviews": {
+      "viewport": "1440",
+      "name": "d1-report-reviews",
+      "file": "1440/d1-report-reviews.png",
+      "bytes": 163660,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 112480,
+          "box": {
+            "x": 340,
+            "y": 32,
+            "w": 760,
+            "h": 148
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 56202,
+          "box": {
+            "x": 408,
+            "y": 798,
+            "w": 624,
+            "h": 90
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 3836,
+          "box": {
+            "x": 340,
+            "y": 134,
+            "w": 83,
+            "h": 46
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": null
+    },
+    "390/d1-report-insights": {
+      "viewport": "390",
+      "name": "d1-report-insights",
+      "file": "390/d1-report-insights.png",
+      "bytes": 334421,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 127368,
+          "box": {
+            "x": 12,
+            "y": 16,
+            "w": 366,
+            "h": 348
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 59292,
+          "box": {
+            "x": 12,
+            "y": 670,
+            "w": 366,
+            "h": 162
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 23424,
+          "box": {
+            "x": 12,
+            "y": 300,
+            "w": 366,
+            "h": 64
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": 1
+    },
+    "390/d1-report-reviews": {
+      "viewport": "390",
+      "name": "d1-report-reviews",
+      "file": "390/d1-report-reviews.png",
+      "bytes": 374522,
+      "oversize": false,
+      "clock": "20:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [
+        {
+          "a": "hud",
+          "b": "report",
+          "aEl": "header.hud \"Thanh trạng thái\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 127368,
+          "box": {
+            "x": 12,
+            "y": 16,
+            "w": 366,
+            "h": 348
+          }
+        },
+        {
+          "a": "dock",
+          "b": "report",
+          "aEl": "nav.dock \"Bảng quản lý\"",
+          "bEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "area": 59292,
+          "box": {
+            "x": 12,
+            "y": 670,
+            "w": 366,
+            "h": 162
+          }
+        },
+        {
+          "a": "report",
+          "b": "note",
+          "aEl": "div.rpt-dialog \"Hết ngày 1 · Cà Phê Gió MùaThườn\"",
+          "bEl": "p.hud-note \"Hết ngày 1: Lãi +1.142.900đ · ph\"",
+          "area": 23424,
+          "box": {
+            "x": 12,
+            "y": 300,
+            "w": 366,
+            "h": 64
+          }
+        }
+      ],
+      "toasts": 1,
+      "toastMaxSoFar": 3,
+      "sceneCover": 1
+    },
+    "390/d2-hud": {
+      "viewport": "390",
+      "name": "d2-hud",
+      "file": "390/d2-hud.jpg",
+      "bytes": 229589,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.422
+    },
+    "1440/d2-hud": {
+      "viewport": "1440",
+      "name": "d2-hud",
+      "file": "1440/d2-hud.png",
+      "bytes": 275457,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d2-panel-tasks": {
+      "viewport": "390",
+      "name": "d2-panel-tasks",
+      "file": "390/d2-panel-tasks.jpg",
+      "bytes": 248686,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.756
+    },
+    "1440/d2-panel-tasks": {
+      "viewport": "1440",
+      "name": "d2-panel-tasks",
+      "file": "1440/d2-panel-tasks.png",
+      "bytes": 330175,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d2-peak": {
+      "viewport": "1440",
+      "name": "d2-peak",
+      "file": "1440/d2-peak.png",
+      "bytes": 278292,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": null,
+      "toastMaxDay": 2
+    },
+    "390/d2-peak": {
+      "viewport": "390",
+      "name": "d2-peak",
+      "file": "390/d2-peak.jpg",
+      "bytes": 231163,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.386,
+      "toastMaxDay": 2
+    },
+    "1440/d3-hud": {
+      "viewport": "1440",
+      "name": "d3-hud",
+      "file": "1440/d3-hud.png",
+      "bytes": 265141,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d3-panel-tasks": {
+      "viewport": "1440",
+      "name": "d3-panel-tasks",
+      "file": "1440/d3-panel-tasks.png",
+      "bytes": 320641,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d3-hud": {
+      "viewport": "390",
+      "name": "d3-hud",
+      "file": "390/d3-hud.jpg",
+      "bytes": 236275,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.406
+    },
+    "390/d3-panel-tasks": {
+      "viewport": "390",
+      "name": "d3-panel-tasks",
+      "file": "390/d3-panel-tasks.jpg",
+      "bytes": 255572,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.811
+    },
+    "1440/d3-peak": {
+      "viewport": "1440",
+      "name": "d3-peak",
+      "file": "1440/d3-peak.png",
+      "bytes": 253482,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": null,
+      "toastMaxDay": 2
+    },
+    "1440/d4-hud": {
+      "viewport": "1440",
+      "name": "d4-hud",
+      "file": "1440/d4-hud.png",
+      "bytes": 274661,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d4-panel-tasks": {
+      "viewport": "1440",
+      "name": "d4-panel-tasks",
+      "file": "1440/d4-panel-tasks.png",
+      "bytes": 334232,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d3-peak": {
+      "viewport": "390",
+      "name": "d3-peak",
+      "file": "390/d3-peak.jpg",
+      "bytes": 225646,
+      "oversize": false,
+      "clock": "11:06",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.368,
+      "toastMaxDay": 2
+    },
+    "390/d4-hud": {
+      "viewport": "390",
+      "name": "d4-hud",
+      "file": "390/d4-hud.jpg",
+      "bytes": 237823,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.422
+    },
+    "390/d4-panel-tasks": {
+      "viewport": "390",
+      "name": "d4-panel-tasks",
+      "file": "390/d4-panel-tasks.jpg",
+      "bytes": 261220,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.827
+    },
+    "1440/d4-peak": {
+      "viewport": "1440",
+      "name": "d4-peak",
+      "file": "1440/d4-peak.png",
+      "bytes": 279527,
+      "oversize": false,
+      "clock": "11:03",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 1,
+      "sceneCover": null,
+      "toastMaxDay": 1
+    },
+    "390/d4-peak": {
+      "viewport": "390",
+      "name": "d4-peak",
+      "file": "390/d4-peak.jpg",
+      "bytes": 240443,
+      "oversize": false,
+      "clock": "11:06",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.385,
+      "toastMaxDay": 2
+    },
+    "390/d5-hud": {
+      "viewport": "390",
+      "name": "d5-hud",
+      "file": "390/d5-hud.jpg",
+      "bytes": 230008,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.424
+    },
+    "1440/d5-hud": {
+      "viewport": "1440",
+      "name": "d5-hud",
+      "file": "1440/d5-hud.png",
+      "bytes": 276557,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d5-panel-tasks": {
+      "viewport": "390",
+      "name": "d5-panel-tasks",
+      "file": "390/d5-panel-tasks.jpg",
+      "bytes": 249694,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.757
+    },
+    "1440/d5-panel-tasks": {
+      "viewport": "1440",
+      "name": "d5-panel-tasks",
+      "file": "1440/d5-panel-tasks.png",
+      "bytes": 338105,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d5-peak": {
+      "viewport": "1440",
+      "name": "d5-peak",
+      "file": "1440/d5-peak.png",
+      "bytes": 279202,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 1,
+      "sceneCover": null,
+      "toastMaxDay": 1
+    },
+    "390/d5-peak": {
+      "viewport": "390",
+      "name": "d5-peak",
+      "file": "390/d5-peak.jpg",
+      "bytes": 231742,
+      "oversize": false,
+      "clock": "11:04",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.386,
+      "toastMaxDay": 2
+    },
+    "1440/d6-hud": {
+      "viewport": "1440",
+      "name": "d6-hud",
+      "file": "1440/d6-hud.png",
+      "bytes": 279250,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d6-panel-tasks": {
+      "viewport": "1440",
+      "name": "d6-panel-tasks",
+      "file": "1440/d6-panel-tasks.png",
+      "bytes": 331879,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d6-hud": {
+      "viewport": "390",
+      "name": "d6-hud",
+      "file": "390/d6-hud.jpg",
+      "bytes": 233872,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.407
+    },
+    "390/d6-panel-tasks": {
+      "viewport": "390",
+      "name": "d6-panel-tasks",
+      "file": "390/d6-panel-tasks.jpg",
+      "bytes": 255433,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.812
+    },
+    "1440/d6-peak": {
+      "viewport": "1440",
+      "name": "d6-peak",
+      "file": "1440/d6-peak.png",
+      "bytes": 276734,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 1,
+      "sceneCover": null,
+      "toastMaxDay": 1
+    },
+    "1440/d7-hud": {
+      "viewport": "1440",
+      "name": "d7-hud",
+      "file": "1440/d7-hud.png",
+      "bytes": 297325,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d6-peak": {
+      "viewport": "390",
+      "name": "d6-peak",
+      "file": "390/d6-peak.jpg",
+      "bytes": 235834,
+      "oversize": false,
+      "clock": "11:05",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.37,
+      "toastMaxDay": 2
+    },
+    "1440/d7-panel-tasks": {
+      "viewport": "1440",
+      "name": "d7-panel-tasks",
+      "file": "1440/d7-panel-tasks.png",
+      "bytes": 350670,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d7-hud": {
+      "viewport": "390",
+      "name": "d7-hud",
+      "file": "390/d7-hud.jpg",
+      "bytes": 243329,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.424
+    },
+    "390/d7-panel-tasks": {
+      "viewport": "390",
+      "name": "d7-panel-tasks",
+      "file": "390/d7-panel-tasks.jpg",
+      "bytes": 247561,
+      "oversize": false,
+      "clock": "07:00",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 0.757
+    },
+    "1440/d7-peak": {
+      "viewport": "1440",
+      "name": "d7-peak",
+      "file": "1440/d7-peak.png",
+      "bytes": 278342,
+      "oversize": false,
+      "clock": "11:03",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": null,
+      "toastMaxDay": 2
+    },
+    "1440/d7-report": {
+      "viewport": "1440",
+      "name": "d7-report",
+      "file": "1440/d7-report.png",
+      "bytes": 177450,
+      "oversize": false,
+      "clock": "20:41",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "1440/d7-week-end": {
+      "viewport": "1440",
+      "name": "d7-week-end",
+      "file": "1440/d7-week-end.png",
+      "bytes": 163557,
+      "oversize": false,
+      "clock": "20:41",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": null
+    },
+    "390/d7-peak": {
+      "viewport": "390",
+      "name": "d7-peak",
+      "file": "390/d7-peak.jpg",
+      "bytes": 236348,
+      "oversize": false,
+      "clock": "11:04",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 2,
+      "sceneCover": 0.387,
+      "toastMaxDay": 2
+    },
+    "390/d7-report": {
+      "viewport": "390",
+      "name": "d7-report",
+      "file": "390/d7-report.png",
+      "bytes": 366406,
+      "oversize": false,
+      "clock": "20:41",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 1
+    },
+    "390/d7-week-end": {
+      "viewport": "390",
+      "name": "d7-week-end",
+      "file": "390/d7-week-end.png",
+      "bytes": 303189,
+      "oversize": false,
+      "clock": "20:41",
+      "overflow": [],
+      "smallTargets": [],
+      "smallText": [],
+      "overlaps": [],
+      "toasts": 0,
+      "toastMaxSoFar": 0,
+      "sceneCover": 1
+    }
+  },
+  "peaks": {
+    "1440/d1": {
+      "screen": "1440/d1-peak",
+      "clockAfter": "11:42",
+      "fps": 4.5,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 13,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d1": {
+      "screen": "390/d1-peak",
+      "clockAfter": "11:48",
+      "fps": 5.5,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 14,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "1440/d2": {
+      "screen": "1440/d2-peak",
+      "clockAfter": "11:43",
+      "fps": 4.8,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 12,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d2": {
+      "screen": "390/d2-peak",
+      "clockAfter": "11:40",
+      "fps": 4.3,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 11,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "1440/d3": {
+      "screen": "1440/d3-peak",
+      "clockAfter": "11:43",
+      "fps": 4.6,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 8,
+      "tracked": 8,
+      "looks": 15,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d3": {
+      "screen": "390/d3-peak",
+      "clockAfter": "11:35",
+      "fps": 3.7,
+      "fpsMin": 3,
+      "sceneHook": true,
+      "people": 8,
+      "tracked": 8,
+      "looks": 12,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "1440/d4": {
+      "screen": "1440/d4-peak",
+      "clockAfter": "11:37",
+      "fps": 4.1,
+      "fpsMin": 4,
+      "sceneHook": true,
+      "people": 10,
+      "tracked": 10,
+      "looks": 14,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d4": {
+      "screen": "390/d4-peak",
+      "clockAfter": "12:08",
+      "fps": 8,
+      "fpsMin": 7,
+      "sceneHook": true,
+      "people": 11,
+      "tracked": 11,
+      "looks": 15,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "1440/d5": {
+      "screen": "1440/d5-peak",
+      "clockAfter": "11:32",
+      "fps": 3.3,
+      "fpsMin": 3,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 10,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d5": {
+      "screen": "390/d5-peak",
+      "clockAfter": "11:24",
+      "fps": 2.5,
+      "fpsMin": 2,
+      "sceneHook": true,
+      "people": 6,
+      "tracked": 6,
+      "looks": 9,
+      "stillOver5s": 2,
+      "stuckWalking": 0
+    },
+    "1440/d6": {
+      "screen": "1440/d6-peak",
+      "clockAfter": "11:31",
+      "fps": 3.2,
+      "fpsMin": 3,
+      "sceneHook": true,
+      "people": 7,
+      "tracked": 7,
+      "looks": 9,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d6": {
+      "screen": "390/d6-peak",
+      "clockAfter": "11:25",
+      "fps": 2.4,
+      "fpsMin": 2,
+      "sceneHook": true,
+      "people": 7,
+      "tracked": 7,
+      "looks": 8,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "1440/d7": {
+      "screen": "1440/d7-peak",
+      "clockAfter": "11:28",
+      "fps": 3,
+      "fpsMin": 3,
+      "sceneHook": true,
+      "people": 8,
+      "tracked": 8,
+      "looks": 11,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    },
+    "390/d7": {
+      "screen": "390/d7-peak",
+      "clockAfter": "11:55",
+      "fps": 6.4,
+      "fpsMin": 5,
+      "sceneHook": true,
+      "people": 10,
+      "tracked": 10,
+      "looks": 17,
+      "stillOver5s": 1,
+      "stuckWalking": 0
+    }
+  },
+  "blocked": {
+    "390/d2-suggest": {
+      "viewport": "390",
+      "day": 2,
+      "label": "suggest",
+      "file": "390/d2-blocked-suggest.jpg",
+      "covered": "<div class=\"foot-sum\">…</div> from <div class=\"panel-foot\">…</div> subtree intercepts pointer events"
+    },
+    "390/d5-suggest": {
+      "viewport": "390",
+      "day": 5,
+      "label": "suggest",
+      "file": "390/d5-blocked-suggest.jpg",
+      "covered": "<div class=\"foot-sum\">…</div> from <div class=\"panel-foot\">…</div> subtree intercepts pointer events"
+    },
+    "390/d7-suggest": {
+      "viewport": "390",
+      "day": 7,
+      "label": "suggest",
+      "file": "390/d7-blocked-suggest.jpg",
+      "covered": "<div class=\"foot-sum\">…</div> from <div class=\"panel-foot\">…</div> subtree intercepts pointer events"
+    }
+  },
+  "steps": [
+    {
+      "who": "390",
+      "name": "cold Main Menu",
+      "ms": 6630
+    },
+    {
+      "who": "1440",
+      "name": "cold Main Menu",
+      "ms": 6972
+    },
+    {
+      "who": "390",
+      "name": "Main Menu with the 3D scene",
+      "ms": 2088
+    },
+    {
+      "who": "1440",
+      "name": "Main Menu with the 3D scene",
+      "ms": 2025
+    },
+    {
+      "who": "390",
+      "name": "New Game on Normal",
+      "ms": 8805
+    },
+    {
+      "who": "1440",
+      "name": "New Game on Normal",
+      "ms": 10588
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel tasks",
+      "ms": 5567
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel tasks",
+      "ms": 5133
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel menu",
+      "ms": 4885
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel menu",
+      "ms": 7822
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel inventory",
+      "ms": 6694
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel inventory",
+      "ms": 7982
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel staff",
+      "ms": 6220
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel staff",
+      "ms": 5784
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel marketing",
+      "ms": 5432
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel marketing",
+      "ms": 5810
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel upgrades",
+      "ms": 6407
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel upgrades",
+      "ms": 5100
+    },
+    {
+      "who": "1440",
+      "name": "day 1 panel reviews",
+      "ms": 5798
+    },
+    {
+      "who": "390",
+      "name": "day 1 panel reviews",
+      "ms": 6498
+    },
+    {
+      "who": "1440",
+      "name": "day 1 restock and hire",
+      "ms": 21750
+    },
+    {
+      "who": "390",
+      "name": "day 1 restock and hire",
+      "ms": 25550
+    },
+    {
+      "who": "1440",
+      "name": "day 1 to the peak",
+      "ms": 31222
+    },
+    {
+      "who": "1440",
+      "name": "day 1 peak shot",
+      "ms": 512
+    },
+    {
+      "who": "390",
+      "name": "day 1 to the peak",
+      "ms": 32624
+    },
+    {
+      "who": "390",
+      "name": "day 1 peak shot",
+      "ms": 928
+    },
+    {
+      "who": "1440",
+      "name": "day 1 peak FPS",
+      "ms": 10175
+    },
+    {
+      "who": "1440",
+      "name": "day 1 queue",
+      "ms": 2426
+    },
+    {
+      "who": "390",
+      "name": "day 1 peak FPS",
+      "ms": 10044
+    },
+    {
+      "who": "390",
+      "name": "day 1 queue",
+      "ms": 1716
+    },
+    {
+      "who": "1440",
+      "name": "day 1 to the report",
+      "ms": 63856
+    },
+    {
+      "who": "1440",
+      "name": "day 1 report summary",
+      "ms": 3845
+    },
+    {
+      "who": "390",
+      "name": "day 1 to the report",
+      "ms": 64749
+    },
+    {
+      "who": "1440",
+      "name": "day 1 report insights",
+      "ms": 3834
+    },
+    {
+      "who": "390",
+      "name": "day 1 report summary",
+      "ms": 4953
+    },
+    {
+      "who": "1440",
+      "name": "day 1 report reviews",
+      "ms": 2590
+    },
+    {
+      "who": "390",
+      "name": "day 1 report insights",
+      "ms": 2530
+    },
+    {
+      "who": "390",
+      "name": "day 1 report reviews",
+      "ms": 2195
+    },
+    {
+      "who": "390",
+      "name": "day 2 load",
+      "ms": 8909
+    },
+    {
+      "who": "1440",
+      "name": "day 2 load",
+      "ms": 9972
+    },
+    {
+      "who": "390",
+      "name": "day 2 HUD and Việc",
+      "ms": 7234
+    },
+    {
+      "who": "1440",
+      "name": "day 2 HUD and Việc",
+      "ms": 6782
+    },
+    {
+      "who": "1440",
+      "name": "day 2 restock and hire",
+      "ms": 25442
+    },
+    {
+      "who": "390",
+      "name": "day 2 restock and hire",
+      "ms": 37787
+    },
+    {
+      "who": "1440",
+      "name": "day 2 to the peak",
+      "ms": 33208
+    },
+    {
+      "who": "1440",
+      "name": "day 2 peak shot",
+      "ms": 524
+    },
+    {
+      "who": "1440",
+      "name": "day 2 peak FPS",
+      "ms": 10114
+    },
+    {
+      "who": "390",
+      "name": "day 2 to the peak",
+      "ms": 38286
+    },
+    {
+      "who": "390",
+      "name": "day 2 peak shot",
+      "ms": 1141
+    },
+    {
+      "who": "1440",
+      "name": "day 3 load",
+      "ms": 4614
+    },
+    {
+      "who": "1440",
+      "name": "day 3 HUD and Việc",
+      "ms": 5642
+    },
+    {
+      "who": "390",
+      "name": "day 2 peak FPS",
+      "ms": 10163
+    },
+    {
+      "who": "390",
+      "name": "day 3 load",
+      "ms": 9310
+    },
+    {
+      "who": "390",
+      "name": "day 3 HUD and Việc",
+      "ms": 6688
+    },
+    {
+      "who": "1440",
+      "name": "day 3 restock and hire",
+      "ms": 21927
+    },
+    {
+      "who": "390",
+      "name": "day 3 restock and hire",
+      "ms": 19417
+    },
+    {
+      "who": "1440",
+      "name": "day 3 to the peak",
+      "ms": 34208
+    },
+    {
+      "who": "1440",
+      "name": "day 3 peak shot",
+      "ms": 484
+    },
+    {
+      "who": "1440",
+      "name": "day 3 peak FPS",
+      "ms": 10204
+    },
+    {
+      "who": "1440",
+      "name": "day 4 load",
+      "ms": 7790
+    },
+    {
+      "who": "1440",
+      "name": "day 4 HUD and Việc",
+      "ms": 4987
+    },
+    {
+      "who": "390",
+      "name": "day 3 to the peak",
+      "ms": 45276
+    },
+    {
+      "who": "390",
+      "name": "day 3 peak shot",
+      "ms": 1103
+    },
+    {
+      "who": "390",
+      "name": "day 3 peak FPS",
+      "ms": 10128
+    },
+    {
+      "who": "1440",
+      "name": "day 4 restock and hire",
+      "ms": 29149
+    },
+    {
+      "who": "390",
+      "name": "day 4 load",
+      "ms": 14174
+    },
+    {
+      "who": "390",
+      "name": "day 4 HUD and Việc",
+      "ms": 7096
+    },
+    {
+      "who": "390",
+      "name": "day 4 restock and hire",
+      "ms": 16985
+    },
+    {
+      "who": "1440",
+      "name": "day 4 to the peak",
+      "ms": 37221
+    },
+    {
+      "who": "1440",
+      "name": "day 4 peak shot",
+      "ms": 666
+    },
+    {
+      "who": "1440",
+      "name": "day 4 peak FPS",
+      "ms": 10334
+    },
+    {
+      "who": "390",
+      "name": "day 4 to the peak",
+      "ms": 38726
+    },
+    {
+      "who": "390",
+      "name": "day 4 peak shot",
+      "ms": 647
+    },
+    {
+      "who": "390",
+      "name": "day 4 peak FPS",
+      "ms": 10083
+    },
+    {
+      "who": "1440",
+      "name": "week end",
+      "ms": 4180
+    },
+    {
+      "who": "1440",
+      "name": "week end",
+      "ms": 4180
+    },
+    {
+      "who": "390",
+      "name": "week end",
+      "ms": 2661
+    },
+    {
+      "who": "sim",
+      "name": "week saves",
+      "ms": 305
+    },
+    {
+      "who": "390",
+      "name": "day 5 load",
+      "ms": 10118
+    },
+    {
+      "who": "1440",
+      "name": "day 5 load",
+      "ms": 12141
+    },
+    {
+      "who": "390",
+      "name": "day 5 HUD and Việc",
+      "ms": 8134
+    },
+    {
+      "who": "1440",
+      "name": "day 5 HUD and Việc",
+      "ms": 7062
+    },
+    {
+      "who": "1440",
+      "name": "day 5 restock and hire",
+      "ms": 35338
+    },
+    {
+      "who": "390",
+      "name": "day 5 restock and hire",
+      "ms": 49646
+    },
+    {
+      "who": "1440",
+      "name": "day 5 to the peak",
+      "ms": 37264
+    },
+    {
+      "who": "1440",
+      "name": "day 5 peak shot",
+      "ms": 817
+    },
+    {
+      "who": "1440",
+      "name": "day 5 peak FPS",
+      "ms": 10105
+    },
+    {
+      "who": "390",
+      "name": "day 5 to the peak",
+      "ms": 43566
+    },
+    {
+      "who": "390",
+      "name": "day 5 peak shot",
+      "ms": 1088
+    },
+    {
+      "who": "1440",
+      "name": "day 6 load",
+      "ms": 11042
+    },
+    {
+      "who": "390",
+      "name": "day 5 peak FPS",
+      "ms": 10089
+    },
+    {
+      "who": "1440",
+      "name": "day 6 HUD and Việc",
+      "ms": 13427
+    },
+    {
+      "who": "390",
+      "name": "day 6 load",
+      "ms": 14975
+    },
+    {
+      "who": "390",
+      "name": "day 6 HUD and Việc",
+      "ms": 13873
+    },
+    {
+      "who": "1440",
+      "name": "day 6 restock and hire",
+      "ms": 40594
+    },
+    {
+      "who": "390",
+      "name": "day 6 restock and hire",
+      "ms": 38235
+    },
+    {
+      "who": "1440",
+      "name": "day 6 to the peak",
+      "ms": 41071
+    },
+    {
+      "who": "1440",
+      "name": "day 6 peak shot",
+      "ms": 831
+    },
+    {
+      "who": "1440",
+      "name": "day 6 peak FPS",
+      "ms": 10212
+    },
+    {
+      "who": "1440",
+      "name": "day 7 load",
+      "ms": 10439
+    },
+    {
+      "who": "390",
+      "name": "day 6 to the peak",
+      "ms": 49673
+    },
+    {
+      "who": "390",
+      "name": "day 6 peak shot",
+      "ms": 1778
+    },
+    {
+      "who": "1440",
+      "name": "day 7 HUD and Việc",
+      "ms": 8746
+    },
+    {
+      "who": "390",
+      "name": "day 6 peak FPS",
+      "ms": 10487
+    },
+    {
+      "who": "390",
+      "name": "day 7 load",
+      "ms": 18456
+    },
+    {
+      "who": "390",
+      "name": "day 7 HUD and Việc",
+      "ms": 13951
+    },
+    {
+      "who": "1440",
+      "name": "day 7 restock and hire",
+      "ms": 41141
+    },
+    {
+      "who": "390",
+      "name": "day 7 restock and hire",
+      "ms": 36382
+    },
+    {
+      "who": "1440",
+      "name": "day 7 to the peak",
+      "ms": 48303
+    },
+    {
+      "who": "1440",
+      "name": "day 7 peak shot",
+      "ms": 696
+    },
+    {
+      "who": "1440",
+      "name": "day 7 peak FPS",
+      "ms": 10628
+    },
+    {
+      "who": "1440",
+      "name": "day 7 report",
+      "ms": 14218
+    },
+    {
+      "who": "1440",
+      "name": "week end",
+      "ms": 4180
+    },
+    {
+      "who": "390",
+      "name": "day 7 to the peak",
+      "ms": 53400
+    },
+    {
+      "who": "390",
+      "name": "day 7 peak shot",
+      "ms": 876
+    },
+    {
+      "who": "390",
+      "name": "day 7 peak FPS",
+      "ms": 10124
+    },
+    {
+      "who": "390",
+      "name": "day 7 report",
+      "ms": 8808
+    },
+    {
+      "who": "390",
+      "name": "week end",
+      "ms": 2661
+    }
+  ],
+  "error": null,
+  "runs": [
+    {
+      "days": [
+        1
+      ],
+      "viewports": [
+        "390",
+        "1440"
+      ],
+      "commit": "4e2b3a3",
+      "quality": "medium",
+      "parallel": true,
+      "error": null
+    },
+    {
+      "days": [
+        2,
+        3,
+        4
+      ],
+      "viewports": [
+        "390",
+        "1440"
+      ],
+      "commit": "f3e8b3a",
+      "quality": "medium",
+      "parallel": true,
+      "error": null
+    },
+    {
+      "days": [
+        5,
+        6,
+        7
+      ],
+      "viewports": [
+        "390",
+        "1440"
+      ],
+      "commit": "f3e8b3a",
+      "quality": "medium",
+      "parallel": true,
+      "error": null
+    }
+  ]
+}
