@@ -39,11 +39,14 @@
   color: var(--text-primary);
 }
 /* A panel with a foot: the body drops its side and bottom padding so the foot
-   runs edge to edge and sits on the bottom border, sticky while the rest scrolls. */
+   runs edge to edge and sits on the bottom border, sticky while the rest scrolls.
+   The body is a size container so a short body (below) can drop the sticking. */
 .panel-body:has(> .prep > .panel-foot) {
   display: flex;
   flex-direction: column;
   padding: var(--space-4) 0 0;
+  container-type: size;
+  container-name: panel-body;
 }
 .panel-body > .prep:has(> .panel-foot) {
   flex: 1 0 auto;
@@ -66,6 +69,15 @@
   gap: var(--space-2);
   background: var(--surface-sunken);
   border-top: var(--size-outline) solid var(--border-outline);
+}
+/* Short body (phone at 390, a HUD on four rows): the Kho foot is ~190px of a
+   ~210-270px body, so sticking it would cover Auto-restock and the list
+   (P22 review layout-blocked-suggest-390). It scrolls with the list instead,
+   still last and still on the bottom border when the list is short. */
+@container panel-body (max-height: 30rem) {
+  .prep .panel-foot {
+    position: static;
+  }
 }
 .foot-sum {
   display: flex;

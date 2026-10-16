@@ -188,12 +188,16 @@ function footBoxes(page) {
     const foot = body?.querySelector('.prep > .panel-foot');
     const list = body?.querySelector('.prep > .stack');
     if (!foot || !list) return null;
+    // A short body does not stick the foot (panels.css @container), so it
+    // scrolls with the list: read it, like the list, in content coordinates.
+    const scroll = getComputedStyle(foot).position === 'sticky' ? 0 : body.scrollTop;
     const box = (el) => {
       const r = el.getBoundingClientRect();
-      return [r.top, r.height, r.left, r.width].map((v) => Math.round(v * 10) / 10);
+      return [r.top + scroll, r.height, r.left, r.width].map((v) => Math.round(v * 10) / 10);
     };
-    const [top, , left] = box(list);
-    return { foot: box(foot), rows: [...foot.children].map(box), list: [Math.round((top + body.scrollTop) * 10) / 10, left] };
+    const r = list.getBoundingClientRect();
+    const at = (v) => Math.round(v * 10) / 10;
+    return { foot: box(foot), rows: [...foot.children].map(box), list: [at(r.top + body.scrollTop), at(r.left)] };
   });
 }
 
