@@ -215,6 +215,7 @@ describe('atlas loading order', () => {
     const start = MAIN_TS.indexOf('function start(');
     const world = MAIN_TS.indexOf("performance.mark('cst:world')");
     expect(MAIN_TS.match(/watchIconAtlas\(\)/g)).toHaveLength(1);
+    expect(MAIN_TS).toContain("const worldModule = afterPaint().then(() => import('./render/scene'));");
     expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeGreaterThan(start);
     expect(MAIN_TS).toMatch(/const loadIcons = \(\): void => watchIconAtlas\(\);\s*void worldModule\.then\(loadIcons, loadIcons\);/);
     expect(MAIN_TS.indexOf('enableHdIcons()')).toBeGreaterThan(world);

@@ -83,8 +83,9 @@ async function retryWorldModule(): Promise<WorldModule> {
 }
 
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
-  // three.js and the 3D world load as a separate chunk while the menu comes up.
-  const worldModule = import('./render/scene');
+  // three.js and the 3D world load as a separate chunk, asked for once the
+  // menu has painted so its parse never lands in the menu's first frame.
+  const worldModule = afterPaint().then(() => import('./render/scene'));
   // Menu icons use the small @1x atlas, fetched only once the scene chunk is
   // in so it does not share the network with three.js; the boxes show
   // placeholder tiles until then. The @2x one waits for the scene itself.
