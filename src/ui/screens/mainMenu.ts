@@ -3,6 +3,7 @@ import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
 import { icon } from '../core/icons';
+import { SceneGate } from '../core/sceneGate';
 import { screenLayer, type Screen } from '../core/screens';
 
 /** Cup mascot from design/t237-cartoon (#mascot); the #boot screen in index.html draws the same cup. */
@@ -47,18 +48,24 @@ export function latestSave(slots: readonly SlotInfo[]): SlotInfo | null {
  * "Tải game" stays visible but aria-disabled with a reason when no slot holds
  * anything. ↑ ↓ move between the buttons.
  */
-export function createMainMenu(storage: StorageLike, actions: MainMenuActions): Screen {
+export function createMainMenu(storage: StorageLike, actions: MainMenuActions, scene: SceneGate = new SceneGate()): Screen {
   const reasonId = uid('r-noload');
   let continueSlot: SaveSlot | null = null;
 
   const continueDetail = h('span', { class: 'btn-sm-text' });
   const continueBtn = h(
     'button',
-    { class: 'btn btn-primary btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => continueSlot && actions.onContinue(continueSlot) } },
+    {
+      class: 'btn btn-primary btn-lg btn-block',
+      attrs: { type: 'button' },
+      on: { click: () => continueSlot && !isAriaDisabled(continueBtn) && actions.onContinue(continueSlot) },
+    },
     icon('i-speed-1'),
     'Tiếp tục',
     continueDetail,
   );
+  // Continuing drops straight into the shop, so it waits for the 3D scene.
+  scene.bind(continueBtn);
   const newBtn = h('button', { class: 'btn btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => actions.onNewGame() } }, icon('i-sparkle'), 'Ván mới');
   const loadBtn = h(
     'button',
@@ -98,6 +105,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions): 
       h('div', {}, h('h1', { class: 'logo-title', text: 'Coffee Shop Tycoon 3D' }), h('p', { class: 'card-sub', text: 'Mở quán cà phê từ con số 0' })),
     ),
     list,
+    scene.statusLine(),
     h(
       'div',
       { class: 'menu-foot' },

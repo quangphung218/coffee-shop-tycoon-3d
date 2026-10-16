@@ -7,6 +7,7 @@ import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
+import { SceneGate } from '../core/sceneGate';
 import { ScreenManager } from '../core/screens';
 import { trackScrollActivity } from '../core/scrollActivity';
 import { Toasts } from '../core/toast';
@@ -40,6 +41,8 @@ export interface ShellOptions {
   seed?(): number;
   /** "Chơi lại" on the week-end screen, called with the finished game before the new one starts. */
   onReplay?(finished: GameState): void;
+  /** Loading state of the 3D scene; the buttons that enter the shop wait for it. Always ready when omitted. */
+  scene?: SceneGate;
 }
 
 export interface Shell {
@@ -81,6 +84,7 @@ export function createShell(options: ShellOptions): Shell {
   let state: GameState | null = null;
   let settingsReturn: ShellScreen = 'menu';
   const root = options.root;
+  const scene = options.scene ?? new SceneGate();
 
   const screens = new ScreenManager<ShellScreen>(root);
   const toasts = new Toasts();
@@ -224,21 +228,21 @@ export function createShell(options: ShellOptions): Shell {
       onNewGame: () => screens.show('newGame'),
       onLoad: () => screens.show('load'),
       onSettings: () => openSettings(),
-    }),
+    }, scene),
   );
   screens.add(
     'newGame',
     createNewGame({
       onStart: (name, difficulty) => startGame(createGameState(name, difficulty, options.seed?.() ?? (Date.now() >>> 0))),
       onBack: () => screens.show('menu'),
-    }),
+    }, scene),
   );
   screens.add(
     'load',
     createLoadGame(storage, {
       onLoaded: (loaded) => startGame(loaded),
       onBack: () => screens.show('menu'),
-    }),
+    }, scene),
   );
   const settingsScreen: SettingsScreen = createSettings(storage, settings, {
     onChange: (next) => {

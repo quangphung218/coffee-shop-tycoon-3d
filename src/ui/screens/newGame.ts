@@ -1,8 +1,9 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import type { Difficulty } from '../../sim/types';
-import { h, uid } from '../core/dom';
+import { h, isAriaDisabled, uid } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { icon, type IconId } from '../core/icons';
+import { SceneGate } from '../core/sceneGate';
 import { screenLayer, type Screen } from '../core/screens';
 
 export const SHOP_NAME_MIN = 1;
@@ -28,7 +29,7 @@ export interface NewGameActions {
 }
 
 /** New Game form: shop name with inline validation, Easy/Normal/Hard with starting money. */
-export function createNewGame(actions: NewGameActions): Screen {
+export function createNewGame(actions: NewGameActions, scene: SceneGate = new SceneGate()): Screen {
   const inputId = uid('shop-name');
   const hintId = uid('shop-hint');
   const countId = uid('shop-count');
@@ -113,6 +114,10 @@ export function createNewGame(actions: NewGameActions): Screen {
     if (input.value.length > 0) setError(validateShopName(input.value));
   });
 
+  const startBtn = h('button', { class: 'btn btn-primary', attrs: { type: 'submit' } }, 'Bắt đầu ngày 1', icon('i-forward'));
+  // Starting drops straight into the shop, so it waits for the 3D scene.
+  scene.bind(startBtn);
+
   const form = h(
     'form',
     { class: 'card w-form', attrs: { 'aria-labelledby': titleId, novalidate: true } },
@@ -125,15 +130,18 @@ export function createNewGame(actions: NewGameActions): Screen {
       field,
       h('fieldset', {}, h('legend', { text: 'Độ khó' }), h('div', { class: 'choice-grid' }, ...choices)),
     ),
+    scene.statusLine(),
     h(
       'div',
       { class: 'foot' },
       h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, icon('i-back'), 'Quay lại'),
-      h('button', { class: 'btn btn-primary', attrs: { type: 'submit' } }, 'Bắt đầu ngày 1', icon('i-forward')),
+      startBtn,
     ),
   );
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    // Enter in the name field submits too; the shop opens once the scene is ready.
+    if (isAriaDisabled(startBtn)) return;
     const error = validateShopName(input.value);
     setError(error);
     if (error) {

@@ -34,8 +34,11 @@
         pointer-events: auto;
       }
       /* Loading screen: plain CSS + inline SVG, painted before any JS or font
-         arrives; main.ts fades it out. Colours are the hex values of
-         src/ui/styles/tokens.css (cream 100/50, ink, honey 400, coffee 700, berry 400). */
+         arrives (the build moves the stylesheet below it); main.ts fades it
+         out. The script under #boot fills the bar from the files really
+         loaded. Colours are the hex values of src/ui/styles/tokens.css
+         (cream 100/50/200, ink, honey 400, coffee 700, berry 400, warning
+         700, danger 700, neutral 700). */
       #boot {
         position: fixed;
         inset: 0;
@@ -44,6 +47,7 @@
         place-items: center;
         background: #f6e7d2;
         color: #3a2216;
+        font-family: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         transition: opacity 0.3s ease;
       }
       #boot.is-done {
@@ -93,34 +97,71 @@
         box-shadow: 0 4px 0 0 #3a2216;
         overflow: hidden;
       }
+      /* --boot-p (0–1) is set by the boot script as files arrive. */
       .boot-bar > span {
         display: block;
         height: 100%;
-        width: 90%;
-        border-right: 3px solid #3a2216;
         border-radius: inherit;
         background: #ffc145;
         transform-origin: left;
-        animation: boot-fill 8s cubic-bezier(0.1, 0.7, 0.2, 1) both;
+        transform: scaleX(max(0.04, var(--boot-p, 0)));
+        transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
       }
       #boot.is-done .boot-bar > span {
-        animation: none;
-        width: 100%;
-        border-right: 0;
+        transform: none;
       }
-      .boot-text {
+      .boot-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
         margin: 12px 0 0;
         font-size: 14px;
         font-weight: 700;
         color: #6e4f3c;
       }
-      @keyframes boot-fill {
-        from {
-          transform: scaleX(0.05);
-        }
-        to {
-          transform: scaleX(1);
-        }
+      .boot-pct {
+        font-variant-numeric: tabular-nums;
+      }
+      #boot.is-slow .boot-text {
+        color: #7a4a00;
+      }
+      .boot-tip {
+        min-height: 2.5em;
+        margin: 16px 0 0;
+        font-size: 14px;
+        line-height: 1.25;
+        color: #6e4f3c;
+      }
+      .boot-retry {
+        margin-top: 16px;
+        min-height: 44px;
+        padding: 0 24px;
+        border: 3px solid #3a2216;
+        border-radius: 12px;
+        background: #ffc145;
+        color: #3a2216;
+        box-shadow: 0 4px 0 0 #3a2216;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .boot-retry:focus-visible {
+        outline: none;
+        border-color: #7a3000;
+        box-shadow:
+          inset 0 0 0 3px #7a3000,
+          0 4px 0 0 #3a2216;
+      }
+      #boot.is-failed .boot-text {
+        color: #b3261e;
+      }
+      #boot.is-failed .boot-bar,
+      #boot.is-failed .boot-pct,
+      #boot.is-failed .boot-tip {
+        display: none;
+      }
+      #boot [hidden] {
+        display: none;
       }
       /* Small hop with a squash on landing. */
       @keyframes boot-bob {
@@ -151,6 +192,7 @@
         .boot-steam,
         .boot-bar > span {
           animation: none;
+          transition: none;
         }
       }
     </style>
@@ -173,9 +215,91 @@
         </svg>
         <p class="boot-title">Coffee Shop Tycoon 3D</p>
         <div class="boot-bar" aria-hidden="true"><span></span></div>
-        <p class="boot-text">Đang mở quán…</p>
+        <p class="boot-row"><span class="boot-text">Đang mở quán…</span><span class="boot-pct" aria-hidden="true"></span></p>
+        <p class="boot-tip"></p>
+        <button class="boot-retry" type="button" hidden>Thử lại</button>
       </div>
     </div>
+    <script>
+      // Boot progress from the files the page really loads, no timer. The
+      // build replaces the empty lists (vite.config.ts): window.__cstAssets
+      // holds [file, bytes] for the Main Menu (boot) and the 3D scene (scene,
+      // read by src/ui/core/loadProgress.ts); the tips come from
+      // src/ui/core/tips.ts. A failed script or stylesheet shows "Thử lại".
+      (function () {
+        var assets = (window.__cstAssets = /*CST_ASSETS*/ { boot: [], scene: [] });
+        var tips = /*CST_TIPS*/ [];
+        var boot = document.getElementById('boot');
+        var text = boot.querySelector('.boot-text');
+        var pct = boot.querySelector('.boot-pct');
+        var retry = boot.querySelector('.boot-retry');
+        var failed = false;
+        var tip = Math.floor(Math.random() * tips.length) || 0;
+        window.__cstTip = tip;
+        if (tips.length) boot.querySelector('.boot-tip').textContent = 'Mẹo: ' + tips[tip];
+
+        var total = 0;
+        var got = 0;
+        var done = {};
+        assets.boot.forEach(function (f) {
+          total += f[1];
+        });
+        function show() {
+          var p = total ? got / total : 0;
+          boot.style.setProperty('--boot-p', String(p));
+          if (total) pct.textContent = Math.round(p * 100) + '%';
+        }
+        if (total && window.PerformanceObserver) {
+          try {
+            new PerformanceObserver(function (list) {
+              list.getEntries().forEach(function (e) {
+                var path = e.name.split(/[?#]/)[0];
+                assets.boot.forEach(function (f) {
+                  if (!done[f[0]] && path.slice(-f[0].length - 1) === '/' + f[0]) {
+                    done[f[0]] = true;
+                    got += f[1];
+                  }
+                });
+              });
+              show();
+            }).observe({ type: 'resource', buffered: true });
+          } catch (e) {}
+        }
+        show();
+
+        // Once the menu is up (is-done) the menu's own loading line takes over.
+        function gone() {
+          return !boot.isConnected || boot.classList.contains('is-done');
+        }
+        function fail() {
+          if (failed || gone()) return;
+          failed = true;
+          boot.classList.add('is-failed');
+          text.textContent = 'Không tải được game. Kiểm tra mạng rồi bấm Thử lại.';
+          retry.hidden = false;
+          retry.focus();
+        }
+        retry.addEventListener('click', function () {
+          location.reload();
+        });
+        // Resource errors do not bubble; catch them on the way down.
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e.target;
+            var file = t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK');
+            var ours = e.filename && e.filename.indexOf(location.origin) === 0;
+            if (file || ours) fail();
+          },
+          true,
+        );
+        setTimeout(function () {
+          if (failed || gone()) return;
+          boot.classList.add('is-slow');
+          text.textContent = 'Mạng đang chậm, game vẫn đang tải…';
+        }, 5000);
+      })();
+    </script>
     <canvas id="scene"></canvas>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>

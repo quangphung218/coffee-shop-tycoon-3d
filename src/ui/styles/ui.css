@@ -318,6 +318,82 @@ kbd {
   flex-direction: column;
   gap: var(--space-3);
 }
+/* 3D scene loading (src/ui/core/sceneGate.ts): a line under the menu, New
+   Game and Load cards, and the play buttons filling with the real progress. */
+.scene-load {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+.scene-load-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+.scene-load.is-slow .scene-load-msg {
+  color: var(--text-warning);
+}
+.scene-load.is-failed .scene-load-msg {
+  color: var(--text-danger);
+}
+.scene-load-pct {
+  font-variant-numeric: tabular-nums;
+}
+.scene-load-bar {
+  height: 12px;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--data-track);
+  overflow: hidden;
+}
+.scene-load-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--data-bar);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform var(--duration-slow) var(--easing-out);
+}
+.scene-load-tip {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+.scene-load > .btn {
+  justify-self: start;
+}
+.btn.is-preparing {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.btn.is-preparing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--data-bar);
+  opacity: 0.55;
+  transform-origin: left;
+  transform: scaleX(var(--prep, 0));
+  transition: transform var(--duration-slow) var(--easing-out);
+}
+.btn.is-failed::before {
+  display: none;
+}
+.btn-prep {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.btn-sm-text + .btn-prep {
+  margin-left: var(--space-2);
+}
 .menu-foot {
   margin-top: var(--space-6);
   font-size: var(--font-size-sm);
