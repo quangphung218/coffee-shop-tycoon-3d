@@ -492,6 +492,31 @@ export interface WeekState {
   startedDay: number;
   /** Weather and event of each week day, rolled from the seed (rollWeekPlan). */
   plan: DayPlan[];
+  /** What the week is scored against (WEEK_GOALS by difficulty). */
+  goal: WeekGoal;
+  /** Score of the finished week; set when week day 7 closes, after which next_day is refused. */
+  result?: WeekResult;
+}
+
+/** Targets of a week: total revenue over its 7 days and the rating at the end. */
+export interface WeekGoal {
+  revenue: number;
+  stars: number;
+}
+
+/** End-of-week scoring (scoreWeek in src/sim/week.ts). */
+export interface WeekResult {
+  revenue: number;
+  revenueTarget: number;
+  /** Shop rating at the end of week day 7. */
+  stars: number;
+  starsTarget: number;
+  /** 0..100: 60 for the revenue share of the target, 40 for the stars share. */
+  score: number;
+  /** 0..3 cups from the score. */
+  cups: number;
+  /** One row per week day, day 1 first (`day` is the week day). */
+  days: { day: number; revenue: number; customersServed: number; weather: Weather; event: DayEventId }[];
 }
 
 /** Trade-off decisions the player sets (effects in src/sim/policies.ts). */
@@ -602,4 +627,6 @@ export type GameEvent =
   /** A new day of the week opened what the calendar lists for it (`day` is the week day). */
   | { type: 'week_unlocks'; day: number; unlocks: Unlocks }
   /** The daily report is in `state.lastReport`; the UI autosaves on this. */
-  | { type: 'dayEnded'; day: number };
+  | { type: 'dayEnded'; day: number }
+  /** Week day 7 closed; the score is also in `state.week.result`. Comes after 'dayEnded'. */
+  | { type: 'week_ended'; result: WeekResult };

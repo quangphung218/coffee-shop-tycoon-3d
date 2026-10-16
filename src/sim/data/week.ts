@@ -1,8 +1,19 @@
-import type { DayEventId, MenuItemId, Unlocks, UpgradeId } from '../types';
+import type { DayEventId, Difficulty, MenuItemId, Unlocks, UpgradeId, WeekGoal } from '../types';
 import { levelDef } from './levels';
 
 /** Days in a week of play. */
 export const WEEK_LENGTH = 7;
+
+/**
+ * Week targets by difficulty. Revenue is set so the basic strategy (restock
+ * as suggested, serve alone) reaches about 70–90% of it; how it was measured
+ * is in docs/spec/week-7-days.md.
+ */
+export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
+  easy: { revenue: 28_000_000, stars: 3.8 },
+  normal: { revenue: 26_500_000, stars: 4 },
+  hard: { revenue: 23_000_000, stars: 4.2 },
+};
 
 export interface WeekUnlockDay {
   /** Day of the week, 1..WEEK_LENGTH. */

@@ -1,8 +1,8 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, WEEK_LENGTH } from './data/week';
+import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH } from './data/week';
 import { weekDay } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
-import type { DayEventId, DayPlan, GameState } from './types';
+import type { DayEventId, DayPlan, GameState, WeekResult } from './types';
 
 /** Draw weights of the events on days 2..WEEK_LENGTH; the grand opening is day 1 only. */
 const EVENT_WEIGHTS: Readonly<Record<Exclude<DayEventId, 'grand_opening'>, number>> = {
@@ -97,6 +97,72 @@ export function todayPlan(state: GameState): DayPlan | null {
 export function dayArrivalMult(state: GameState): number {
   const plan = todayPlan(state);
   return plan ? DAY_EVENTS[plan.event].arrivalMult : 1;
+}
+
+/** Score points for reaching the revenue target and the stars target. */
+export const SCORE_REVENUE = 60;
+export const SCORE_STARS = 40;
+
+/** Lowest score for each cup count, most cups first. */
+const CUP_THRESHOLDS: readonly (readonly [number, number])[] = [
+  [90, 3],
+  [70, 2],
+  [40, 1],
+];
+
+/** Score 0..100 of a week from its revenue and stars against the targets. */
+export function weekScore(revenue: number, revenueTarget: number, stars: number, starsTarget: number): number {
+  const share = (value: number, target: number) => (target > 0 ? Math.min(1, Math.max(0, value) / target) : 1);
+  return Math.round(SCORE_REVENUE * share(revenue, revenueTarget) + SCORE_STARS * share(stars, starsTarget));
+}
+
+/** Cups 0..3 for a week score. */
+export function weekCups(score: number): number {
+  return CUP_THRESHOLDS.find(([min]) => score >= min)?.[1] ?? 0;
+}
+
+/** True when today is the last day of the week. */
+export function isLastWeekDay(state: GameState): boolean {
+  return state.week !== undefined && weekDay(state) === state.week.length;
+}
+
+/**
+ * Scores the week from today's and the earlier week days' stats: revenue is
+ * the sum over the week, stars the current rating. Call once today's day is
+ * settled. Null when the game has no week.
+ */
+export function scoreWeek(state: GameState): WeekResult | null {
+  const week = state.week;
+  if (!week) return null;
+  // Saves made before goals existed fall back to the difficulty's targets.
+  const goal = week.goal ?? WEEK_GOALS[state.difficulty];
+  const lastDay = week.startedDay + week.length - 1;
+  const stats = [...state.history, state.today].filter(
+    (d) => d.day >= week.startedDay && d.day <= lastDay,
+  );
+  const days = stats.map((d) => {
+    const day = d.day - week.startedDay + 1;
+    const plan = week.plan.find((p) => p.day === day);
+    return {
+      day,
+      revenue: d.revenue,
+      customersServed: d.customersServed,
+      weather: plan?.weather ?? (d === state.today ? state.weather : 'sunny'),
+      event: plan?.event ?? 'none',
+    };
+  });
+  const revenue = days.reduce((s, d) => s + d.revenue, 0);
+  const stars = state.rating;
+  const score = weekScore(revenue, goal.revenue, stars, goal.stars);
+  return {
+    revenue,
+    revenueTarget: goal.revenue,
+    stars,
+    starsTarget: goal.stars,
+    score,
+    cups: weekCups(score),
+    days,
+  };
 }
 
 /** Today's event multiplier on ingredient prices; 1 without a plan. */
