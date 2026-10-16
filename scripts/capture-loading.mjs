@@ -45,7 +45,17 @@ async function phonePage(browser) {
 }
 
 async function shot(page, name) {
-  await page.screenshot({ path: join(OUT, name) });
+  // Headless Chrome now and then answers "Unable to capture screenshot" while the page is busy; try again.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.screenshot({ path: join(OUT, name) });
+      break;
+    } catch (err) {
+      if (attempt >= 3) throw err;
+      progress(`${name}: ${err.message.split('\n')[0]}, retrying`);
+      await sleep(1000);
+    }
+  }
   progress(`wrote docs/media/${name}`);
 }
 
