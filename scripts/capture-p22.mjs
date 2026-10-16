@@ -69,6 +69,10 @@ const SIDE_YAWS = [1.25, -1.25];
 const MIN_SEEN = 0.3;
 /** Most difference (rad) between the two arms' swing for arms that count as crossed (animations.ts impatient: both -0.75). */
 const CROSSED_DIFF = 0.15;
+/** Most forward swing (rad) of an arm that counts as hanging down (v0.4.0 impatient rests the left at -0.3). */
+const ARM_DOWN = 0.5;
+const crossed = (s) => Math.abs(s.angles.armLX - s.angles.armRX) < CROSSED_DIFF;
+const armsDown = (s) => -s.angles.armLX < ARM_DOWN && -s.angles.armRX < ARM_DOWN;
 /** Least head-to-camera cosine for a face that counts as turned to the camera. */
 const MIN_FACING = 0.6;
 const HIDE_TOASTS = '.toasts { display: none !important; }';
@@ -842,8 +846,8 @@ async function fixedBoards(browser, fixed, { kho, actors }) {
           const s = f.shot.subject;
           const label =
             f.side === 'before'
-              ? `Tay buông (phải ${lift(s, 'R')}°, trái ${lift(s, 'L')}°): chỉ nhịp chân (${deg(s.angles.legR)}° lúc chụp)`
-              : `${Math.abs(s.angles.armLX - s.angles.armRX) < CROSSED_DIFF ? 'Khoanh tay' : 'Đang mở tay trái xem đồng hồ'}: tay phải ${lift(s, 'R')}°, tay trái ${lift(s, 'L')}°, nhịp chân ${deg(s.angles.legR)}° lúc chụp`;
+              ? `${armsDown(s) ? 'Tay buông' : 'Không khoanh tay, tay trái nâng xem đồng hồ'} (phải ${lift(s, 'R')}°, trái ${lift(s, 'L')}°): nhịp chân ${deg(s.angles.legR)}° lúc chụp`
+              : `${crossed(s) ? 'Khoanh tay' : 'Đang mở tay trái xem đồng hồ'}: tay phải ${lift(s, 'R')}°, tay trái ${lift(s, 'L')}°, nhịp chân ${deg(s.angles.legR)}° lúc chụp`;
           return { ...f, marks: [{ boxes: [grow(s.arms, 4)], label }] };
         }),
         ['Giờ cao điểm sáng ngày 2, cùng ván và seed: khách đứng chờ có mặt sốt ruột (lông mày nhíu). v0.4.0 chỉ nhịp chân tối đa 20° và liếc đồng hồ; P22 khoanh tay, nhịp chân tối đa 29°, mở tay xem đồng hồ mỗi vòng.'],
@@ -871,8 +875,8 @@ function actorWants(sim, after) {
   const wants = [
     { key: 'office', arg: { ...base, want: 'persona', persona: 'office', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) && s.handsSeen[1] >= MIN_SEEN },
     { key: 'student', arg: { ...base, want: 'persona', persona: 'student', yaws: SIDE_YAWS }, accept: (s) => s.handsSeen.some((v) => v >= MIN_SEEN) },
-    // P22 only while the arms are crossed, not in the part of the loop that uncrosses one to check the watch.
-    { key: 'impatient', arg: { ...base, want: 'impatient', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) && (!after || Math.abs(s.angles.armLX - s.angles.armRX) < CROSSED_DIFF) },
+    // Outside the watch check of the loop: P22 with the arms crossed, v0.4.0 with both arms down.
+    { key: 'impatient', arg: { ...base, want: 'impatient', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) && (after ? crossed(s) : armsDown(s)) },
   ];
   if (after) {
     wants.push(
