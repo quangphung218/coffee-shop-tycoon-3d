@@ -58,7 +58,13 @@ const KINDS: readonly PlayLogKind[] = [
   'replay',
 ];
 const PHASES: readonly PlayLogPhase[] = ['preparation', 'opening', 'peak', 'closing', 'report', 'menu', 'week_end'];
-const MAX_RUN_LENGTH = 64;
+/** Run ids are UUIDs or base36; anything else (a shop name, say) drops the line. */
+const RUN_ID = /^[a-z0-9-]{1,40}$/i;
+
+/** Outcome of reading the log: entries, or why storage could not be read. */
+export type PlayLogStatus =
+  | { ok: true; entries: PlayLogEntry[] }
+  | { ok: false; reason: 'blocked' | 'corrupt' };
 
 function num(v: unknown): number | null {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -70,7 +76,7 @@ export function sanitizePlayLogEntry(raw: unknown, now?: number): PlayLogEntry |
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const run = typeof r.run === 'string' ? r.run.trim() : '';
-  if (run === '' || run.length > MAX_RUN_LENGTH) return null;
+  if (!RUN_ID.test(run)) return null;
   if (!KINDS.includes(r.kind as PlayLogKind)) return null;
   if (!PHASES.includes(r.phase as PlayLogPhase)) return null;
   const day = num(r.day);
@@ -88,24 +94,38 @@ export function sanitizePlayLogEntry(raw: unknown, now?: number): PlayLogEntry |
   };
 }
 
-/** Never throws; missing or broken data yields an empty log. */
-export function readPlayLog(storage: StorageLike = defaultStorage()): PlayLogEntry[] {
+/**
+ * Never throws. A missing log is an empty one; storage that refuses to be read
+ * is 'blocked', text that is not a log is 'corrupt'.
+ */
+export function readPlayLogStatus(storage: StorageLike = defaultStorage()): PlayLogStatus {
+  let text: string | null;
   try {
-    const text = storage.getItem(PLAYLOG_KEY);
-    if (text === null) return [];
-    const data = JSON.parse(text) as unknown;
-    if (typeof data !== 'object' || data === null) return [];
-    const entries = (data as Record<string, unknown>).entries;
-    if (!Array.isArray(entries)) return [];
-    const out: PlayLogEntry[] = [];
-    for (const e of entries) {
-      const clean = sanitizePlayLogEntry(e);
-      if (clean) out.push(clean);
-    }
-    return out.slice(-PLAYLOG_MAX_ENTRIES);
+    text = storage.getItem(PLAYLOG_KEY);
   } catch {
-    return [];
+    return { ok: false, reason: 'blocked' };
   }
+  if (text === null) return { ok: true, entries: [] };
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { ok: false, reason: 'corrupt' };
+  }
+  const entries = typeof data === 'object' && data !== null ? (data as Record<string, unknown>).entries : undefined;
+  if (!Array.isArray(entries)) return { ok: false, reason: 'corrupt' };
+  const out: PlayLogEntry[] = [];
+  for (const e of entries) {
+    const clean = sanitizePlayLogEntry(e);
+    if (clean) out.push(clean);
+  }
+  return { ok: true, entries: out.slice(-PLAYLOG_MAX_ENTRIES) };
+}
+
+/** Never throws; missing, blocked or broken data yields an empty log. */
+export function readPlayLog(storage: StorageLike = defaultStorage()): PlayLogEntry[] {
+  const status = readPlayLogStatus(storage);
+  return status.ok ? status.entries : [];
 }
 
 /**

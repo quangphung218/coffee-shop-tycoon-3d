@@ -673,6 +673,17 @@
   align-items: center;
   gap: var(--space-2);
 }
+/* Failed day-7 autosave: a light line, not the Daily Report's warning box. */
+.wk-save.is-error {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+.wk-save.is-error p {
+  color: var(--text-warning);
+}
 .wk-day-tag {
   display: inline-flex;
   align-items: center;
