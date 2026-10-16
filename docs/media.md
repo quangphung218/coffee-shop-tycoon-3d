@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -135,6 +135,38 @@ node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 
 Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. Chrome headless cấp khung theo bội số nhịp màn hình, nên FPS từng khung chỉ ra vài mức (20, 15, 7,5…); dùng cột Average FPS để so.
 
+## Ảnh trước/sau P21
+
+```sh
+npm run media:p21
+```
+
+`scripts/capture-p21.mjs` dùng lại bộ dựng bảng của `scripts/capture-media.mjs` như `media:p20`, so bản v0.2.0 `77c8387` với bản hiện tại. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `77c8387`.
+
+1. Sim của bản hiện tại chơi một tuần Vừa, seed `12345`, theo chiến lược của `tests/integration/week.test.ts` (nhập hàng theo gợi ý, tự phục vụ một mình), và in bảng 7 ngày cùng kết quả tuần.
+2. Từ tuần đó dựng hai ván, nạp vào cả hai bản qua **Tiếp tục**: sáng ngày đầu tiên từ ngày 2 có hội chợ (hay sự kiện khác), đã mua Cây xanh cấp 1; và báo cáo cuối ngày 7.
+3. Ở sáng ngày đó, khổ 1280×800: chụp HUD, bảng Việc, bảng Nâng cấp (cuộn tới Cây xanh), bảng Menu.
+4. Bản hiện tại mở cửa ở 4x tới giờ cao điểm rồi về Main Menu, chụp Cài đặt cả form, và ghi JSON trong Số liệu chơi ra `docs/media/playlog-p21.json`. Bản v0.2.0 chụp Cài đặt từ Main Menu.
+5. Ở 1280 px và 390 px, nạp ván cuối ngày 7: chụp báo cáo ngày 7, rồi (bản hiện tại) bấm **Xem kết tuần** và chụp màn kết tuần. Cửa sổ được kéo cao cho vừa cả hộp thoại.
+
+Bảy bảng và một file JSON trong `docs/media/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `hud-week-p21.png` | HUD lúc Chuẩn bị: "Ngày N/7" và chip thời tiết, sự kiện. |
+| `tasks-unlocks-p21.png` | Bảng Việc: khối "Hôm nay · Ngày N/7" với dòng "Mới mở khóa hôm nay". |
+| `decor-remove-p21.png` | Bảng Nâng cấp: nút "Gỡ (+tiền hoàn)" trên thẻ Cây xanh. |
+| `price-policy-p21.png` | Bảng Menu: chọn Mức giá Rẻ / Chuẩn / Cao. |
+| `week-end-1280-p21.png`, `week-end-390-p21.png` | Báo cáo ngày 7 của v0.2.0 cạnh màn kết tuần: điểm và cúp, doanh thu và sao so mục tiêu, bảng 7 ngày, nút Chơi lại. |
+| `settings-playlog-p21.png` | Cài đặt khổ 1280: nhóm Số liệu chơi với lần dừng gần nhất, Xuất JSON, Xoá. |
+| `playlog-p21.json` | File JSON giống nút Xuất JSON, của lượt chơi ở bước 4. |
+
+Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20). Chỉ in bảng tuần, không build hay mở trình duyệt:
+
+```sh
+P21_WEEK_ONLY=1 node scripts/capture-p21.mjs
+```
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -143,6 +175,9 @@ Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. C
 | `MEDIA_PORT` | `4173` | Cổng của `vite preview` cho bản hiện tại; bản P18 dùng cổng kế tiếp. |
 | `MEDIA_HEADED` | (trống) | `1` để mở cửa sổ Chromium thật, dùng GPU nên hình mượt hơn. |
 | `P20_BASE` | `96030ca` | Commit "trước" mà `npm run media:p20` so với bản hiện tại. |
+| `P21_BASE` | `77c8387` | Commit "trước" mà `npm run media:p21` so với bản hiện tại. |
+| `P21_SEED` | `12345` | Seed của tuần mà `npm run media:p21` chơi để dựng ván. |
+| `P21_WEEK_ONLY` | (trống) | `1` để `scripts/capture-p21.mjs` chỉ in bảng tuần rồi dừng. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
 
@@ -162,6 +197,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
 | `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `[data-block="money"]`, `[data-block="level-up"]`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). Cận cảnh 3D dựa vào nhóm `machine-steam` và thứ tự khối của nhân vật trong `src/render/actors/rig.ts` (xem `aimAt()`). |
+| `npm run media:p21` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện tuần đã đổi; sửa selector trong `scripts/capture-p21.mjs` (`.hud-week`, `.week-today`, `[data-week="unlocks"]`, `[data-remove]`, `[data-policy="price"]`, `[data-action="week-end"]`, `[data-screen="weekEnd"] [data-block]`, `section.playlog`) hoặc nhãn nút **Về Main Menu**. |
 
 ## Kiểm lề và CLS
 
