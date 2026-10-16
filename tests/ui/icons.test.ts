@@ -206,12 +206,17 @@ describe('atlas loading order', () => {
     expect(failed.classList.contains(ICONS_HD_CLASS)).toBe(false);
   });
 
-  it('is started by main.ts: @1x with the menu, @2x only after the 3D scene is ready', () => {
+  it('asks for the @1x atlas at low priority', () => {
+    watchIconAtlas(freshRoot(), window);
+    expect(images[0]!.fetchPriority).toBe('low');
+  });
+
+  it('is started by main.ts: @1x once the scene chunk is in (loaded or failed), @2x only after the 3D scene is ready', () => {
     const start = MAIN_TS.indexOf('function start(');
     const world = MAIN_TS.indexOf("performance.mark('cst:world')");
-    const menu = MAIN_TS.indexOf("performance.mark('cst:menu')");
+    expect(MAIN_TS.match(/watchIconAtlas\(\)/g)).toHaveLength(1);
     expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeGreaterThan(start);
-    expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeLessThan(menu);
+    expect(MAIN_TS).toMatch(/const loadIcons = \(\): void => watchIconAtlas\(\);\s*void worldModule\.then\(loadIcons, loadIcons\);/);
     expect(MAIN_TS.indexOf('enableHdIcons()')).toBeGreaterThan(world);
     expect(MAIN_TS.match(/enableHdIcons\(\)/g)).toHaveLength(1);
   });
