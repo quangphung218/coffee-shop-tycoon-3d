@@ -30,7 +30,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { FIXED_NOW, newContext, observeThree, startPreview, urlFor } from './capture-media.mjs';
+import { FIXED_NOW, freeze, newContext, observeThree, startPreview, thaw, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const OUT = join(ROOT, 'docs', 'reports', 'p22-review');
@@ -57,6 +57,8 @@ const HIRES = 2;
 /** Game clock of the queue shot on day 1, an hour into the lunch peak. */
 const QUEUE_AT = '11:45';
 const FPS_MS = 10_000;
+/** A tap that Playwright cannot land in this long counts as covered (press()). */
+const CLICK_MS = 8_000;
 const MAX_IMAGE_BYTES = 400 * 1024;
 const MIN_TARGET = 44;
 const MIN_FONT = 12;
@@ -103,6 +105,8 @@ const metrics = {
   menu: {},
   screens: {},
   peaks: {},
+  /** Buttons something else covered when tapped, by "<viewport>/d<day>-<label>". */
+  blocked: {},
   steps: [],
   error: null,
 };
@@ -324,8 +328,8 @@ function measureScreen({ phone, minTarget, minFont }) {
     };
     let total = 0;
     let covered = 0;
-    for (let y = 5; y < innerHeight; y += 10) {
-      for (let x = 5; x < innerWidth; x += 10) {
+    for (let y = 10; y < innerHeight; y += 20) {
+      for (let x = 10; x < innerWidth; x += 20) {
         total++;
         const stack = document.elementsFromPoint(x, y);
         const at = stack.indexOf(canvas);
@@ -452,11 +456,18 @@ async function saveShot(page, vp, name) {
 
 /** Shot and measurements of the current screen, stored as metrics.screens["<viewport>/<name>"]. */
 async function capture(page, vp, name, extra = {}) {
-  const shot = await saveShot(page, vp, name);
-  const m = await page.evaluate(measureScreen, { phone: vp.phone, minTarget: MIN_TARGET, minFont: MIN_FONT });
-  const key = `${vp.name}/${name}`;
-  metrics.screens[key] = { viewport: vp.name, name, ...shot, clock: await clockText(page), ...m, ...extra };
-  return key;
+  // Frame loop held (capture-media freeze()): software WebGL no longer eats
+  // the page's time, and the shot and the numbers show the same instant.
+  await freeze(page);
+  try {
+    const shot = await saveShot(page, vp, name);
+    const m = await page.evaluate(measureScreen, { phone: vp.phone, minTarget: MIN_TARGET, minFont: MIN_FONT });
+    const key = `${vp.name}/${name}`;
+    metrics.screens[key] = { viewport: vp.name, name, ...shot, clock: await clockText(page), ...m, ...extra };
+    return key;
+  } finally {
+    await thaw(page);
+  }
 }
 
 /** Runs in the page: the HUD clock, e.g. '11:05' (the pill labelled "Giờ"; the level chip has a <b> too). */
@@ -522,19 +533,36 @@ async function closePanel(page) {
   }
 }
 
+/**
+ * Taps `target` like a player. When something covers it (Playwright's click
+ * gives up), stores that in metrics.blocked["<viewport>/d<day>-<label>"] with
+ * what covered it, then clicks it through the DOM so the day goes on.
+ */
+async function press(page, vp, day, label, target) {
+  try {
+    await target.click({ timeout: CLICK_MS });
+  } catch (err) {
+    const covered = /<([^>]*)>[^\n]*intercepts pointer events/.exec(String(err))?.[0] ?? String(err).split('\n')[0];
+    const shot = await saveShot(page, vp, `d${day}-blocked-${label}`);
+    metrics.blocked[`${vp.name}/d${day}-${label}`] = { viewport: vp.name, day, label, file: shot.file, covered };
+    progress(vp.name, `day ${day}: "${label}" covered (${covered}), clicking through the DOM`);
+    await target.evaluate((el) => el.click());
+  }
+}
+
 /** Restock as suggested and hire up to HIRES staff through the panels; closes the panel. */
-async function prepare(page) {
+async function prepare(page, vp, day) {
   await openPanel(page, 'inventory');
-  await panelOpen(page).locator('[data-action="suggest"]').click();
+  await press(page, vp, day, 'suggest', panelOpen(page).locator('[data-action="suggest"]'));
   const buy = panelOpen(page).locator('[data-action="buy"]');
-  if (await buy.isEnabled()) await buy.click();
+  if (await buy.isEnabled()) await press(page, vp, day, 'buy', buy);
   await closePanel(page);
   await openPanel(page, 'staff');
   let hired = 0;
   for (let i = 0; i < HIRES; i++) {
     const hire = panelOpen(page).locator('[data-action="hire"]:not([disabled])').first();
     if (!(await hire.count())) break;
-    await hire.click();
+    await press(page, vp, day, 'hire', hire);
     hired++;
     await sleep(300);
   }
@@ -605,7 +633,7 @@ async function dayOne(browser, vp, url) {
         await closePanel(page);
       });
     }
-    const hired = await step(who, 'day 1 restock and hire', () => prepare(page));
+    const hired = await step(who, 'day 1 restock and hire', () => prepare(page, vp, 1));
     progress(who, `day 1 hired ${hired}`);
     await openToPeak(page, vp, who, 1);
     await step(who, 'day 1 queue', async () => {
@@ -648,7 +676,7 @@ async function laterDay(browser, vp, url, day, save) {
       await capture(page, vp, `d${day}-panel-tasks`);
       await closePanel(page);
     });
-    await step(who, `day ${day} restock and hire`, () => prepare(page));
+    await step(who, `day ${day} restock and hire`, () => prepare(page, vp, day));
     await openToPeak(page, vp, who, day);
     metrics.screens[`${vp.name}/d${day}-peak`].toastMaxDay = await page.evaluate(() => window.__reviewToastMax);
   } finally {
@@ -715,6 +743,7 @@ function mergedMetrics() {
     notes: [...own.notes],
     screens: { ...keep(old.screens), ...own.screens },
     peaks: { ...keep(old.peaks), ...own.peaks },
+    blocked: { ...keep(old.blocked), ...own.blocked },
     menu: { ...Object.fromEntries(Object.entries(old.menu ?? {}).filter(([vp]) => !redone(vp, 1))), ...own.menu },
     steps: [...(old.steps ?? []).filter((s) => s.who !== 'sim' && !redone(s.who, Number(/day (\d)/.exec(s.name)?.[1] ?? 1))), ...own.steps],
     runs: [...(old.runs ?? []).filter((r) => !covered(r)), ...(run ? [run] : [])],
@@ -762,6 +791,17 @@ function findings(metrics) {
     for (const [k, g] of group(v, (s) => s.overlaps, (o) => `${o.a}/${o.b}`)) {
       const toast = g.item.a === 'toast' || g.item.b === 'toast';
       add({ id: `layout-overlap-${v}-${++n}`, area: 'layout', title: `Che nhau ${k}: ${g.item.aEl} và ${g.item.bEl} (${g.item.area} px²)`, evidence: [...g.evidence], impact: toast ? 1 : 2, effort: toast ? 1 : 2, viewport: v });
+    }
+    const blocked = new Map();
+    for (const [k, b] of Object.entries(metrics.blocked ?? {})) {
+      if (b.viewport !== v) continue;
+      const g = blocked.get(b.label) ?? { b, days: [], evidence: [] };
+      g.days.push(b.day);
+      g.evidence.push(b.file, `blocked.${k}`);
+      blocked.set(b.label, g);
+    }
+    for (const [label, g] of blocked) {
+      add({ id: `layout-blocked-${label}-${v}`, area: 'layout', title: `Nút "${label}" bị che, không bấm được (ngày ${g.days.join(', ')}): ${g.b.covered}`, evidence: g.evidence, impact: 3, effort: 1, viewport: v });
     }
     const own = screens.filter(([, s]) => s.viewport === v);
     const toastMax = Math.max(0, ...own.map(([, s]) => s.toastMaxSoFar ?? 0), metrics.menu[v]?.toastMaxDay1 ?? 0);
