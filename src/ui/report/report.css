@@ -636,6 +636,50 @@
   font-size: var(--font-size-sm);
 }
 
+/* Week-end screen (src/ui/screens/weekEnd.ts): score strip with cups,
+   revenue and stars against the goal, one table row per day. */
+.wk-score {
+  background: var(--surface-selected);
+  color: var(--text-primary);
+}
+.wk-cups {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.wk-cup.is-off {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.wk-goal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wk-goal-num {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+.wk-track {
+  display: block;
+}
+.wk-goal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.wk-day-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
+}
+
 @media (max-width: 640px) {
   .rpt-layer {
     padding: var(--space-4) var(--space-2);
