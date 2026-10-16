@@ -128,7 +128,7 @@ export function isLastWeekDay(state: GameState): boolean {
 
 /**
  * Scores the week from today's and the earlier week days' stats: revenue is
- * the sum over the week, stars the current rating. Call once today's day is
+ * the sum over the week, stars the current rating to one decimal. Call once today's day is
  * settled. Null when the game has no week.
  */
 export function scoreWeek(state: GameState): WeekResult | null {
@@ -152,7 +152,8 @@ export function scoreWeek(state: GameState): WeekResult | null {
     };
   });
   const revenue = days.reduce((s, d) => s + d.revenue, 0);
-  const stars = state.rating;
+  // Rounded to one decimal like the shown rating, so "4,0 / 4,0" always reaches the goal.
+  const stars = Math.round(state.rating * 10) / 10;
   const score = weekScore(revenue, goal.revenue, stars, goal.stars);
   return {
     revenue,

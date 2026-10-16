@@ -65,7 +65,7 @@ describe('end of the week', { timeout: 30_000 }, () => {
     expect(result.days.map((d) => [d.weather, d.event])).toEqual(state.week!.plan.map((p) => [p.weather, p.event]));
     expect(result.revenue).toBe(stats.reduce((s, d) => s + d.revenue, 0));
     expect(result.revenue).toBeGreaterThan(0);
-    expect(result.stars).toBe(state.rating);
+    expect(result.stars).toBe(Math.round(state.rating * 10) / 10);
     expect(result.revenueTarget).toBe(WEEK_GOALS.normal.revenue);
     expect(result.starsTarget).toBe(WEEK_GOALS.normal.stars);
     const expected = Math.round(
@@ -110,6 +110,19 @@ describe('week score formula', () => {
     state.today = createDayStats(WEEK_LENGTH, 4);
     state.today.revenue = 500_000;
     expect(scoreWeek(state)!.revenue).toBe(6_500_000);
+  });
+
+  it('rounds the stars to one decimal, like the shown rating, before judging the goal', () => {
+    const reached = scoredWith(WEEK_GOALS.normal.revenue, 3.96);
+    expect(reached.starsTarget).toBe(4.0);
+    expect(reached.stars).toBe(4.0);
+    expect(reached.stars >= reached.starsTarget).toBe(true);
+    expect(reached.score).toBe(100);
+
+    const missed = scoredWith(WEEK_GOALS.normal.revenue, 3.94);
+    expect(missed.stars).toBe(3.9);
+    expect(missed.stars >= missed.starsTarget).toBe(false);
+    expect(missed.score).toBe(weekScore(1, 1, 3.9, 4.0));
   });
 
   it('gives cups at 90, 70 and 40', () => {
