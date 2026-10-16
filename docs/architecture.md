@@ -174,7 +174,7 @@ Mọi ván mới chơi một tuần 7 ngày có lịch mở khóa, sự kiện, 
 | Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`. Sáng ngày có mở khóa, `next_day` phát `week_unlocks`. |
 | Mở rộng ngày 7 | Sáng ngày có `expandShop` (ngày 7) mà `expand_area` còn cấp 0: `grantUpgradeLevel` lên cấp 1 không trừ tiền, phát `notify` "Quán mở rộng!". |
 | Chấm điểm | Tối ngày cuối (`isLastWeekDay`), `closeDay` gọi `scoreWeek` và lưu vào `state.week.result`; `endOfDay` phát `week_ended` sau `dayEnded`. Từ đó `next_day` trả `false`. Điểm = `weekScore` (60 phần doanh thu + 40 phần sao, mỗi phần chặn ở mục tiêu); cúp = `weekCups` (≥ 90 → 3, ≥ 70 → 2, ≥ 40 → 1). |
-| UI | HUD ghi "Ngày N/7" và chip thời tiết, sự kiện (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
+| UI | HUD ghi "Ngày N/7" và chip thời tiết, sự kiện (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, ghi "Gợi ý cho tuần sau" và bỏ link mở bảng ở tab Chỉ số; nút chính mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
 
 ### Nâng cấp và dụng cụ
 
@@ -333,7 +333,7 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 | `run` | Id ngẫu nhiên của một lượt chơi (`crypto.randomUUID`), không gắn với save hay người chơi. |
 | `kind` | Loại dòng, như trên. |
 | `day` | Ngày game. |
-| `phase` | Pha (`preparation` … `report`), `menu` hoặc `week_end`. |
+| `phase` | Pha (`preparation` … `report`), `menu` hoặc `week_end` (dòng `hidden`, `visible`, `quit_to_menu` khi màn kết tuần đang mở). |
 | `minute` | Phút game tính từ nửa đêm. |
 | `at` | Giờ thật, epoch ms. |
 

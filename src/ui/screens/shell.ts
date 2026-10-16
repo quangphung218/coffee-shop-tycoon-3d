@@ -104,6 +104,10 @@ export function createShell(options: ShellOptions): Shell {
     if (!state || runId === null) return;
     appendPlayLog({ v: 1, run: runId, kind, day: state.day, phase: phase ?? state.phase, minute: state.minute, at: Date.now() }, storage);
   }
+  // Leaving from the week-end screen is logged as 'week_end', not the day's last phase.
+  function leavePhase(): PlayLogPhase | undefined {
+    return screens.current === 'weekEnd' ? 'week_end' : undefined;
+  }
 
   const hud = createHud({
     dispatch,
@@ -173,7 +177,7 @@ export function createShell(options: ShellOptions): Shell {
   }
 
   function showMenu(): void {
-    logPlay('quit_to_menu');
+    logPlay('quit_to_menu', leavePhase());
     state = null;
     runId = null;
     hud.closePanel();
@@ -319,12 +323,12 @@ export function createShell(options: ShellOptions): Shell {
     return screens.current === null || screens.current === 'pause';
   }
   function onVisibility(): void {
-    logPlay(document.hidden ? 'hidden' : 'visible');
+    logPlay(document.hidden ? 'hidden' : 'visible', leavePhase());
     if (document.hidden && state && screens.current === null) openPause();
   }
   // Closing the tab or navigating away may skip visibilitychange on some browsers.
   function onPageHide(): void {
-    logPlay('hidden');
+    logPlay('hidden', leavePhase());
   }
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);

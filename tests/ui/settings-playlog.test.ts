@@ -95,6 +95,28 @@ describe('play log from the shell', () => {
     expect(log[4]!.run).not.toBe(log[3]!.run);
   });
 
+  it('logs leaving from the week-end screen with phase week_end', () => {
+    const storage = createMemoryStorage();
+    const s = boot(storage);
+    const game = createNewGame('Quán Số Liệu', 'normal', 7);
+    game.day = WEEK_LENGTH;
+    game.phase = 'report';
+    game.week!.result = scoreWeek(game)!;
+    s.startGame(game);
+    s.report.el.querySelector<HTMLButtonElement>('.rpt-foot .btn-primary')!.click();
+    expect(s.screen).toBe('weekEnd');
+
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(readPlayLog(storage).at(-1)).toMatchObject({ kind: 'hidden', day: WEEK_LENGTH, phase: 'week_end' });
+    hidden.mockReturnValue(false);
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(readPlayLog(storage).at(-1)).toMatchObject({ kind: 'visible', phase: 'week_end' });
+
+    s.showMenu();
+    expect(readPlayLog(storage).at(-1)).toMatchObject({ kind: 'quit_to_menu', phase: 'week_end' });
+  });
+
   it('keeps every entry to the PLAYLOG_FIELDS whitelist', () => {
     const storage = createMemoryStorage();
     playToOpening(storage);
