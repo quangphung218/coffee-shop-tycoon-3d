@@ -51,7 +51,7 @@ describe('week unlock calendar', () => {
 
 describe('isUnlocked with a week', () => {
   it('a new game plays a 7-day week from day 1', () => {
-    expect(createNewGame('Test', 'normal', 1).week).toEqual({ length: 7, startedDay: 1 });
+    expect(createNewGame('Test', 'normal', 1).week).toMatchObject({ length: 7, startedDay: 1 });
   });
 
   it('opens items by the calendar day at shop level 1', () => {

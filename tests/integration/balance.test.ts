@@ -40,6 +40,9 @@ function checkInvariants(state: GameState): void {
  */
 function simulateWeek(difficulty: Difficulty, strategy: Strategy, seed = SEED): Run {
   const state = createNewGame('Quán Cân Bằng', difficulty, seed);
+  // The bands were measured without day events; a fair or supplier hike would
+  // swamp the barista and difficulty comparisons. Events have their own tests.
+  state.week!.plan = [];
   const reports: DailyReport[] = [];
   let minMoney = state.money;
   let overDebt = false;
