@@ -1,13 +1,17 @@
 import { getIngredient } from '../../sim/data/ingredients';
 import { getCampaign } from '../../sim/data/marketing';
 import { getMenuItem } from '../../sim/data/menu';
+import { DAY_EVENTS, weekUnlockDay } from '../../sim/data/week';
 import { autoRestockSuggestion, canMake } from '../../sim/inventory';
 import { missionProgress } from '../../sim/progression';
 import type { GameState, Mission, MissionId, SuggestionKind } from '../../sim/types';
+import { todayPlan } from '../../sim/week';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
 import { formatMoney, formatRating } from '../core/format';
-import { MISSION_ICON } from '../core/iconMap';
+import { DAY_EVENT_ICONS, MISSION_ICON, UPGRADE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { unlockNames } from '../hud/events';
+import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDayLabel } from '../hud/hud';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
@@ -155,6 +159,39 @@ function missionCard(state: GameState, m: Mission): HTMLElement {
   );
 }
 
+export interface WeekTodayLine {
+  id: 'weather' | 'event' | 'unlocks' | 'expand' | 'tomorrow';
+  icon: IconId;
+  text: string;
+}
+
+/**
+ * The "Hôm nay" block of a week day: weather and event with what they do,
+ * what the calendar opened today, the expansion on its day, and tomorrow's
+ * plan. Empty when the game has no week or today is past it.
+ */
+export function weekTodayLines(state: GameState): WeekTodayLine[] {
+  const plan = todayPlan(state);
+  if (!plan || !weekDayLabel(state)) return [];
+  const lines: WeekTodayLine[] = [
+    { id: 'weather', icon: WEATHER_ICONS[state.weather], text: `${WEATHER_LABELS[state.weather]}: ${weatherEffect(state.weather)}.` },
+  ];
+  if (plan.event !== 'none') {
+    const def = DAY_EVENTS[plan.event];
+    lines.push({ id: 'event', icon: DAY_EVENT_ICONS[plan.event], text: `${DAY_EVENT_LABELS[plan.event]}: ${def.description} (${dayEventEffect(plan.event)}).` });
+  }
+  const entry = weekUnlockDay(plan.day);
+  const names = entry ? unlockNames(entry.unlocks) : '';
+  if (names) lines.push({ id: 'unlocks', icon: 'i-sparkle', text: plan.day === 1 ? `Khởi đầu với: ${names}.` : `Mới mở khóa hôm nay: ${names}.` });
+  if (entry?.expandShop) lines.push({ id: 'expand', icon: UPGRADE_ICONS.expand_area, text: 'Quán đã mở rộng.' });
+  const next = state.week?.plan.find((p) => p.day === plan.day + 1);
+  if (next) {
+    const event = next.event === 'none' ? 'không sự kiện' : DAY_EVENT_LABELS[next.event];
+    lines.push({ id: 'tomorrow', icon: 'i-next-day', text: `Ngày mai: ${WEATHER_LABELS[next.weather]} · ${event}.` });
+  }
+  return lines;
+}
+
 /**
  * Task Board: today's checklist with done/not-done state, today's daily
  * missions, yesterday's report suggestions, and "Mở cửa" (start_day).
@@ -163,6 +200,21 @@ function missionCard(state: GameState, m: Mission): HTMLElement {
 export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
+
+  const weekTitle = h('h3', { class: 'section-title' });
+  const weekList = h('ul', { class: 'stack week-today', attrs: { 'aria-label': 'Hôm nay' } });
+  w.watch(
+    (s) => `${weekDayLabel(s) ?? ''}|${JSON.stringify(weekTodayLines(s))}`,
+    (_, s) => {
+      const lines = weekTodayLines(s);
+      weekTitle.hidden = weekList.hidden = lines.length === 0;
+      setChildren(weekTitle, ...withIcon('i-clock', `Hôm nay · Ngày ${weekDayLabel(s) ?? s.day}`, 24));
+      setChildren(
+        weekList,
+        ...lines.map((l) => h('li', { class: 'task', attrs: { 'data-week': l.id } }, h('span', { class: 'task-icon' }, icon(l.icon)), h('p', { class: 'item-meta', text: l.text }))),
+      );
+    },
+  );
 
   const summary = h('span');
   const bar = h('span');
@@ -241,6 +293,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     h(
       'div',
       { class: 'prep' },
+      weekTitle,
+      weekList,
       h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar)),
       list,
       missionTitle,

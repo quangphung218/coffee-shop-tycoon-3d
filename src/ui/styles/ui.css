@@ -987,6 +987,18 @@ legend {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Today's weather and event during a week: small icon + word pairs in one pill. */
+.hud-week {
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+.week-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
 /* Shop-level chip on one row: "Cấp N", the XP bar and its "320/500" count,
    sharing the day pill's row (design/p20 .xp-wrap). The level name sits in
    the title. A label, so it keeps the HUD pill frame on a tint. */
@@ -1525,6 +1537,13 @@ legend {
     width: var(--space-8);
   }
   .hud-level .xp-num {
+    display: none;
+  }
+  /* Weather as an icon only (its name stays in the title); the event keeps its word. */
+  .hud-week {
+    gap: var(--space-2);
+  }
+  .week-chip[data-chip='weather'] .week-chip-label {
     display: none;
   }
   .hud-btn .lbl-long {

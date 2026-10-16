@@ -58,7 +58,7 @@ const DOORWAY_MARGIN = 0.5;
 const SPOT_CACHE_SIZE = 4;
 
 const WEATHER_WEIGHTS: Record<Weather, number> = { sunny: 0.5, rainy: 0.25, hot: 0.25 };
-const WEATHER_ARRIVALS: Record<Weather, number> = { sunny: 1, rainy: 0.75, hot: 1.1 };
+export const WEATHER_ARRIVALS: Record<Weather, number> = { sunny: 1, rainy: 0.75, hot: 1.1 };
 /** Order weight multiplier for hot and cold items in each weather. */
 const WEATHER_TEMPERATURE: Record<Weather, Record<'hot' | 'cold', number>> = {
   sunny: { hot: 1, cold: 1 },

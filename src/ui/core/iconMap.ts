@@ -3,7 +3,7 @@
  * The emoji `icon` fields in src/sim/data stay as they are; the UI and the
  * 3D labels read these maps instead.
  */
-import type { IngredientId, MarketingId, MenuItemId, Phase, ReviewReason, StaffRole, UpgradeId } from '../../sim/types';
+import type { DayEventId, IngredientId, MarketingId, MenuItemId, Phase, ReviewReason, StaffRole, UpgradeId, Weather } from '../../sim/types';
 import { icon, type IconId, type IconOptions } from './icons';
 
 export const MENU_ICONS: Readonly<Record<MenuItemId, IconId>> = {
@@ -71,6 +71,20 @@ export const PHASE_ICONS: Readonly<Record<Phase, IconId>> = {
   peak: 'i-flame',
   closing: 'i-phase-close',
   report: 'i-phase-close',
+};
+
+/** The atlas has no sun or rain cloud: a sparkle for sun, the snowflake for cool rain, the flame for heat. */
+export const WEATHER_ICONS: Readonly<Record<Weather, IconId>> = {
+  sunny: 'i-sparkle',
+  rainy: 'i-cold',
+  hot: 'i-flame',
+};
+
+export const DAY_EVENT_ICONS: Readonly<Record<DayEventId, IconId>> = {
+  none: 'i-dot-empty',
+  grand_opening: 'i-open',
+  fair: 'i-people',
+  supplier_hike: 'i-trend-up',
 };
 
 export const ROLE_ICONS: Readonly<Record<StaffRole, IconId>> = {
