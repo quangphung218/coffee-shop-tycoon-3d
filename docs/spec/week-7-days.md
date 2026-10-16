@@ -66,10 +66,10 @@ Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/si
 | Độ khó | Doanh thu 7 ngày | Số sao cuối tuần |
 | --- | --- | --- |
 | Dễ | 28.000.000 | 3,8 |
-| Vừa | 26.500.000 | 4,0 |
+| Thường | 26.500.000 | 4,0 |
 | Khó | 23.000.000 | 4,2 |
 
-Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001. Doanh thu trung bình: Dễ khoảng 22,6 triệu, Vừa 21,2 triệu, Khó 18,2 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
+Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001. Doanh thu trung bình: Dễ khoảng 22,6 triệu, Thường 21,2 triệu, Khó 18,2 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
 
 ### Chấm điểm
 

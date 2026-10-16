@@ -22,7 +22,7 @@ Từ ngày 2 ngày nào cũng có mở mới; test `tests/sim/week-unlocks.test.
 npx vitest run tests/integration/week.test.ts --silent=false
 ```
 
-Ván Vừa, seed `12345`, chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp):
+Ván Thường, seed `12345`, chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp):
 
 | Ngày | Thời tiết | Sự kiện | Khách tới | Doanh thu | Giá vốn | Ly bán | Giá vốn/ly |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -35,7 +35,7 @@ Ván Vừa, seed `12345`, chiến lược cơ bản (mỗi sáng nhập hàng th
 | 7 | Nóng | Tăng giá nhập | 128 | 3.305.000 | 1.200.052 | 110 | 10.910 |
 
 - Ngày nào cũng có mưa, nóng hoặc sự kiện; không hai ngày liền nhau cùng cặp thời tiết và sự kiện. Chạy lại cùng seed ra đúng bảng này.
-- Doanh thu 7 ngày 20.965.000 đ, bằng 79% mục tiêu Vừa (26.500.000 đ). Sao cuối tuần 3,98 / mục tiêu 4. Điểm tuần 87/100, 2 cúp.
+- Doanh thu 7 ngày 20.965.000 đ, bằng 79% mục tiêu Thường (26.500.000 đ). Sao cuối tuần 3,98 / mục tiêu 4. Điểm tuần 87/100, 2 cúp.
 
 Tách riêng từng biến số: chơi lại sáng ngày 3 với thời tiết và sự kiện thay bằng tay, trung bình 3 seed (`12345`, `777`, `20261016`):
 
