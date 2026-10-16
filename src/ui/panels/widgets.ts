@@ -1,7 +1,7 @@
 /**
  * Small controls shared by the preparation panels, after design/t237-cartoon
- * (Kho) and design/p17-states: switch, quantity stepper, select-only dropdown
- * (menu sổ), in-place confirm. Disabled controls use aria-disabled so they
+ * (Kho) and design/p17-states: switch, quantity stepper, segmented choice,
+ * select-only dropdown (menu sổ), in-place confirm. Disabled controls use aria-disabled so they
  * stay focusable and their reason stays readable.
  */
 import type { Command, GameState } from '../../sim/types';
@@ -113,6 +113,36 @@ export function stepper(label: string, min: number, max: number, onChange: (valu
       return value;
     },
     set: (v) => set(v, false),
+  };
+}
+
+export interface Segmented<T extends string> {
+  el: HTMLElement;
+  set(value: T): void;
+}
+
+/**
+ * Radio segmented control (.seg / .seg-opt, as in Cài đặt): a short choice
+ * changed in place. `name` goes into data-seg and each radio's data-value.
+ */
+export function segmented<T extends string>(label: string, name: string, options: readonly { value: T; label: string }[], onPick: (value: T) => void): Segmented<T> {
+  const group = uid(name);
+  const radios = options.map((o) =>
+    h('input', {
+      attrs: { type: 'radio', name: group, value: o.value, 'data-value': o.value },
+      on: { change: () => onPick(o.value) },
+    }),
+  );
+  const el = h(
+    'div',
+    { class: 'seg', attrs: { role: 'radiogroup', 'aria-label': label, 'data-seg': name } },
+    ...options.map((o, i) => h('label', { class: 'seg-opt' }, radios[i]!, h('span', { text: o.label }))),
+  );
+  return {
+    el,
+    set(value) {
+      radios.forEach((r, i) => (r.checked = options[i]!.value === value));
+    },
   };
 }
 

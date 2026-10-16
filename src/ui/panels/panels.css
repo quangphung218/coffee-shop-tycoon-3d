@@ -412,6 +412,10 @@
 .setting .item-title {
   flex-wrap: nowrap;
 }
+/* Mức giá / Mức lương sit on the card already, so no second lift. */
+.setting .seg {
+  box-shadow: none;
+}
 
 /* Dropdown (menu sổ): a level-4 control like the stepper buttons. */
 .dd {

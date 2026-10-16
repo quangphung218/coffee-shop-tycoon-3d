@@ -1,6 +1,7 @@
+import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { upgradeUnlockLevel } from '../../sim/data/levels';
-import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
-import { nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
+import { getUpgrade, upgradeCost, UPGRADES } from '../../sim/data/upgrades';
+import { DECOR_REFUND_SHARE, isRemovableDecor, nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
 import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -45,13 +46,63 @@ export function effectText(e: UpgradeEffect): string {
   return parts.join(' · ');
 }
 
+/** How long "Gỡ" stays armed waiting for a second click, ms (as "Về mặc định" in Cài đặt). */
+export const REMOVE_CONFIRM_MS = 3000;
+
+/** Money back for taking down the top level of a decor item (same rule as the sim's removeDecor). */
+export function decorRefund(state: GameState, id: UpgradeId): number {
+  const level = upgradeLevel(state, id);
+  if (level <= 0) return 0;
+  const paid = upgradeCost(getUpgrade(id), level - 1, DIFFICULTIES[state.difficulty].priceMult) ?? 0;
+  return Math.round(paid * DECOR_REFUND_SHARE);
+}
+
 /**
  * Nâng cấp by group: price of the next level, current level and the effect
  * per level. "Mua" asks for an in-place confirm, then sends buy_upgrade.
+ * Owned decor without seats has "Gỡ (+X)": the first click arms it for
+ * REMOVE_CONFIRM_MS, a second click sends remove_decor.
  */
 export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
+
+  /** In-place two-click "Gỡ" for one decor card. */
+  function removeControl(id: UpgradeId, li: HTMLElement): HTMLElement {
+    const btn = h('button', { class: 'btn btn-secondary btn-sm', attrs: { type: 'button', 'data-action': 'remove' } });
+    let armed = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let refund = 0;
+    const paint = (): void => {
+      btn.textContent = armed ? 'Bấm lần nữa để gỡ' : `Gỡ (+${formatMoney(refund)})`;
+    };
+    const disarm = (): void => {
+      armed = false;
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      paint();
+    };
+    btn.addEventListener('click', () => {
+      if (!armed) {
+        armed = true;
+        paint();
+        timer = setTimeout(disarm, REMOVE_CONFIRM_MS);
+        return;
+      }
+      disarm();
+      keepFocus(li, body, () => send({ type: 'remove_decor', upgradeId: id }));
+    });
+    const row = h('div', { class: 'item-actions', attrs: { 'data-remove': id } }, btn);
+    w.watch(
+      (s) => `${upgradeLevel(s, id)}|${decorRefund(s, id)}`,
+      (_, s) => {
+        refund = decorRefund(s, id);
+        row.hidden = upgradeLevel(s, id) <= 0;
+        disarm();
+      },
+    );
+    return row;
+  }
 
   function row(id: UpgradeId): HTMLElement {
     const def = getUpgrade(id);
@@ -68,6 +119,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       side,
       actions,
     );
+    if (isRemovableDecor(id)) li.append(removeControl(id, li));
     buy.addEventListener('click', () => {
       const s = ctx.getState();
       const cost = s ? nextUpgradeCost(s, id) : null;

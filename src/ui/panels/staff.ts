@@ -1,13 +1,34 @@
+import { totalWages } from '../../sim/economy';
+import { policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
 import { MAX_STAFF, ROLE_NAMES, rolePlan } from '../../sim/staff';
-import type { GameState, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
+import type { GameState, PolicyLevel, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
+import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { avatarIcon, ROLE_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { dropdown, inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, toggle, withIcon, type DropdownOption } from './widgets';
+import { dropdown, inlineConfirm, keepFocus, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon, type DropdownOption } from './widgets';
 
 export const ROLE_ORDER: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'marketer', 'none'];
+
+const WAGE_OPTIONS: readonly { value: PolicyLevel; label: string }[] = [
+  { value: 'low', label: 'Thấp' },
+  { value: 'standard', label: 'Chuẩn' },
+  { value: 'high', label: 'Cao' },
+];
+
+/** "Cao: tổng lương 600.000đ/ngày, làm nhanh hơn 12%." for the current team. */
+export function wagePolicyHint(state: GameState, level: PolicyLevel): string {
+  const p = WAGE_POLICY[level];
+  const name = WAGE_OPTIONS.find((o) => o.value === level)!.label;
+  const total = formatMoney(Math.round(state.staff.reduce((a, m) => a + m.wagePerDay, 0) * p.wageMult));
+  const pct = Math.round(Math.abs(p.speedMult - 1) * 100);
+  const speed = p.speedMult > 1 ? `làm nhanh hơn ${pct}%` : p.speedMult < 1 ? `làm chậm hơn ${pct}%` : 'tốc độ gốc';
+  return `${name}: tổng lương ${total}/ngày, ${speed}.`;
+}
+
+/** A daily wage at the chosen Mức lương. */
+const paid = (s: GameState, wage: number): number => Math.round(wage * wageMult(s));
 const ROLE_OPTIONS: readonly DropdownOption<StaffRole>[] = ROLE_ORDER.map((r) => ({ value: r, label: ROLE_NAMES[r], icon: ROLE_ICONS[r] }));
 
 const TASK_TEXT: Record<StaffTaskKind, string> = {
@@ -45,7 +66,8 @@ export function roleForHire(state: GameState): StaffRole {
 /**
  * Nhân viên: staff with wage, speed, busy/free badge, a role dropdown and an
  * in-place "Cho nghỉ" confirm; today's candidates with "Tuyển"; the
- * Auto-assign switch. Usable in every phase.
+ * Auto-assign switch and the Mức lương choice. Wages are shown at the chosen
+ * Mức lương. Usable in every phase.
  */
 export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -68,7 +90,22 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const staffList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Nhân viên đang làm' } });
   const candList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Ứng viên hôm nay' } });
   const wages = h('b');
-  w.text(wages, (s) => formatMoney(s.staff.reduce((a, m) => a + m.wagePerDay, 0)));
+  w.text(wages, (s) => formatMoney(totalWages(s)));
+
+  // Mức lương: a trade-off set in place; the hint gives the day's wage bill and work speed.
+  const wageTitleId = uid('wage-policy');
+  const wageSeg = segmented('Mức lương', 'wage', WAGE_OPTIONS, (level) => send({ type: 'set_policy', policy: 'wage', level }));
+  wageSeg.el.removeAttribute('aria-label');
+  wageSeg.el.setAttribute('aria-labelledby', wageTitleId);
+  const wageHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'wage' } });
+  w.watch(
+    (s) => `${policyLevel(s, 'wage')}|${s.staff.map((m) => m.wagePerDay).join()}`,
+    (_, s) => {
+      const level = policyLevel(s, 'wage');
+      wageSeg.set(level);
+      wageHint.textContent = wagePolicyHint(s, level);
+    },
+  );
   const teamCount = h('span');
   w.text(teamCount, (s) => `Đang có ${s.staff.length}/${MAX_STAFF} người`);
 
@@ -104,14 +141,14 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     rowsW.watch(
       (s) => {
         const m = s.staff.find((x) => x.id === member.id);
-        return m ? `${m.role}|${m.busy ? 1 : 0}|${m.task?.kind ?? ''}|${s.autoAssign ? 1 : 0}|${s.staff.map((x) => x.role).join()}` : '';
+        return m ? `${m.role}|${m.busy ? 1 : 0}|${m.task?.kind ?? ''}|${s.autoAssign ? 1 : 0}|${s.staff.map((x) => x.role).join()}|${paid(s, m.wagePerDay)}` : '';
       },
       (_, s) => {
         const m = s.staff.find((x) => x.id === member.id);
         if (!m) return;
         badge.className = m.busy ? 'badge badge-warn' : 'badge badge-ok';
         setIconText(badge, m.busy ? 'i-busy' : 'i-free', m.busy ? 'Bận' : 'Rảnh');
-        meta.textContent = `Lương ${formatMoney(m.wagePerDay)}/ngày${m.busy && m.task ? ` · ${TASK_TEXT[m.task.kind]}` : ''}`;
+        meta.textContent = `Lương ${formatMoney(paid(s, m.wagePerDay))}/ngày${m.busy && m.task ? ` · ${TASK_TEXT[m.task.kind]}` : ''}`;
         const others: Partial<Record<StaffRole, string>> = {};
         for (const r of ROLE_ORDER) {
           const names = s.staff.filter((x) => x.id !== m.id && x.role === r).map((x) => x.name);
@@ -149,11 +186,13 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         setReason(why, hire, full ? `Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
       },
     );
+    const wage = h('p', { class: 'item-meta' });
+    rowsW.text(wage, (s) => `Lương ${formatMoney(paid(s, c.wagePerDay))}/ngày`);
     const li = h(
       'li',
       { class: 'staff', attrs: { 'data-candidate': c.id } },
       avatar(c.look),
-      h('div', {}, h('p', { class: 'staff-name', text: c.name }), h('p', { class: 'item-meta', text: `Lương ${formatMoney(c.wagePerDay)}/ngày` }), speedMeter(c.speed)),
+      h('div', {}, h('p', { class: 'staff-name', text: c.name }), wage, speedMeter(c.speed)),
       h('div', { class: 'staff-row' }, hire, why),
     );
     return li;
@@ -191,6 +230,12 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         { class: 'setting' },
         h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: autoId }, ...withIcon('i-auto', 'Tự phân vai (Auto-assign)', 24)), h('p', { class: 'item-meta', text: 'Mỗi sáng game xếp vai theo việc bị ùn hôm trước.' })),
         auto.el,
+      ),
+      h(
+        'div',
+        { class: 'setting', attrs: { 'data-policy': 'wage' } },
+        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: wageTitleId }, ...withIcon('i-coin', 'Mức lương', 24)), wageHint),
+        wageSeg.el,
       ),
       h('p', { class: 'intro intro-icon' }, icon('i-people', { size: 16 }), teamCount),
       staffList,
