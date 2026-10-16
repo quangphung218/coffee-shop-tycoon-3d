@@ -83,6 +83,34 @@ describe('set_policy', () => {
     expect(dispatch(s, { type: 'set_policy', policy: 'price', level: 'max' as PolicyLevel })).toBe(false);
     expect(s.policies).toBeUndefined();
   });
+
+  it('changes freely while preparing', () => {
+    const s = game();
+    expect(s.phase).toBe('preparation');
+    withPolicy('wage', 'high', s);
+    withPolicy('wage', 'low', s);
+    expect(policyLevel(s, 'wage')).toBe('low');
+  });
+
+  it.each(['opening', 'peak', 'closing'] as const)('is refused during %s, with a notice', (phase) => {
+    const s = game();
+    withPolicy('price', 'high', s);
+    withPolicy('wage', 'high', s);
+    s.phase = phase;
+    s.events = [];
+    expect(dispatch(s, { type: 'set_policy', policy: 'price', level: 'low' })).toBe(false);
+    expect(dispatch(s, { type: 'set_policy', policy: 'wage', level: 'low' })).toBe(false);
+    expect(s.policies).toEqual({ price: 'high', wage: 'high' });
+    expect(s.events).toContainEqual({ type: 'notify', level: 'error', text: 'Chỉ đổi mức giá/lương lúc chuẩn bị' });
+  });
+
+  it('is refused once the shop has opened for real', () => {
+    const s = game();
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    expect(s.phase).not.toBe('preparation');
+    expect(dispatch(s, { type: 'set_policy', policy: 'wage', level: 'low' })).toBe(false);
+    expect(policyLevel(s, 'wage')).toBe('standard');
+  });
 });
 
 describe('price policy', () => {
