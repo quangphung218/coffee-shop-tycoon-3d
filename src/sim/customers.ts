@@ -21,6 +21,7 @@ import {
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
+import { dayArrivalMult } from './week';
 
 /** Customers per game minute at 3 stars, normal difficulty, outside peak hours. */
 export const BASE_ARRIVALS_PER_MINUTE = 0.09;
@@ -218,15 +219,16 @@ function seatPos(state: GameState, table: Table): Vec2 {
   return { x: table.pos.x + (left ? CHAIR_OFFSET : -CHAIR_OFFSET), z: table.pos.z };
 }
 
-/** base × rating × marketing × weather × hour × difficulty (× decor appeal), in customers per minute. */
+/** base × rating × marketing × weather × day event × hour × difficulty (× decor appeal), in customers per minute. */
 export function arrivalRate(state: GameState): number {
   const rating = Math.max(0.2, state.rating / 3);
   const marketing = customerMultiplier(state);
   const weather = WEATHER_ARRIVALS[state.weather];
+  const event = dayArrivalMult(state);
   const hour = state.phase === 'peak' ? PEAK_MULT : 1;
   const difficulty = DIFFICULTIES[state.difficulty].customerMult;
   const appeal = 1 + totalUpgradeEffect(state.upgrades).appeal;
-  return BASE_ARRIVALS_PER_MINUTE * rating * marketing * weather * hour * difficulty * appeal;
+  return BASE_ARRIVALS_PER_MINUTE * rating * marketing * weather * event * hour * difficulty * appeal;
 }
 
 /**

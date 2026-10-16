@@ -5,10 +5,15 @@ import { getMenuItem } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { DAY_START_MINUTE } from './state';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId } from './types';
+import { dayIngredientPriceMult } from './week';
 
-/** Unit price of an ingredient after equipment discounts (the ice maker cuts ice). */
+/**
+ * Unit price of an ingredient today: after equipment discounts (the ice maker
+ * cuts ice) and the day event (a supplier hike raises it). Buying and the cost
+ * of servings made both use it.
+ */
 export function effectiveUnitPrice(state: GameState, id: IngredientId): number {
-  const base = getIngredient(id).unitPrice;
+  const base = getIngredient(id).unitPrice * dayIngredientPriceMult(state);
   if (id !== 'ice') return base;
   const cut = Math.min(0.9, totalUpgradeEffect(state.upgrades).iceCostReduction);
   return base * (1 - cut);
