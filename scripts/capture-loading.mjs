@@ -59,14 +59,16 @@ async function main() {
         await route.continue();
       });
       void page.goto(URL_BASE);
-      await page.waitForFunction(() => /\d+%/.test(document.querySelector('#boot .boot-pct')?.textContent ?? ''), null, { timeout: 30_000 });
+      // Once the first file (the CSS) has arrived, so the bar shows real progress.
+      await page.waitForFunction(() => /^[1-9]\d*%$/.test(document.querySelector('#boot .boot-pct')?.textContent ?? ''), null, { timeout: 30_000 });
       await shot(page, 'loading-boot.png');
       await page.locator('#boot').waitFor({ state: 'detached', timeout: 30_000 });
       await page.locator('.ui-screen.is-menu .scene-load:not([hidden])').waitFor();
       await shot(page, 'loading-menu.png');
       await page.getByRole('button', { name: /Ván mới/ }).click();
       // The slow-network note comes 8 s after the scene started loading.
-      await page.getByText('Mạng đang chậm', { exact: false }).first().waitFor({ timeout: 15_000 });
+      // Every screen has its own status line; wait on the one New Game shows.
+      await page.locator('.ui-screen:not([hidden]) .scene-load.is-slow').waitFor({ timeout: 15_000 });
       await shot(page, 'loading-start.png');
       await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
       progress('scene ready after the hold');
