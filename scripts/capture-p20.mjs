@@ -16,6 +16,7 @@ import { chromium } from 'playwright';
 import {
   buildRef,
   cameraHome,
+  captureSettingsForm,
   clockAt,
   cuboid,
   FIXED_NOW,
@@ -345,15 +346,6 @@ function measureSettings() {
     graphics: rect(title('Đồ họa')),
     keysSection: rect(title('Phím tắt')),
   };
-}
-
-/** Height the window needs so the whole Cài đặt form is on screen (no inner scroll cuts rows off). */
-function settingsHeight() {
-  const form = [...document.querySelectorAll('form')].find((f) => f.offsetParent !== null && f.querySelector('.section-title'));
-  if (!form) return 0;
-  let extra = 0;
-  for (let el = form; el; el = el.parentElement) extra = Math.max(extra, el.scrollHeight - el.clientHeight);
-  return Math.ceil(document.documentElement.clientHeight + extra);
 }
 
 /**
@@ -826,14 +818,12 @@ async function settingsSession(browser, url) {
   const page = await context.newPage();
   // By accessible name (aria-labelledby), so the hidden new-game form never matches.
   const form = page.getByRole('form', { name: 'Cài đặt' });
-  const grab = async (width, minHeight) => {
-    await page.setViewportSize({ width, height: minHeight });
-    await sleep(200);
-    const height = Math.max(minHeight, await page.evaluate(settingsHeight));
-    if (height > minHeight) await page.setViewportSize({ width, height });
-    await sleep(300);
-    return { png: await form.screenshot(), boxes: await page.evaluate(measureSettings), texts: await page.evaluate(measureTexts, { settingsForm: true }), height };
-  };
+  const grab = (width, minHeight) =>
+    captureSettingsForm(page, form, {
+      width,
+      minHeight,
+      measure: async () => ({ boxes: await page.evaluate(measureSettings), texts: await page.evaluate(measureTexts, { settingsForm: true }) }),
+    });
   try {
     await openMenu(page, url);
     await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
