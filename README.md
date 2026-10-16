@@ -173,6 +173,7 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
 | [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần 7 ngày: lịch mở khoá, sự kiện, thời tiết, mục tiêu và chấm điểm. |
 | [docs/reports/p21-week.md](docs/reports/p21-week.md) | Báo cáo tuần 7 ngày: log mô phỏng 7 ngày cùng seed, ảnh trước/sau màn kết tuần, mẫu JSON Số liệu chơi. |
+| [docs/reports/loading-experience.md](docs/reports/loading-experience.md) | Màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau. |
 | [docs/reports/p19-polish.md](docs/reports/p19-polish.md) | Các chỉnh sửa P19 với ảnh trước/sau có khoanh. |
 | [CHANGELOG.md](CHANGELOG.md) | Thay đổi theo từng version. |
 
