@@ -16,6 +16,8 @@ import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
+import { readAssets, sceneProgress, watchDownloads, type SceneStage } from './ui/core/loadProgress';
+import { SceneGate } from './ui/core/sceneGate';
 import { registerPrepPanels } from './ui/panels';
 import { registerReviewsPanel } from './ui/report';
 import { createShell } from './ui/screens/shell';
@@ -28,6 +30,10 @@ const MAX_FRAME_S = 0.1;
 const MENU_SPIN = 0.08;
 /** Fade-out of the #boot loading screen in index.html, ms. */
 const BOOT_FADE_MS = 300;
+/** Still loading the 3D scene after this long: say the network is slow, ms. */
+const SCENE_SLOW_MS = 8000;
+
+type WorldModule = typeof import('./render/scene');
 
 /** A busy lunchtime shop that plays itself behind the main menu. */
 function createMenuScene(): GameState {
@@ -51,9 +57,35 @@ function hideBoot(): void {
   setTimeout(() => boot.remove(), BOOT_FADE_MS);
 }
 
+/** True when the site answers, i.e. the network is back. */
+async function online(): Promise<boolean> {
+  try {
+    return (await fetch(location.href, { method: 'HEAD', cache: 'no-store' })).ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Imports the scene chunk again after a failure. Browsers may keep a failed
+ * module fetch for the life of the page (whatwg/html#6768), so when the
+ * import fails again but the site answers, reload: the menu is cached and no
+ * game is running yet (the play buttons wait for the scene).
+ */
+async function retryWorldModule(): Promise<WorldModule> {
+  try {
+    return await import('./render/scene');
+  } catch (err) {
+    if (await online()) location.reload();
+    throw err;
+  }
+}
+
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // three.js and the 3D world load as a separate chunk while the menu comes up.
   const worldModule = import('./render/scene');
+  const assets = readAssets();
+  const scene = new SceneGate({ status: 'loading', progress: 0, slow: false });
   const storage = defaultStorage();
   const settings = loadSettings(storage);
   const audio = createAudio({ music: settings.musicVolume, sfx: settings.sfxVolume });
@@ -75,6 +107,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     },
     onResetCamera: () => world?.resetCamera(),
     onGameStart: () => world?.resetCamera(),
+    scene,
   });
   hideBoot();
   performance.mark('cst:menu');
@@ -112,24 +145,61 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   };
   requestAnimationFrame(frame);
 
-  // Build the scene only after the menu is on screen, then fade it in.
-  void Promise.all([worldModule, afterPaint()])
-    .then(async ([{ createWorld }]) => {
-      const s = shell.settings;
-      const w = createWorld(canvas, {
-        quality: s.quality,
-        cameraKeys: s.cameraKeys,
-        cameraRotateSpeed: s.cameraRotateSpeed,
-        reducedMotion: s.reducedMotion === 'reduce',
+  // Build the scene only after the menu is on screen, then fade it in. The
+  // play buttons wait on `scene`, which follows the real downloads and steps.
+  const loadWorld = (module: Promise<WorldModule>): void => {
+    let stage: SceneStage = 'download';
+    let downloaded: number | null = null;
+    const show = (): void => scene.set({ progress: sceneProgress(downloaded, stage) });
+    scene.set({ status: 'loading', progress: 0, slow: false });
+    const stopWatch = watchDownloads(assets.scene, (f) => {
+      downloaded = f;
+      show();
+    });
+    const slowTimer = setTimeout(() => scene.set({ slow: true }), SCENE_SLOW_MS);
+    let downloadFailed = true;
+    void Promise.all([module, afterPaint()])
+      .then(async ([{ createWorld }]) => {
+        downloadFailed = false;
+        downloaded = 1;
+        show();
+        const s = shell.settings;
+        const w = createWorld(canvas, {
+          quality: s.quality,
+          cameraKeys: s.cameraKeys,
+          cameraRotateSpeed: s.cameraRotateSpeed,
+          reducedMotion: s.reducedMotion === 'reduce',
+        });
+        stage = 'built';
+        show();
+        // Clicks in the scene go through the same dispatch as the UI.
+        w.onCommand((cmd) => shell.dispatch(cmd));
+        try {
+          await w.prepare(shell.state ?? menuScene);
+        } catch (err) {
+          w.dispose();
+          throw err;
+        }
+        world = w;
+        canvas.classList.add('is-ready');
+        scene.set({ status: 'ready', progress: 1, slow: false });
+        performance.mark('cst:world');
+      })
+      .catch((err: unknown) => {
+        console.error('3D scene failed to load', err);
+        scene.set({
+          status: 'error',
+          slow: false,
+          message: downloadFailed ? undefined : 'Trình duyệt không dựng được quán 3D (WebGL). Thử lại, hoặc mở bằng trình duyệt khác.',
+        });
+      })
+      .finally(() => {
+        stopWatch();
+        clearTimeout(slowTimer);
       });
-      // Clicks in the scene go through the same dispatch as the UI.
-      w.onCommand((cmd) => shell.dispatch(cmd));
-      await w.prepare(shell.state ?? menuScene);
-      world = w;
-      canvas.classList.add('is-ready');
-      performance.mark('cst:world');
-    })
-    .catch((err: unknown) => console.error('3D scene failed to load', err));
+  };
+  scene.onRetry = () => loadWorld(retryWorldModule());
+  loadWorld(worldModule);
 }
 
 const ui = document.getElementById('ui');
