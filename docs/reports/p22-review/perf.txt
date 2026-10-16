@@ -81,7 +81,51 @@ within run noise, so on this run f1 alone does not explain the
 
 ### f289da8 (f1 + f5)
 
-(output pending)
+$ git worktree add --detach "$TMPDIR/p22-f289da8" f289da8 && cd "$TMPDIR/p22-f289da8" && ln -s "$OLDPWD/node_modules" . && node scripts/measure-startup.mjs --base f720b6f --runs 9; cd "$OLDPWD"; git worktree remove --force "$TMPDIR/p22-f289da8"
+Exit code: 0
+
+Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)
+Runs per cell: 9 (median)
+
+## base (f720b6f)
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CFZSipkd.js | 194.2 kB | 66.9 kB |
+| index-Bt4HydkD.js | 85.5 kB | 31.8 kB |
+| index-BeuQBB1w.css | 69.9 kB | 11.2 kB |
+
+## working tree
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CN3oHnfd.js | 194.6 kB | 67.1 kB |
+| index-PCF-UTnY.js | 87.3 kB | 32.3 kB |
+| index-DhmkM8E8.css | 70.2 kB | 11.3 kB |
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 44 ms | 114 ms | 263 ms |
+| working tree | Desktop, no throttling | 32 ms | 118 ms | 274 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 440 ms | 1161 ms | 3169 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 452 ms | 1178 ms | 3222 ms |
+
+Reading: against its own base, f289da8 is +17 ms (+1.5%) on the menu and
++53 ms (+1.7%) on the scene. Compared with fcdd7fa (+19 ms, -101 ms), f5
+moves the scene by about +150 ms relative to base, inside the base's own
+spread between the two runs (3346 vs 3169 ms). With 9 runs neither f1 nor
+f5 reproduces the +118 ms / +277 ms gap of the first 5-run measure.
+
+Same-run gaps on mobile (state minus base):
+
+| State | Main Menu | 3D scene |
+| --- | --- | --- |
+| integration head, --runs 5 (first measure) | +118 ms | +277 ms |
+| fcdd7fa, --runs 9 | +19 ms | -101 ms |
+| f289da8, --runs 9 | +17 ms | +53 ms |
 
 ### fix
 
