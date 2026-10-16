@@ -9,7 +9,7 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 ![Một ngày ở quán: mở cửa, khách vào, phục vụ, báo cáo cuối ngày](docs/media/demo.gif)
 
 - **Cho ai:** người thích game quản lý nhẹ nhàng, chơi một ngày trong khoảng 7 phút.
-- **Trạng thái:** chơi được trọn vòng ngày, có nhân viên, nâng cấp, phố xá và save/load.
+- **Trạng thái:** chơi được trọn một tuần 7 ngày, mỗi ngày có mở khoá, sự kiện và thời tiết riêng, hết ngày 7 có màn kết tuần chấm điểm và nút Chơi lại; có nhân viên, nâng cấp, phố xá và save/load.
 - **Ngôn ngữ:** chữ trong game là tiếng Việt, tiền tính bằng đồng (vd `25.000đ`).
 
 ## Mục lục
@@ -31,6 +31,11 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | --- | --- |
 | Vòng ngày | Chuẩn bị → mở cửa → cao điểm → đóng cửa → Daily Report. |
 | Quản lý quán | Bật/tắt món, nhập nguyên liệu, tuyển và phân vai nhân viên, chạy marketing, mua nâng cấp và dụng cụ (máy xay, tủ bánh, máy xay sinh tố…). |
+| Tuần 7 ngày | Mỗi ván mới là một tuần 7 ngày. Lịch mở khoá theo ngày: từ ngày 2 mỗi ngày mở thêm món, dụng cụ hoặc khu; ngày 7 quán được tặng Mở rộng diện tích. Bảng lịch: [docs/spec/week-7-days.md](docs/spec/week-7-days.md). |
+| Sự kiện và thời tiết | Mỗi ngày có thời tiết (nắng, mưa, nóng) và sự kiện (khai trương, hội chợ, nhà cung cấp tăng giá, ngày thường), lập sẵn theo seed của ván nên cùng seed ra cùng tuần. Mưa bớt khách, hội chợ đông khách, tăng giá làm nguyên liệu đắt hơn. |
+| Trang trí | Đặt trang trí (Cây xanh, Tranh treo tường, Đèn trang trí…) ở nhóm Trang trí của bảng Nâng cấp để quán hút khách và được thêm sao. Trang trí không kèm chỗ ngồi có nút **Gỡ** (bấm hai lần): gỡ cấp trên cùng, hoàn lại một nửa tiền đã trả. |
+| Mức giá và Mức lương | **Mức giá** (Rẻ / Chuẩn / Cao, bảng Menu): giá bán cao hơn thì sao và lượng khách giảm. **Mức lương** (Thấp / Chuẩn / Cao, bảng Nhân viên): lương cao hơn thì nhân viên làm nhanh hơn. Chỉ đổi được lúc chuẩn bị. |
+| Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó. Hết ngày 7, màn kết tuần so doanh thu và sao với mục tiêu, chấm điểm 0–100 và cúp, có nút **Chơi lại**. |
 | Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–6, mỗi cấp mở thêm món, nâng cấp và dụng cụ. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
 | Chỉ số kinh doanh | Daily Report có tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
 | Tự phục vụ | Bấm khách, quầy hay bàn trong cảnh để nhận order, pha, mang đồ, thu tiền, dọn bàn. |
@@ -65,7 +70,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **Ván mới**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD hiện cấp quán và thanh XP cạnh ngày. Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; bảng **Menu** và **Nâng cấp** khóa món, dụng cụ chưa mở (nhãn "Mở ngày N" theo lịch tuần, hoặc "Mở ở cấp N"). **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD hiện cấp quán và thanh XP cạnh ngày. Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem kết tuần**: màn kết tuần hiện doanh thu và sao so mục tiêu, điểm 0–100, 0–3 cúp, bảng 7 ngày; **Chơi lại** mở ván mới cùng tên quán và độ khó, **Về menu** (hoặc `Esc`) về Main Menu.
@@ -95,6 +100,7 @@ Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần n
 | Điều khiển | Kiểu phím camera | `WASD` di chuyển · `Q`/`E` xoay — hoặc mũi tên di chuyển · `Q`/`A` xoay |
 | Điều khiển | Tốc độ xoay camera | Chậm / Vừa / Nhanh, cho cả kéo chuột và phím xoay |
 | Trò chơi | Tốc độ mặc định khi mở cửa | 1x / 2x / 4x (đổi nhanh bằng `1` / `2` / `3` trên HUD) |
+| Số liệu chơi | Lần dừng gần nhất, Xem JSON, Xuất JSON, Xoá | Log ẩn danh (ngày, pha, giờ game, thời điểm) lưu trong `localStorage` khoá `cst3d:playlog`, không gửi đi đâu; Xuất JSON tải file `playlog-<ngày>.json`, Xoá bấm hai lần |
 
 Phím tắt nằm trong mục **Phím tắt** sổ ra ở nhóm Điều khiển. **Về mặc định** xác nhận tại chỗ: bấm lần đầu đổi thành "Bấm lần nữa để đặt lại", bấm lại trong 3 giây để áp dụng.
 
@@ -165,6 +171,8 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/architecture.md](docs/architecture.md) | Ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, FSM khách, save, hiệu năng. |
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
+| [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần 7 ngày: lịch mở khoá, sự kiện, thời tiết, mục tiêu và chấm điểm. |
+| [docs/reports/p21-week.md](docs/reports/p21-week.md) | Báo cáo tuần 7 ngày: log mô phỏng 7 ngày cùng seed, ảnh trước/sau màn kết tuần, mẫu JSON Số liệu chơi. |
 | [docs/reports/p19-polish.md](docs/reports/p19-polish.md) | Các chỉnh sửa P19 với ảnh trước/sau có khoanh. |
 | [CHANGELOG.md](CHANGELOG.md) | Thay đổi theo từng version. |
 
