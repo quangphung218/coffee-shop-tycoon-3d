@@ -1,0 +1,28 @@
+{
+  "item": "f3",
+  "source": "docs/reports/p22-review/findings.json (area ui, layout)",
+  "fixed": [
+    {
+      "id": "layout-blocked-suggest-390",
+      "ratio": 3,
+      "cause": "At 390x844 with a four-row HUD the Kho body is about 210-270 px and its sticky foot about 190 px, so the foot covers Auto-restock and the top of the stock list.",
+      "fix": "src/ui/panels/panels.css: a .panel-body with a foot is a size container (panel-body); under 30rem tall the foot is position: static and scrolls after the list. Taller bodies (desktop, tablet) keep the sticky foot.",
+      "test": "tests/ui/layout-overflow.test.ts 'panel foot on a short body (P22 layout-blocked-suggest-390)'",
+      "measure": "npm run review:p22 at 390: blocked.390/* empty (was d2, d5, d7 suggest); npm run layout Kho shift check at 390/768/1440",
+      "scripts": "scripts/check-layout.mjs footBoxes reads a non-sticky foot in content coordinates; scripts/capture-media.mjs inView clamps to the body bottom."
+    }
+  ],
+  "skipped": [
+    {
+      "id": "ui-icons-blank-390",
+      "ratio": 2,
+      "reason": "Icon atlas load order and placeholders belong to f1 (fcdd7fa, merged in 2242b06); the finding was measured at f3e8b3a before that merge. b1 re-measures menu.390.icons."
+    },
+    {
+      "id": "ui-icons-blank-1440",
+      "ratio": 2,
+      "reason": "Same as ui-icons-blank-390: f1 scope, re-measured by b1."
+    }
+  ],
+  "notInScope": ["perf-fps-390", "perf-fps-1440"]
+}
