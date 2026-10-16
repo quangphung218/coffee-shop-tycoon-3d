@@ -20,7 +20,7 @@ export interface CharacterOptions {
   role: CharacterRole;
   /** Visual variant (shirt, hair, skin); any integer. */
   look: number;
-  /** Customer personality; adds a persona accessory (bag, backpack, scarf). Absent = none. */
+  /** Customer personality; adds a persona accessory (briefcase, backpack, beanie, scarf, tote). Absent = none. */
   persona?: PersonaId;
 }
 
@@ -56,16 +56,20 @@ const FACE_INK = 0x2a211c;
 /** The four expressions a face can take. */
 const MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry'];
 
-/** A persona accessory: which merged geometry, its colour and where it sits on the torso. */
+/** A persona accessory: which merged geometry, its colour, and where it sits on the torso or the head. */
 interface Accessory {
   geo: string;
   color: number;
   pos: readonly [number, number, number];
+  /** Rides on the head (turns and nods with it) instead of the torso. */
+  onHead?: boolean;
 }
-const ACCESSORIES: Partial<Record<PersonaId, Accessory>> = {
+export const ACCESSORIES: Readonly<Record<PersonaId, Accessory>> = {
   office: { geo: 'acc_briefcase', color: 0x5c3a26, pos: [0.3, -0.08, 0.1] },
   student: { geo: 'acc_backpack', color: 0x3d9be9, pos: [0, 0.2, -0.17] },
+  regular: { geo: 'acc_beanie', color: 0x6a4c93, pos: [0, 0, 0], onHead: true },
   connoisseur: { geo: 'acc_scarf', color: 0xd8457a, pos: [0, 0.42, 0] },
+  family: { geo: 'acc_tote', color: 0xf2a516, pos: [-0.31, -0.12, 0.04] },
 };
 /** Accessory geometry shown (hidden) for a customer without one, so every rig shares it. */
 const DEFAULT_ACCESSORY = 'acc_scarf';
@@ -129,6 +133,14 @@ function faceGeometry(mood: Mood): BufferGeometry {
   return merged;
 }
 
+/** Merges `parts` into one geometry (one draw call) and disposes the parts. */
+function merged(parts: BufferGeometry[]): BufferGeometry {
+  const geo = mergeGeometries(parts);
+  for (const p of parts) p.dispose();
+  if (!geo) throw new Error('rig: could not merge accessory geometry');
+  return geo;
+}
+
 /** Box geometries shared by every character, built once. Each is offset so its Group pivot sits at the joint. */
 function sharedGeometry(): Record<string, BufferGeometry> {
   if (geometries) return geometries;
@@ -156,6 +168,10 @@ function sharedGeometry(): Record<string, BufferGeometry> {
     acc_briefcase: box(0.18, 0.14, 0.06),
     acc_backpack: rbox(0.26, 0.3, 0.12, 0, 0, 0.04),
     acc_scarf: box(0.34, 0.07, 0.3),
+    // Knit beanie with a pompom, a little larger than the hair so it covers it.
+    acc_beanie: merged([box(0.34, 0.13, 0.31, 0.31), box(0.09, 0.07, 0.09, 0.4)]),
+    // Shopping tote held at the left hand, strap up to the fist.
+    acc_tote: merged([box(0.17, 0.2, 0.08), box(0.03, 0.12, 0.02, 0.15)]),
     hitbox: box(0.6, 1.45, 0.6, 0.72),
   };
   for (const mood of MOODS) geometries[`face_${mood}`] = faceGeometry(mood);
@@ -264,6 +280,9 @@ export class Character {
     this.torso.add(this.head);
 
     this.accessory = mesh(g[DEFAULT_ACCESSORY]!, 0xd8457a);
+    // Too small to show a shadow of its own; skipping the shadow pass keeps
+    // personas from adding draw calls at high quality.
+    this.accessory.castShadow = false;
     this.accessory.visible = false;
     this.torso.add(this.accessory);
 
@@ -329,8 +348,12 @@ export class Character {
       this.accessory.geometry = g[acc.geo]!;
       this.accessory.material = materialFor(acc.color);
       this.accessory.position.set(acc.pos[0], acc.pos[1], acc.pos[2]);
+      const parent = acc.onHead ? this.head : this.torso;
+      if (this.accessory.parent !== parent) parent.add(this.accessory);
     }
     this.accessory.visible = acc !== undefined;
+    // A beanie covers the hair, so the hair mesh is not drawn under it.
+    if (acc?.onHead) this.hair.visible = false;
   }
 
   /** Red face while storming out. */

@@ -12,9 +12,11 @@ import {
   blendPose,
   blinkFor,
   bounceFor,
+  gaitFor,
   poseFor,
   restPose,
   strideCycles,
+  stylePose,
   type AnimName,
 } from './animations';
 import { CoinFx, Steam, puffTexture, steamFor } from './fx';
@@ -129,6 +131,8 @@ interface Actor {
   seen: number;
   /** Offset into the standing bob, so people do not breathe in step. */
   bobOffset: number;
+  /** Customer personality, which styles the walk and the wait; absent for staff and the player. */
+  persona: PersonaId | undefined;
 }
 
 export function createActors(scene: Scene, options: ActorsOptions = {}): Actors {
@@ -202,6 +206,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       seen: frame,
       // Golden-ratio spread keeps neighbouring ids far apart in the cycle.
       bobOffset: ((id * 0.618034) % 1) * IDLE_BOUNCE_PERIOD,
+      persona,
     };
     actors.set(key, actor);
     byHitbox.set(body.char.hitbox, actor);
@@ -265,10 +270,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     // Turns keep up with the walk at higher game speeds.
     actor.heading = snapNow ? target : turnToward(actor.heading, target, Math.max(dtReal, dtGame * SECONDS_PER_GAME_MINUTE));
 
+    const gait = gaitFor(actor.persona);
     const striding = MOVING_ANIMS.has(next);
     if (striding) {
       actor.lastMove = next;
-      actor.stride += strideCycles(moved, dtReal);
+      actor.stride += strideCycles(moved, dtReal, gait.stride);
     }
     actor.phase += dtReal;
     // Keep the clocks small so float precision holds over a long session.
@@ -286,10 +292,10 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     const moveTime = actor.stride * ANIM_PERIOD[actor.lastMove];
     const bob = now + actor.bobOffset;
     const quiet = calm();
-    poseFor(stand, standTime, standPose);
-    poseFor(actor.lastMove, moveTime, movePose);
+    stylePose(actor.persona, stand, standTime, quiet, poseFor(stand, standTime, standPose));
+    stylePose(actor.persona, actor.lastMove, moveTime, quiet, poseFor(actor.lastMove, moveTime, movePose));
     bounceFor(stand, standTime, bob, quiet, standBounce);
-    bounceFor(actor.lastMove, moveTime, bob, quiet, moveBounce);
+    bounceFor(actor.lastMove, moveTime, bob, quiet, moveBounce, gait.hop);
 
     const char = actor.body.char;
     char.applyPose(blendPose(standPose, movePose, blend, standPose));

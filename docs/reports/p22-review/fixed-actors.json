@@ -1,0 +1,49 @@
+{
+  "source": "docs/reports/p22-review/findings.json has no 'characters' entry; picked from the peak shots (390/d4-peak.jpg, 1440/d4-peak.png) and metrics.json peaks.*",
+  "fixed": [
+    {
+      "id": "actors-persona-motion",
+      "title": "Personas only differed by one accessory; now each walks and waits in its own way",
+      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.png"],
+      "impact": 3,
+      "effort": 1,
+      "change": "animations.ts PERSONA_GAITS + stylePose: office short quick steps, head down, reads a phone in the queue; student bouncy hop, leans back with hands in pockets and nods; connoisseur slow upright stroll, chin up, hands clasped behind the back; family ambles and looks all around. Render only: walking speed and path are unchanged.",
+      "reducedMotion": "Low quality or reduced motion keeps the posture and drops the extra nod, glance and hop.",
+      "tests": ["tests/render/actors.test.ts > animations: persona style"]
+    },
+    {
+      "id": "actors-persona-accessory",
+      "title": "Regular and family customers had no accessory and looked like each other",
+      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.png"],
+      "impact": 2,
+      "effort": 1,
+      "change": "rig.ts ACCESSORIES: regular wears a plum beanie (on the head, hides the hair mesh), family carries a mustard tote at the left hand; both reuse the one accessory mesh slot.",
+      "drawCalls": "Mesh count per character unchanged; regular draws the beanie instead of the hair (net 0), family draws one more mesh, like office and student already did. The accessory casts no shadow, so at high quality (the only one with shadows) a persona adds no shadow draw call.",
+      "fps": "First measure-startup --base f720b6f --runs 3 --fps-only (M2, before the shadow change): medium 25.1 vs 23.6 (+6.5%), high 22.0 vs 25.3 (-13.2%), with runs of one build spreading 21.7-26.8 FPS. Rerun with --runs 5 after the shadow change hit the command timeout during high; medium finished at a median of 20.9 vs 20.9 (0%), both builds dropping to 12-14 FPS on runs 4-5. Final --runs 3 after the shadow change: medium 21.6 vs 19.1 (+13.0%, ok), high 11.2 vs 12.2 (-8.0%, ok); no !! line.",
+      "tests": ["tests/render/actors.test.ts > rig and pool > gives every persona its own accessory from the one shared slot"]
+    },
+    {
+      "id": "actors-impatient-silhouette",
+      "title": "The impatient pose (small foot tap) was hard to see from the isometric camera",
+      "evidence": ["390/d4-peak.jpg"],
+      "impact": 2,
+      "effort": 1,
+      "change": "animations.ts impatient: arms crossed in front, uncrossing to check the watch once a loop, a foot tap 0.5 rad instead of 0.35.",
+      "tests": ["tests/render/actors.test.ts > poseFor > crosses the arms when impatient, a silhouette unlike the calm queue"]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "actors-stuck-walking",
+      "reason": "metrics.json peaks.*.stuckWalking is 0 on all 14 peak samples; nothing to fix."
+    },
+    {
+      "id": "actors-queue-overlap",
+      "reason": "separate() in sync.ts already eases walkers apart and the peak shots show no one inside another; changing it would touch shared path code without evidence."
+    },
+    {
+      "id": "actors-wait-expression",
+      "reason": "The patience bar and face above the head (labels.ts) already show a long wait; only the body pose was weak, covered by actors-impatient-silhouette."
+    }
+  ]
+}
