@@ -178,11 +178,76 @@ describe('Settings · Số liệu chơi', () => {
     expect(readPlayLog(storage).length).toBe(2);
   });
 
-  it('downloads playlog-YYYYMMDD.json when blob URLs exist, and is a no-op otherwise', () => {
+  it('shows an error line, not "Chưa có dữ liệu", when storage is blocked', () => {
+    const blocked: StorageLike = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+    const screen = openSettings(blocked);
+    const summary = screen.el.querySelector<HTMLElement>('.playlog-summary')!;
+    expect(summary.textContent).not.toContain('Chưa có dữ liệu');
+    expect(summary.classList.contains('is-error')).toBe(true);
+    expect(summary.getAttribute('role')).toBe('alert');
+    expect(summary.querySelector('[data-icon="i-warning"]')).not.toBeNull();
+    expect(summary.textContent).toBe(
+      'Không đọc được số liệu chơi: trình duyệt chặn bộ nhớ hoặc dữ liệu hỏng. Thử tắt chế độ ẩn danh hoặc bấm Xoá để ghi lại từ đầu.',
+    );
+    // In place, inside the Số liệu chơi group.
+    expect(screen.el.querySelector('.playlog')?.contains(summary)).toBe(true);
+  });
+
+  it('shows the same error line when the stored log is corrupt, and clears it after Xoá', () => {
+    vi.useFakeTimers();
+    const storage = createMemoryStorage();
+    storage.setItem('cst3d:playlog', '{not json');
+    const screen = openSettings(storage);
+    const summary = screen.el.querySelector<HTMLElement>('.playlog-summary')!;
+    expect(summary.classList.contains('is-error')).toBe(true);
+    expect(summary.textContent).toContain('Không đọc được số liệu chơi');
+
+    const clear = button(screen.el, 'Xoá');
+    clear.click();
+    clear.click();
+    expect(summary.classList.contains('is-error')).toBe(false);
+    expect(summary.textContent).toBe('Chưa có dữ liệu');
+    expect(screen.el.querySelector('.playlog-note')?.textContent).toBe('Đã xoá số liệu chơi');
+  });
+
+  it('tells how to fix it when Xoá fails', () => {
+    vi.useFakeTimers();
+    const storage = createMemoryStorage();
+    playToOpening(storage);
+    const locked: StorageLike = {
+      getItem: (k) => storage.getItem(k),
+      setItem: (k, v) => storage.setItem(k, v),
+      removeItem: () => {
+        throw new Error('denied');
+      },
+    };
+    const screen = openSettings(locked);
+    const clear = button(screen.el, 'Xoá');
+    clear.click();
+    clear.click();
+    const note = screen.el.querySelector<HTMLElement>('.playlog-note')!;
+    expect(note.classList.contains('is-error')).toBe(true);
+    expect(note.querySelector('[data-icon="i-warning"]')).not.toBeNull();
+    expect(note.textContent).toContain('Không xoá được số liệu chơi');
+    expect(note.textContent).toContain('Thử tắt chế độ ẩn danh hoặc cho phép trang lưu dữ liệu, rồi bấm Xoá lại.');
+    // The note sits in the Số liệu chơi group, next to the buttons.
+    expect(screen.el.querySelector('.playlog')?.contains(note)).toBe(true);
+    expect(readPlayLog(storage).length).toBe(2);
+  });
+
+  it('downloads playlog-YYYYMMDD.json when blob URLs exist, and points to "Xem JSON" otherwise', () => {
     const storage = createMemoryStorage();
     playToOpening(storage);
     const screen = openSettings(storage);
     const exportBtn = button(screen.el, 'Xuất JSON');
+    const note = screen.el.querySelector<HTMLElement>('.playlog-note')!;
+    const failed = 'Không tải được file, hãy chép JSON trong mục Xem JSON';
 
     const clicks: string[] = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
@@ -190,17 +255,21 @@ describe('Settings · Số liệu chơi', () => {
     });
     const { createObjectURL, revokeObjectURL } = URL;
     try {
-      // No blob URLs (like jsdom): nothing happens, nothing throws.
+      // No blob URLs (like jsdom): no download, nothing throws, a note in place.
       (URL as { createObjectURL?: unknown }).createObjectURL = undefined;
       expect(() => exportBtn.click()).not.toThrow();
       expect(clicks).toEqual([]);
+      expect(note.textContent).toBe(failed);
+      expect(note.classList.contains('is-error')).toBe(true);
 
-      // Blob URLs that refuse the Blob: also skipped.
+      // Blob URLs that refuse the Blob: the same note.
+      note.replaceChildren();
       URL.createObjectURL = vi.fn(() => {
         throw new TypeError('bad blob');
       });
       expect(() => exportBtn.click()).not.toThrow();
       expect(clicks).toEqual([]);
+      expect(note.textContent).toBe(failed);
 
       URL.createObjectURL = vi.fn(() => 'blob:playlog');
       URL.revokeObjectURL = vi.fn();
@@ -208,6 +277,7 @@ describe('Settings · Số liệu chơi', () => {
       expect(URL.createObjectURL).toHaveBeenCalledOnce();
       expect(clicks).toHaveLength(1);
       expect(clicks[0]).toMatch(/^playlog-\d{8}\.json$/);
+      expect(note.textContent).toBe('');
     } finally {
       URL.createObjectURL = createObjectURL;
       URL.revokeObjectURL = revokeObjectURL;

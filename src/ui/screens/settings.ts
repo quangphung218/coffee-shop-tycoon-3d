@@ -8,7 +8,7 @@ import {
   type ReducedMotion,
   type Settings,
 } from '../../save/settings';
-import { clearPlayLog, exportPlayLog, readPlayLog, type PlayLogPhase } from '../../save/playlog';
+import { clearPlayLog, exportPlayLog, readPlayLogStatus, type PlayLogPhase } from '../../save/playlog';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, setChildren, uid } from '../core/dom';
@@ -250,23 +250,45 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
   const playLogTitleId = uid('set-playlog');
   const playLogSummary = h('p', { class: 'playlog-summary' });
   const playLogPre = h('pre', { class: 'playlog-json' });
+  // Export and "Xoá" report here, next to their buttons. aria-live rather than
+  // role="status": the form's own status line stays the first one.
+  const playLogNote = h('span', { class: 'status-line playlog-note', attrs: { 'aria-live': 'polite' } });
+  function notePlayLog(ok: boolean, text: string): void {
+    playLogNote.classList.toggle('is-error', !ok);
+    setChildren(playLogNote, icon(ok ? 'i-ok' : 'i-warning', { size: 16 }), text);
+  }
   function syncPlayLog(): void {
-    const last = readPlayLog(storage).at(-1);
-    playLogSummary.textContent = last
-      ? `Lần dừng gần nhất: Ngày ${last.day} · ${playLogPhaseLabel(last.phase)} · ${formatClock(last.minute)} (giờ game) · ${formatSavedAt(last.at)}`
-      : 'Chưa có dữ liệu';
+    const read = readPlayLogStatus(storage);
+    playLogSummary.classList.toggle('is-error', !read.ok);
+    if (!read.ok) {
+      playLogSummary.setAttribute('role', 'alert');
+      setChildren(
+        playLogSummary,
+        icon('i-warning', { size: 16 }),
+        'Không đọc được số liệu chơi: trình duyệt chặn bộ nhớ hoặc dữ liệu hỏng. Thử tắt chế độ ẩn danh hoặc bấm Xoá để ghi lại từ đầu.',
+      );
+    } else {
+      playLogSummary.removeAttribute('role');
+      const last = read.entries.at(-1);
+      playLogSummary.textContent = last
+        ? `Lần dừng gần nhất: Ngày ${last.day} · ${playLogPhaseLabel(last.phase)} · ${formatClock(last.minute)} (giờ game) · ${formatSavedAt(last.at)}`
+        : 'Chưa có dữ liệu';
+    }
     playLogPre.textContent = exportPlayLog(storage);
   }
 
-  // Skipped where blob URLs are missing or refuse the Blob (jsdom).
+  // Where blob URLs are missing or refuse the Blob (jsdom, locked-down browsers)
+  // the JSON is still readable in "Xem JSON".
   function downloadPlayLog(): void {
-    if (typeof URL.createObjectURL !== 'function') return;
+    const failed = (): void => notePlayLog(false, 'Không tải được file, hãy chép JSON trong mục Xem JSON');
+    if (typeof URL.createObjectURL !== 'function') return failed();
     let href: string;
     try {
       href = URL.createObjectURL(new Blob([exportPlayLog(storage)], { type: 'application/json' }));
     } catch {
-      return;
+      return failed();
     }
+    setChildren(playLogNote);
     const link = h('a', { attrs: { href, download: `playlog-${dateStamp(Date.now())}.json` } });
     link.hidden = true;
     form.append(link);
@@ -303,8 +325,12 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     }
     disarmClear();
     const cleared = clearPlayLog(storage);
-    status.classList.toggle('is-error', !cleared);
-    setChildren(status, icon(cleared ? 'i-ok' : 'i-warning', { size: 16 }), cleared ? 'Đã xoá số liệu chơi' : 'Không xoá được số liệu chơi');
+    notePlayLog(
+      cleared,
+      cleared
+        ? 'Đã xoá số liệu chơi'
+        : 'Không xoá được số liệu chơi: trình duyệt chặn bộ nhớ. Thử tắt chế độ ẩn danh hoặc cho phép trang lưu dữ liệu, rồi bấm Xoá lại.',
+    );
     syncPlayLog();
   });
   paintClear();
@@ -317,6 +343,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     h('p', { class: 'hint', text: 'Chỉ lưu trên máy này, không có thông tin cá nhân.' }),
     h('details', { class: 'keys-details playlog-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Xem JSON'), playLogPre),
     h('div', { class: 'playlog-actions' }, exportBtn, clearBtn),
+    playLogNote,
   );
 
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
@@ -350,6 +377,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     },
     onShow: () => {
       status.textContent = '';
+      setChildren(playLogNote);
       disarmReset();
       disarmClear();
       syncAll();

@@ -809,6 +809,16 @@ legend {
   margin-top: var(--space-2);
   font-weight: var(--font-weight-semibold);
 }
+.playlog-summary.is-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  color: var(--text-danger);
+}
+.playlog-summary.is-error > :first-child {
+  flex: none;
+  margin-top: var(--space-1);
+}
 /* Wraps instead of scrolling inside; the screen itself scrolls. */
 .playlog-json {
   margin: var(--space-2) 0 0;
@@ -825,6 +835,9 @@ legend {
   flex-wrap: wrap;
   gap: var(--space-2);
   padding: var(--space-3) 0;
+}
+.playlog-note:empty {
+  display: none;
 }
 
 /* Save slots */
