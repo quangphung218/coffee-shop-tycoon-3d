@@ -1,7 +1,10 @@
 import { expect } from 'vitest';
+import { MENU } from '../../src/sim/data/menu';
+import { UPGRADES } from '../../src/sim/data/upgrades';
 import { dispatch, step } from '../../src/sim/index';
 import { isClaimed } from '../../src/sim/orders';
-import type { GameEvent, GameState } from '../../src/sim/types';
+import { isUnlocked } from '../../src/sim/progression';
+import type { DayStats, GameEvent, GameState } from '../../src/sim/types';
 
 /** Upper bound on simulated minutes per day; a day is 07:00–21:00 plus closing. */
 export const DAY_GUARD = 3000;
@@ -47,6 +50,19 @@ export function runOpenDay(state: GameState, opts: RunOptions = {}): GameEvent[]
     state.events = [];
   }
   return events;
+}
+
+/** Every menu item and upgrade that isUnlocked reports open right now, as `menu:<id>` / `upgrade:<id>`. */
+export function unlockedIds(state: GameState): Set<string> {
+  const ids = new Set<string>();
+  for (const m of MENU) if (isUnlocked(state, 'menu', m.id)) ids.add(`menu:${m.id}`);
+  for (const u of UPGRADES) if (isUnlocked(state, 'upgrade', u.id)) ids.add(`upgrade:${u.id}`);
+  return ids;
+}
+
+/** Servings sold in a day, drinks and food. */
+export function cupsSold(stats: DayStats): number {
+  return Object.values(stats.sold).reduce((s, n) => s + (n ?? 0), 0);
 }
 
 /** Opens the shop and plays it to the report. */
