@@ -142,6 +142,28 @@ describe('fixed widths inside a panel', () => {
   });
 });
 
+// P22 review layout-blocked-suggest-390: at 390×844 with a four-row HUD the
+// Kho body is ~210px and its sticky foot ~190px, so the foot covered
+// Auto-restock and Playwright saw the tap land on .foot-sum.
+describe('panel foot on a short body (P22 layout-blocked-suggest-390)', () => {
+  const src = PANELS_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('makes a body with a foot a named size container', () => {
+    const body = PANELS.find((r) => r.selector === '.panel-body:has(> .prep > .panel-foot)');
+    expect(decl(body!.body, 'container-type')).toBe('size');
+    expect(decl(body!.body, 'container-name')).toBe('panel-body');
+  });
+
+  it('sticks the foot by default and lets it scroll when the body is under 30rem', () => {
+    const foot = PANELS.filter((r) => r.selector === '.prep .panel-foot').map((r) => decl(r.body, 'position'));
+    expect(foot).toEqual(['sticky', 'static']);
+    const query = src.match(/@container\s+panel-body\s*\(([^)]*)\)\s*\{\s*\.prep \.panel-foot\s*\{([^{}]*)\}/);
+    expect(query, 'no @container panel-body rule for .prep .panel-foot').not.toBeNull();
+    expect(query![1]!.replace(/\s+/g, ' ').trim()).toBe('max-height: 30rem');
+    expect(decl(query![2]!.trim(), 'position')).toBe('static');
+  });
+});
+
 describe('padding uses the spacing tokens', () => {
   it.each([
     ['panels.css', PANELS_CSS],

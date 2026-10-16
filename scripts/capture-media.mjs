@@ -956,10 +956,10 @@ async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend =
 const metres = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
 const px = (n) => String(Math.round(n));
 
-/** True when `box` lies in the body's visible height, above the sticky foot. */
+/** True when `box` lies in the body's visible height, above the foot (sticky, or scrolled into view on a short body). */
 function inView(dom, box) {
   if (!box || !dom.body) return false;
-  const bottom = dom.foot ? dom.foot.y : dom.body.y + dom.body.h;
+  const bottom = Math.min(dom.body.y + dom.body.h, dom.foot ? dom.foot.y : Infinity);
   return box.y >= dom.body.y - 0.5 && box.y + box.h <= bottom + 0.5;
 }
 
