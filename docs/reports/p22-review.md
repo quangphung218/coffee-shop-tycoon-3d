@@ -127,4 +127,4 @@ Không bản nào tụt quá 10% so với v0.4.0 (dòng `ok` của `--fps-only`)
 | Lệnh | Kiểm gì | Kết quả |
 | --- | --- | --- |
 | `npm run check` | `tsc --noEmit`, `vitest run`, `vite build` | Pass: 66 file test, 915 test; build xong |
-| `npm run layout` | Tràn ngang ở 390×844, 768×1024, 1440×900; CLS = 0 ở bảng Kho khi đổi số gói ([media.md](../media.md#kiểm-lề-và-cls)) | In bảng PASS/FAIL, mã lỗi 1 khi có FAIL |
+| `npm run layout` | Tràn ngang ở 390×844, 768×1024, 1440×900; CLS = 0 ở bảng Kho khi đổi số gói ([media.md](../media.md#kiểm-lề-và-cls)) | Pass: 27/27 kiểm (24 màn × khổ không tràn ngang, không lệch khung; CLS bảng Kho 0,000000 ở cả 3 khổ, khung tổng và danh sách lệch 0,0 px) |
