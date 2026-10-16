@@ -7,14 +7,17 @@ Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món
 | Ngày | Món | Dụng cụ | Khu, trang trí |
 | --- | --- | --- | --- |
 | 1 | Espresso, Americano, Latte, Trà sữa, Trà chanh, Bánh croissant | | Thêm bàn ghế, Cây xanh |
-| 2 | Cappuccino | Máy xay hạt | |
+| 2 | Cappuccino | Máy xay hạt, Máy làm đá | |
 | 3 | Nước cam | Tủ bánh | |
-| 4 | Mocha | | Tranh treo tường, Đèn trang trí |
+| 4 | Mocha | Máy rửa ly | Tranh treo tường, Đèn trang trí |
 | 5 | Cà phê đá xay | Máy xay sinh tố | Khu ngồi ngoài trời |
-| 6 | Bánh ngọt | Máy làm đá | Quầy bar cửa sổ |
-| 7 | | Máy rửa ly | Mở rộng diện tích (tặng cấp 1) |
+| 6 | Bánh ngọt | | Quầy bar cửa sổ |
+| 7 | | | Mở rộng diện tích (tặng cấp 1) |
 
-Luật của lịch: từ ngày 2 tới ngày 7, không quá 2 ngày liền nhau không mở thêm gì.
+Luật của lịch:
+
+- Từ ngày 2 tới ngày 7, không quá 2 ngày liền nhau không mở thêm gì.
+- Mọi dụng cụ mở muộn nhất ngày 5.
 
 Sáng mỗi ngày có mở khoá, sim phát sự kiện `week_unlocks` (`day`, `unlocks`) để giao diện báo.
 

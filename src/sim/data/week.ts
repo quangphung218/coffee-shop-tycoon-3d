@@ -32,12 +32,12 @@ export interface WeekUnlockDay {
  */
 export const WEEK_UNLOCKS: readonly WeekUnlockDay[] = [
   { day: 1, unlocks: levelDef(1).unlocks },
-  { day: 2, unlocks: { menu: ['cappuccino'], upgrades: [], tools: ['grinder'] } },
+  { day: 2, unlocks: { menu: ['cappuccino'], upgrades: [], tools: ['grinder', 'ice_maker'] } },
   { day: 3, unlocks: { menu: ['orange_juice'], upgrades: [], tools: ['pastry_case'] } },
-  { day: 4, unlocks: { menu: ['mocha'], upgrades: ['paintings', 'lights'], tools: [] } },
+  { day: 4, unlocks: { menu: ['mocha'], upgrades: ['paintings', 'lights'], tools: ['dishwasher'] } },
   { day: 5, unlocks: { menu: ['frappe'], upgrades: ['outdoor_seating'], tools: ['blender'] } },
-  { day: 6, unlocks: { menu: ['cake'], upgrades: ['window_bar'], tools: ['ice_maker'] } },
-  { day: 7, unlocks: { menu: [], upgrades: ['expand_area'], tools: ['dishwasher'] }, expandShop: true },
+  { day: 6, unlocks: { menu: ['cake'], upgrades: ['window_bar'], tools: [] } },
+  { day: 7, unlocks: { menu: [], upgrades: ['expand_area'], tools: [] }, expandShop: true },
 ];
 
 /** Calendar entry for a day of the week; undefined outside 1..WEEK_LENGTH. */

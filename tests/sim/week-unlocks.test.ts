@@ -35,6 +35,12 @@ describe('week unlock calendar', () => {
     }
   });
 
+  it('opens every tool by day 5, so none is bought for the last one or two days only', () => {
+    for (const id of LEVELS.flatMap((l) => l.unlocks.tools)) expect(dayUnlockDay('upgrade', id), id).toBeLessThanOrEqual(5);
+    expect(dayUnlockDay('upgrade', 'ice_maker')).toBe(2);
+    expect(dayUnlockDay('upgrade', 'dishwasher')).toBe(4);
+  });
+
   it('expands the shop on day 7 only', () => {
     expect(WEEK_UNLOCKS.filter((d) => d.expandShop).map((d) => d.day)).toEqual([7]);
   });

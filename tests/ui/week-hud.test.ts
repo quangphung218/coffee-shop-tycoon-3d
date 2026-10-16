@@ -124,7 +124,7 @@ describe('Task Board "Hôm nay" block', () => {
 
   it("names what today's calendar opens", () => {
     const body = mountTasks(onWeekDay(game(), 2));
-    expect(body.querySelector('[data-week="unlocks"]')!.textContent).toBe('Mới mở khóa hôm nay: Cappuccino, Máy xay hạt.');
+    expect(body.querySelector('[data-week="unlocks"]')!.textContent).toBe('Mới mở khóa hôm nay: Cappuccino, Máy xay hạt, Máy làm đá.');
   });
 
   it('says the shop has expanded on day 7, with no tomorrow line', () => {

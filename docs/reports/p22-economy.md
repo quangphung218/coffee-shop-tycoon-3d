@@ -77,3 +77,59 @@ Hoàn vốn dụng cụ trong tuần = (lãi c + tiền mua c − lãi b) / ti�
 | E8 | Không có áp lực tiền: tiền không bao giờ xuống sát 0, cuối tuần dư gấp 6–11 lần vốn đầu | Tiền thấp nhất a/b = vốn đầu − hàng nhập ngày 1 (2.613k / 1.690k / 947k); tiền cuối tuần 10.742k–25.730k; thấp nhất toàn bộ 184k (Khó e, seed 42) | 2 | 2 |
 | E9 | Điểm tuần chỉ tính doanh thu và sao, không tính lãi: chi tiền mua dụng cụ hay marketing không bao giờ bị phạt điểm | c lãi thấp hơn b 1.917k–3.719k nhưng điểm c ≥ b ở cả 3 độ khó (100,0 / 100,0 / 99,5 so với 100,0 / 99,5 / 97,3) | 2 | 2 |
 | E10 | Không có ngày nhàm theo định nghĩa (không mở khoá, không sự kiện) | Ngày nhàm = 0 ở 90/90 ván: lịch mở khoá có mục mới mỗi ngày từ ngày 2, ngày 1 mở món khởi đầu | 1 | 1 |
+
+## Quyết định
+
+Ngưỡng sửa: tiền âm hoặc phá sản; một lựa chọn lỗ ở mọi seed và độ khó; Khó không đạt nổi 1 cúp; ngày không có gì để quyết định. Chỉ E5 đạt ngưỡng. Các bảng ở trên là số trước khi sửa.
+
+Đo từng dụng cụ riêng: chiến lược b, thêm cấp 1 của đúng một dụng cụ vào sáng nó mở, so với b cùng seed. Biến thể "bật món": mỗi sáng bật mọi món đã mở trước khi nhập hàng (chiến lược a–e không bật món mới nào).
+
+| Dụng cụ | Ngày mở | Δ lãi Dễ / Thường / Khó | Seed lãi (trên 6) | Seed lãi khi bật món |
+| --- | --- | --- | --- | --- |
+| Máy xay hạt | 2 | +483k / +334k / −273k | 4 / 6 / 1 | 6 / 6 / 4 |
+| Tủ bánh | 3 | −990k / −1.100k / −1.265k | 0 / 0 / 0 | 3 / 0 / 0 |
+| Máy xay sinh tố | 5 | −670k / −850k / −1.278k | 0 / 0 / 0 | 0 / 1 / 0 |
+| Máy làm đá | 6 | −150k / −168k / −201k | 0 / 0 / 0 | 0 / 0 / 0 |
+| Máy rửa ly | 7 | −599k / −778k / −830k | 0 / 0 / 0 | 0 / 0 / 0 |
+
+Máy làm đá và máy rửa ly lỗ ở 36/36 ván, có bật món hay không. Tủ bánh và máy xay sinh tố có ván lãi khi bật món, nên lỗ của chúng ở bảng trên một phần do chiến lược không bật món; không sửa.
+
+### Đã sửa
+
+| Dụng cụ | Trước | Sau |
+| --- | --- | --- |
+| Máy làm đá | Mở ngày 6, giá gốc 200k | Mở ngày 2, giá gốc 80k |
+| Máy rửa ly | Mở ngày 7, giá gốc 800k | Mở ngày 4, giá gốc 400k |
+
+Chỉ đổi `WEEK_UNLOCKS` (`src/sim/data/week.ts`) và `baseCost` (`src/sim/data/upgrades.ts`). `WEEK_GOALS`, `DAY_EVENTS`, giá món và lương giữ nguyên. Mọi dụng cụ giờ mở muộn nhất ngày 5; ngày 6 và 7 vẫn mở món, khu và mở rộng quán.
+
+| Dụng cụ | Δ lãi Dễ / Thường / Khó | Seed lãi (trên 6) | Seed lãi khi bật món |
+| --- | --- | --- | --- |
+| Máy làm đá, trước | −150k / −168k / −201k | 0 / 0 / 0 | 0 / 0 / 0 |
+| Máy làm đá, sau | +33k / +14k / −2k | 6 / 5 / 2 | 6 / 6 / 3 |
+| Máy rửa ly, trước | −599k / −778k / −830k | 0 / 0 / 0 | 0 / 0 / 0 |
+| Máy rửa ly, sau | +254k / −141k / −377k | 5 / 2 / 0 | 2 / 4 / 3 |
+
+Chạy lại `p22-strategies`, trung bình 6 seed:
+
+| Chỉ số | Độ khó | Trước | Sau |
+| --- | --- | --- | --- |
+| c − b (lãi) | Dễ / Thường / Khó | −1.917k / −2.560k / −3.719k | −966k / −1.704k / −2.914k |
+| Hoàn vốn dụng cụ trong tuần | Dễ / Thường / Khó | 47% / 36% / 19% | 69% / 51% / 27% |
+| Tiền mua của c | Dễ / Thường / Khó | 3.600k / 4.000k / 4.600k | 3.132k / 3.480k / 4.002k |
+| Lãi d (giá Cao) | Dễ / Thường / Khó | 21.498k / 16.767k / 10.865k | 22.838k / 17.935k / 11.993k |
+| Tiền thấp nhất toàn bộ | | 184k (Khó e, seed 42) | 161k (Khó e, seed 31337) |
+| Cúp | mọi chiến lược | không đổi | không đổi |
+
+Chiến lược a và b không mua dụng cụ nên số không đổi. Test ở `tests/sim/week-tool-payback.test.ts` và `tests/sim/week-unlocks.test.ts`.
+
+### Không sửa
+
+| Id | Lý do |
+| --- | --- |
+| E1, E2, E6, E9 | Không đạt ngưỡng: chạm trần điểm và độ khó cúp là chuyện thiết kế chấm điểm, cần đổi `WEEK_GOALS` hoặc `scoreWeek`. |
+| E3 | Thuê người luôn lãi, không phải luôn lỗ. |
+| E4 | Sau khi sửa E5, tủ bánh và máy xay sinh tố còn lỗ trong tuần nhưng có ván lãi khi bật món. |
+| E7 | Marketing lãi 3/18 ván, không phải mọi ván. |
+| E8 | Tiền không âm ở 90/90 ván; thiếu áp lực tiền không phải lỗi rõ. |
+| E10 | Không có ngày nhàm. |
