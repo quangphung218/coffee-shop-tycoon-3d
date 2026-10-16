@@ -280,6 +280,9 @@ export class Character {
     this.torso.add(this.head);
 
     this.accessory = mesh(g[DEFAULT_ACCESSORY]!, 0xd8457a);
+    // Too small to show a shadow of its own; skipping the shadow pass keeps
+    // personas from adding draw calls at high quality.
+    this.accessory.castShadow = false;
     this.accessory.visible = false;
     this.torso.add(this.accessory);
 

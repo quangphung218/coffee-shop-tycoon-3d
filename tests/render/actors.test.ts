@@ -1058,6 +1058,8 @@ describe('rig and pool', () => {
       const ch = createCharacter({ role: 'customer', look: 1, persona });
       const acc = slot(ch).accessory;
       expect(acc.visible).toBe(true);
+      // No shadow pass for the accessory, so a persona adds no shadow draw call at high quality.
+      expect(acc.castShadow).toBe(false);
       expect(acc.material).toBe(materialFor(ACCESSORIES[persona].color));
       seen.add(`${acc.geometry.uuid}:${ACCESSORIES[persona].color}`);
     }
