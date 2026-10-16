@@ -221,6 +221,38 @@ export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   return { ok: true, cost, level };
 }
 
+/** Share of a level's price given back when the decor is taken down. */
+export const DECOR_REFUND_SHARE = 0.5;
+
+/** Decor without seats (plants, paintings, lights) can be taken down; the window bar has tables. */
+export function isRemovableDecor(id: UpgradeId): boolean {
+  const def = getUpgrade(id);
+  return def.category === 'decor' && !def.effectPerLevel.capacity;
+}
+
+export type RemoveDecorResult = { ok: true; refund: number; level: number } | { ok: false; reason: string };
+
+/**
+ * Takes down one level of a removable decor item and refunds half of what
+ * that level cost. Its rating bonus, appeal and layout slot go with the level.
+ * Refused for other upgrades or when none is owned.
+ */
+export function removeDecor(state: GameState, id: UpgradeId): RemoveDecorResult {
+  const def = getUpgrade(id);
+  const level = upgradeLevel(state, id);
+  if (!isRemovableDecor(id) || level <= 0) {
+    const reason = !isRemovableDecor(id) ? `Không gỡ được ${def.name}` : `Chưa có ${def.name} để gỡ`;
+    state.events.push({ type: 'notify', level: 'error', text: reason });
+    return { ok: false, reason };
+  }
+  const paid = upgradeCost(def, level - 1, DIFFICULTIES[state.difficulty].priceMult) ?? 0;
+  const refund = Math.round(paid * DECOR_REFUND_SHARE);
+  state.upgrades[id] = level - 1;
+  state.money += refund;
+  state.events.push({ type: 'notify', level: 'info', text: `Đã gỡ ${def.name}, còn cấp ${level - 1}` });
+  return { ok: true, refund, level: level - 1 };
+}
+
 function decorFor(state: GameState): LayoutDecor[] {
   const out: LayoutDecor[] = [];
   for (const kind of Object.keys(DECOR_SLOTS) as DecorKind[]) {

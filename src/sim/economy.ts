@@ -1,4 +1,5 @@
 import { DIFFICULTIES } from './data/difficulty';
+import { wageMult } from './policies';
 import type { DayStats, Difficulty, GameState } from './types';
 
 /** How far below zero the money may go (from forced costs such as wages) before the shop is in trouble. */
@@ -34,8 +35,9 @@ export function ingredientCostUsed(state: GameState, stats: DayStats = state.tod
   return Math.round((stats.ingredientsUsed ?? 0) * DIFFICULTIES[state.difficulty].priceMult);
 }
 
+/** Today's wage bill: every staff member's daily wage times the wage policy multiplier. */
 export function totalWages(state: GameState): number {
-  return state.staff.reduce((s, member) => s + member.wagePerDay, 0);
+  return Math.round(state.staff.reduce((s, member) => s + member.wagePerDay, 0) * wageMult(state));
 }
 
 export function profit(stats: DayStats): number {

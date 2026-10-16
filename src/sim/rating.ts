@@ -1,4 +1,5 @@
 import { totalUpgradeEffect } from './data/upgrades';
+import { priceStarBonus } from './policies';
 import type { DayStats, GameState } from './types';
 
 export const MIN_RATING = 1;
@@ -30,11 +31,11 @@ export function dayQuality(stats: DayStats): DayQuality {
   };
 }
 
-/** Star score earned by today's service alone, with upgrade and decor bonuses, 1..5. */
+/** Star score earned by today's service alone, with upgrade, decor and price policy bonuses, 1..5. */
 export function dayScore(state: GameState, stats: DayStats = state.today): number {
   const q = dayQuality(stats);
   const quality = WEIGHTS.served * q.serveRate + WEIGHTS.speed * q.speed + WEIGHTS.clean * q.cleanliness + WEIGHTS.calm * q.calm;
-  const bonus = totalUpgradeEffect(state.upgrades ?? {}).ratingBonus;
+  const bonus = totalUpgradeEffect(state.upgrades ?? {}).ratingBonus + priceStarBonus(state);
   return clampRating(MIN_RATING + (MAX_RATING - MIN_RATING) * quality + bonus);
 }
 

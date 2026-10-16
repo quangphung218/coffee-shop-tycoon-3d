@@ -18,6 +18,7 @@ import {
   walkToward,
   type NavGrid,
 } from './nav';
+import { priceArrivalMult, sellPriceMult } from './policies';
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
@@ -219,7 +220,7 @@ function seatPos(state: GameState, table: Table): Vec2 {
   return { x: table.pos.x + (left ? CHAIR_OFFSET : -CHAIR_OFFSET), z: table.pos.z };
 }
 
-/** base × rating × marketing × weather × day event × hour × difficulty (× decor appeal), in customers per minute. */
+/** base × rating × marketing × weather × day event × hour × difficulty × price policy (× decor appeal), in customers per minute. */
 export function arrivalRate(state: GameState): number {
   const rating = Math.max(0.2, state.rating / 3);
   const marketing = customerMultiplier(state);
@@ -227,8 +228,9 @@ export function arrivalRate(state: GameState): number {
   const event = dayArrivalMult(state);
   const hour = state.phase === 'peak' ? PEAK_MULT : 1;
   const difficulty = DIFFICULTIES[state.difficulty].customerMult;
+  const price = priceArrivalMult(state);
   const appeal = 1 + totalUpgradeEffect(state.upgrades).appeal;
-  return BASE_ARRIVALS_PER_MINUTE * rating * marketing * weather * event * hour * difficulty * appeal;
+  return BASE_ARRIVALS_PER_MINUTE * rating * marketing * weather * event * hour * difficulty * price * appeal;
 }
 
 /**
@@ -393,8 +395,10 @@ export function angryLeave(state: GameState, customer: Customer, reason: 'patien
   }
 }
 
-function sellPrice(state: GameState, itemId: MenuItemId): number {
-  return state.menu.find((m) => m.id === itemId)?.price ?? getMenuItem(itemId).price;
+/** Menu price of the item times the price policy multiplier, rounded to the đồng. */
+export function sellPrice(state: GameState, itemId: MenuItemId): number {
+  const price = state.menu.find((m) => m.id === itemId)?.price ?? getMenuItem(itemId).price;
+  return Math.round(price * sellPriceMult(state));
 }
 
 /** Price of the food the customer ordered alongside the drink, or 0 when there is none. */

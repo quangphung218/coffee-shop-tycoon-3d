@@ -8,7 +8,8 @@ import { isUnlocked } from './progression';
 import { recordExperiencesSince } from './reviews';
 import { assignRole, clearStaffTasks, fireStaff, hireStaff, placeStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
 import { buildNavGrid, nearestFree } from './nav';
-import { buyUpgrade, getShopLayout } from './upgrades';
+import { buyUpgrade, getShopLayout, removeDecor } from './upgrades';
+import { setPolicy } from './policies';
 import { getMenuItem } from './data/menu';
 import { getUpgrade } from './data/upgrades';
 import type { Command, GameState } from './types';
@@ -140,6 +141,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
         return false;
       }
       return buyUpgrade(state, cmd.upgradeId).ok;
+    case 'remove_decor':
+      return removeDecor(state, cmd.upgradeId).ok;
+    case 'set_policy':
+      return setPolicy(state, cmd.policy, cmd.level);
     case 'start_campaign':
       return runCampaign(state, cmd.campaignId).ok;
     default:
@@ -163,7 +168,8 @@ export { buildDailyReport, closeDay } from './report';
 export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
-export { buyUpgrade, getShopLayout, nextUpgradeCost } from './upgrades';
+export { buyUpgrade, getShopLayout, isRemovableDecor, nextUpgradeCost, removeDecor } from './upgrades';
+export { PRICE_POLICY, WAGE_POLICY, policyLevel, setPolicy } from './policies';
 export {
   isUnlocked,
   missionProgress,

@@ -1,6 +1,7 @@
 import { PERSONAS } from './data/personas';
 import { STAFF_NAMES } from './data/staffNames';
 import { UPGRADES, totalUpgradeEffect } from './data/upgrades';
+import { priceStarBonus } from './policies';
 import { chance, pick } from './rng';
 import type { Customer, GameState, PersonaId, Review, ReviewReason } from './types';
 
@@ -41,8 +42,10 @@ export function rateExperience(state: GameState, exp: Experience): { stars: numb
   if (exp.kind === 'angry') return exp.reason === 'long_wait' ? { stars: 1, reason: 'long_wait' } : { stars: 2, reason: 'out_of_stock' };
   let stars = exp.waitShare < FAST_WAIT ? 5 : exp.waitShare < SLOW_WAIT ? 4 : 3;
   if (exp.dirtyTable) stars -= 1;
-  const bonus = totalUpgradeEffect(state.upgrades).ratingBonus;
+  // Upgrades and decor plus the price policy: a positive total may add a star, a negative one may take one off.
+  const bonus = totalUpgradeEffect(state.upgrades).ratingBonus + priceStarBonus(state);
   if (stars < 5 && bonus > 0 && chance(state, Math.min(0.5, bonus))) stars += 1;
+  else if (stars > 1 && bonus < 0 && chance(state, Math.min(0.5, -bonus))) stars -= 1;
   const persona = exp.persona ? PERSONAS[exp.persona] : null;
   if (persona) {
     if (persona.id === 'connoisseur' && hasPremiumCoffeeGear(state) && stars < 5 && chance(state, CONNOISSEUR_GEAR_BONUS)) stars += 1;

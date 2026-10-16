@@ -109,6 +109,8 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
+| `remove_decor` | Gỡ 1 cấp cây, tranh hay đèn, hoàn 50% giá cấp đó; cấp 0 hay món không gỡ được trả `false`. |
+| `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). |
 | `set_speed`, `set_paused` | Nhịp game. |
 | `take_order`, `brew`, `deliver`, `collect_cash`, `clean_table` | Người chơi tự phục vụ (từ cảnh 3D). |
 
@@ -176,6 +178,22 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
 
 Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`).
+
+Gỡ trang trí (`removeDecor`) chỉ áp cho `plants`, `paintings`, `lights` (`isRemovableDecor`: `decor` không có `capacity`): giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% giá của cấp đó theo `priceMult`. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
+
+### Quyết định giá và lương
+
+`state.policies` (`src/sim/policies.ts`) giữ hai quyết định, mỗi cái `low` / `standard` / `high`; thiếu thì là `standard`.
+
+| Quyết định | `low` | `standard` | `high` | Áp ở |
+| --- | --- | --- | --- | --- |
+| Giá (`PRICE_POLICY`): giá bán × | 0,9 | 1 | 1,15 | `customers.ts` (`sellPrice`) |
+| Giá: sao mỗi đơn và điểm ngày | +0,15 | 0 | −0,2 | `reviews.ts`, `rating.ts` (cộng với `ratingBonus`) |
+| Giá: khách đến × | 1,06 | 1 | 0,92 | `customers.ts` (`arrivalRate`) |
+| Lương (`WAGE_POLICY`): lương × | 0,85 | 1 | 1,2 | `economy.ts` (`totalWages`) |
+| Lương: tốc độ làm × | 0,88 | 1 | 1,12 | `staff.ts` (`workSpeed`) |
+
+Tổng `ratingBonus` + sao của giá âm thì mỗi review có cơ hội bị trừ 1 sao (tối đa 50%), dương thì cơ hội cộng 1 sao như cũ.
 
 Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, giữ 2 chữ số thập phân. Người chơi và nhân viên làm theo ngân sách phút (`workMinute` trong `orders.ts`): việc xong giữa phút thì phần còn lại chuyển sang việc kế tiếp, nên mọi mức tăng tốc, kể cả cấp 1, đều rút ngắn thời gian thật.
 
