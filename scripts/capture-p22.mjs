@@ -67,6 +67,8 @@ const FRONT_YAWS = [0.5, -0.5, 0.25];
 const SIDE_YAWS = [1.25, -1.25];
 /** Least share of a box that is the subject (not something in front). */
 const MIN_SEEN = 0.3;
+/** Most difference (rad) between the two arms' swing for arms that count as crossed (animations.ts impatient: both -0.75). */
+const CROSSED_DIFF = 0.15;
 /** Least head-to-camera cosine for a face that counts as turned to the camera. */
 const MIN_FACING = 0.6;
 const HIDE_TOASTS = '.toasts { display: none !important; }';
@@ -74,6 +76,8 @@ const HIDE_TOASTS = '.toasts { display: none !important; }';
 const HIDE_UI = '.hud-layer, .toasts { display: none !important; }';
 /** Labels go in a strip this wide right of each DOM frame, so they never sit on its text. */
 const GUTTER = 280;
+/** Narrower label strip on the three-frame Kho board, so its 390 px frames stay near full size. */
+const KHO_GUTTER = 220;
 /** A ring whose pixels spread less than this (mean RGB standard deviation, 0–255) is around an empty area. */
 const FLAT_SPREAD = 8;
 /** A ring with less than this share of its box on the frame is around something scrolled out of view. */
@@ -618,7 +622,12 @@ async function khoSession(browser, url, save, who) {
     await sleep(800);
     const kho = await page.evaluate(measureKho);
     const out = { png: await shot(page), texts: await page.evaluate(measureTexts), kho };
-    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows`);
+    // Then scrolled so the first stock row is at the top of the body, as a player scrolls to the list.
+    await page.evaluate(() => document.querySelector('#ui-panel ul.stack > li.item')?.scrollIntoView({ block: 'start' }));
+    await sleep(400);
+    const listKho = await page.evaluate(measureKho);
+    out.list = { png: await shot(page), texts: await page.evaluate(measureTexts), kho: listKho };
+    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows; scrolled to the list ${listKho.rowsSeen}/${listKho.rows} rows`);
     return out;
   } finally {
     await context.close();
@@ -729,22 +738,28 @@ async function menuBoard(browser, { base, cur }) {
 async function khoBoard(browser, out, { base, cur }) {
   const b = base.kho;
   const a = cur.kho;
+  const bl = base.list.kho;
+  const al = cur.list.kho;
   const px = (n) => Math.round(n ?? 0);
   const covered = b.suggestCover ? `nút Gợi ý bị .${b.suggestCover} che` : 'nút Gợi ý vẫn bấm được';
   await board(browser, out, {
-    frames: [before(base.png, 'Kho 390'), after(cur.png, 'Kho 390')],
+    frames: [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở'), after(cur.list.png, 'Kho 390 · cuộn tới danh sách')],
     marks: [
-      { frame: 0, boxes: [b.foot], label: `Chân bảng ${b.sticky ? 'dính' : 'cuộn'} cao ${px(b.foot?.h)} px trên thân ${px(b.body?.h)} px: ${covered}, ${b.rowsSeen}/${b.rows} dòng hàng chạm được` },
+      {
+        frame: 0,
+        boxes: [b.foot],
+        label: `Chân bảng ${b.sticky ? 'dính' : 'cuộn'} cao ${px(b.foot?.h)} px trên thân ${px(b.body?.h)} px: ${covered}; cuộn tới danh sách vẫn chỉ ${bl.rowsSeen}/${bl.rows} dòng hàng chạm được`,
+      },
       { frame: 1, boxes: [a.suggest], label: a.suggestCover ? `Nút Gợi ý vẫn bị .${a.suggestCover} che` : 'Nút Gợi ý (Auto-restock) chạm được' },
-      { frame: 1, boxes: [a.list], label: `${a.rowsSeen}/${a.rows} dòng hàng chạm được; chân bảng ${px(a.foot?.h)} px ${a.sticky ? 'vẫn dính' : 'cuộn theo sau danh sách'}` },
+      { frame: 2, boxes: [al.list], label: `${al.rowsSeen}/${al.rows} dòng hàng chạm được; chân bảng ${px(al.foot?.h)} px ${al.sticky ? 'vẫn dính' : 'cuộn theo sau danh sách'}` },
     ],
-    include: [b.panel, a.panel],
+    include: [b.panel, a.panel, al.panel],
     pad: 16,
     maxScale: 1.5,
-    avoid: avoidTexts(base, cur),
-    gutter: GUTTER,
+    avoid: avoidTexts(base, cur, cur.list),
+    gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng, bảng Kho vừa mở. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22). P22: thân dưới 30rem thì chân bảng không dính mà cuộn sau danh sách; desktop và tablet vẫn dính.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22). P22: thân dưới 30rem thì chân bảng không dính mà cuộn sau danh sách; desktop và tablet vẫn dính.`,
     ],
   });
 }
@@ -792,10 +807,10 @@ async function fixedBoards(browser, fixed, { kho, actors }) {
           const office = f.title.startsWith('Dân');
           const label = office
             ? f.side === 'before'
-              ? `Tay phải ${lift(s, 'R')}°, đầu cúi ${deg(s.angles.headX)}°: dáng chờ chung`
+              ? `Tay phải buông (${lift(s, 'R')}°), đầu ${deg(s.angles.headX)}°: dáng chờ chung`
               : `Cầm điện thoại: tay phải nâng ${lift(s, 'R')}°, đầu cúi ${deg(s.angles.headX)}°`
             : f.side === 'before'
-              ? `Tay ${lift(s, 'L')}°, thân ${deg(s.angles.lean)}°: dáng chờ chung`
+              ? `Tay buông (${lift(s, 'L')}°), thân thẳng (${deg(s.angles.lean)}°): dáng chờ chung`
               : `Tay đút túi sau ${-lift(s, 'L')}°, ngả người ${-deg(s.angles.lean)}°`;
           return { ...f, marks: [{ boxes: [grow(office ? s.armR : s.arms, 4)], label }] };
         }),
@@ -829,8 +844,8 @@ async function fixedBoards(browser, fixed, { kho, actors }) {
           const s = f.shot.subject;
           const label =
             f.side === 'before'
-              ? `Tay phải ${lift(s, 'R')}°, tay trái ${lift(s, 'L')}°: chỉ nhịp chân (${deg(s.angles.legR)}° lúc chụp)`
-              : `Khoanh tay: hai tay nâng ${lift(s, 'R')}° / ${lift(s, 'L')}°, nhịp chân ${deg(s.angles.legR)}° lúc chụp`;
+              ? `Tay buông (phải ${lift(s, 'R')}°, trái ${lift(s, 'L')}°): chỉ nhịp chân (${deg(s.angles.legR)}° lúc chụp)`
+              : `${Math.abs(s.angles.armLX - s.angles.armRX) < CROSSED_DIFF ? 'Khoanh tay' : 'Đang mở tay trái xem đồng hồ'}: tay phải ${lift(s, 'R')}°, tay trái ${lift(s, 'L')}°, nhịp chân ${deg(s.angles.legR)}° lúc chụp`;
           return { ...f, marks: [{ boxes: [grow(s.arms, 4)], label }] };
         }),
         ['Giờ cao điểm sáng ngày 2, cùng ván và seed: khách đứng chờ có mặt sốt ruột (lông mày nhíu). v0.4.0 chỉ nhịp chân tối đa 20° và liếc đồng hồ; P22 khoanh tay, nhịp chân tối đa 29°, mở tay xem đồng hồ mỗi vòng.'],
@@ -858,7 +873,8 @@ function actorWants(sim, after) {
   const wants = [
     { key: 'office', arg: { ...base, want: 'persona', persona: 'office', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) && s.handsSeen[1] >= MIN_SEEN },
     { key: 'student', arg: { ...base, want: 'persona', persona: 'student', yaws: SIDE_YAWS }, accept: (s) => s.handsSeen.some((v) => v >= MIN_SEEN) },
-    { key: 'impatient', arg: { ...base, want: 'impatient', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) },
+    // P22 only while the arms are crossed, not in the part of the loop that uncrosses one to check the watch.
+    { key: 'impatient', arg: { ...base, want: 'impatient', yaws: FRONT_YAWS }, accept: (s) => faceOk(s) && (!after || Math.abs(s.angles.armLX - s.angles.armRX) < CROSSED_DIFF) },
   ];
   if (after) {
     wants.push(
