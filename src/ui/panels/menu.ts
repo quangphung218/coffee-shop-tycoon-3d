@@ -1,15 +1,36 @@
 import { getIngredient } from '../../sim/data/ingredients';
 import { menuUnlockLevel } from '../../sim/data/levels';
 import { MENU } from '../../sim/data/menu';
+import { sellPrice } from '../../sim/customers';
 import { stockOf } from '../../sim/inventory';
+import { policyLevel, PRICE_POLICY } from '../../sim/policies';
 import { isUnlocked } from '../../sim/progression';
-import type { GameState, MenuItemDef } from '../../sim/types';
-import { h, Watcher } from '../core/dom';
+import type { GameState, MenuItemDef, PolicyLevel } from '../../sim/types';
+import { h, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { MENU_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { linkBtn, reasonLine, sender, setReason, toggle, withIcon } from './widgets';
+import { linkBtn, reasonLine, segmented, sender, setReason, toggle, withIcon } from './widgets';
+
+const PRICE_OPTIONS: readonly { value: PolicyLevel; label: string }[] = [
+  { value: 'low', label: 'Rẻ' },
+  { value: 'standard', label: 'Chuẩn' },
+  { value: 'high', label: 'Cao' },
+];
+
+const signedPct = (v: number): string => `${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`;
+const signedDec = (v: number): string => `${v > 0 ? '+' : '−'}${String(Math.round(Math.abs(v) * 100) / 100).replace('.', ',')}`;
+
+/** "Cao: +15% tiền mỗi ly, khách khó tính hơn (−0,2 sao), ít khách hơn (−8%)." */
+export function pricePolicyHint(level: PolicyLevel): string {
+  const p = PRICE_POLICY[level];
+  if (level === 'standard') return 'Chuẩn: bán đúng giá gốc từng món, không đổi sao hay lượng khách.';
+  const name = PRICE_OPTIONS.find((o) => o.value === level)!.label;
+  const mood = p.stars > 0 ? 'khách dễ chịu hơn' : 'khách khó tính hơn';
+  const crowd = p.arrivals > 1 ? 'đông khách hơn' : 'ít khách hơn';
+  return `${name}: ${signedPct(p.priceMult - 1)} tiền mỗi ly, ${mood} (${signedDec(p.stars)} sao), ${crowd} (${signedPct(p.arrivals - 1)}).`;
+}
 
 /** Why an item cannot be made from the stock, or null when it can. */
 export function lockReason(state: GameState, item: MenuItemDef): string | null {
@@ -29,7 +50,8 @@ function popularityDots(p: number): HTMLElement {
 }
 
 /**
- * Menu hôm nay: every item with price, cost, hot/cold, popularity and a
+ * Menu hôm nay: the Mức giá choice, then every item with the price at that
+ * level, cost, hot/cold, popularity and a
  * Bán/Không switch. Items the stock cannot make are locked with the missing
  * ingredient; items above the shop level show "Mở ở cấp N" and stay off. An
  * item already on sale can still be switched off.
@@ -39,6 +61,26 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   const send = sender(ctx, (s) => w.run(s));
   const intro = h('p', { class: 'intro' });
   w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu bị khóa cho tới khi nhập thêm; món mới mở theo cấp quán.`);
+
+  // Mức giá: a trade-off set in place; the hint names what it gains and costs.
+  const priceTitleId = uid('price-policy');
+  const priceSeg = segmented('Mức giá', 'price', PRICE_OPTIONS, (level) => send({ type: 'set_policy', policy: 'price', level }));
+  priceSeg.el.removeAttribute('aria-label');
+  priceSeg.el.setAttribute('aria-labelledby', priceTitleId);
+  const priceHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'price' } });
+  w.watch(
+    (s) => policyLevel(s, 'price'),
+    (level) => {
+      priceSeg.set(level);
+      priceHint.textContent = pricePolicyHint(level);
+    },
+  );
+  const priceRow = h(
+    'div',
+    { class: 'setting', attrs: { 'data-policy': 'price' } },
+    h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: priceTitleId }, ...withIcon('i-coin', 'Mức giá', 24)), priceHint),
+    priceSeg.el,
+  );
 
   const rows = MENU.map((item) => {
     const why = reasonLine();
@@ -74,12 +116,13 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     w.watch(
       (s) => {
         const entry = s.menu.find((m) => m.id === item.id);
-        return `${entry?.enabled ? 1 : 0}|${entry?.price ?? item.price}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}`;
+        return `${entry?.enabled ? 1 : 0}|${sellPrice(s, item.id)}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}`;
       },
       (_, s) => {
         const entry = s.menu.find((m) => m.id === item.id);
         const enabled = !!entry?.enabled;
-        const price = entry?.price ?? item.price;
+        // What a cup sells for at the chosen Mức giá.
+        const price = sellPrice(s, item.id);
         // An item already on sale (an old save's right) can still be switched off.
         const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
         const locked = levelLocked ? null : lockReason(s, item);
@@ -96,7 +139,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     return li;
   });
 
-  body.append(h('div', { class: 'prep' }, intro, h('ul', { class: 'stack' }, ...rows)));
+  body.append(h('div', { class: 'prep' }, intro, priceRow, h('ul', { class: 'stack' }, ...rows)));
   const state = ctx.getState();
   if (state) w.run(state);
   return { update: (s) => w.run(s) };
