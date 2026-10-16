@@ -179,8 +179,8 @@ function marginTable(ins: Insights): HTMLElement {
   return section('i-coin', 'Biên lợi nhuận từng món', h('div', { class: 'rpt-table-wrap' }, table));
 }
 
-/** Action list from the flagged metrics; each row links to the panel that fixes it. */
-function actions(ins: Insights, onOpenPanel: (panel: InsightPanel) => void): HTMLElement {
+/** Action list from the flagged metrics; each row links to the panel that fixes it, unless onOpenPanel is null. */
+function actions(ins: Insights, onOpenPanel: ((panel: InsightPanel) => void) | null): HTMLElement {
   const flagged = ins.metrics.filter((m) => m.advice !== '');
   if (flagged.length === 0) return section('i-tip', 'Gợi ý hành động', muted('Các chỉ số hôm nay đều ổn, cứ giữ nhịp này.'));
   return section(
@@ -199,7 +199,7 @@ function actions(ins: Insights, onOpenPanel: (panel: InsightPanel) => void): HTM
             'div',
             { class: 'rpt-sugg-body' },
             h('p', { class: 'rpt-sugg-text', text: m.advice }),
-            panel
+            panel && onOpenPanel
               ? h(
                   'button',
                   { class: 'link-btn', attrs: { type: 'button', 'data-goto': panel }, on: { click: () => onOpenPanel(panel) } },
@@ -227,9 +227,9 @@ function emptyBox(reason: string, title: string, text: string): HTMLElement {
 /**
  * The "Chỉ số" tab: KPI cards, the hourly chart, the per-item margin table and
  * the action list. Degrades to an empty note for a quiet day or an old save
- * that carries no insights.
+ * that carries no insights. A null onOpenPanel (the week is over) drops the links.
  */
-export function renderInsights(r: DailyReport, onOpenPanel: (panel: InsightPanel) => void): HTMLElement[] {
+export function renderInsights(r: DailyReport, onOpenPanel: ((panel: InsightPanel) => void) | null): HTMLElement[] {
   const ins = r.insights;
   if (!ins) return [emptyBox('old', 'Chưa có số liệu chỉ số', 'Bản lưu này được ghi từ phiên bản cũ. Chơi thêm một ngày để xem food cost, lương và thời gian chờ.')];
   if (r.customersArrived === 0) return [emptyBox('quiet', 'Hôm nay chưa có khách', 'Chưa có số liệu để tính food cost, lương hay thời gian chờ. Mở cửa đón khách để xem chỉ số.')];

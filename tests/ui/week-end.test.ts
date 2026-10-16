@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { WEEK_LENGTH } from '../../src/sim/data/week';
+import { buildDailyReport } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { scoreWeek } from '../../src/sim/week';
@@ -114,6 +115,45 @@ describe('Daily Report main button', () => {
   });
 });
 
+describe('Daily Report of the last week day', () => {
+  /** atReport with a built report whose insights flag one metric linked to a panel. */
+  function withReport(day: number): GameState {
+    const state = atReport(day);
+    state.today.customersArrived = 60;
+    const report = buildDailyReport(state);
+    report.insights!.metrics = report.insights!.metrics.map((m) =>
+      m.id === 'seat_fill' ? { ...m, status: 'bad', advice: 'Ghế gần kín: thêm bàn.', panel: 'upgrades' } : m,
+    );
+    state.lastReport = report;
+    return state;
+  }
+
+  it('gives tips for next week, not for day 8', () => {
+    const { shell } = boot();
+    shell.startGame(withReport(WEEK_LENGTH));
+    const el = shell.report.el;
+    expect(el.textContent).not.toContain('ngày 8');
+    expect(el.textContent).toContain('Gợi ý cho tuần sau');
+  });
+
+  it('drops the insight links that would open a panel, keeping "Xem kết tuần"', () => {
+    const { shell } = boot();
+    shell.startGame(withReport(WEEK_LENGTH));
+    const el = shell.report.el;
+    expect(el.querySelector('[data-block="insight-tips"] [data-metric="seat_fill"]')?.textContent).toContain('Ghế gần kín');
+    expect(el.querySelector('button[data-goto]')).toBeNull();
+    expect(mainButton(shell).dataset.action).toBe('week-end');
+  });
+
+  it('keeps the links and the next-day tips on day 3', () => {
+    const { shell } = boot();
+    shell.startGame(withReport(3));
+    const el = shell.report.el;
+    expect(el.querySelector('[data-metric="seat_fill"] button[data-goto="upgrades"]')).not.toBeNull();
+    expect(el.textContent).toContain('Gợi ý cho ngày 4');
+  });
+});
+
 describe('week-end screen', () => {
   it('shows revenue and stars against the goal, the score and the cups, one row per day', () => {
     const { root, state } = openWeekEnd();
@@ -147,6 +187,17 @@ describe('week-end screen', () => {
     expect(rows[0]!.textContent).toContain('Khai trương');
     expect(rows[0]!.textContent).toContain('3.000.000đ');
     expect(rows[WEEK_LENGTH - 1]!.textContent).toContain('2.000.000đ');
+  });
+
+  it('marks the stars goal reached when the shown rating equals the target', () => {
+    // Hard goal 4,2: a rating of 4.16 shows as 4,2.
+    const { root, state } = openWeekEnd(atReport(WEEK_LENGTH, { rating: 4.16 }));
+    expect(state.week!.result!.stars).toBe(4.2);
+    const stars = block(weekEndEl(root), 'stars');
+    expect(stars.textContent).toContain('4,2');
+    expect(stars.textContent).toContain('mục tiêu 4,2 sao');
+    expect(stars.textContent).toContain('Đạt mục tiêu');
+    expect(stars.textContent).not.toContain('Chưa đạt');
   });
 
   it('lights all 3 cups when both goals are beaten', () => {

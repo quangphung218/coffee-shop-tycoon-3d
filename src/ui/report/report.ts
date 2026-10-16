@@ -192,10 +192,10 @@ function recentReviews(reviews: readonly Review[]): HTMLElement {
   );
 }
 
-function suggestions(r: DailyReport): HTMLElement {
+function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
   return section(
     'i-tip',
-    `Gợi ý cho ngày ${r.day + 1}`,
+    weekEnded ? 'Gợi ý cho tuần sau' : `Gợi ý cho ngày ${r.day + 1}`,
     r.suggestions.length === 0
       ? muted('Hôm nay mọi thứ ổn, cứ giữ nhịp này.')
       : h(
@@ -284,8 +284,8 @@ function resultNote(r: DailyReport, kind: ResultKind): string {
   return `Phục vụ ${r.customersServed}/${r.customersArrived} khách. ${cash}`;
 }
 
-/** The summary tab, rebuilt once per report. */
-export function renderSummary(r: DailyReport): HTMLElement[] {
+/** The summary tab, rebuilt once per report; after the last week day the tips are for next week. */
+export function renderSummary(r: DailyReport, weekEnded = false): HTMLElement[] {
   const result = reportResult(r);
   const band = levelUpBand(r);
   return [
@@ -301,7 +301,7 @@ export function renderSummary(r: DailyReport): HTMLElement[] {
     missionsBlock(r),
     h('div', { class: 'rpt-grid' }, money(r), h('div', { class: 'rpt-col' }, customers(r), rating(r))),
     h('div', { class: 'rpt-grid' }, topSellers(r), h('div', { class: 'rpt-col' }, outOfStock(r), recentReviews(r.reviews))),
-    suggestions(r),
+    suggestions(r, weekEnded),
   ];
 }
 
@@ -423,14 +423,22 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     );
   }
 
+  // Once the week is scored there is no next day: tips are for next week and
+  // the insight links (which start the next day) are dropped.
+  function renderBodies(s: GameState): void {
+    const r = s.lastReport ?? null;
+    const ended = s.week?.result !== undefined;
+    setChildren(summary, ...(r ? renderSummary(r, ended) : [renderBusy(day)]));
+    setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
+  }
+
   w.watch(
     (s) => s.lastReport ?? null,
     (r, s) => {
       day = r?.day ?? s.day;
       title.textContent = `Hết ngày ${day} · ${s.shopName}`;
       sub.textContent = `${DIFFICULTIES[s.difficulty].name} · 07:00–21:00`;
-      setChildren(summary, ...(r ? renderSummary(r) : [renderBusy(day)]));
-      setChildren(insights, ...(r ? renderInsights(r, (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
+      renderBodies(s);
       showTab('summary');
       renderSave();
     },
@@ -446,7 +454,8 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   // After week day 7 next_day is refused: the main button leads to the week-end screen.
   w.watch(
     (s) => s.week?.result !== undefined,
-    (ended) => {
+    (ended, s) => {
+      if (ended !== weekEnded) renderBodies(s);
       weekEnded = ended;
       nextBtn.setAttribute('data-action', ended ? 'week-end' : 'next-day');
       setChildren(nextBtn, ...(ended ? labelled('i-trophy', 'Xem kết tuần') : labelled('i-next-day', 'Ngày tiếp theo')));
