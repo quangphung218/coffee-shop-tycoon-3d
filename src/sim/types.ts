@@ -474,6 +474,13 @@ export interface DailyReport {
   levelUp?: { level: number; unlocks: Unlocks };
 }
 
+/** A 7-day week of play; menu items and upgrades also open by its calendar (src/sim/data/week.ts). */
+export interface WeekState {
+  length: 7;
+  /** Game day the week began on; week day 1 is this day. */
+  startedDay: number;
+}
+
 export interface ActiveCampaign {
   id: MarketingId;
   daysLeft: number;
@@ -526,6 +533,8 @@ export interface GameState {
   reviews: Review[];
   /** Report of the last finished day; absent before the first day ends. */
   lastReport?: DailyReport | null;
+  /** The 7-day week a new game plays; absent in older saves, which unlock by shop level only. */
+  week?: WeekState;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -566,5 +575,7 @@ export type GameEvent =
   | { type: 'review'; review: Review }
   | { type: 'low_stock'; ingredientId: IngredientId }
   | { type: 'level_up'; level: number; unlocks: Unlocks }
+  /** A new day of the week opened what the calendar lists for it (`day` is the week day). */
+  | { type: 'week_unlocks'; day: number; unlocks: Unlocks }
   /** The daily report is in `state.lastReport`; the UI autosaves on this. */
   | { type: 'dayEnded'; day: number };

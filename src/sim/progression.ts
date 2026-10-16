@@ -6,6 +6,7 @@ import {
   unlocksBetween,
   upgradeUnlockLevel,
 } from './data/levels';
+import { dayUnlockDay } from './data/week';
 import { ingredientCostUsed } from './economy';
 import { nextRating } from './rating';
 import { mulberry32 } from './rng';
@@ -20,10 +21,19 @@ export const GOOD_REVIEW_STARS = 4;
 /** Missions chosen from the pool each day. */
 export const MISSIONS_PER_DAY = 3;
 
-/** Whether a menu item or upgrade is available at the shop's current level. */
+/** Day of the week (1 on the day the week started); 0 when the game has no week. */
+export function weekDay(state: GameState): number {
+  return state.week ? state.day - state.week.startedDay + 1 : 0;
+}
+
+/**
+ * Whether a menu item or upgrade is available: the shop level reaches it, or
+ * the game plays a week and the calendar has opened it, whichever comes first.
+ */
 export function isUnlocked(state: GameState, kind: 'menu' | 'upgrade', id: MenuItemId | UpgradeId): boolean {
   const need = kind === 'menu' ? menuUnlockLevel(id as MenuItemId) : upgradeUnlockLevel(id as UpgradeId);
-  return state.shopLevel >= need;
+  if (state.shopLevel >= need) return true;
+  return state.week !== undefined && weekDay(state) >= dayUnlockDay(kind, id);
 }
 
 interface MissionSpec {

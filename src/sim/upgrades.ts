@@ -188,6 +188,17 @@ export function nextUpgradeCost(state: GameState, id: UpgradeId): number | null 
   return upgradeCost(getUpgrade(id), upgradeLevel(state, id), DIFFICULTIES[state.difficulty].priceMult);
 }
 
+/**
+ * Raises an upgrade one level without charging for it, adding the tables a
+ * seating upgrade brings. Returns the new level. The caller checks the max level.
+ */
+export function grantUpgradeLevel(state: GameState, id: UpgradeId): number {
+  const level = upgradeLevel(state, id) + 1;
+  state.upgrades[id] = level;
+  if (getUpgrade(id).effectPerLevel.capacity) addTables(state, id);
+  return level;
+}
+
 export type UpgradeResult = { ok: true; cost: number; level: number } | { ok: false; reason: string };
 
 /**
@@ -205,9 +216,7 @@ export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   }
   state.money -= cost;
   state.today.upgradeCost += cost;
-  const level = upgradeLevel(state, id) + 1;
-  state.upgrades[id] = level;
-  if (def.effectPerLevel.capacity) addTables(state, id);
+  const level = grantUpgradeLevel(state, id);
   state.events.push({ type: 'notify', level: 'success', text: `Đã nâng cấp ${def.name} lên cấp ${level}` });
   return { ok: true, cost, level };
 }
