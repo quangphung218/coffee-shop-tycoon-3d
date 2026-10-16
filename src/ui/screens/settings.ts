@@ -8,11 +8,14 @@ import {
   type ReducedMotion,
   type Settings,
 } from '../../save/settings';
+import { clearPlayLog, exportPlayLog, readPlayLog, type PlayLogPhase } from '../../save/playlog';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, setChildren, uid } from '../core/dom';
+import { formatClock, formatSavedAt } from '../core/format';
 import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
+import { phaseLabel } from '../hud/hud';
 
 export interface SettingsActions {
   /** Called after every change, already saved; apply it to audio, renderer and game. */
@@ -49,13 +52,26 @@ const CAMERA_KEY_OPTIONS: readonly { value: CameraKeys; label: string }[] = [
   { value: 'qa-arrows', label: 'Mũi tên di chuyển · Q/A xoay' },
 ];
 
-/** How long "Về mặc định" stays armed waiting for a second click, ms. */
+/** How long "Về mặc định" and "Xoá" stay armed waiting for a second click, ms. */
 const RESET_CONFIRM_MS = 3000;
+
+function playLogPhaseLabel(phase: PlayLogPhase): string {
+  if (phase === 'menu') return 'Menu chính';
+  if (phase === 'week_end') return 'Kết tuần';
+  return phaseLabel(phase);
+}
+
+/** Epoch ms → "20261016" in local time, for the export file name. */
+function dateStamp(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+}
 
 /**
  * Settings grouped into Âm thanh, Hiển thị, Điều khiển and Trò chơi, each item
- * with a one-line purpose. Every change applies at once and is saved; there is
- * no Save button. "Về mặc định" confirms in place (no modal).
+ * with a one-line purpose, then Số liệu chơi (play log view, export, clear).
+ * Every change applies at once and is saved; there is no Save button.
+ * "Về mặc định" and "Xoá" confirm in place (no modal).
  */
 export function createSettings(storage: StorageLike, initial: Settings, actions: SettingsActions): SettingsScreen {
   let value: Settings = { ...initial };
@@ -230,6 +246,79 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
   });
   paintReset();
 
+  // Số liệu chơi: where the player last stopped, the raw JSON and its export.
+  const playLogTitleId = uid('set-playlog');
+  const playLogSummary = h('p', { class: 'playlog-summary' });
+  const playLogPre = h('pre', { class: 'playlog-json' });
+  function syncPlayLog(): void {
+    const last = readPlayLog(storage).at(-1);
+    playLogSummary.textContent = last
+      ? `Lần dừng gần nhất: Ngày ${last.day} · ${playLogPhaseLabel(last.phase)} · ${formatClock(last.minute)} (giờ game) · ${formatSavedAt(last.at)}`
+      : 'Chưa có dữ liệu';
+    playLogPre.textContent = exportPlayLog(storage);
+  }
+
+  // Skipped where blob URLs are missing or refuse the Blob (jsdom).
+  function downloadPlayLog(): void {
+    if (typeof URL.createObjectURL !== 'function') return;
+    let href: string;
+    try {
+      href = URL.createObjectURL(new Blob([exportPlayLog(storage)], { type: 'application/json' }));
+    } catch {
+      return;
+    }
+    const link = h('a', { attrs: { href, download: `playlog-${dateStamp(Date.now())}.json` } });
+    link.hidden = true;
+    form.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 0);
+  }
+  const exportBtn = h(
+    'button',
+    { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: downloadPlayLog } },
+    icon('i-save'),
+    'Xuất JSON',
+  );
+
+  // "Xoá" confirms in place like "Về mặc định".
+  let clearArmed = false;
+  let clearTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' } });
+  function paintClear(): void {
+    setChildren(clearBtn, icon('i-delete'), clearArmed ? 'Bấm lần nữa để xoá' : 'Xoá');
+  }
+  function disarmClear(): void {
+    clearArmed = false;
+    if (clearTimer !== null) clearTimeout(clearTimer);
+    clearTimer = null;
+    paintClear();
+  }
+  clearBtn.addEventListener('click', () => {
+    if (!clearArmed) {
+      clearArmed = true;
+      paintClear();
+      clearTimer = setTimeout(disarmClear, RESET_CONFIRM_MS);
+      return;
+    }
+    disarmClear();
+    const cleared = clearPlayLog(storage);
+    status.classList.toggle('is-error', !cleared);
+    setChildren(status, icon(cleared ? 'i-ok' : 'i-warning', { size: 16 }), cleared ? 'Đã xoá số liệu chơi' : 'Không xoá được số liệu chơi');
+    syncPlayLog();
+  });
+  paintClear();
+
+  const playLogGroup = h(
+    'section',
+    { class: 'playlog', attrs: { 'aria-labelledby': playLogTitleId } },
+    h('p', { class: 'playlog-title', id: playLogTitleId, text: 'Số liệu chơi' }),
+    playLogSummary,
+    h('p', { class: 'hint', text: 'Chỉ lưu trên máy này, không có thông tin cá nhân.' }),
+    h('details', { class: 'keys-details playlog-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Xem JSON'), playLogPre),
+    h('div', { class: 'playlog-actions' }, exportBtn, clearBtn),
+  );
+
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
   const form = h(
     'form',
@@ -247,6 +336,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
     h('p', { class: 'section-title', text: 'Trò chơi' }),
     speed.row,
+    playLogGroup,
     h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
     h('div', { class: 'foot' }, status, resetBtn, done),
   );
@@ -261,7 +351,9 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     onShow: () => {
       status.textContent = '';
       disarmReset();
+      disarmClear();
       syncAll();
+      syncPlayLog();
     },
     initialFocus: () => form.querySelector<HTMLElement>('input'),
     onEscape: () => {

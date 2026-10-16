@@ -1,3 +1,4 @@
+import { appendPlayLog, type PlayLogKind, type PlayLogPhase } from '../../save/playlog';
 import { autosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
 import { loadSettings, type Settings } from '../../save/settings';
 import { defaultStorage, type StorageLike } from '../../save/storage';
@@ -63,6 +64,13 @@ export interface Shell {
   dispose(): void;
 }
 
+/** Random play-log run id; not tied to the player or the save. */
+function newRunId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 /**
  * Owns the overlay UI: main menu, new game, load, settings, pause, week end,
  * HUD and toasts, plus the keyboard shortcuts (Space, 1/2/3, Home, Esc).
@@ -87,6 +95,14 @@ export function createShell(options: ShellOptions): Shell {
 
   function dispatch(cmd: Command): boolean {
     return state ? simDispatch(state, cmd) : false;
+  }
+
+  // Anonymous play log (save/playlog.ts): one random id per run, and only the
+  // running game's day, phase and minute plus the real time.
+  let runId: string | null = null;
+  function logPlay(kind: PlayLogKind, phase?: PlayLogPhase): void {
+    if (!state || runId === null) return;
+    appendPlayLog({ v: 1, run: runId, kind, day: state.day, phase: phase ?? state.phase, minute: state.minute, at: Date.now() }, storage);
   }
 
   const hud = createHud({
@@ -133,6 +149,8 @@ export function createShell(options: ShellOptions): Shell {
     state.speed = settings.gameSpeed;
     state.paused = false;
     state.events = [];
+    runId = newRunId();
+    logPlay('run_start');
     hud.closePanel();
     toasts.clear();
     hud.el.hidden = false;
@@ -145,7 +163,9 @@ export function createShell(options: ShellOptions): Shell {
   }
 
   function showMenu(): void {
+    logPlay('quit_to_menu');
     state = null;
+    runId = null;
     hud.closePanel();
     toasts.clear();
     hud.el.hidden = true;
@@ -238,6 +258,7 @@ export function createShell(options: ShellOptions): Shell {
       onReplay: () => {
         if (!state) return;
         const finished = state;
+        logPlay('replay');
         options.onReplay?.(finished);
         startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
       },
@@ -285,11 +306,17 @@ export function createShell(options: ShellOptions): Shell {
     return screens.current === null || screens.current === 'pause';
   }
   function onVisibility(): void {
+    logPlay(document.hidden ? 'hidden' : 'visible');
     if (document.hidden && state && screens.current === null) openPause();
+  }
+  // Closing the tab or navigating away may skip visibilitychange on some browsers.
+  function onPageHide(): void {
+    logPlay('hidden');
   }
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', onPageHide);
   // Scroll areas show their thin bar while scrolling (scrollbar.css).
   const stopScrollActivity = trackScrollActivity(root.ownerDocument);
 
@@ -318,7 +345,10 @@ export function createShell(options: ShellOptions): Shell {
       for (const event of events) {
         const toast = toastForEvent(event, state);
         if (toast) toasts.show(toast);
+        if (event.type === 'phase') logPlay('phase', event.phase);
+        else if (event.type === 'week_ended') logPlay('week_end');
         if (event.type === 'dayEnded') {
+          logPlay('day_end');
           const r = runAutosave(state, event.day);
           report.setSaveStatus(r);
           toasts.show(
@@ -336,6 +366,7 @@ export function createShell(options: ShellOptions): Shell {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
       stopScrollActivity();
       hud.dispose();
       toasts.clear();
