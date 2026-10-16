@@ -77,7 +77,7 @@ const HIDE_UI = '.hud-layer, .toasts { display: none !important; }';
 /** Labels go in a strip this wide right of each DOM frame, so they never sit on its text. */
 const GUTTER = 280;
 /** Narrower label strip on the three-frame Kho board, so its 390 px frames stay near full size. */
-const KHO_GUTTER = 220;
+const KHO_GUTTER = 260;
 /** A ring whose pixels spread less than this (mean RGB standard deviation, 0–255) is around an empty area. */
 const FLAT_SPREAD = 8;
 /** A ring with less than this share of its box on the frame is around something scrolled out of view. */
@@ -741,17 +741,15 @@ async function khoBoard(browser, out, { base, cur }) {
   const bl = base.list.kho;
   const al = cur.list.kho;
   const px = (n) => Math.round(n ?? 0);
-  const covered = b.suggestCover ? `nút Gợi ý bị .${b.suggestCover} che` : 'nút Gợi ý vẫn bấm được';
+  const covered = b.suggestCover ? 'Che nút Gợi ý' : 'Nút Gợi ý bấm được';
   await board(browser, out, {
     frames: [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở'), after(cur.list.png, 'Kho 390 · cuộn tới danh sách')],
     marks: [
-      {
-        frame: 0,
-        boxes: [b.foot],
-        label: `Chân bảng ${b.sticky ? 'dính' : 'cuộn'} cao ${px(b.foot?.h)} px trên thân ${px(b.body?.h)} px: ${covered}; cuộn tới danh sách vẫn chỉ ${bl.rowsSeen}/${bl.rows} dòng hàng chạm được`,
-      },
-      { frame: 1, boxes: [a.suggest], label: a.suggestCover ? `Nút Gợi ý vẫn bị .${a.suggestCover} che` : 'Nút Gợi ý (Auto-restock) chạm được' },
-      { frame: 2, boxes: [al.list], label: `${al.rowsSeen}/${al.rows} dòng hàng chạm được; chân bảng ${px(al.foot?.h)} px ${al.sticky ? 'vẫn dính' : 'cuộn theo sau danh sách'}` },
+      // Two short labels: a label wider than the gutter hangs into the frame and covers its text.
+      { frame: 0, boxes: [b.foot], label: `Chân ${b.sticky ? 'dính' : 'cuộn'} ${px(b.foot?.h)} px / thân ${px(b.body?.h)} px` },
+      { frame: 0, boxes: [b.foot], label: `${covered}; cuộn: ${bl.rowsSeen}/${bl.rows} dòng chạm được` },
+      { frame: 1, boxes: [a.suggest], label: a.suggestCover ? `Nút Gợi ý vẫn bị .${a.suggestCover} che` : 'Nút Gợi ý chạm được' },
+      { frame: 2, boxes: [al.list], label: `${al.rowsSeen}/${al.rows} dòng chạm được, chân ${al.sticky ? 'vẫn dính' : 'cuộn sau'}` },
     ],
     include: [b.panel, a.panel, al.panel],
     pad: 16,
@@ -759,7 +757,7 @@ async function khoBoard(browser, out, { base, cur }) {
     avoid: avoidTexts(base, cur, cur.list),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22). P22: thân dưới 30rem thì chân bảng không dính mà cuộn sau danh sách; desktop và tablet vẫn dính.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng không dính mà cuộn sau danh sách; desktop và tablet vẫn dính.`,
     ],
   });
 }
