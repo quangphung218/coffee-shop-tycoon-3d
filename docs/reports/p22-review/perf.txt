@@ -212,7 +212,57 @@ after afterPaint(), once the menu has painted.
 
 ### fix 2 (scene import after the menu paint)
 
-(output pending)
+$ node scripts/measure-startup.mjs --base f720b6f --runs 9
+Exit code: 0
 
-On this machine the base itself shows the Main Menu at 1083-1163 ms,
-so the absolute < 1000 ms target is out of reach for any build here.
+Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)
+Runs per cell: 9 (median)
+
+## base (f720b6f)
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CFZSipkd.js | 194.2 kB | 66.9 kB |
+| index-Bt4HydkD.js | 85.5 kB | 31.8 kB |
+| index-BeuQBB1w.css | 69.9 kB | 11.2 kB |
+
+## working tree
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-Bs2NxL0_.js | 194.6 kB | 67.1 kB |
+| index-Bazf2TOZ.js | 87.3 kB | 32.3 kB |
+| index-DhmkM8E8.css | 70.2 kB | 11.3 kB |
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 76 ms | 146 ms | 298 ms |
+| working tree | Desktop, no throttling | 112 ms | 122 ms | 365 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 428 ms | 1131 ms | 3177 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 400 ms | 1185 ms | 2670 ms |
+
+## Summary
+
+Same-run gaps on mobile (state minus base):
+
+| State | Main Menu | 3D scene |
+| --- | --- | --- |
+| integration head, --runs 5 | +118 ms | +277 ms |
+| fcdd7fa (f1), --runs 9 | +19 ms | -101 ms |
+| f289da8 (f1 + f5), --runs 9 | +17 ms | +53 ms |
+| atlas fix, --runs 9 | +85 ms | -486 ms |
+| atlas fix again, --runs 9 | +84 ms | -512 ms |
+| fix 2, --runs 9 | +54 ms | -507 ms |
+
+- f5 is not the cause: f289da8 is within 53 ms of base on the scene.
+- The @1x atlas competing with the scene chunks was the scene cost: with
+  it moved after the scene chunk, the scene is about 500 ms ahead of
+  base in three separate runs.
+- The menu gap moves between +17 and +118 ms for the same app code
+  (integration head vs f289da8), so +54 ms is inside the spread of this
+  setup. Desktop fix 2 shows the menu 24 ms ahead of base.
+- Absolute Main Menu < 1000 ms: base itself measures 1083-1163 ms on this
+  machine, so no build meets it here.
