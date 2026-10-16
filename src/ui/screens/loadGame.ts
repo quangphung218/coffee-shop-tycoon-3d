@@ -1,9 +1,10 @@
 import { deleteSave, listSlots, loadGame, type SaveErrorKind, type SaveSlot, type SlotInfo } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
 import type { GameState } from '../../sim/types';
-import { h, setChildren, uid } from '../core/dom';
+import { h, isAriaDisabled, setChildren, uid } from '../core/dom';
 import { formatMoney, formatSavedAt } from '../core/format';
 import { icon } from '../core/icons';
+import { SceneGate } from '../core/sceneGate';
 import { screenLayer, type Screen } from '../core/screens';
 
 export interface LoadGameActions {
@@ -28,7 +29,7 @@ const BROKEN_TEXT: Record<SaveErrorKind, string> = {
  * wrong and keeps its data; deleting it is a separate, confirmed action done
  * in place (focus lands on "Hủy" first).
  */
-export function createLoadGame(storage: StorageLike, actions: LoadGameActions): Screen {
+export function createLoadGame(storage: StorageLike, actions: LoadGameActions, scene: SceneGate = new SceneGate()): Screen {
   const titleId = uid('load-title');
   const list = h('ul', { class: 'slots stack' });
   const back = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, icon('i-back'), 'Quay lại');
@@ -38,6 +39,7 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions): 
     h('h2', { id: titleId }, icon('i-load', { size: 32 }), 'Tải game'),
     h('p', { class: 'card-sub', text: 'Dữ liệu lưu trong trình duyệt này (localStorage). Xóa dữ liệu trình duyệt sẽ mất bản lưu.' }),
     list,
+    scene.statusLine(),
     h('div', { class: 'foot' }, back),
   );
 
@@ -128,9 +130,15 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions): 
         ),
       ),
     );
-    actionsRow.append(
-      h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => load(info, item) } }, icon('i-speed-1'), `Tải ${label.toLowerCase()}`),
+    const loadBtn = h(
+      'button',
+      { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => !isAriaDisabled(loadBtn) && load(info, item) } },
+      icon('i-speed-1'),
+      `Tải ${label.toLowerCase()}`,
     );
+    // Loading drops straight into the shop, so it waits for the 3D scene.
+    scene.bind(loadBtn);
+    actionsRow.append(loadBtn);
     if (info.slot !== 'auto') actionsRow.append(del);
     item.append(actionsRow);
     return item;

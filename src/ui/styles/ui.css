@@ -318,6 +318,82 @@ kbd {
   flex-direction: column;
   gap: var(--space-3);
 }
+/* 3D scene loading (src/ui/core/sceneGate.ts): a line under the menu, New
+   Game and Load cards, and the play buttons filling with the real progress. */
+.scene-load {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+.scene-load-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+.scene-load.is-slow .scene-load-msg {
+  color: var(--text-warning);
+}
+.scene-load.is-failed .scene-load-msg {
+  color: var(--text-danger);
+}
+.scene-load-pct {
+  font-variant-numeric: tabular-nums;
+}
+.scene-load-bar {
+  height: 12px;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--data-track);
+  overflow: hidden;
+}
+.scene-load-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--data-bar);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform var(--duration-slow) var(--easing-out);
+}
+.scene-load-tip {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+.scene-load > .btn {
+  justify-self: start;
+}
+.btn.is-preparing {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.btn.is-preparing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--data-bar);
+  opacity: 0.55;
+  transform-origin: left;
+  transform: scaleX(var(--prep, 0));
+  transition: transform var(--duration-slow) var(--easing-out);
+}
+.btn.is-failed::before {
+  display: none;
+}
+.btn-prep {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.btn-sm-text + .btn-prep {
+  margin-left: var(--space-2);
+}
 .menu-foot {
   margin-top: var(--space-6);
   font-size: var(--font-size-sm);
@@ -565,17 +641,65 @@ legend {
   letter-spacing: 0.04em;
   margin-top: var(--space-4);
 }
-.set-row {
+/* Settings sheet: fixed title and footer, one scroll area between them. Every
+   gap comes from the --space scale through these four aliases. */
+.settings-sheet {
+  --sheet-pad-x: var(--space-6);
+  --sheet-pad-y: var(--space-4);
+  --sheet-group-gap: var(--space-6);
+  --sheet-row-pad-y: var(--space-3);
+  --sheet-label-gap: var(--space-4);
+  /* Tallest control in a row (a segmented group) plus the row padding, so
+     slider and segmented rows come out the same height. */
+  --sheet-row-h: calc(var(--size-target) + 2 * (var(--size-group-padding) + var(--size-outline)) + 2 * var(--sheet-row-pad-y));
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
+  flex-direction: column;
+  max-height: 100%;
+  padding: 0;
+}
+/* The layer itself never scrolls; no gutter, so the sheet stays centred. */
+.ui-screen.is-sheet {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+.settings-head {
+  flex: none;
+  padding: var(--sheet-pad-y) var(--sheet-pad-x);
   border-bottom: var(--size-border-thin) solid var(--border-subtle);
 }
-.set-row .field {
-  flex: 1 1 220px;
+.settings-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sheet-pad-y) var(--sheet-pad-x);
+}
+.settings-foot {
+  flex: none;
+  margin-top: 0;
+  padding: var(--sheet-pad-y) var(--sheet-pad-x);
+  border-top: var(--size-border-thin) solid var(--border-subtle);
+}
+.set-group + .set-group {
+  margin-top: var(--sheet-group-gap);
+}
+.set-group > .section-title,
+.set-group > .playlog-title {
+  margin: 0;
+  padding-bottom: var(--space-1);
+}
+.set-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--sheet-label-gap, var(--space-4));
+  min-height: var(--sheet-row-h, auto);
+  padding: var(--sheet-row-pad-y, var(--space-3)) 0;
+  border-bottom: var(--size-border-thin) solid var(--border-subtle);
+}
+.set-row > :last-child {
+  justify-self: end;
 }
 .set-row .label,
 .save-row .label {
@@ -587,7 +711,7 @@ legend {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  flex: 1 1 220px;
+  width: min(280px, 100%);
 }
 /* Range: ink-edged track, 28px cream thumb. Focus is drawn on the thumb. */
 .range {
@@ -819,7 +943,7 @@ legend {
   flex: none;
   margin-top: var(--space-1);
 }
-/* Wraps instead of scrolling inside; the screen itself scrolls. */
+/* Wraps instead of scrolling inside; only .settings-body scrolls. */
 .playlog-json {
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
@@ -1540,6 +1664,36 @@ legend {
   }
   .ui-screen {
     padding: var(--space-6) var(--space-3);
+  }
+  /* Settings rows stack: label on top, the control the full row width below,
+     segmented options sharing it evenly. */
+  .settings-sheet {
+    --sheet-pad-x: var(--space-4);
+    --sheet-group-gap: var(--space-4);
+    --sheet-label-gap: var(--space-2);
+    padding: 0;
+  }
+  .set-row {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .set-row > :last-child {
+    justify-self: stretch;
+  }
+  .set-row .range-wrap {
+    width: auto;
+  }
+  .set-row .seg {
+    display: flex;
+  }
+  .set-row .seg-opt {
+    display: flex;
+    flex: 1 1 0;
+  }
+  .set-row .seg-opt span {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
   }
   .ui-screen.is-menu {
     justify-content: center;

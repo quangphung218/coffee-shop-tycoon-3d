@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -134,6 +134,23 @@ node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 | p5 FPS | FPS của khung chậm thứ 5% trong mọi khung đã lấy. |
 
 Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. Chrome headless cấp khung theo bội số nhịp màn hình, nên FPS từng khung chỉ ra vài mức (20, 15, 7,5…); dùng cột Average FPS để so.
+
+## Ảnh màn tải
+
+```sh
+npm run media:loading
+```
+
+Build rồi mở bản build ở khổ điện thoại 390×844 qua mạng giả lập Slow 4G (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần, không cache). Chunk chính bị giữ 3 s và `three-*.js` bị giữ 11 s để từng trạng thái kịp chụp; lỗi được giả bằng cách chặn file.
+
+| File | Nội dung |
+| --- | --- |
+| `loading-boot.png` | Màn chờ: thanh và % theo file đã tải, một mẹo chơi. |
+| `loading-menu.png` | Main Menu trong lúc tải cảnh 3D: dòng tiến độ và mẹo. |
+| `loading-start.png` | Ván mới, cuộn tới cuối form: nút **Bắt đầu ngày 1** ghi "Đang chuẩn bị N%", dòng "Mạng đang chậm…". |
+| `loading-error.png` | Main Menu khi `three-*.js` tải lỗi: thông báo và nút **Thử lại**. |
+| `loading-retried.png` | Cùng trang sau khi bấm **Thử lại** lúc mạng đã có lại: cảnh 3D hiện. |
+| `loading-boot-error.png` | Màn chờ khi chunk chính tải lỗi: thông báo và nút **Thử lại**. |
 
 ## Ảnh trước/sau P21
 

@@ -337,7 +337,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
 
   const playLogGroup = h(
     'section',
-    { class: 'playlog', attrs: { 'aria-labelledby': playLogTitleId } },
+    { class: 'set-group playlog', attrs: { 'aria-labelledby': playLogTitleId } },
     h('p', { class: 'playlog-title', id: playLogTitleId, text: 'Số liệu chơi' }),
     playLogSummary,
     h('p', { class: 'hint', text: 'Chỉ lưu trên máy này, không có thông tin cá nhân.' }),
@@ -346,30 +346,38 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     playLogNote,
   );
 
+  function group(title: string, ...rows: HTMLElement[]): HTMLElement {
+    const id = uid('set-group');
+    return h('section', { class: 'set-group', attrs: { 'aria-labelledby': id } }, h('p', { class: 'section-title', id, text: title }), ...rows);
+  }
+
+  // Title and footer stay put; only .settings-body scrolls (see ui.css).
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
   const form = h(
     'form',
-    { class: 'card w-wide', attrs: { 'aria-labelledby': titleId } },
-    h('h2', { id: titleId }, icon('i-settings', { size: 32 }), 'Cài đặt'),
-    h('p', { class: 'section-title', text: 'Âm thanh' }),
-    music.row,
-    sfx.row,
-    h('p', { class: 'section-title', text: 'Hiển thị' }),
-    quality.row,
-    motion.row,
-    h('p', { class: 'section-title', text: 'Điều khiển' }),
-    cameraKeys.row,
-    rotate.row,
-    h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
-    h('p', { class: 'section-title', text: 'Trò chơi' }),
-    speed.row,
-    playLogGroup,
-    h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
-    h('div', { class: 'foot' }, status, resetBtn, done),
+    { class: 'card w-wide settings-sheet', attrs: { 'aria-labelledby': titleId } },
+    h('div', { class: 'settings-head' }, h('h2', { id: titleId }, icon('i-settings', { size: 32 }), 'Cài đặt')),
+    h(
+      'div',
+      { class: 'settings-body' },
+      group('Âm thanh', music.row, sfx.row),
+      group('Hiển thị', quality.row, motion.row),
+      group(
+        'Điều khiển',
+        cameraKeys.row,
+        rotate.row,
+        h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
+      ),
+      group('Trò chơi', speed.row),
+      playLogGroup,
+      h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
+    ),
+    h('div', { class: 'foot settings-foot' }, status, resetBtn, done),
   );
   form.addEventListener('submit', (e) => e.preventDefault());
 
   const el = screenLayer(form, { variant: 'scrim', label: 'Cài đặt', modal: true });
+  el.classList.add('is-sheet');
   return {
     el,
     get value() {
