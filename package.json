@@ -12,6 +12,7 @@
     "check": "tsc --noEmit && vitest run && vite build",
     "media": "npm run build && node scripts/capture-media.mjs",
     "media:p20": "npm run build && node scripts/capture-p20.mjs",
+    "media:p21": "npm run build && node scripts/capture-p21.mjs",
     "layout": "npm run build && node scripts/check-layout.mjs",
     "icons": "node scripts/build-icons.mjs"
   },

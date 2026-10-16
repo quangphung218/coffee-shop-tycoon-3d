@@ -156,10 +156,25 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 | Khái niệm | Chi tiết |
 | --- | --- |
 | Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ 11 món và 15 nâng cấp. Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần đã tới ngày mở theo lịch ([spec/week-7-days.md](spec/week-7-days.md)). |
-| Tuần (`state.week`) | Ván mới chơi tuần 7 ngày (`{ length: 7, startedDay: 1 }`); lịch `WEEK_UNLOCKS` ở `src/sim/data/week.ts`. Save không có `week` chỉ mở khóa theo cấp. |
+| Tuần (`state.week`) | Ván mới chơi tuần 7 ngày, mở khóa thêm theo lịch `WEEK_UNLOCKS` ([Tuần 7 ngày](#tuần-7-ngày)). Save không có `week` chỉ mở khóa theo cấp. |
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP; tổng nhân `xpMult` của độ khó (Dễ 1,25 · Vừa 1 · Khó 0,8). Cộng lúc `closeDay`; qua ngưỡng `xpToReach` (cấp 2–6: 1100, 3500, 7000, 12000, 19000) thì lên cấp và phát `level_up`. Mốc thiết kế: chiến lược mẫu ở Vừa lên cấp 2 vào ngày 2–4, cấp 6 vào ngày 20–35 (`tests/integration/level-balance.test.ts`). |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng 50–70 XP và 80.000–120.000 đ. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính; `food_cost` cần có doanh thu mới tính đạt. |
 | Tiến độ nhiệm vụ | `missionProgress(state, mission)` trả `{ value, ratio, met }` từ số liệu đang chạy của ngày: `value` theo đơn vị nhiệm vụ, `ratio` 0..1 cho thanh tiến độ (nhiệm vụ "đạt tối thiểu" là `value / target`; nhiệm vụ "giữ dưới ngưỡng" là 1 khi còn trong ngưỡng, giảm khi vượt), `met` là kết quả nếu ngày kết thúc lúc đó. Hàm thuần, `closeDay` chấm bằng chính hàm này. Chỉ đọc trường có giá trị trong ngày: `food_cost` = `ingredientCostUsed(state)` / doanh thu, `value` là `null` (UI ghi "Chưa đủ dữ liệu") khi chưa có doanh thu; `end_rating` = `nextRating(state, today.ratingStart)`, đúng số `updateRating` ghi lúc chốt ngày. |
+
+### Tuần 7 ngày
+
+Mọi ván mới chơi một tuần 7 ngày có lịch mở khóa, sự kiện, thời tiết và mục tiêu. Luật và con số ở [spec/week-7-days.md](spec/week-7-days.md); code ở `src/sim/week.ts` và `src/sim/data/week.ts`.
+
+| Phần | Chi tiết |
+| --- | --- |
+| `state.week` (`WeekState`) | `length` (7), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult`). `createNewGame` điền đủ trừ `result`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
+| Lịch sự kiện | `rollWeekPlan(seed)` rút từng ngày từ hash(`seed`, ngày, lần rút), không đọc hay đổi `state.rngState`: cùng seed luôn ra cùng lịch, dù người chơi làm gì. Tuần sai luật (`isValidWeekPlan`) rút lại; 64 lần không được thì dùng `FALLBACK_PLAN`. |
+| Thời tiết | `startNextDay` vẫn gọi `rollWeather` (giữ nguyên chuỗi RNG), rồi ghi đè `state.weather` bằng thời tiết của `plan`. |
+| Hệ số sự kiện | `dayArrivalMult` nhân vào `arrivalRate` (`customers.ts`); `dayIngredientPriceMult` nhân vào `effectiveUnitPrice` (`inventory.ts`), nên đổi cả giá mua gói lẫn giá vốn phần làm ra. Hệ số ở `DAY_EVENTS`. |
+| Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`. Sáng ngày có mở khóa, `next_day` phát `week_unlocks`. |
+| Mở rộng ngày 7 | Sáng ngày có `expandShop` (ngày 7) mà `expand_area` còn cấp 0: `grantUpgradeLevel` lên cấp 1 không trừ tiền, phát `notify` "Quán mở rộng!". |
+| Chấm điểm | Tối ngày cuối (`isLastWeekDay`), `closeDay` gọi `scoreWeek` và lưu vào `state.week.result`; `endOfDay` phát `week_ended` sau `dayEnded`. Từ đó `next_day` trả `false`. Điểm = `weekScore` (60 phần doanh thu + 40 phần sao, mỗi phần chặn ở mục tiêu); cúp = `weekCups` (≥ 90 → 3, ≥ 70 → 2, ≥ 40 → 1). |
+| UI | HUD ghi "Ngày N/7" và chip thời tiết, sự kiện (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
 
 ### Nâng cấp và dụng cụ
 
@@ -291,6 +306,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 | `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
 | `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`), giảm chuyển động (`reducedMotion`: `system` hay `reduce`, thiếu thì `system`). |
+| `cst3d:playlog` | Số liệu chơi ẩn danh: `{ "v": 1, "entries": [...] }`, giữ 1000 dòng mới nhất (`src/save/playlog.ts`). |
 
 Mỗi slot là JSON:
 
@@ -304,7 +320,24 @@ Mỗi slot là JSON:
 - Sau khi nâng, menu được bổ sung các món có trong `MENU` mà save chưa có (ví dụ `frappe` với save viết trước khi có món này), ở trạng thái tắt và giá mặc định. Bước này chạy với mọi save, kể cả save v2. Món đã có giữ nguyên giá và trạng thái bật/tắt.
 - Tiếp đó `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
+- `week` và `policies` là trường tùy chọn, không có migration: save không có `week` chơi không lịch tuần, không màn kết tuần ([Tuần 7 ngày](#tuần-7-ngày)); thiếu `policies` thì cả giá và lương là `standard`.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
+
+### Số liệu chơi
+
+Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu hay nạp ván (`run_start`), đổi pha (`phase`), hết ngày (`day_end`), hết tuần (`week_end`), tab ẩn hay hiện lại (`hidden`, `visible`, cả `pagehide`), về Main Menu (`quit_to_menu`), bấm Chơi lại (`replay`). Mỗi dòng chỉ có các field trong `PLAYLOG_FIELDS`:
+
+| Field | Nội dung |
+| --- | --- |
+| `v` | Phiên bản dòng (1). |
+| `run` | Id ngẫu nhiên của một lượt chơi (`crypto.randomUUID`), không gắn với save hay người chơi. |
+| `kind` | Loại dòng, như trên. |
+| `day` | Ngày game. |
+| `phase` | Pha (`preparation` … `report`), `menu` hoặc `week_end`. |
+| `minute` | Phút game tính từ nửa đêm. |
+| `at` | Giờ thật, epoch ms. |
+
+`sanitizePlayLogEntry` bỏ mọi field khác và dòng sai kiểu, cả khi đọc lại dữ liệu đã lưu. Cài đặt › Số liệu chơi hiện lần dừng gần nhất, xem JSON, **Xuất JSON** (file `playlog-<YYYYMMDD>.json` từ `exportPlayLog`: `version`, `exportedAt`, `entries`, `lastStops` = dòng cuối của mỗi `run`) và **Xoá** (bấm hai lần).
 
 ## Mẹo hiệu năng
 

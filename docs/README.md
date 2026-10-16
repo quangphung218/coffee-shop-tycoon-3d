@@ -1,12 +1,13 @@
 # Tài liệu
 
-- [architecture.md](architecture.md): ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, FSM khách, định dạng save, mẹo hiệu năng.
+- [architecture.md](architecture.md): ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, tuần 7 ngày trong code, FSM khách, định dạng save và số liệu chơi, mẹo hiệu năng.
 - [deploy.md](deploy.md): build, tự tăng version theo Conventional Commits và deploy lên GitHub Pages.
-- [spec/week-7-days.md](spec/week-7-days.md): tuần 7 ngày, lịch mở khoá món/dụng cụ/khu theo ngày và mở rộng quán ngày 7.
-- [media.md](media.md): tạo lại ảnh chụp, GIF và mp4 demo trong `docs/media/`, và atlas icon 3D trong `public/icons3d/`.
+- [spec/week-7-days.md](spec/week-7-days.md): luật tuần 7 ngày: lịch mở khoá món/dụng cụ/khu, mở rộng quán ngày 7, sự kiện và thời tiết, mục tiêu và chấm điểm tuần.
+- [media.md](media.md): tạo lại ảnh chụp, GIF và mp4 demo trong `docs/media/`, các bảng ảnh trước/sau, và atlas icon 3D trong `public/icons3d/`.
 
 ## Báo cáo
 
+- [reports/p21-week.md](reports/p21-week.md): P21, tuần 7 ngày: lịch mở khoá, log mô phỏng 7 ngày cùng seed và tác động từng biến số, ảnh trước/sau v0.2.0→P21 có khoanh, mẫu JSON số liệu chơi, kết quả kiểm tra.
 - [reports/p20-gameplay-visual.md](reports/p20-gameplay-visual.md): P20, chấm 3D hiện trạng → cải tiến, cấp quán/nhiệm vụ/chỉ số và Cài đặt, ảnh trước/sau P19→P20 có khoanh, số đo khởi động.
 - [reports/p18-collision-shop-icons.md](reports/p18-collision-shop-icons.md): P18, các ca đi xuyên đã sửa với sơ đồ đường đi trước/sau, ảnh quán trước/sau, ảnh mặt tiền ngày/tối khoanh chỗ phát sáng, kích thước atlas icon.
 - [reports/p19-polish.md](reports/p19-polish.md): P19, sáu mục chỉnh sau bản P18 (lề, Kho theo nhu cầu, khung tổng cố định, người đi và bố cục bàn, thanh cuộn, xoay camera) với ảnh trước/sau có khoanh.
