@@ -141,13 +141,13 @@ Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. C
 npm run media:loading
 ```
 
-Build rồi mở bản build ở khổ điện thoại 390×844 qua mạng giả lập Slow 4G (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần, không cache). File `three-*.js` bị giữ 11 s để từng trạng thái kịp chụp; lỗi được giả bằng cách chặn file.
+Build rồi mở bản build ở khổ điện thoại 390×844 qua mạng giả lập Slow 4G (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần, không cache). Chunk chính bị giữ 3 s và `three-*.js` bị giữ 11 s để từng trạng thái kịp chụp; lỗi được giả bằng cách chặn file.
 
 | File | Nội dung |
 | --- | --- |
 | `loading-boot.png` | Màn chờ: thanh và % theo file đã tải, một mẹo chơi. |
 | `loading-menu.png` | Main Menu trong lúc tải cảnh 3D: dòng tiến độ và mẹo. |
-| `loading-start.png` | Ván mới: nút **Bắt đầu ngày 1** ghi "Đang chuẩn bị N%", dòng "Mạng đang chậm…". |
+| `loading-start.png` | Ván mới, cuộn tới cuối form: nút **Bắt đầu ngày 1** ghi "Đang chuẩn bị N%", dòng "Mạng đang chậm…". |
 | `loading-error.png` | Main Menu khi `three-*.js` tải lỗi: thông báo và nút **Thử lại**. |
 | `loading-retried.png` | Cùng trang sau khi bấm **Thử lại** lúc mạng đã có lại: cảnh 3D hiện. |
 | `loading-boot-error.png` | Màn chờ khi chunk chính tải lỗi: thông báo và nút **Thử lại**. |

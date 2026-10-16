@@ -10,8 +10,8 @@
 //   loading-retried.png    the same page after Thử lại with the network back
 //   loading-boot-error.png boot screen when the game script fails: Thử lại
 //
-// The three.js file is held back (HOLD_MS) so each state stays on screen long
-// enough to capture. Run after `npm run build`; needs Playwright's Chromium.
+// The game script (BOOT_HOLD_MS) and three.js (HOLD_MS) are held back so each
+// state stays on screen long enough to capture. Run after `npm run build`; needs Playwright's Chromium.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -24,6 +24,8 @@ const PORT = Number(process.env.MEDIA_PORT ?? 4173);
 const URL_BASE = urlFor(PORT);
 /** How long three.js is held back, past the 8 s slow-network note. */
 const HOLD_MS = 11_000;
+/** How long the game script is held back, so the boot screen can be captured mid-way. */
+const BOOT_HOLD_MS = 3000;
 const SLOW_4G = { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 };
 const THREE = /\/assets\/three-[^/]+\.js$/;
 
@@ -47,10 +49,18 @@ async function shot(page, name) {
   progress(`wrote docs/media/${name}`);
 }
 
+/** Path of the game's entry script in the build, e.g. "assets/index-abc.js". */
+function entryScript() {
+  const entry = /<script type="module" crossorigin src="\.\/(assets\/[^"]+\.js)"/.exec(readFileSync(join(ROOT, 'dist', 'index.html'), 'utf8'))?.[1];
+  if (!entry) throw new Error('entry script not found in dist/index.html');
+  return entry;
+}
+
 async function main() {
   const server = await startPreview(ROOT, PORT);
   const browser = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
   try {
+    const entry = entryScript();
     // 1–3: boot, menu and New Game while three.js is held back.
     {
       const { context, page } = await phonePage(browser);
@@ -58,9 +68,23 @@ async function main() {
         await sleep(HOLD_MS);
         await route.continue();
       });
+      // The game script is held too, so the boot screen shows the CSS done and the script still coming.
+      await page.route(
+        (url) => url.pathname.endsWith(`/${entry}`),
+        async (route) => {
+          await sleep(BOOT_HOLD_MS);
+          await route.continue();
+        },
+      );
       void page.goto(URL_BASE);
-      // Once the first file (the CSS) has arrived, so the bar shows real progress.
-      await page.waitForFunction(() => /^[1-9]\d*%$/.test(document.querySelector('#boot .boot-pct')?.textContent ?? ''), null, { timeout: 30_000 });
+      await page.waitForFunction(
+        () => {
+          const boot = document.querySelector('#boot:not(.is-done)');
+          return /^[1-9]\d*%$/.test(boot?.querySelector('.boot-pct')?.textContent ?? '');
+        },
+        null,
+        { timeout: 30_000 },
+      );
       await shot(page, 'loading-boot.png');
       await page.locator('#boot').waitFor({ state: 'detached', timeout: 30_000 });
       await page.locator('.ui-screen.is-menu .scene-load:not([hidden])').waitFor();
@@ -69,6 +93,10 @@ async function main() {
       // The slow-network note comes 8 s after the scene started loading.
       // Every screen has its own status line; wait on the one New Game shows.
       await page.locator('.ui-screen:not([hidden]) .scene-load.is-slow').waitFor({ timeout: 15_000 });
+      // The form is taller than the phone and scrolls inside its layer: bring the
+      // start button (and the status line above it) into view.
+      await page.locator('.ui-screen:not([hidden]) button[type="submit"]').scrollIntoViewIfNeeded();
+      await sleep(300);
       await shot(page, 'loading-start.png');
       await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
       progress('scene ready after the hold');
@@ -91,8 +119,6 @@ async function main() {
     }
     // 6: the game script itself fails: the boot screen offers Thử lại.
     {
-      const entry = /<script type="module" crossorigin src="\.\/(assets\/[^"]+\.js)"/.exec(readFileSync(join(ROOT, 'dist', 'index.html'), 'utf8'))?.[1];
-      if (!entry) throw new Error('entry script not found in dist/index.html');
       const { context, page } = await phonePage(browser);
       await page.route((url) => url.pathname.endsWith(`/${entry}`), (route) => route.abort('internetdisconnected'));
       await page.goto(URL_BASE);
