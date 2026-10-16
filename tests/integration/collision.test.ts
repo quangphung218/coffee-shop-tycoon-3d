@@ -359,6 +359,8 @@ function soakWeek(difficulty: Difficulty, config: Config, render: boolean, days 
 const soaks = new Map<string, Soak>();
 
 // Each case soaks a whole week; on a busy machine that runs past vitest's 5 s default.
+// Easy maxed, the first maxed case, takes 1.1 s in the suite and 2.8 s run alone
+// (cold JIT and caches); A* is about 0.1 ms a search, 10k searches a week.
 describe(`collision soak: ${DAYS} days per difficulty and shop`, { timeout: 30_000 }, () => {
   for (const difficulty of DIFFICULTIES) {
     for (const config of CONFIGS) {
