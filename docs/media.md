@@ -154,9 +154,9 @@ Build rồi mở bản build ở khổ điện thoại 390×844 qua mạng giả
 | File | Nội dung |
 | --- | --- |
 | `loading-boot.png` | Màn chờ: thanh và % theo file đã tải, một mẹo chơi. |
-| `loading-menu.png` | Main Menu trong lúc tải cảnh 3D: dòng tiến độ và mẹo. |
-| `loading-start.png` | Ván mới, cuộn tới cuối form: nút **Bắt đầu ngày 1** ghi "Đang chuẩn bị N%", dòng "Mạng đang chậm…". |
-| `loading-error.png` | Main Menu khi `three-*.js` tải lỗi: thông báo và nút **Thử lại**. |
+| `loading-menu.png` | Main Menu trong lúc tải cảnh 3D: tổng %, danh sách thành phần (mỗi mục trạng thái và %) và mẹo. |
+| `loading-start.png` | Ván mới, cuộn tới cuối form: nút **Bắt đầu ngày 1** ghi "Đang chuẩn bị N%", dòng "Mạng đang chậm…", danh sách thành phần. |
+| `loading-error.png` | Main Menu khi `three-*.js` tải lỗi: thông báo, mục **Mã cảnh 3D** báo lỗi kèm nút **Thử lại**. |
 | `loading-retried.png` | Cùng trang sau khi bấm **Thử lại** lúc mạng đã có lại: cảnh 3D hiện. |
 | `loading-boot-error.png` | Màn chờ khi chunk chính tải lỗi: thông báo và nút **Thử lại**. |
 
