@@ -157,7 +157,10 @@
   --radius-pill: 999px;
 
   /* P24 light shadows: half the old ink depth, softer haze. */
-  --shadow-sm: 0 1px 0 0 var(--color-neutral-900);
+  /* Ink depth of --shadow-sm, the solid part of --frame-shadow; ui.css keeps
+     room for it under the dock (--dock-space). */
+  --shadow-sm-y: 1px;
+  --shadow-sm: 0 var(--shadow-sm-y) 0 0 var(--color-neutral-900);
   --shadow-md: 0 2px 0 0 var(--color-neutral-900);
   --shadow-lg: 0 3px 0 0 var(--color-neutral-900);
   --shadow-soft: 0 6px 14px 0 rgba(58, 34, 22, 0.12);

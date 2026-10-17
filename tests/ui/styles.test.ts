@@ -151,7 +151,8 @@ describe('tokens.css', () => {
   });
 
   it('uses the light P24 shadows: 1/2/3px ink and a soft haze', () => {
-    expect(token('--shadow-sm')).toBe('0 1px 0 0 var(--color-neutral-900)');
+    expect(token('--shadow-sm-y')).toBe('1px');
+    expect(token('--shadow-sm')).toBe('0 var(--shadow-sm-y) 0 0 var(--color-neutral-900)');
     expect(token('--shadow-md')).toBe('0 2px 0 0 var(--color-neutral-900)');
     expect(token('--shadow-lg')).toBe('0 3px 0 0 var(--color-neutral-900)');
     expect(token('--shadow-soft')).toBe('0 6px 14px 0 rgba(58, 34, 22, 0.12)');
@@ -201,7 +202,21 @@ describe('ui.css panel head (P24 type scale)', () => {
 
   it('gives the head a fixed height from --panel-head-h', () => {
     expect(body('.panel-head')).toMatch(/(?:^|;)\s*height:\s*var\(--panel-head-h\)/);
-    expect(body('#ui')).toMatch(/--panel-head-h:\s*calc\(48px \+ 2 \* var\(--space-3\) \+ var\(--size-outline\)\)/);
+    expect(body('#ui')).toMatch(/--panel-head-h:\s*calc\(var\(--size-hud-row\) \+ 2 \* var\(--space-3\) \+ var\(--size-outline\)\)/);
+    expect(body('.panel-head-icon')).toMatch(/width:\s*var\(--size-hud-row\);\s*height:\s*var\(--size-hud-row\)/);
+  });
+
+  it('gives the panel the HUD, dock and toast frame shadow', () => {
+    expect(body('#ui > .panel')).toMatch(/box-shadow:\s*var\(--frame-shadow\)/);
+  });
+
+  it('keeps room under the dock for the frame shadow ink, not the old 6px', () => {
+    const spaces = [...uiCss.matchAll(/--dock-space:\s*calc\(([^;]+)\);/g)].map((m) => m[1]!);
+    expect(spaces).toHaveLength(2);
+    for (const s of spaces) {
+      expect(s).toContain('var(--shadow-sm-y)');
+      expect(s).not.toMatch(/\d+px/);
+    }
   });
 });
 
