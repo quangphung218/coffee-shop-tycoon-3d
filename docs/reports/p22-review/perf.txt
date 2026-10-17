@@ -411,6 +411,31 @@ Reading: 3D scene 7 ms ahead of base (target <= base: met). Main Menu
 previous states is gone: the @1x atlas shares the line with the scene
 chunk again, in exchange for icons drawn by 2.5 s instead of 7.7 s.
 
+$ node scripts/measure-startup.mjs --base f720b6f --runs 5 --fps-only
+Exit code: -1 (the command time limit stopped it during high run 2)
+
+(Chunk tables as in the run above.)
+
+FPS at the peak of day 1 (Easy, 4x), 10 s × 5 runs per cell, builds taking turns, 1280×800 @2x
+
+  base (f720b6f) medium run 1: 12.2 FPS
+  working tree medium run 1: 12.9 FPS
+  base (f720b6f) medium run 2: 14.6 FPS
+  working tree medium run 2: 13.8 FPS
+  base (f720b6f) medium run 3: 13.0 FPS
+  working tree medium run 3: 10.3 FPS
+  base (f720b6f) medium run 4: 11.4 FPS
+  working tree medium run 4: 12.2 FPS
+  base (f720b6f) medium run 5: 12.3 FPS
+  working tree medium run 5: 12.1 FPS
+  base (f720b6f) high run 1: 12.1 FPS
+  working tree high run 1: 25.6 FPS
+  base (f720b6f) high run 2: 30.2 FPS
+
+Medium, 5 runs each (median of the lines above): base 12.3 FPS, working
+tree 12.2 FPS (-0.8%, target: no drop over 10%: met). High: not enough
+runs; measured on its own with --quality high below.
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
