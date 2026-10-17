@@ -69,6 +69,16 @@ describe('focus CSS stays inside the border', () => {
     expect(shared?.selector).toContain('.seg button:focus-visible');
     expect(shared?.body).toMatch(/outline-offset:\s*calc\(-1 \*/);
   });
+
+  it('HUD menu items and the ghost buttons in the Điều khiển cluster draw the ring inside a thin border', () => {
+    const ui = rules('src/ui/styles/ui.css');
+    const shared = ui.find((r) => r.selector.includes('.dock-btn:focus-visible'));
+    expect(shared?.selector).toContain('.hud-menu-item:focus-visible');
+    expect(shared?.selector).toContain('.hud-btn:focus-visible');
+    const thin = ui.filter((r) => /--bw:\s*var\(--size-outline-sm\)/.test(r.body)).map((r) => r.selector);
+    expect(thin.some((s) => s.includes('.hud-menu-item'))).toBe(true);
+    expect(thin).toContain('.hud-controls .hud-btn:not(.hud-btn-cta)');
+  });
 });
 
 describe('aria-pressed on dock and speed buttons', () => {

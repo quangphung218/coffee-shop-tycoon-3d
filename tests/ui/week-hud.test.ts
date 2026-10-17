@@ -50,13 +50,24 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+function dayText(el: HTMLElement): { day: string; week: HTMLElement } {
+  return { day: el.querySelector('[data-stat="day"]')!.textContent!, week: el.querySelector<HTMLElement>('[data-stat="week"]')! };
+}
+
 describe('HUD during a week', () => {
-  it('shows "Ngày 1/7" with the weather and the grand opening chips', () => {
+  it('shows "Ngày 1", "Tuần 1 · 1/7", the weather icon and the grand opening chip', () => {
     const el = mountHud(game());
-    const dayPill = el.querySelector('.hud-left > .hud-stat')!;
-    expect(dayPill.textContent).toBe('Ngày1/7');
+    const { day, week } = dayText(el);
+    expect(day).toBe('Ngày 1');
+    expect(week.hidden).toBe(false);
+    expect(week.textContent).toBe('Tuần 1 · 1/7');
     expect(el.querySelector<HTMLElement>('.hud-week')!.hidden).toBe(false);
-    expect(chip(el, 'weather').textContent).toBe('Nắng');
+    // Weather is an icon; its name and effect are the accessible name and title.
+    const weather = chip(el, 'weather');
+    expect(weather.textContent).toBe('');
+    expect(weather.getAttribute('role')).toBe('img');
+    expect(weather.querySelector('.ic')).toBeTruthy();
+    expect(weather.getAttribute('aria-label')).toBe('Nắng: khách như thường');
     const event = chip(el, 'event');
     expect(event.hidden).toBe(false);
     expect(event.textContent).toBe('Khai trương');
@@ -68,7 +79,8 @@ describe('HUD during a week', () => {
     const state = game();
     const fair = state.week!.plan.find((p) => p.event === 'fair')!;
     const el = mountHud(onWeekDay(state, fair.day));
-    expect(el.querySelector('.hud-left > .hud-stat')!.textContent).toBe(`Ngày${fair.day}/7`);
+    expect(dayText(el).day).toBe(`Ngày ${fair.day}`);
+    expect(dayText(el).week.textContent).toBe(`Tuần 1 · ${fair.day}/7`);
     const event = chip(el, 'event');
     expect(event.textContent).toBe('Hội chợ');
     expect(event.getAttribute('aria-label')).toBe('Hội chợ: lượt ghé tăng tới +40%');
@@ -91,9 +103,29 @@ describe('HUD during a week', () => {
     expect(chip(el, 'weather').getAttribute('aria-label')).toBe('Mưa: khách -25%, đồ nóng bán chạy');
   });
 
-  it('keeps the old day pill and no chips for a save without a week', () => {
+  it('hides the event chip on an ordinary day', () => {
+    const state = game();
+    const plain = state.week!.plan.find((p) => p.event === 'none')!;
+    const el = mountHud(onWeekDay(state, plain.day));
+    expect(chip(el, 'weather').hidden).toBe(false);
+    expect(chip(el, 'event').hidden).toBe(true);
+    expect(el.textContent).not.toContain('Ngày thường');
+  });
+
+  it('counts the game day and the week from week 2 on', () => {
+    const state = game();
+    state.week!.index = 2;
+    state.week!.startedDay = 8;
+    state.day = 12;
+    const el = mountHud(state);
+    expect(dayText(el).day).toBe('Ngày 12');
+    expect(dayText(el).week.textContent).toBe('Tuần 2 · 5/7');
+  });
+
+  it('keeps the day alone and no chips for a save without a week', () => {
     const el = mountHud(withoutWeek());
-    expect(el.querySelector('.hud-left > .hud-stat')!.textContent).toBe('Ngày1');
+    expect(dayText(el).day).toBe('Ngày 1');
+    expect(dayText(el).week.hidden).toBe(true);
     expect(el.textContent).not.toContain('/7');
     expect(el.querySelector<HTMLElement>('.hud-week')!.hidden).toBe(true);
   });

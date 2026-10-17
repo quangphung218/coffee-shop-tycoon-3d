@@ -114,23 +114,32 @@ describe('HUD level chip and XP bar', () => {
     expect(chip.textContent).not.toContain(chip.getAttribute('title')!.split(' · ')[1]!);
   });
 
-  it('lays the chip out on one row: icon, "Cấp N", bar, count', () => {
+  it('lays the chip out on one row in the Tiến độ cluster: icon, "Cấp N", bar, count', () => {
     const el = makeHud(game());
     const chip = q(el, '[data-stat="level"]');
     const kids = [...chip.children].map((c) => c.className || c.tagName);
     expect(kids.slice(1)).toEqual(['level-name', 'xp', 'xp-num']);
+    expect(chip.closest<HTMLElement>('[data-cluster]')?.dataset.cluster).toBe('progress');
+    // The count can be hidden on narrow screens; the bar's title still says it.
+    expect(q(chip, '[role="progressbar"]').title).toBe(q(chip, '[role="progressbar"]').getAttribute('aria-valuetext'));
   });
 
-  it('narrows the chip at ≤ 640 px so the HUD row does not wrap', async () => {
+  it('narrows the level at ≤ 640 px: the number, and the XP bar as a line under the cluster', async () => {
     // Vitest stubs .css imports, so read the stylesheet like styles.test.ts does.
     const fsModule = 'node:fs';
     const { readFileSync } = (await import(/* @vite-ignore */ fsModule)) as { readFileSync(path: string, encoding: 'utf8'): string };
     // jsdom swaps the URL class, so use a path from the project root (vitest's cwd).
     const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const phone = css.slice(css.lastIndexOf('@media (max-width: 640px)'));
-    expect(phone).toMatch(/\.hud-level \.xp-num\s*\{\s*display:\s*none;/);
-    expect(phone).toMatch(/\.hud-level \.xp\s*\{\s*width:\s*var\(--space-8\);/);
+    const hiddenOnPhone = phone.match(/([^{}]+)\{\s*display:\s*none;\s*\}/g)?.join('') ?? '';
+    expect(hiddenOnPhone).toContain('.hud-level .xp-num');
+    expect(hiddenOnPhone).toContain('.hud-level .level-word');
+    expect(phone).toMatch(/\.hud-level \.xp\s*\{[^}]*position:\s*absolute;/);
     expect(css).toMatch(/\.hud-level\s*\{[^}]*white-space:\s*nowrap;/);
+    // "Cấp " is its own span, so the number stays when the word is hidden.
+    const el = makeHud(game());
+    expect(q(el, '.level-name .level-word').textContent).toBe('Cấp ');
+    expect(q(el, '.level-name').textContent).toBe('Cấp 1');
   });
 
   it('shows the XP count of the current level, e.g. "320/500"', () => {
