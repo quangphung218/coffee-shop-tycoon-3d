@@ -498,6 +498,78 @@ describe('week summary', () => {
   });
 });
 
+describe('week summary CSS', () => {
+  // Vitest stubs .css imports; read the file through a dynamically named node:fs import,
+  // with a path from the repo root (under jsdom node:fs rejects jsdom's URL).
+  const FS_MODULE = 'node:fs';
+
+  async function css(): Promise<string> {
+    const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as { readFileSync(path: string, encoding: 'utf8'): string };
+    return readFileSync('src/ui/report/report.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  }
+
+  /** Innermost `selector { body }` blocks in source order. */
+  function rules(src: string): { selector: string; body: string }[] {
+    return [...src.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1]!.trim().replace(/\s+/g, ' '), body: m[2]! }));
+  }
+
+  /** font-size of the last rule whose selector list contains `selector`. */
+  function fontSize(src: string, selector: string): string | undefined {
+    const hit = rules(src).filter((r) => r.selector.split(',').map((s) => s.trim()).includes(selector) && /font-size:/.test(r.body)).at(-1);
+    return hit?.body.match(/font-size:\s*([^;]+)/)?.[1]?.trim();
+  }
+
+  /** Rules of the ≤ 640 px block. */
+  async function narrow(): Promise<string> {
+    const src = await css();
+    const start = src.indexOf('@media (max-width: 640px)');
+    return src.slice(start, src.indexOf('@media (prefers-reduced-motion', start));
+  }
+
+  it('sizes the week score like the Daily Report profit', async () => {
+    const src = await css();
+    const profit = fontSize(src, '.rpt-fig.is-result .rpt-fig-value');
+    expect(profit).toBe('var(--font-size-2xl)');
+    expect(fontSize(src, '.wk-score .rpt-result-value')).toBe(profit);
+  });
+
+  it('puts the other figures on --font-size-value and the labels on --font-size-label', async () => {
+    const src = await css();
+    for (const sel of ['.wk-goal-num', '.wk-score .wk-reward', '.wk-compare td.is-num', '.wk-compare .wk-delta']) {
+      expect(fontSize(src, sel), sel).toBe('var(--font-size-value)');
+    }
+    for (const sel of ['.wk-score .rpt-result-label', '.wk-compare thead th', '.wk-compare td']) {
+      expect(fontSize(src, sel), sel).toBe('var(--font-size-label)');
+    }
+  });
+
+  it('wraps the three footer buttons at 390 px instead of cutting "Sang tuần N"', async () => {
+    const src = await narrow();
+    const all = rules(src);
+    const body = (sel: string) => all.find((r) => r.selector === sel)?.body ?? '';
+    expect(body('.wk-foot-actions')).toMatch(/flex-wrap:\s*wrap/);
+    const btn = body('.wk-foot-actions > .btn');
+    expect(btn).toMatch(/min-width:\s*0/);
+    expect(btn).toMatch(/white-space:\s*normal/);
+    expect(body('.wk-foot-actions > .btn-primary')).toMatch(/flex-basis:\s*100%/);
+    // Nothing in the footer has a fixed size (a full-width row is fine) or hides what spills.
+    const foot = rules(await css()).filter((r) => /\.(rpt-foot|wk-foot-actions)\b/.test(r.selector));
+    expect(foot.length).toBeGreaterThan(5);
+    for (const r of foot) expect(r.body, r.selector).not.toMatch(/(^|[;\s])(height|max-height|width|max-width):(?!\s*(100%|auto))|overflow:\s*hidden/);
+    // Every footer button keeps a 44 px target, the main one 56 px.
+    const full = await css();
+    expect(full).toMatch(/\.rpt-foot \.btn\s*\{[^}]*min-height:\s*var\(--size-control-md\)/);
+    expect(full).toMatch(/\.rpt-foot \.btn-primary\s*\{[^}]*min-height:\s*var\(--size-control-lg\)/);
+  });
+
+  it('marks the footer row so only the week summary wraps it', () => {
+    const { root } = openWeekEnd();
+    const row = weekEndEl(root).querySelector<HTMLElement>('.rpt-foot-actions')!;
+    expect(row.classList.contains('wk-foot-actions')).toBe(true);
+    expect([...row.children].map((b) => (b as HTMLElement).dataset.action)).toEqual(['menu', 'replay', 'next-week']);
+  });
+});
+
 describe('week_ended toast', () => {
   it('names the week, the score and the next week', () => {
     const state = atReport(WEEK_LENGTH);
