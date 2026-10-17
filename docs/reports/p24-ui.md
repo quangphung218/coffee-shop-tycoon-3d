@@ -164,7 +164,7 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | --- | --- | --- |
 | Playtest qua giao diện: bật bằng công tắc, Cam, Bột bánh, Bơ trong gợi ý, 1 toast mỗi lượt nhập | Cả ba có nhãn "gợi ý", 1 toast | PASS ở 390 và 1280: Cam 4 gói, Bột bánh 1 gói, Bơ 2 gói, mỗi lượt 1 toast (mục 1). Lần ghi PASS trước sai: script bật món qua sim, công tắc trên giao diện còn khóa |
 | `npm run check` | tsc, test, build xanh | PASS: 81 file, 1172 test |
-| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy lại sau `b3c55d9` (công tắc) và `2392932` (pill pha, bóng bảng bên). Lượt trước ở `4d90c20`: PASS, 48/48 |
+| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px, mọi nút HUD ≥ 44 px | FAIL, 27/48. 6 bảng, Daily Report, Đánh giá không tràn ở 390/768/1440; CLS Kho 0,000000 ở cả ba khổ; HUD 2 hàng cao 104 px ở 390 và 768, 1 hàng cao 56 px ở 1280 và 1440. Cả 21 lỗi là nút pill pha (`[data-action="phases"]`): khung nút cao 16 px ở 390 và 32 px từ 768, dưới 44 px; vùng chạm 44 px của nút nằm ở `::before` (`src/ui/styles/ui.css`), script không đo phần này |
 | Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL, nợ từ P23: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
 | `npm run media:p24` | Không cảnh báo `!!`, playtest P24 đạt | PASS: 24 bảng, không cảnh báo, thoát mã 0 |
