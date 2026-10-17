@@ -37,8 +37,8 @@ Xếp theo điểm, rồi theo impact.
 | actors-persona-motion | Nhân vật | Các cá tính chỉ khác một phụ kiện, đi và đứng chờ như nhau | [390 d4](p22-review/390/d4-peak.jpg), [1440 d4](p22-review/1440/d4-peak.png) | 3 | 1 | 3 | Đã sửa |
 | E2 | Nghiệp vụ | Khó đạt 3 cúp dễ như Thường | Khó b: 3 cúp 6/6 seed; mục tiêu Khó 23.000k < Thường 26.500k ([E2](p22-economy.md#vấn-đề)) | 3 | 1 | 3 | Để đợt sau: đổi `WEEK_GOALS`, phá cân bằng P21 |
 | E6 | Nghiệp vụ | Giá Cao luôn thắng giá Chuẩn | d − c: lãi +2.143k đến +3.075k, 18/18 ván; cúp vẫn 3 ([E6](p22-economy.md#vấn-đề)) | 3 | 1 | 3 | Để đợt sau: cần đổi chấm điểm tuần |
-| ui-icons-blank-390 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải) | [d0-menu-first](p22-review/390/d0-menu-first.png); `menu.390.icons` | 2 | 1 | 2 | Đã sửa: ô trống thành ô chờ; icon hiện lúc 2550 ms (v0.4.0 2808 ms; 2564 ms cùng lượt), đổi lại cảnh 3D nhanh hơn 7 ms (trung vị 9 lần) thay vì khoảng 500 ms |
-| ui-icons-blank-1440 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@1x chưa tải) | [d0-menu-first](p22-review/1440/d0-menu-first.png); `menu.1440.icons` | 2 | 1 | 2 | Đã sửa: ô trống thành ô chờ; cùng thứ tải atlas với 390 |
+| ui-icons-blank-390 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải) | [d0-menu-first](p22-review/390/d0-menu-first.png); `menu.390.icons` | 2 | 1 | 2 | Đã sửa một phần: ô trống thành ô chờ; icon hiện lúc 2667 ms (v0.4.0 2808 ms ở lượt đo đầu; 2600 ms cùng lượt, nên vẫn muộn hơn 67 ms). Đổi lại cảnh 3D nhanh hơn 7 ms (trung vị 9 lần) thay vì khoảng 500 ms |
+| ui-icons-blank-1440 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@1x chưa tải) | [d0-menu-first](p22-review/1440/d0-menu-first.png); `menu.1440.icons` | 2 | 1 | 2 | Đã sửa một phần: ô trống thành ô chờ; cùng thứ tải atlas với 390 |
 | actors-persona-accessory | Nhân vật | Khách quen và gia đình không có phụ kiện, trông như nhau | [390 d4](p22-review/390/d4-peak.jpg), [1440 d4](p22-review/1440/d4-peak.png) | 2 | 1 | 2 | Đã sửa |
 | actors-impatient-silhouette | Nhân vật | Dáng sốt ruột (gõ chân nhẹ) khó thấy từ camera chéo | [390 d4](p22-review/390/d4-peak.jpg) | 2 | 1 | 2 | Đã sửa |
 | E5 | Nghiệp vụ | Máy rửa ly mở ngày 7, máy làm đá ngày 6: mua là lỗ | Lỗ 36/36 ván, có bật món hay không ([E5](p22-economy.md#vấn-đề)) | 2 | 1 | 2 | Đã sửa |
@@ -64,7 +64,7 @@ v0.4.0 khoanh nét đứt cam, P22 nét liền xanh.
 
 | Id | Đã sửa gì | Test |
 | --- | --- | --- |
-| ui-icons-blank-390, ui-icons-blank-1440 | Ô icon hiện ô chờ tới khi atlas @1x tải xong (0/5 ô trống, v0.4.0 5/5). Atlas @1x xin ngay sau khi menu vẽ, sau lệnh xin chunk cảnh, ưu tiên thấp; mỗi atlas một lần `fetch`, CSS và canvas dùng chung object URL; @2x sau `cst:world`. Di động: icon hiện lúc 2550 ms, v0.4.0 2564 ms cùng lượt (2808 ms ở lượt trước). Đánh đổi: cảnh 3D chỉ còn nhanh hơn v0.4.0 7 ms (trước đó khoảng 500 ms, khi icon hiện lúc 5736–7702 ms). | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts`, `tests/ui/styles.test.ts` |
+| ui-icons-blank-390, ui-icons-blank-1440 | Ô icon hiện ô chờ tới khi atlas @1x tải xong (0/5 ô trống, v0.4.0 5/5). Atlas @1x xin ngay sau khi menu vẽ, sau lệnh xin chunk cảnh, ưu tiên thấp; mỗi atlas một lần `fetch`, CSS và canvas dùng chung object URL; @2x sau `cst:world`. Di động, lượt chụp cuối: icon hiện lúc 2667 ms, v0.4.0 2600 ms cùng lượt; lượt trước 2550 / 2564 ms. Chưa sớm hơn v0.4.0 chắc chắn. Đánh đổi: cảnh 3D chỉ còn nhanh hơn v0.4.0 7 ms (trước đó khoảng 500 ms, khi icon hiện lúc 5736–7702 ms). | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts`, `tests/ui/styles.test.ts` |
 | layout-blocked-suggest-390 | Chân bảng dính đáy ở mọi khổ. Thân dưới 30rem thì chân gọn (hai tổng chung một hàng, nút Nhập hàng 44 px); chỉ khi vùng nội dung thân dưới 8rem (128 px, điện thoại xoay ngang) chân mới cuộn sau danh sách. Bảng: chân 144 px (v0.4.0 202 px) trong thân 207 px; nút Gợi ý chạm được (v0.4.0 bị `.foot-sum` che). Chưa sửa: cuộn dòng hàng đầu lên đỉnh thân thì giữa dòng vẫn nằm dưới chân, 0/12 dòng chạm được ở giữa (v0.4.0 0/12). | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` |
 | actors-persona-motion | Mỗi cá tính có dáng đi và thói quen lúc chờ riêng (văn phòng xem điện thoại, sinh viên tay đút túi, sành cà phê chắp tay sau lưng, gia đình nhìn quanh); tốc độ và đường đi không đổi. | `tests/render/actors.test.ts` |
 | actors-persona-accessory | Khách quen đội mũ len tím, gia đình xách túi vải vàng; dùng chung ô mesh phụ kiện, không đổ bóng. | `tests/render/actors.test.ts` |
@@ -116,26 +116,27 @@ Chênh lệch P22 trừ v0.4.0 trên di động, cùng lượt đo, theo từng 
 | Atlas @1x sau khi chunk cảnh tải xong | `--runs 9`, hai lượt | +85 ms, +84 ms | −486 ms, −512 ms | |
 | Thêm: xin chunk cảnh sau khi menu vẽ | `--runs 9` | +54 ms | −507 ms | 5736 ms (v0.4.0 2808 ms) |
 | Thêm: mỗi atlas một lần `fetch`, object URL | `--runs 9` | +0 ms | −509 ms | 7702 ms (v0.4.0 2626 ms) |
-| Hiện tại: atlas @1x ngay sau khi menu vẽ | `--runs 9` | +25 ms | −7 ms | 2550 ms (v0.4.0 2564 ms) |
+| Hiện tại: atlas @1x ngay sau khi menu vẽ | `--runs 9` | +25 ms | −7 ms | 2667 ms (v0.4.0 2600 ms) |
 
-- Đánh đổi: atlas @1x về trước khi cảnh 3D bắt đầu vẽ nên icon hiện sớm hơn v0.4.0, nhưng nó lại chia đường mạng với chunk cảnh, nên cảnh 3D mất khoảng 500 ms nhanh hơn của các bước trước.
+- Đánh đổi: atlas @1x lại chia đường mạng với chunk cảnh, nên icon hiện ngang v0.4.0 (từ 5,7–7,7 s về khoảng 2,6 s) nhưng cảnh 3D mất khoảng 500 ms nhanh hơn của các bước trước.
 
-Icon Main Menu trên di động (`npm run media:p22`, 390×844, tỉ lệ điểm ảnh 1, một lần tải mỗi bản, ms tính từ lúc điều hướng):
+Icon Main Menu trên di động (`npm run media:p22`, 390×844, tỉ lệ điểm ảnh 1, một lần tải mỗi bản, ms tính từ lúc điều hướng). Hai lượt chụp gần nhất, lượt cuối là số trên bảng `main-menu-icons-p22.png`:
 
-| Mốc | v0.4.0 `f720b6f` | P22 |
-| --- | --- | --- |
-| Main Menu hiện (ô trống / ô chờ) | 996 | 960 |
-| Xin atlas @1x | 981 | 981 |
-| Atlas @1x tải xong | 2553 | 2525 |
-| Atlas @1x tới CSS (`cst:icons`) | | 2528 |
-| Mọi ô vẽ icon | 2564 | 2550 |
-| `three-*.js` tải xong | 2604 | 2576 |
-| Xin atlas @2x | 2872 | 2718 |
-| Cảnh 3D hiện | 2882 | 2852 |
-| Số lần tải atlas @1x / @2x | 1 / 1 | 1 / 1 |
+| Mốc | v0.4.0, lượt cuối | P22, lượt cuối | v0.4.0, lượt trước | P22, lượt trước |
+| --- | --- | --- | --- | --- |
+| Main Menu hiện (ô trống / ô chờ) | 935 | 1019 | 996 | 960 |
+| Xin atlas @1x | 920 | 1034 | 981 | 981 |
+| Atlas @1x tải xong | 2564 | 2594 | 2553 | 2525 |
+| Atlas @1x tới CSS (`cst:icons`) | | 2597 | | 2528 |
+| Mọi ô vẽ icon | 2600 | 2667 | 2564 | 2550 |
+| `three-*.js` tải xong | 2621 | 2647 | 2604 | 2576 |
+| Xin atlas @2x | 2903 | 2833 | 2872 | 2718 |
+| Cảnh 3D hiện | 2914 | 2972 | 2882 | 2852 |
+| Số lần tải atlas @1x / @2x | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 |
 
-- P22 giữ ô chờ 1590 ms (960 → 2550 ms); v0.4.0 để ô trống 1568 ms (996 → 2564 ms). Icon vẽ 25 ms sau khi atlas @1x tải xong.
-- Một lần tải mỗi bản: cảnh 3D lần này nhanh hơn v0.4.0 30 ms; so sánh dùng trung vị 9 lần ở trên.
+- Lượt cuối: P22 vẽ icon muộn hơn v0.4.0 67 ms; lượt trước sớm hơn 14 ms. Icon P22 hiện ngang v0.4.0, trong độ dao động của một lần tải, không sớm hơn chắc chắn.
+- P22 giữ ô chờ 1648 ms (1019 → 2667 ms); v0.4.0 để ô trống 1665 ms (935 → 2600 ms). Icon vẽ 70 ms sau khi atlas @1x tải xong.
+- Một lần tải không đủ để so cảnh 3D (lượt cuối +58 ms, lượt trước −30 ms); so sánh dùng trung vị 9 lần ở trên.
 
 FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản xen kẽ, bản hiện tại. Chỉ kết luận từ lượt đo đủ 5 lần:
 
@@ -158,7 +159,7 @@ FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản x
 | 3 | layout-blocked-suggest-390 | 3 | Dòng hàng Kho ở 390: chân gọn 144 px chiếm gần hết thân 207 px, giữa dòng không chạm được khi cuộn (0/12). Cần chân thấp hơn hoặc thân bảng cao hơn. |
 | 4 | E1 | 1,5 | Giãn thang điểm tuần để chơi tốt và chơi tồi khác điểm (`scoreWeek`). |
 | 5 | E4 | 1,5 | Tủ bánh, máy xay sinh tố: hoàn vốn trong tuần, hoặc gợi ý bật món đi kèm. |
-| 6 | Cảnh 3D di động | | Lấy lại khoảng 500 ms của cảnh 3D mà icon vẫn hiện trước cảnh (vd. atlas @1x nhỏ hơn, hoặc gộp ô menu vào một ảnh riêng). |
+| 6 | ui-icons-blank-390, cảnh 3D di động | 2 | Icon hiện sớm hơn v0.4.0 chắc chắn (giờ ngang, ±70 ms), đồng thời lấy lại khoảng 500 ms của cảnh 3D (vd. atlas @1x nhỏ hơn, hoặc gộp ô menu vào một ảnh riêng). |
 | 7 | perf-fps-1440, perf-fps-390 | 1 | Giảm draw call giờ cao điểm để tiến tới 60 FPS. |
 | 8 | E7 | 1 | Marketing: hiệu quả khi quán còn chỗ, hoặc báo quán đã đầy. |
 | 9 | E8 | 1 | Áp lực tiền trong tuần (chi phí cố định, giá vốn). |
