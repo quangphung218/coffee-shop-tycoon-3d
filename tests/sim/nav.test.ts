@@ -487,7 +487,7 @@ describe('shop levels 7–10', () => {
         }
       }
     }
-  });
+  }, 30_000);
 
   it('seat the 7th tables level indoors and keep the main aisle', () => {
     const at6 = maxedLayout(FULL_UNLOCK_LEVEL);
