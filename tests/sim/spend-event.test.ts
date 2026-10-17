@@ -13,6 +13,7 @@ import type { GameEvent, GameState } from '../../src/sim/types';
 type SpendEvent = Extract<GameEvent, { type: 'spend' }>;
 
 const spends = (s: GameState): SpendEvent[] => s.events.filter((e): e is SpendEvent => e.type === 'spend');
+const successNotices = (s: GameState): GameEvent[] => s.events.filter((e) => e.type === 'notify' && e.level === 'success');
 
 function game(): GameState {
   const s = createNewGame('A', 'normal', 1);
@@ -64,14 +65,17 @@ describe('spend event', () => {
     expect(s.events.some((e) => e.type === 'notify')).toBe(false);
   });
 
-  it('buying an upgrade emits one upgrade spend', () => {
+  it('buying an upgrade emits one upgrade spend naming the new level and no success notice', () => {
     const s = game();
     const money = s.money;
     const cost = nextUpgradeCost(s, 'tables')!;
-    expect(buyUpgrade(s, 'tables').ok).toBe(true);
+    const r = buyUpgrade(s, 'tables');
+    expect(r.ok).toBe(true);
+    const level = r.ok ? r.level : 0;
     expect(spends(s)).toEqual([
-      { type: 'spend', kind: 'upgrade', label: getUpgrade('tables').name, amount: cost, moneyLeft: money - cost },
+      { type: 'spend', kind: 'upgrade', label: `${getUpgrade('tables').name} lên cấp ${level}`, amount: cost, moneyLeft: money - cost },
     ]);
+    expect(successNotices(s)).toEqual([]);
   });
 
   it('a refused upgrade emits no spend', () => {
@@ -81,7 +85,7 @@ describe('spend event', () => {
     expect(spends(s)).toEqual([]);
   });
 
-  it('running a campaign emits one campaign spend', () => {
+  it('running a campaign emits one campaign spend and no success notice', () => {
     const s = game();
     s.phase = 'preparation';
     const money = s.money;
@@ -90,6 +94,7 @@ describe('spend event', () => {
     expect(spends(s)).toEqual([
       { type: 'spend', kind: 'campaign', label: def.name, amount: def.cost, moneyLeft: money - def.cost },
     ]);
+    expect(successNotices(s)).toEqual([]);
   });
 
   it('a refused campaign emits no spend', () => {

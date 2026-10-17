@@ -12,8 +12,7 @@ import type { ToastInput } from '../core/toast';
 /** Verb and icon of a spend toast; the icons are the dock tabs of each kind. */
 const SPEND_TOASTS: Readonly<Record<SpendKind, { title: string; icon: IconId }>> = {
   restock: { title: 'Đã nhập', icon: 'i-inventory' },
-  upgrade: { title: 'Đã mua', icon: 'i-upgrades' },
-  hire: { title: 'Đã thuê', icon: 'i-people' },
+  upgrade: { title: 'Đã nâng cấp', icon: 'i-upgrades' },
   campaign: { title: 'Đã chạy', icon: 'i-marketing' },
 };
 

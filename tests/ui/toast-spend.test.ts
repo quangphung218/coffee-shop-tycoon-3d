@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getUpgrade } from '../../src/sim/data/upgrades';
+import { dispatch } from '../../src/sim/index';
 import { createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState, SpendKind } from '../../src/sim/types';
 import { formatMoney } from '../../src/ui/core/format';
@@ -32,7 +34,7 @@ afterEach(() => {
 
 describe('spend toasts', () => {
   it('maps each kind to a success toast with its dock icon and a spend:<kind> key', () => {
-    const icons: Record<SpendKind, string> = { restock: 'i-inventory', upgrade: 'i-upgrades', hire: 'i-people', campaign: 'i-marketing' };
+    const icons: Record<SpendKind, string> = { restock: 'i-inventory', upgrade: 'i-upgrades', campaign: 'i-marketing' };
     for (const kind of Object.keys(icons) as SpendKind[]) {
       const toast = toastForEvent({ type: 'spend', kind, label: 'X', amount: 1000, moneyLeft: 5000 }, state);
       expect(toast).toMatchObject({ level: 'success', icon: icons[kind], key: `spend:${kind}` });
@@ -67,12 +69,26 @@ describe('spend toasts', () => {
 
   it('keeps each kind in its own toast, at most 3 at once', () => {
     spend('restock', 'Cam', 1000, 10_000);
-    spend('upgrade', 'Thêm bàn', 2000, 8_000);
+    spend('upgrade', 'Thêm bàn lên cấp 1', 2000, 8_000);
     spend('campaign', 'Phát tờ rơi', 500, 7_500);
-    expect(titles()).toEqual(['Đã nhập Cam', 'Đã mua Thêm bàn', 'Đã chạy Phát tờ rơi']);
-    spend('hire', 'Lan', 0, 7_500);
+    expect(titles()).toEqual(['Đã nhập Cam', 'Đã nâng cấp Thêm bàn lên cấp 1', 'Đã chạy Phát tờ rơi']);
+    toasts.show({ level: 'error', title: 'Khách bỏ đi', key: 'angry' });
     expect(toasts.count).toBe(MAX_TOASTS);
-    expect(titles()).toEqual(['Đã mua Thêm bàn', 'Đã chạy Phát tờ rơi', 'Đã thuê Lan']);
+    expect(titles()).toEqual(['Đã nâng cấp Thêm bàn lên cấp 1', 'Đã chạy Phát tờ rơi', 'Khách bỏ đi']);
+  });
+
+  it('shows one toast for two upgrades bought back to back through dispatch', () => {
+    state.events = [];
+    expect(dispatch(state, { type: 'buy_upgrade', upgradeId: 'tables' })).toBe(true);
+    expect(dispatch(state, { type: 'buy_upgrade', upgradeId: 'tables' })).toBe(true);
+    for (const event of state.events) {
+      const toast = toastForEvent(event, state);
+      if (toast) toasts.show(toast);
+    }
+    expect(toasts.count).toBe(1);
+    const name = getUpgrade('tables').name;
+    expect(titles()).toEqual([`Đã nâng cấp ${name} lên cấp 1, ${name} lên cấp 2`]);
+    expect(texts()).toEqual([expect.stringContaining(`Còn ${formatMoney(state.money)}`)]);
   });
 
   it('does not take focus and leaves the ×n merge of other keys alone', () => {
