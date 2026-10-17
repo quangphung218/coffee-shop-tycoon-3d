@@ -1,5 +1,6 @@
 import type { NotifyLevel } from '../../sim/types';
 import { h } from './dom';
+import { formatMoney } from './format';
 import { icon, type IconId } from './icons';
 
 /** design/tokens.json duration.toast-visible. */
@@ -14,19 +15,51 @@ export interface ToastInput {
   text?: string;
   /** Replaces the level's icon (e.g. the angry face, an ingredient). */
   icon?: IconId;
-  /** Toasts with the same key merge into one with a "×n" counter. */
+  /** Toasts with the same key merge into one with a "×n" counter, or by `merge` when given. */
   key?: string;
+  /** Spend toast: a live toast with the same key adds the amount and the label instead of "×n". Overrides title and text. */
+  merge?: MergeSpend;
+}
+
+export interface MergeSpend {
+  /** "Đã nhập" — the title is the verb and the names. */
+  verb: string;
+  label: string;
+  amount: number;
+  moneyLeft: number;
+}
+
+/** Names shown in a merged title before "và N mặt hàng khác". */
+export const MERGE_NAMES = 3;
+
+interface Merged {
+  verb: string;
+  labels: string[];
+  amount: number;
+  moneyLeft: number;
 }
 
 interface Live {
   el: HTMLElement;
   title: HTMLElement;
+  text: HTMLElement | null;
   key: string;
   base: string;
   count: number;
+  merged: Merged | null;
   timer: ReturnType<typeof setTimeout> | null;
   hold: boolean;
   level: NotifyLevel;
+}
+
+/** "Đã nhập Cam, Bột bánh" and "−819.375đ · Còn 19.062.724đ". */
+function mergedLines(m: Merged): { title: string; text: string } {
+  const shown = m.labels.slice(0, MERGE_NAMES).join(', ');
+  const rest = m.labels.length - MERGE_NAMES;
+  return {
+    title: `${m.verb} ${shown}${rest > 0 ? ` và ${rest} mặt hàng khác` : ''}`,
+    text: `${formatMoney(-m.amount)} · Còn ${formatMoney(m.moneyLeft)}`,
+  };
 }
 
 /**
@@ -51,23 +84,38 @@ export class Toasts {
     const key = input.key ?? `${input.level}:${input.title}:${input.text ?? ''}`;
     const same = this.live.find((t) => t.key === key);
     if (same) {
-      same.count += 1;
-      same.title.textContent = `${same.base} ×${same.count}`;
+      if (same.merged && input.merge) {
+        const m = same.merged;
+        m.amount += input.merge.amount;
+        m.moneyLeft = input.merge.moneyLeft;
+        if (!m.labels.includes(input.merge.label)) m.labels.push(input.merge.label);
+        const lines = mergedLines(m);
+        same.title.textContent = lines.title;
+        if (same.text) same.text.textContent = lines.text;
+      } else {
+        same.count += 1;
+        same.title.textContent = `${same.base} ×${same.count}`;
+      }
       this.arm(same);
       return;
     }
     while (this.live.length >= MAX_TOASTS) this.close(this.live[0]!);
 
-    const title = h('p', { class: 'toast-title', text: input.title });
+    const merged: Merged | null = input.merge
+      ? { verb: input.merge.verb, labels: [input.merge.label], amount: input.merge.amount, moneyLeft: input.merge.moneyLeft }
+      : null;
+    const lines = merged ? mergedLines(merged) : { title: input.title, text: input.text };
+    const title = h('p', { class: 'toast-title', text: lines.title });
+    const text = lines.text ? h('p', { class: 'toast-text', text: lines.text }) : null;
     const close = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng thông báo' } }, icon('i-close', { size: 16 }), 'Đóng');
     const el = h(
       'div',
       { class: `toast toast-${input.level}`, attrs: { role: input.level === 'error' ? 'alert' : 'status' } },
       h('span', { class: 'toast-icon' }, icon(input.icon ?? ICONS[input.level])),
-      h('div', { class: 'toast-body' }, title, input.text ? h('p', { class: 'toast-text', text: input.text }) : null),
+      h('div', { class: 'toast-body' }, title, text),
       close,
     );
-    const toast: Live = { el, title, key, base: input.title, count: 1, timer: null, hold: false, level: input.level };
+    const toast: Live = { el, title, text, key, base: lines.title, count: 1, merged, timer: null, hold: false, level: input.level };
     close.addEventListener('click', () => this.close(toast));
     const hold = (on: boolean) => () => {
       toast.hold = on;
