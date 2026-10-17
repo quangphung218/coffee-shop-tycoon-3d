@@ -134,28 +134,27 @@ function missionView(state: GameState, m: Mission): { now: number; valueText: st
   return { now, valueText: `${value === null ? 'Chưa đủ dữ liệu' : meta.measure(value)} · ${meta.goal(m.target)}` };
 }
 
-/** One mission card: name, status badge, goal, a progressbar and the XP/cash reward. */
+/** One mission row: icon | name + value and goal | status label, then a progressbar and the XP/cash reward. */
 function missionCard(state: GameState, m: Mission): HTMLElement {
   const meta = MISSION_META[m.id];
   const st = MISSION_STATE[m.status];
   const { now, valueText } = missionView(state, m);
   return h(
     'li',
-    { class: 'mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
+    { class: 'item item-row', attrs: { 'data-mission': m.id, 'data-status': m.status } },
+    h('span', { class: 'item-icon' }, icon(MISSION_ICON, { size: 32 })),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: meta.title }), h('p', { class: 'item-meta', text: valueText })),
+    h('span', { class: 'item-status' }, h('span', { class: `badge ${st.badge}` }, ...withIcon(st.icon, st.label))),
     h(
       'div',
-      { class: 'mission-head' },
-      h('span', { class: 'mission-icon' }, icon(MISSION_ICON, { size: 24 })),
-      h('p', { class: 'mission-title', text: meta.title }),
-      h('span', { class: `badge ${st.badge}` }, ...withIcon(st.icon, st.label)),
+      { class: 'item-actions' },
+      h(
+        'div',
+        { class: 'progress', attrs: { role: 'progressbar', 'aria-label': meta.title, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(now), 'aria-valuetext': valueText } },
+        h('span', { attrs: { style: `width:${now}%` } }),
+      ),
+      h('p', { class: 'item-meta mission-reward' }, ...withIcon('i-sparkle', `+${m.rewardXp} KN`), ' · ', ...withIcon('i-coin', `+${formatMoney(m.rewardMoney)}`)),
     ),
-    h('p', { class: 'item-meta', text: valueText }),
-    h(
-      'div',
-      { class: 'progress', attrs: { role: 'progressbar', 'aria-label': meta.title, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(now), 'aria-valuetext': valueText } },
-      h('span', { attrs: { style: `width:${now}%` } }),
-    ),
-    h('p', { class: 'item-meta mission-reward' }, ...withIcon('i-sparkle', `+${m.rewardXp} KN`), ' · ', ...withIcon('i-coin', `+${formatMoney(m.rewardMoney)}`)),
   );
 }
 
@@ -193,9 +192,11 @@ export function weekTodayLines(state: GameState): WeekTodayLine[] {
 }
 
 /**
- * Task Board: today's checklist with done/not-done state, today's daily
- * missions, yesterday's report suggestions, and "Mở cửa" (start_day).
- * Unfinished tasks only remind.
+ * Task Board: today's week lines, the checklist with done/not-done state,
+ * today's daily missions, yesterday's report suggestions, and "Mở cửa"
+ * (start_day). Checklist, mission and suggestion rows share the Kho row
+ * template (icon | title + meta | one status label | link). Unfinished tasks
+ * only remind.
  */
 export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -211,7 +212,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       setChildren(weekTitle, ...withIcon('i-clock', `Hôm nay · Ngày ${weekDayLabel(s) ?? s.day}`, 24));
       setChildren(
         weekList,
-        ...lines.map((l) => h('li', { class: 'task', attrs: { 'data-week': l.id } }, h('span', { class: 'task-icon' }, icon(l.icon)), h('p', { class: 'item-meta', text: l.text }))),
+        // Plain lines, not framed rows: they only inform and have no action.
+        ...lines.map((l) => h('li', { class: 'intro intro-icon', attrs: { 'data-week': l.id } }, icon(l.icon, { size: 16 }), h('span', { text: l.text }))),
       );
     },
   );
@@ -242,21 +244,16 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         ...tasks.map((t) =>
           h(
             'li',
-            { class: `task${t.done ? ' is-done' : ''}${!t.done && t.warn ? ' is-warn' : ''}`, attrs: { 'data-task': t.id, 'data-done': String(t.done) } },
-            h('span', { class: 'task-icon' }, icon(t.done ? 'i-ok' : t.warn ? 'i-warning' : 'i-todo')),
+            { class: `item item-row${t.done ? ' is-done' : ''}`, attrs: { 'data-task': t.id, 'data-done': String(t.done) } },
+            h('span', { class: 'item-icon' }, icon(t.done ? 'i-ok' : t.warn ? 'i-warning' : 'i-todo', { size: 32 })),
             h(
               'div',
-              {},
-              h(
-                'p',
-                { class: 'task-title' },
-                h('span', { class: 'sr-only', text: t.done ? 'Đã xong: ' : 'Chưa xong: ' }),
-                t.title,
-                !t.done && t.warn ? h('span', { class: 'badge badge-warn task-flag' }, icon('i-warning', { size: 16 }), 'Cần chú ý') : null,
-              ),
+              { class: 'item-text' },
+              h('p', { class: 'item-title' }, h('span', { class: 'sr-only', text: t.done ? 'Đã xong: ' : 'Chưa xong: ' }), t.title),
               h('p', { class: 'item-meta', text: t.detail }),
-              t.done ? null : linkBtn(t.link, t.panel),
             ),
+            h('span', { class: 'item-status' }, !t.done && t.warn ? h('span', { class: 'badge badge-warn' }, ...withIcon('i-warning', 'Cần chú ý')) : null),
+            t.done ? null : linkBtn(t.link, t.panel),
           ),
         ),
       );
@@ -283,7 +280,13 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       setChildren(
         sugList,
         ...items.map((sug) =>
-          h('li', { class: 'task' }, h('span', { class: 'task-icon' }, icon('i-tip')), h('div', {},h('p', { class: 'item-meta', text: sug.text }), linkBtn(SUGGESTION_PANEL[sug.kind].link, SUGGESTION_PANEL[sug.kind].panel))),
+          h(
+            'li',
+            { class: 'item item-row' },
+            h('span', { class: 'item-icon' }, icon('i-tip', { size: 32 })),
+            h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: sug.text })),
+            linkBtn(SUGGESTION_PANEL[sug.kind].link, SUGGESTION_PANEL[sug.kind].panel),
+          ),
         ),
       );
     },

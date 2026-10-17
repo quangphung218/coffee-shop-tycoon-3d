@@ -96,7 +96,7 @@ describe('panel side margins (P19 overflow root cause)', () => {
 });
 
 describe('panel and report grids shrink with the panel', () => {
-  it.each(['.item', '.task', '.staff'])('%s puts every fr column in minmax(0, …)', (selector) => {
+  it.each(['.item', '.item.item-row'])('%s puts every fr column in minmax(0, …)', (selector) => {
     const cols = PANELS.filter((r) => r.selector === selector).map((r) => decl(r.body, 'grid-template-columns'));
     expect(cols.length, selector).toBeGreaterThan(0);
     for (const c of cols) {

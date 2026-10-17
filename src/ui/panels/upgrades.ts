@@ -65,8 +65,9 @@ export function decorRefund(state: GameState, id: UpgradeId): number {
 }
 
 /**
- * Nâng cấp by group: price of the next level, current level and the effect
- * per level. "Mua" asks for an in-place confirm, then sends buy_upgrade.
+ * Nâng cấp by group, one row per upgrade (icon | name + price of the next
+ * level, current level and the effect per level | "Mở ngày N" / "Tối đa" |
+ * Mua). "Mua" asks for an in-place confirm, then sends buy_upgrade.
  * Owned decor without seats has "Gỡ (+X)": the first click arms it for
  * REMOVE_CONFIRM_MS, a second click sends remove_decor.
  */
@@ -99,7 +100,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       disarm();
       keepFocus(li, body, () => send({ type: 'remove_decor', upgradeId: id }));
     });
-    const row = h('div', { class: 'item-actions', attrs: { 'data-remove': id } }, btn);
+    const row = h('span', { attrs: { 'data-remove': id } }, btn);
     w.watch(
       (s) => `${upgradeLevel(s, id)}|${decorRefund(s, id)}`,
       (_, s) => {
@@ -113,36 +114,43 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
 
   function row(id: UpgradeId): HTMLElement {
     const def = getUpgrade(id);
-    const side = h('span');
-    const level = h('p', { class: 'item-meta' });
+    const badge = h('span', { class: 'badge', hidden: true });
+    const meta = h('p', { class: 'item-meta' });
     const buy = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'buy' }, text: 'Mua' });
     const why = reasonLine();
-    const actions = h('div', { class: 'item-actions' }, buy, why);
+    const more = h('div', { class: 'item-actions' }, why);
     const li = h(
       'li',
-      { class: 'item', attrs: { 'data-upgrade': id } },
+      { class: 'item item-row', attrs: { 'data-upgrade': id } },
       h('span', { class: 'item-icon' }, icon(UPGRADE_ICONS[id], { size: 32 })),
-      h('div', {}, h('p', { class: 'item-title', text: def.name }), level, h('p', { class: 'item-meta', text: `Mỗi cấp: ${effectText(def.effectPerLevel)}` })),
-      side,
-      actions,
+      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: def.name }), meta),
+      h('span', { class: 'item-status' }, badge),
+      buy,
+      more,
     );
-    if (isRemovableDecor(id)) li.append(removeControl(id, li));
+    if (isRemovableDecor(id)) more.append(removeControl(id, li));
+    // While the in-place confirm is open it replaces Mua and its reason.
+    const confirming = (): boolean => !!li.querySelector('.confirm');
+    const showBuy = (shown: boolean): void => {
+      buy.hidden = !shown;
+      why.hidden = !shown || !why.textContent;
+    };
     buy.addEventListener('click', () => {
       const s = ctx.getState();
       const cost = s ? nextUpgradeCost(s, id) : null;
       if (!s || cost === null || isAriaDisabled(buy)) return;
-      actions.hidden = true;
+      showBuy(false);
       li.append(
         inlineConfirm(
           `Mua ${def.name} cấp ${upgradeLevel(s, id) + 1} với ${formatMoney(cost)}? Còn lại ${formatMoney(s.money - cost)}.`,
           'Mua',
           'btn-primary',
           () => {
-            actions.hidden = false;
+            showBuy(true);
             keepFocus(li, body, () => send({ type: 'buy_upgrade', upgradeId: id }));
           },
           () => {
-            actions.hidden = false;
+            showBuy(true);
             buy.focus();
           },
         ),
@@ -153,31 +161,28 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       (_, s) => {
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
-        level.textContent = `Cấp ${lv}/${maxUpgradeLevel(s, id)} · ${def.description}`;
+        const max = maxUpgradeLevel(s, id);
+        meta.textContent = `${cost === null ? '' : `Giá ${formatMoney(cost)} · `}Cấp ${lv}/${max} · mỗi cấp ${effectText(def.effectPerLevel)}`;
         // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
+        badge.hidden = !locked && cost !== null;
         if (locked) {
           const opens = unlockHint(s, 'upgrade', id);
-          side.className = 'badge badge-neutral';
-          setIconText(side, 'i-lock', opens.badge);
-          if (!li.querySelector('.confirm')) actions.hidden = false;
+          badge.className = 'badge badge-neutral';
+          setIconText(badge, 'i-lock', opens.badge);
           setAriaDisabled(buy, true);
           setReason(why, buy, opens.reason);
-          return;
+        } else if (cost === null) {
+          badge.className = 'badge badge-ok';
+          setIconText(badge, 'i-ok', 'Tối đa');
+          setReason(why, buy, null);
+        } else {
+          const short = s.money < cost ? shortOfMoney(cost, s.money, formatMoney) : null;
+          setAriaDisabled(buy, short !== null);
+          setReason(why, buy, short);
         }
-        if (cost === null) {
-          side.className = 'badge badge-ok';
-          setIconText(side, 'i-ok', 'Tối đa');
-          actions.hidden = true;
-          return;
-        }
-        side.className = 'item-side';
-        side.textContent = formatMoney(cost);
-        if (!li.querySelector('.confirm')) actions.hidden = false;
-        const short = s.money < cost ? shortOfMoney(cost, s.money, formatMoney) : null;
-        setAriaDisabled(buy, short !== null);
-        setReason(why, buy, short);
+        showBuy(cost !== null && !confirming());
       },
     );
     return li;

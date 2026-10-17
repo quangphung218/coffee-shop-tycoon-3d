@@ -42,21 +42,14 @@ const TASK_TEXT: Record<StaffTaskKind, string> = {
   idle: 'đang chờ',
 };
 
-/** Round avatar; the sim's `look` picks one of the drawn skin/hair pairs. */
+/** Avatar in the row's icon slot; the sim's `look` picks one of the drawn skin/hair pairs. */
 function avatar(look: number): HTMLElement {
-  return h('span', { class: 'staff-av' }, avatarIcon(look, { size: 32 }));
+  return h('span', { class: 'item-icon' }, avatarIcon(look, { size: 32 }));
 }
 
-/** Speed 0.8–1.3 shown as ×1,15 plus a bar. */
-function speedMeter(speed: number): HTMLElement {
-  const pct = Math.round(Math.max(0.1, Math.min(1, (speed - 0.7) / 0.6)) * 100);
-  return h(
-    'span',
-    { class: 'meter' },
-    'Tốc độ ',
-    h('span', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, h('span', { attrs: { style: `width:${pct}%` } })),
-    ` ×${speed.toFixed(2).replace('.', ',')}`,
-  );
+/** "Lương 200.000đ/ngày · tốc độ ×1,15": the meta line of a staff or candidate row. */
+function staffMeta(wage: number, speed: number): string {
+  return `Lương ${formatMoney(wage)}/ngày · tốc độ ×${speed.toFixed(2).replace('.', ',')}`;
 }
 
 /** Role a new hire starts in: the next free slot of the default plan. */
@@ -129,10 +122,12 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     const fireBtn = h('button', { class: 'btn btn-danger btn-sm', attrs: { type: 'button', 'data-action': 'fire' }, text: 'Cho nghỉ' });
     const li = h(
       'li',
-      { class: 'staff', attrs: { 'data-staff': member.id } },
+      { class: 'item item-row', attrs: { 'data-staff': member.id } },
       avatar(member.look),
-      h('div', {}, h('p', { class: 'staff-name' }, member.name, ' ', badge), meta, speedMeter(member.speed)),
-      h('div', { class: 'staff-row' }, h('span', { class: 'stepper-label', text: 'Vai' }), dd.el, fireBtn, why),
+      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: member.name }), meta),
+      h('span', { class: 'item-status' }, badge),
+      h('div', { class: 'item-control' }, dd.el, fireBtn),
+      h('div', { class: 'item-actions' }, why),
     );
     fireBtn.addEventListener('click', () => {
       fireBtn.hidden = true;
@@ -159,7 +154,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         if (!m) return;
         badge.className = m.busy ? 'badge badge-warn' : 'badge badge-ok';
         setIconText(badge, m.busy ? 'i-busy' : 'i-free', m.busy ? 'Bận' : 'Rảnh');
-        meta.textContent = `Lương ${formatMoney(paid(s, m.wagePerDay))}/ngày${m.busy && m.task ? ` · ${TASK_TEXT[m.task.kind]}` : ''}`;
+        meta.textContent = `${staffMeta(paid(s, m.wagePerDay), m.speed)}${m.busy && m.task ? ` · ${TASK_TEXT[m.task.kind]}` : ''}`;
         const others: Partial<Record<StaffRole, string>> = {};
         for (const r of ROLE_ORDER) {
           const names = s.staff.filter((x) => x.id !== m.id && x.role === r).map((x) => x.name);
@@ -197,14 +192,15 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
         setReason(why, hire, full ? `Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
       },
     );
-    const wage = h('p', { class: 'item-meta' });
-    rowsW.text(wage, (s) => `Lương ${formatMoney(paid(s, c.wagePerDay))}/ngày`);
+    const meta = h('p', { class: 'item-meta' });
+    rowsW.text(meta, (s) => staffMeta(paid(s, c.wagePerDay), c.speed));
     const li = h(
       'li',
-      { class: 'staff', attrs: { 'data-candidate': c.id } },
+      { class: 'item item-row', attrs: { 'data-candidate': c.id } },
       avatar(c.look),
-      h('div', {}, h('p', { class: 'staff-name', text: c.name }), wage, speedMeter(c.speed)),
-      h('div', { class: 'staff-row' }, hire, why),
+      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: c.name }), meta),
+      hire,
+      h('div', { class: 'item-actions' }, why),
     );
     return li;
   }

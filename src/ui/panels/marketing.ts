@@ -8,7 +8,8 @@ import type { PanelContext, PanelHandle } from '../hud/panels';
 import { keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney } from './widgets';
 
 /**
- * Marketing: each campaign with price, effect (+% khách) and length. Running
+ * Marketing: one row per campaign (icon | name + price, effect (+% khách)
+ * and length | "Đang chạy" while it runs | "Chạy hôm nay"). Running
  * campaigns show the days left; the run button is dimmed with a reason
  * outside preparation or when money is short.
  */
@@ -19,7 +20,7 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
   const rows = MARKETING.map((def) => {
     const run = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'run' }, text: 'Chạy hôm nay' });
     const why = reasonLine();
-    const side = h('span', { class: 'item-side' });
+    const badge = h('span', { class: 'badge badge-ok', hidden: true });
     run.addEventListener('click', () => {
       // A started campaign hides its button, so focus moves on to the next row.
       if (!isAriaDisabled(run)) keepFocus(li, body, () => send({ type: 'start_campaign', campaignId: def.id }));
@@ -32,13 +33,8 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
       },
       (_, s) => {
         const active = s.campaigns.find((c) => c.id === def.id && c.daysLeft > 0);
-        if (active) {
-          side.className = 'badge badge-ok';
-          setIconText(side, 'i-ok', 'Đang chạy');
-        } else {
-          side.className = 'item-side';
-          side.textContent = formatMoney(def.cost);
-        }
+        badge.hidden = !active;
+        if (active) setIconText(badge, 'i-ok', 'Đang chạy');
         run.hidden = !!active;
         let reason: string | null = null;
         if (active) reason = `Còn ${active.daysLeft} ngày.`;
@@ -51,11 +47,17 @@ export function renderMarketingPanel(body: HTMLElement, ctx: PanelContext): Pane
     );
     const li = h(
       'li',
-      { class: 'item', attrs: { 'data-campaign': def.id } },
+      { class: 'item item-row', attrs: { 'data-campaign': def.id } },
       h('span', { class: 'item-icon' }, icon(MARKETING_ICONS[def.id], { size: 32 })),
-      h('div', {}, h('p', { class: 'item-title', text: def.name }), h('p', { class: 'item-meta', text: `+${Math.round((def.customerMult - 1) * 100)}% khách · ${days}` }), h('p', { class: 'item-meta', text: def.description })),
-      side,
-      h('div', { class: 'item-actions' }, run, why),
+      h(
+        'div',
+        { class: 'item-text' },
+        h('p', { class: 'item-title', text: def.name }),
+        h('p', { class: 'item-meta', text: `Giá ${formatMoney(def.cost)} · +${Math.round((def.customerMult - 1) * 100)}% khách · ${days}` }),
+      ),
+      h('span', { class: 'item-status' }, badge),
+      run,
+      h('div', { class: 'item-actions' }, why),
     );
     return li;
   });

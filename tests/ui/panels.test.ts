@@ -338,8 +338,8 @@ describe('inventory panel', () => {
     expect(rule('.step-btn')).toContain('box-shadow: var(--btn-shadow-rest)');
     expect(rule('.prep .btn-lg')).toContain('min-height: var(--size-control-lg)');
     expect(css).not.toMatch(/\.is-suggested|\.status-ok|\.item-cost/);
-    // The phone rule that stacks marketing and upgrade cards leaves the Kho/Menu row template alone.
-    expect(css).toContain('.item:not(.item-row) > .badge');
+    // Every prep row is an .item-row now: no old card variant or phone rule that restacks it.
+    expect(css).not.toMatch(/\.item:not\(\.item-row\)|\.item-side|\.stepper-label|\.(task|staff|mission|meter)[\s,.:[{]/);
 
     const { body } = mount(renderInventoryPanel, game());
     const row = q(body, 'li[data-ingredient="milk"]');
@@ -439,6 +439,118 @@ describe('staff panel', () => {
   });
 });
 
+describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', () => {
+  /** Hired staff, a running campaign, a maxed upgrade and report tips, so every row kind renders. */
+  function rich(): GameState {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    state.campaigns.push({ id: 'flyers', daysLeft: 2 });
+    state.upgrades.plants = getUpgrade('plants').maxLevel;
+    state.lastReport = {
+      day: 1,
+      revenue: 0,
+      ingredientCost: 0,
+      wages: 0,
+      marketingCost: 0,
+      profit: 0,
+      money: state.money,
+      customersArrived: 0,
+      customersServed: 0,
+      customersLost: 0,
+      topSellers: [],
+      outOfStock: [],
+      ratingStart: 3,
+      ratingEnd: 3,
+      reviews: [],
+      suggestions: [{ kind: 'restock', text: 'Nhập thêm sữa' }],
+    };
+    return state;
+  }
+
+  it.each([
+    ['staff', renderStaffPanel],
+    ['marketing', renderMarketingPanel],
+    ['upgrades', renderUpgradesPanel],
+    ['tasks', renderTasksPanel],
+  ] as const)('%s: every list row is an .item-row with one title, one meta line, at most one status label', (_, render) => {
+    const { body } = mount(render, rich());
+    const rows = [...body.querySelectorAll<HTMLElement>('li')].filter((li) => !li.classList.contains('empty') && !li.closest('.week-today, .dd'));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.className).toMatch(/^item item-row\b/);
+      expect(q(row, ':scope > .item-icon')).toBeTruthy();
+      expect(row.querySelectorAll(':scope > .item-text > .item-title')).toHaveLength(1);
+      expect(row.querySelectorAll(':scope > .item-text > .item-meta').length).toBeLessThanOrEqual(1);
+      expect(row.querySelectorAll(':scope > .item-status .badge:not([hidden])').length).toBeLessThanOrEqual(1);
+    }
+    expect(body.querySelector('.staff, .task, .mission, .meter, .stepper-label, .item-side')).toBeNull();
+  });
+
+  it('puts wage and speed on the staff meta line and the busy label in the status slot', () => {
+    const state = rich();
+    const member = state.staff[0]!;
+    const { body } = mount(renderStaffPanel, state);
+    const row = q(body, `li[data-staff="${member.id}"]`);
+    expect(q(row, '.item-meta').textContent).toMatch(/^Lương [\d.]+đ\/ngày · tốc độ ×\d,\d\d$/);
+    expect(q(row, '.item-status').textContent).toBe('Rảnh');
+    // Đổi vai stays a menu in the row and Cho nghỉ sits next to it: no "Vai" label, no modal.
+    expect([...q(row, '.item-control').children].map((c) => c.className.split(' ')[0])).toEqual(['dd', 'btn']);
+    expect(row.textContent).not.toMatch(/^Vai|Tốc độ /);
+  });
+
+  it('shows the campaign price in the meta line and "Đang chạy" only while it runs', () => {
+    const { body } = mount(renderMarketingPanel, rich());
+    const flyers = q(body, '[data-campaign="flyers"]');
+    expect(q(flyers, '.item-meta').textContent).toMatch(/^Giá [\d.]+đ · \+\d+% khách · /);
+    expect(q(flyers, '.item-status .badge').hidden).toBe(false);
+    expect(q(flyers, '.item-status').textContent).toBe('Đang chạy');
+    expect(q(flyers, '[data-action="run"]').hidden).toBe(true);
+    const other = q(body, 'li[data-campaign]:not([data-campaign="flyers"])');
+    expect(q(other, '.item-status .badge').hidden).toBe(true);
+    expect(q(other, '[data-action="run"]').hidden).toBe(false);
+  });
+
+  it('shows the next price and effect per level on one upgrade meta line, "Tối đa" and Gỡ when maxed', () => {
+    const { body } = mount(renderUpgradesPanel, rich());
+    const tables = q(body, '[data-upgrade="tables"]');
+    expect(q(tables, '.item-meta').textContent).toMatch(/^Giá [\d.]+đ · Cấp 0\/\d+ · mỗi cấp \+\d+ chỗ ngồi$/);
+    expect(q(tables, '.item-status .badge').hidden).toBe(true);
+
+    const plants = q(body, '[data-upgrade="plants"]');
+    expect(q(plants, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · mỗi cấp /);
+    expect(q(plants, '.item-status').textContent).toBe('Tối đa');
+    expect(q(plants, '[data-action="buy"]').hidden).toBe(true);
+    expect(q(plants, '[data-remove="plants"]').hidden).toBe(false);
+  });
+
+  it('brings Mua and its reason back when the upgrade confirm is cancelled', () => {
+    const state = game();
+    const { body } = mount(renderUpgradesPanel, state);
+    const row = q(body, '[data-upgrade="tables"]');
+    const buy = q<HTMLButtonElement>(row, '[data-action="buy"]');
+    buy.click();
+    expect(buy.hidden).toBe(true);
+    q<HTMLButtonElement>(row, '.confirm [data-action="cancel"]').click();
+    expect(buy.hidden).toBe(false);
+    expect(row.querySelector('.confirm')).toBeNull();
+  });
+
+  it('writes no transaction sentence into the panels after hiring, running or buying', () => {
+    const state = game();
+    const staff = mount(renderStaffPanel, state);
+    q<HTMLButtonElement>(staff.body, '[data-action="hire"]').click();
+    const mk = mount(renderMarketingPanel, state);
+    q<HTMLButtonElement>(mk.body, '[data-campaign="flyers"] [data-action="run"]').click();
+    const up = mount(renderUpgradesPanel, state);
+    q<HTMLButtonElement>(up.body, '[data-upgrade="tables"] [data-action="buy"]').click();
+    q<HTMLButtonElement>(up.body, '[data-upgrade="tables"] .confirm [data-action="confirm"]').click();
+    for (const body of [staff.body, mk.body, up.body]) {
+      expect(body.textContent).not.toMatch(/Đã (tuyển|chạy|mua)|Còn lại|−[\d.]+đ/);
+      expect(body.querySelector('[role="status"]')).toBeNull();
+    }
+  });
+});
+
 describe('focus after an action', () => {
   it('keeps focus in the panel after hiring, on the next candidate', () => {
     const state = game();
@@ -530,9 +642,28 @@ describe('task board', () => {
     for (const m of state.menu) m.enabled = false;
     const { body } = mount(renderTasksPanel, state);
     const menu = q(body, '[data-task="menu"]');
-    expect(menu.classList.contains('is-warn')).toBe(true);
-    expect(q(menu, '.task-title').textContent).toContain('Cần chú ý');
+    // One signal: the status label (with its icon), no tinted row on top.
+    expect(menu.classList.contains('is-warn')).toBe(false);
+    expect(q(menu, '.item-status').textContent).toBe('Cần chú ý');
+    expect(useOf(q(menu, '.item-status'))).toBe('i-warning');
     expect(q(body, '[data-task="staff"]').textContent).not.toContain('Cần chú ý');
+  });
+
+  it('keeps the "Mở Kho" link on the restock row while something should be bought', () => {
+    const state = game();
+    expect(autoRestockSuggestion(state).items.length).toBeGreaterThan(0);
+    const { body } = mount(renderTasksPanel, state);
+    const row = q(body, '[data-task="restock"]');
+    expect(q(row, '.item-meta').textContent).toMatch(/^Nên nhập thêm: /);
+    const link = q<HTMLButtonElement>(row, '[data-goto="inventory"]');
+    expect(link.textContent).toBe('Mở Kho');
+  });
+
+  it('shows the week lines as plain text, not framed rows', () => {
+    const { body } = mount(renderTasksPanel, game());
+    const lines = [...body.querySelectorAll('.week-today > li')];
+    expect(lines.length).toBeGreaterThan(0);
+    for (const li of lines) expect(li.classList.contains('item')).toBe(false);
   });
 
   it('updates in place on later frames', () => {
