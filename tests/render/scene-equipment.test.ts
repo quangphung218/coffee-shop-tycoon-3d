@@ -1,8 +1,10 @@
-import { MeshStandardMaterial, Scene, type Texture } from 'three';
+import { type BufferGeometry, Color, type Mesh, MeshStandardMaterial, Scene, type Texture } from 'three';
 import { describe, expect, it } from 'vitest';
 import { environmentEnabled, ShopEnvironment } from '../../src/render/scene/environment';
-import { GLASS_MATERIAL, SHARED_MATERIAL } from '../../src/render/scene/parts';
+import { counterGeometry } from '../../src/render/scene/equipment';
+import { GLASS_MATERIAL, PALETTE, SHARED_MATERIAL } from '../../src/render/scene/parts';
 import { machineGeometry, ShopView } from '../../src/render/scene/shop';
+import { MACHINE_SIZE } from '../../src/sim/nav/footprints';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, type MachineKind } from '../../src/sim/upgrades';
 import type { GameState, UpgradeId } from '../../src/sim/types';
@@ -27,34 +29,114 @@ function fullyEquipped(): GameState {
   return s;
 }
 
+/** Machine at `tier`; espresso and fast take quality from better_machine, whose level equals its tier (maxLevel 3). */
+function machine(kind: MachineKind, tier: number): BufferGeometry {
+  return machineGeometry({ kind, quality: tier, tier, pos: { x: 0, z: 0 } });
+}
+
+function triangles(geo: BufferGeometry): number {
+  return geo.getAttribute('position').count / 3;
+}
+
+/** Positions and colours, to tell two models apart. */
+function signature(geo: BufferGeometry): string {
+  return `${Array.from(geo.getAttribute('position').array).join(',')}|${Array.from(geo.getAttribute('color').array).join(',')}`;
+}
+
+function hasColor(geo: BufferGeometry, hex: number): boolean {
+  const want = new Color(hex);
+  const c = geo.getAttribute('color');
+  for (let i = 0; i < c.count; i++) {
+    if (Math.abs(c.getX(i) - want.r) < 1e-4 && Math.abs(c.getY(i) - want.g) < 1e-4 && Math.abs(c.getZ(i) - want.b) < 1e-4) return true;
+  }
+  return false;
+}
+
 describe('machineGeometry', () => {
-  it('builds a non-empty model resting on the back counter for every kind', () => {
+  it('builds a non-empty model resting on the back counter for every kind and tier', () => {
     for (const kind of KINDS) {
-      const geo = machineGeometry({ kind, quality: 1, pos: { x: 0, z: 0 } });
-      const pos = geo.getAttribute('position');
-      expect(pos.count).toBeGreaterThan(0);
-      geo.computeBoundingBox();
-      const bb = geo.boundingBox!;
-      // Everything sits on the counter top (~0.9) and has real height.
-      expect(bb.min.y).toBeGreaterThan(0.8);
-      expect(bb.max.y).toBeGreaterThan(bb.min.y);
-      expect(Number.isFinite(bb.min.x) && Number.isFinite(bb.max.z)).toBe(true);
-      geo.dispose();
+      for (const tier of [0, 1, 2, 3]) {
+        const geo = machine(kind, tier);
+        const pos = geo.getAttribute('position');
+        expect(pos.count).toBeGreaterThan(0);
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox!;
+        // Everything sits on the counter top (~0.9) and has real height.
+        expect(bb.min.y).toBeGreaterThan(0.8);
+        expect(bb.max.y).toBeGreaterThan(bb.min.y);
+        expect(Number.isFinite(bb.min.x) && Number.isFinite(bb.max.z)).toBe(true);
+        // Tier details stay within the machine's footprint on the back counter.
+        expect(bb.max.x - bb.min.x, `${kind} tier ${tier}`).toBeLessThanOrEqual(MACHINE_SIZE[kind].width + 1e-6);
+        geo.dispose();
+      }
     }
   });
 
   it('keeps UVs on the merged model so it merges with the other parts', () => {
-    const geo = machineGeometry({ kind: 'grinder', quality: 1, pos: { x: 0, z: 0 } });
-    expect(geo.getAttribute('uv')).toBeDefined();
-    geo.dispose();
+    for (const tier of [1, 3]) {
+      const geo = machine('grinder', tier);
+      expect(geo.getAttribute('uv')).toBeDefined();
+      geo.dispose();
+    }
   });
 
   it('gives the espresso machine extra detail at higher quality', () => {
-    const plain = machineGeometry({ kind: 'espresso', quality: 0, pos: { x: 0, z: 0 } });
-    const shiny = machineGeometry({ kind: 'espresso', quality: 3, pos: { x: 0, z: 0 } });
+    const plain = machineGeometry({ kind: 'espresso', quality: 0, tier: 0, pos: { x: 0, z: 0 } });
+    const shiny = machineGeometry({ kind: 'espresso', quality: 3, tier: 0, pos: { x: 0, z: 0 } });
     expect(shiny.getAttribute('position').count).toBeGreaterThan(plain.getAttribute('position').count);
     plain.dispose();
     shiny.dispose();
+  });
+
+  it('draws a different model per tier for every kind, gold at tier 3, within 1.6 times the tier 1 triangles', () => {
+    for (const kind of KINDS) {
+      const geos = [1, 2, 3].map((t) => machine(kind, t));
+      const sigs = new Set(geos.map(signature));
+      expect(sigs.size, kind).toBe(3);
+      expect(hasColor(geos[2]!, PALETTE.gold), kind).toBe(true);
+      expect(triangles(geos[2]!), kind).toBeLessThanOrEqual(1.6 * triangles(geos[0]!));
+      for (const g of geos) g.dispose();
+    }
+  });
+
+  it('draws tier 0 (not bought) like tier 1 and levels past the top tier like tier 3', () => {
+    for (const kind of KINDS) {
+      const pairs: [BufferGeometry, BufferGeometry][] = [
+        [machineGeometry({ kind, quality: 1, tier: 0, pos: { x: 0, z: 0 } }), machine(kind, 1)],
+        [machineGeometry({ kind, quality: 3, tier: 4, pos: { x: 0, z: 0 } }), machine(kind, 3)],
+      ];
+      for (const [a, b] of pairs) {
+        expect(signature(a), kind).toBe(signature(b));
+        a.dispose();
+        b.dispose();
+      }
+    }
+  });
+});
+
+describe('counterGeometry', () => {
+  it('draws a different counter per tier, gold at tier 3, within 1.6 times the tier 1 triangles', () => {
+    // A bought counter (big_counter level ≥ 1); level 0 is always tier 0.
+    for (const level of [1, 2]) {
+      const width = 3 + 1.5 * level;
+      const geos = [1, 2, 3].map((t) => counterGeometry(width, level, t));
+      expect(new Set(geos.map(signature)).size).toBe(3);
+      expect(hasColor(geos[2]!, PALETTE.gold)).toBe(true);
+      expect(triangles(geos[2]!)).toBeLessThanOrEqual(1.6 * triangles(geos[0]!));
+      geos[0]!.computeBoundingBox();
+      geos[2]!.computeBoundingBox();
+      // Tier details stay on the counter's footprint.
+      expect(geos[2]!.boundingBox!.max.z).toBeLessThanOrEqual(geos[0]!.boundingBox!.max.z + 1e-6);
+      for (const g of geos) g.dispose();
+    }
+  });
+
+  it('draws tier 0 like tier 1', () => {
+    const a = counterGeometry(3, 0, 0);
+    const b = counterGeometry(3, 0, 1);
+    expect(signature(a)).toBe(signature(b));
+    a.dispose();
+    b.dispose();
   });
 });
 
@@ -89,6 +171,22 @@ describe('ShopView equipment meshes', () => {
     buy(s, 'blender');
     shop.update(s, 0.016, 0.016, 0);
     expect(shop.counts().machines).toBe(before + 1);
+    shop.dispose();
+  });
+
+  it('swaps in the next tier model when a machine is upgraded', () => {
+    const s = createNewGame('Quán Mây', 'normal', 1);
+    s.money = 1_000_000_000;
+    buy(s, 'grinder');
+    const shop = new ShopView(new Scene(), 'medium');
+    shop.update(s, 0, 0, 0);
+    // pickables[0] is the group of machine meshes.
+    const triangleCounts = (): number[] => shop.pickables[0]!.children.map((m) => (m as Mesh).geometry.getAttribute('position').count);
+    const before = triangleCounts();
+    buy(s, 'grinder');
+    expect(getShopLayout(s).machines.find((m) => m.kind === 'grinder')!.tier).toBe(2);
+    shop.update(s, 0.016, 0.016, 0);
+    expect(triangleCounts()).not.toEqual(before);
     shop.dispose();
   });
 });

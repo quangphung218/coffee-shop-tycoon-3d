@@ -4,7 +4,8 @@
 //
 // For each viewport: a new game, the six dock panels in order, a whole day at
 // 4x, then the Daily Report and its Đánh giá tab. On every screen the scroll
-// boxes must not scroll sideways (scrollWidth <= clientWidth) and no element
+// boxes must not scroll sideways (scrollWidth <= clientWidth; a line cut with
+// text-overflow: ellipsis and its full text in a title is allowed) and no element
 // may stick out of the left or right edge of the panel or report card. In the
 // Kho panel a layout-shift observer runs while the stepper, Auto-restock and
 // an over-budget pack count change the order: CLS (shifts without recent
@@ -19,6 +20,15 @@
 // this HUD check only). The same HUD check runs again at 390, 1280 and 1440 px on
 // a day with an event ("Tăng giá nhập"), from a save written by this tree's
 // sim with the day-1 event swapped.
+// P25, at 390×844, 768×1024, 1280×720 and 1440×900, from saves of
+// scripts/capture-p25.mjs: the compact Menu on the day-3 morning after a
+// click on the Nước cam switch (no Cam), and the Daily Report of the first
+// level-up. Both must not overflow and every button must be at least
+// --size-target (a positioned ::before counts as tap area); at 390 px a
+// Menu row with no label must be at most 72 px and a row with a label
+// ("Thiếu …", "Mở …", "Mới") 96 px; at every width no Menu name or meta line
+// may be cut (scrollWidth > clientWidth or "…"); at 1280×720 the level-up
+// report must fit without scrolling.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -98,11 +108,21 @@ function measure({ frame, scrollers, eps }) {
   const left = box.left + root.clientLeft;
   const right = left + root.clientWidth;
   const wide = [];
+  const ellipsized = [];
   const seen = new Set();
+  // A line cut with text-overflow: ellipsis whose full text is in a title on
+  // it or an ancestor (the level-up unlock chips) is not an overflow.
+  const ellipsis = (el) => {
+    if (getComputedStyle(el).textOverflow !== 'ellipsis') return false;
+    const text = (el.textContent ?? '').trim();
+    return text !== '' && el.closest('[title]')?.getAttribute('title') === text;
+  };
   const checkScroll = (el) => {
     if (seen.has(el)) return;
     seen.add(el);
-    if (el.scrollWidth > el.clientWidth) wide.push(`${describe(el)} scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+    if (el.scrollWidth <= el.clientWidth) return;
+    if (ellipsis(el)) ellipsized.push(describe(el));
+    else wide.push(`${describe(el)} scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
   };
   const doc = document.documentElement;
   if (doc.scrollWidth > doc.clientWidth) wide.push(`html scrollWidth ${doc.scrollWidth} > clientWidth ${doc.clientWidth}`);
@@ -131,7 +151,7 @@ function measure({ frame, scrollers, eps }) {
       outside.push(`${describe(el)} ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside ${left.toFixed(1)}..${right.toFixed(1)}`);
     }
   }
-  return { wide, outside, checked, scrollChecked };
+  return { wide, outside, ellipsized, checked, scrollChecked };
 }
 
 /** One overflow row per screen. */
@@ -143,7 +163,7 @@ async function checkScreen(page, results, viewport, screen, opts) {
     viewport,
     screen,
     pass: fails.length === 0,
-    detail: m.error ?? `${m.scrollChecked} scroll box, ${m.checked} phần tử; ${m.wide.length} tràn scroll, ${m.outside.length} lệch khung`,
+    detail: m.error ?? `${m.scrollChecked} scroll box, ${m.checked} phần tử; ${m.wide.length} tràn scroll, ${m.outside.length} lệch khung${m.ellipsized.length ? `; ${m.ellipsized.length} chữ "…" có title đủ tên` : ''}`,
     fails,
   });
 }
@@ -563,6 +583,179 @@ async function runViewport(browser, viewport, overflow, shift) {
   }
 }
 
+/** Viewports of the P25 checks: the four widths, 1280 at 720 px high for the level-up report. */
+const P25_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+];
+/**
+ * Menu row height limits at 390 px: a sellable row, a row with a status label
+ * (P25 compact Menu). Room for a name and a "Giá … · lãi …%" line that wrap
+ * whole instead of being cut.
+ */
+const MENU_ROW_MAX = { ok: 72, short: 96 };
+const MENU_ROW_WIDTH = 390;
+
+/**
+ * Runs in the page: every shown button inside `root` smaller than `target`
+ * on a side. A ::before with a size (the 44 px tap area of .badge-btn)
+ * counts as part of the button.
+ */
+function smallButtons({ root, target, eps }) {
+  const out = [];
+  let count = 0;
+  for (const b of document.querySelectorAll(`${root} button`)) {
+    const r = b.getBoundingClientRect();
+    if (r.width <= 1 || r.height <= 1 || getComputedStyle(b).visibility === 'hidden') continue;
+    count++;
+    const before = getComputedStyle(b, '::before');
+    const extra = before.content !== 'none' && before.position === 'absolute';
+    const w = Math.max(r.width, extra ? parseFloat(before.width) || 0 : 0);
+    const h = Math.max(r.height, extra ? parseFloat(before.height) || 0 : 0);
+    if (w < target - eps || h < target - eps) out.push(`button ${b.dataset.action ?? b.getAttribute('aria-label') ?? b.textContent.trim().slice(0, 24)} ${w.toFixed(1)}×${h.toFixed(1)} < ${target} px`);
+  }
+  return { out, count };
+}
+
+/**
+ * Runs in the page: the name and meta line of each shown Menu row that is cut,
+ * i.e. scrolls sideways (scrollWidth > clientWidth) or shows "…".
+ */
+function menuTextCut() {
+  const out = [];
+  let count = 0;
+  for (const li of document.querySelectorAll('#ui > .panel:not([hidden]) li[data-item]')) {
+    for (const el of li.querySelectorAll('.item-text > .item-title, .item-text > .item-meta')) {
+      if (el.getClientRects().length === 0) continue;
+      count++;
+      const text = (el.textContent ?? '').trim();
+      const kind = el.classList.contains('item-title') ? 'name' : 'meta';
+      if (el.scrollWidth > el.clientWidth) out.push(`${li.dataset.item} ${kind} "${text}" scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+      if (text.includes('…')) out.push(`${li.dataset.item} ${kind} "${text}" shows "…"`);
+    }
+  }
+  return { out, count };
+}
+
+/** Morning save of day 3 (Nước cam opens, no Cam) and the report of the first level-up, from scripts/capture-p25.mjs. */
+async function p25Saves() {
+  const { playSaves } = await import('./capture-p25.mjs');
+  const s = await playSaves(ROOT);
+  return { morning: s.saves.morning, levelUp: s.saves.levelUp, levelUpDay: s.levelUpDay };
+}
+
+/** A page at `viewport` with `save` in the autosave slot, resumed from the Main Menu until `ready`. */
+async function resumeSave(browser, viewport, save, ready) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    ({ now, settings, save }) => {
+      Date.now = () => now;
+      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
+      localStorage.setItem(save.key, save.text);
+    },
+    { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'low', gameSpeed: 1, cameraKeys: 'qe-wasd' }, save },
+  );
+  const page = await context.newPage();
+  await page.goto(URL_BASE);
+  await page.locator('#boot').waitFor({ state: 'detached' });
+  await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
+  await page.getByRole('button', { name: /^Tiếp tục/ }).click();
+  await page.locator(ready).first().waitFor();
+  return { context, page };
+}
+
+/**
+ * P25 compact Menu on the day-3 morning, after a click on the Nước cam
+ * switch (no Cam in stock): no overflow, every button ≥ --size-target, no
+ * name or meta line cut (menuTextCut), and at 390 px each row without a label
+ * ≤ MENU_ROW_MAX.ok and each row with one ≤ MENU_ROW_MAX.short.
+ */
+async function checkMenuCompact(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'menu');
+    const sw = page.locator('#ui > .panel:not([hidden]) li[data-item="orange_juice"] .toggle');
+    await sw.scrollIntoViewIfNeeded();
+    await sw.click();
+    await page.locator('#ui > .panel:not([hidden]) li[data-item="orange_juice"] [data-lock="stock"]:not([hidden])').waitFor();
+    await checkScreen(page, results, size, 'Menu gọn (Nước cam thiếu Cam)', PANEL_FRAME);
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('#ui > .panel:not([hidden]) li[data-item]')].map((li) => {
+        const miss = li.querySelector('[data-lock="stock"]');
+        const labelled = [...li.querySelectorAll('.item-status > *')].some((b) => !b.hidden);
+        return { id: li.dataset.item, h: li.getBoundingClientRect().height, short: !!miss && !miss.hidden, labelled };
+      }),
+    );
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: '#ui > .panel:not([hidden])', target, eps: EPS });
+    const ok = rows.filter((r) => !r.labelled);
+    const labelled = rows.filter((r) => r.labelled);
+    const max = (list) => Math.max(0, ...list.map((r) => r.h));
+    const fails = [...small.out];
+    if (viewport.width === MENU_ROW_WIDTH) {
+      for (const r of ok) if (r.h > MENU_ROW_MAX.ok + EPS) fails.push(`${r.id} row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.ok} px`);
+      for (const r of labelled) if (r.h > MENU_ROW_MAX.short + EPS) fails.push(`${r.id} (with a label) row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.short} px`);
+    }
+    if (!rows.some((r) => r.short)) fails.push('no row shows a "Thiếu …" label');
+    const limit = viewport.width === MENU_ROW_WIDTH ? ` (ngưỡng ${MENU_ROW_MAX.ok}/${MENU_ROW_MAX.short} px)` : '';
+    results.push({
+      viewport: size,
+      screen: 'Menu gọn: cao dòng, nút',
+      pass: fails.length === 0,
+      detail: `${rows.length} dòng; không nhãn cao tối đa ${max(ok).toFixed(1)} px, có nhãn ${max(labelled).toFixed(1)} px${limit}; ${small.count} nút ≥ ${target} px`,
+      fails,
+    });
+    const cut = await page.evaluate(menuTextCut);
+    results.push({
+      viewport: size,
+      screen: 'Menu gọn: tên, giá không bị cắt',
+      pass: cut.out.length === 0,
+      detail: `${cut.count} dòng chữ, ${cut.out.length} bị cắt`,
+      fails: cut.out,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * P25 level-up report (card, unlock chips, confetti): no overflow, every
+ * button ≥ --size-target, and at 1280×720 the summary tab fits without
+ * scrolling.
+ */
+async function checkLevelUpReport(browser, viewport, save, day, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.rpt-layer:not([hidden]) [data-block="level-up"]');
+  try {
+    await checkScreen(page, results, size, `Báo cáo ngày ${day} có thẻ lên cấp`, REPORT_FRAME);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: '.rpt-layer:not([hidden])', target, eps: EPS });
+    const fold = await page.evaluate(() => {
+      const over = (el) => (el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
+      return over(document.querySelector('#rpt-summary')) + over(document.querySelector('.rpt-layer:not([hidden])')) + over(document.querySelector('.rpt-layer:not([hidden]) .rpt-dialog'));
+    });
+    const card = await page.evaluate(() => {
+      const el = document.querySelector('.rpt-layer:not([hidden]) [data-block="level-up"]');
+      return { h: Math.round(el.getBoundingClientRect().height), chips: el.querySelectorAll('.rpt-unlock').length };
+    });
+    const fails = [...small.out];
+    const mustFit = viewport.width === 1280 && viewport.height === 720;
+    if (mustFit && fold > 0) fails.push(`the summary scrolls ${fold} px at 1280×720`);
+    results.push({
+      viewport: size,
+      screen: 'Thẻ lên cấp: vừa màn, nút',
+      pass: fails.length === 0,
+      detail: `thẻ cao ${card.h} px, ${card.chips} chip; ${fold > 0 ? `cuộn thêm ${fold} px` : 'vừa một màn'}${mustFit ? ' (phải vừa)' : ''}; ${small.count} nút ≥ ${target} px`,
+      fails,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -613,6 +806,17 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'HUD (ngày sự kiện)', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const p25 = await p25Saves();
+    for (const viewport of P25_VIEWPORTS) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkMenuCompact(browser, viewport, p25.morning, overflow);
+        await checkLevelUpReport(browser, viewport, p25.levelUp, p25.levelUpDay, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'P25: Menu gọn, thẻ lên cấp', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {

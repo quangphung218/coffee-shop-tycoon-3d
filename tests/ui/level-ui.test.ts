@@ -11,7 +11,16 @@ import { renderMenuPanel } from '../../src/ui/panels/menu';
 import { renderTasksPanel } from '../../src/ui/panels/tasks';
 import { UPGRADE_GROUPS, renderUpgradesPanel } from '../../src/ui/panels/upgrades';
 import { registerReviewsPanel } from '../../src/ui/report';
-import { renderSummary } from '../../src/ui/report/report';
+import { getUpgrade } from '../../src/sim/data/upgrades';
+import { LEVEL_ICON, MENU_ICONS, UPGRADE_ICONS } from '../../src/ui/core/iconMap';
+import { LEVELUP_CHIPS, renderSummary } from '../../src/ui/report/report';
+
+// The project has no Node types: read CSS through a dynamically named node:fs
+// import, from the project root (jsdom's URL is rejected by node:fs).
+const FS_MODULE = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
 
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
@@ -282,7 +291,7 @@ describe('menu level locks', () => {
     expect(label.tagName).toBe('SPAN');
     const sw = q<HTMLButtonElement>(row, '[role="switch"]');
     expect(sw.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${sw.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa ở Cấp 2');
+    expect(q(document, `#${sw.getAttribute('aria-describedby')!.split(' ').pop()}`).textContent).toContain('Mở khóa ở Cấp 2');
     sw.click();
     expect(sent).toHaveLength(0);
 
@@ -361,13 +370,73 @@ describe('daily report: missions, XP and level-up', () => {
     expect(root.querySelector('[data-block="level-up"]')).toBeNull();
   });
 
-  it('shows a "Lên cấp N" band in place with the unlocks', () => {
+  it('shows a "Lên cấp N" card in place with a level badge and icon chips per group', () => {
     const root = summary(report({ missions: [], xpGained: 300, levelUp: { level: 2, unlocks } }));
     const band = q(root, '[data-block="level-up"]');
+    expect(band.getAttribute('role')).toBe('status');
     expect(band.closest('[role="dialog"]')).toBeNull();
-    expect(band.textContent).toContain('Lên cấp 2');
-    expect(band.textContent).toContain('Cappuccino');
-    expect(band.textContent).toContain('Dụng cụ');
+    expect(q(band, '.rpt-levelup-title').textContent).toBe('Lên cấp 2 · Quán quen');
+
+    const badge = q(band, '[data-block="level-badge"]');
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+    const badgeIcon = q(badge, '.ic');
+    expect(badgeIcon.dataset.icon).toBe(LEVEL_ICON);
+    expect(badgeIcon.classList.contains('ic-xl')).toBe(true); // 48 px
+    expect(q(badge, '.rpt-levelup-num').textContent).toBe('2');
+
+    const groups = [...band.querySelectorAll<HTMLElement>('.rpt-unlock-group')].map((g) => [g.dataset.group, q(g, 'b').textContent]);
+    expect(groups).toEqual([
+      ['menu', 'Món mới'],
+      ['upgrades', 'Nâng cấp'],
+      ['tools', 'Dụng cụ'],
+    ]);
+    const chips = [...band.querySelectorAll<HTMLElement>('.rpt-unlock')].map((c) => [c.dataset.unlock, q(c, '.ic').dataset.icon, c.textContent]);
+    expect(chips).toEqual([
+      ['cappuccino', MENU_ICONS.cappuccino, 'Cappuccino'],
+      ['fast_machine', UPGRADE_ICONS.fast_machine, getUpgrade('fast_machine').name],
+      ['grinder', UPGRADE_ICONS.grinder, getUpgrade('grinder').name],
+    ]);
+    // A long name may end in "…" on screen; the title and the text keep it whole.
+    for (const c of band.querySelectorAll<HTMLElement>('.rpt-unlock')) {
+      expect(c.title).toBe(c.textContent);
+      expect(q(c, '.rpt-unlock-name').textContent).toBe(c.textContent);
+    }
+    const name = /\.rpt-unlock-name\s*\{([^}]*)\}/.exec(readFileSync('src/ui/report/report.css', 'utf8'))?.[1] ?? '';
+    expect(name).toMatch(/text-overflow:\s*ellipsis/);
+    expect(name).toMatch(/overflow:\s*hidden/);
+    expect(name).toMatch(/max-width:/);
+    // 24 px is the default size: no size class.
+    for (const c of band.querySelectorAll('.rpt-unlock .ic')) expect(c.className).toBe('ic');
+    expect(band.querySelector('[data-block="unlocks-more"]')).toBeNull();
+  });
+
+  it(`shows at most ${LEVELUP_CHIPS} unlock chips and counts the rest as "+N"`, () => {
+    const many: Unlocks = { menu: ['mocha', 'frappe', 'cake'], upgrades: ['paintings', 'lights', 'window_bar'], tools: ['blender', 'ice_maker'] };
+    const band = q(summary(report({ levelUp: { level: 5, unlocks: many } })), '[data-block="level-up"]');
+    // One chip line from 1024 px: three chips, then "+N".
+    expect(LEVELUP_CHIPS).toBe(3);
+    expect(band.querySelectorAll('.rpt-unlock')).toHaveLength(LEVELUP_CHIPS);
+    // Upgrades and tools have no chip left, so their headings are dropped too.
+    expect(band.querySelector('[data-group="upgrades"]')).toBeNull();
+    expect(band.querySelector('[data-group="tools"]')).toBeNull();
+    expect(q(band, '[data-block="unlocks-more"]').textContent).toBe('+5');
+  });
+
+  it('keeps the card to a 40 px badge and one chip line from 1024 px', () => {
+    const css = readFileSync('src/ui/report/report.css', 'utf8');
+    const badge = /\.rpt-levelup-badge \.ic\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(badge).toMatch(/width:\s*40px/);
+    expect(badge).toMatch(/height:\s*40px/);
+    const wide = /@media \(min-width: 1024px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(wide).toMatch(/\.rpt-unlocks,\s*\.rpt-unlock-group\s*\{\s*flex-wrap:\s*nowrap;/);
+    expect(wide).toMatch(/\.rpt-unlocks\s*\{\s*max-height:\s*var\(--size-icon-md\);/);
+  });
+
+  it('says so when a level unlocks nothing', () => {
+    const band = q(summary(report({ levelUp: { level: 7, unlocks: { menu: [], upgrades: [], tools: [] } } })), '[data-block="level-up"]');
+    expect(band.querySelector('.rpt-unlocks')).toBeNull();
+    expect(band.textContent).toContain('Cấp này chưa mở thêm');
+    expect(q(band, '[data-block="level-badge"] .rpt-levelup-num').textContent).toBe('7');
   });
 
   it('says so when an old save has no missions or XP in its report', () => {

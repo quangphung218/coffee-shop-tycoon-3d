@@ -496,14 +496,14 @@
   border-radius: var(--radius-pill);
 }
 
-/* "Lên cấp N" band (design/p20 §6): a thin flat tint with an ink outline,
-   the level and what it unlocks on one line (wraps when narrow). */
+/* "Lên cấp N" card: the 40 px level badge pops in, then the level line and
+   the unlock chips (one line from 1024 px, two below). At most 56 px tall at
+   1280 px: 2 × (2 frame + 4 padding) + 18 title + 24 chips. */
 .rpt-levelup {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--space-3);
-  padding: var(--space-1) var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
   border: var(--size-frame-outline) solid var(--border-outline);
@@ -511,11 +511,91 @@
   font-size: var(--font-size-caption);
   line-height: var(--line-height-tight);
 }
+.rpt-levelup-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  animation: rpt-badge-pop 400ms var(--easing-out) both;
+}
+/* The 48 px atlas cell drawn at 40 px (the cell scales with its box). */
+.rpt-levelup-badge .ic {
+  width: 40px;
+  height: 40px;
+}
+@keyframes rpt-badge-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.rpt-levelup-num {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-levelup-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .rpt-levelup-title {
   font-size: var(--font-size-label);
 }
-.rpt-levelup .rpt-unlocks {
-  gap: 0 var(--space-3);
+/* Two chip lines at most (one from 1024 px, below); LEVELUP_CHIPS in
+   report.ts keeps the rest to "+N". */
+.rpt-unlocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  max-height: calc(2 * var(--size-icon-md) + var(--space-1));
+  overflow: hidden;
+}
+.rpt-unlock-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rpt-unlock,
+.rpt-unlock-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--size-icon-md);
+  padding-right: var(--space-2);
+  background: var(--surface-panel-solid);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.rpt-unlock-more {
+  padding-left: var(--space-2);
+  font-weight: var(--font-weight-heavy);
+}
+/* The chip is one 24 px line: a long name ends in "…" (full name in title). */
+.rpt-unlock-name {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 1024px) {
+  .rpt-unlocks,
+  .rpt-unlock-group {
+    flex-wrap: nowrap;
+  }
+  .rpt-unlocks {
+    max-height: var(--size-icon-md);
+  }
 }
 
 /* Daily missions in the summary: label, name and reward, then the measure. */
@@ -826,6 +906,27 @@
   opacity: 0.3;
   filter: grayscale(1);
 }
+/* Figures on the Daily Report scale: the score as large as the day's profit
+   (.rpt-fig.is-result .rpt-fig-value), the other figures --font-size-value,
+   labels --font-size-label. The seven day columns keep their chart text so
+   they fit at 390 px. */
+.wk-score .rpt-result-label {
+  font-size: var(--font-size-label);
+}
+.wk-score .rpt-result-value {
+  font-size: var(--font-size-2xl);
+}
+.wk-score .wk-reward {
+  font-size: var(--font-size-value);
+}
+.wk-compare thead th,
+.wk-compare td {
+  font-size: var(--font-size-label);
+}
+.wk-compare td.is-num,
+.wk-compare .wk-delta {
+  font-size: var(--font-size-value);
+}
 .wk-goal {
   display: flex;
   flex-direction: column;
@@ -898,6 +999,20 @@
   .rpt-foot-actions > [data-action='reviews'] .rpt-btn-text {
     display: none;
   }
+  /* Week end: Về menu and Chơi lại share the first row, Sang tuần N takes
+     the second; a long label ("Bấm lần nữa để bỏ ván") wraps, never cut. */
+  .wk-foot-actions {
+    flex-wrap: wrap;
+  }
+  .wk-foot-actions > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+  }
+  .wk-foot-actions > .btn-primary {
+    flex-basis: 100%;
+  }
   .rpt-figs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -933,6 +1048,10 @@
   .rpt-result {
     padding: var(--space-3) var(--space-4);
   }
+  /* A phone has room to scroll: every chip wraps into view instead of being cut at two lines. */
+  .rpt-unlocks {
+    max-height: none;
+  }
 }
 
 /* Reduced motion: the card only fades in, the result strip does not stamp. */
@@ -941,6 +1060,9 @@
     animation: rpt-fade var(--duration-fast) var(--easing-standard);
   }
   .rpt-result {
+    animation: none;
+  }
+  .rpt-levelup-badge {
     animation: none;
   }
   .rpt-tab {

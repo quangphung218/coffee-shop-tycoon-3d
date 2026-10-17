@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { arrivalRate, totalSeats } from '../../src/sim/customers';
-import { getUpgrade } from '../../src/sim/data/upgrades';
+import { UPGRADE_TIERS, getUpgrade, upgradeTier } from '../../src/sim/data/upgrades';
 import { dispatch } from '../../src/sim/index';
 import { brewMinutes } from '../../src/sim/orders';
 import { createNewGame } from '../../src/sim/state';
@@ -92,7 +92,52 @@ describe('buyUpgrade', () => {
   });
 });
 
+describe('upgradeTier', () => {
+  // Levels 0.. up to two past maxLevel (shop-level bonus) and the tier each one shows.
+  const TABLE: readonly (readonly [UpgradeId, number, readonly number[]])[] = [
+    ['big_counter', 2, [0, 1, 2, 3, 3]],
+    ['better_machine', 3, [0, 1, 2, 3, 3, 3]],
+    ['tables', 6, [0, 1, 1, 2, 2, 3, 3, 3, 3]],
+  ];
+
+  it.each(TABLE)('splits the levels of %s (maxLevel %i) into three tiers', (id, maxLevel, tiers) => {
+    expect(getUpgrade(id).maxLevel).toBe(maxLevel);
+    expect(UPGRADE_TIERS).toBe(3);
+    expect(tiers.map((_, level) => upgradeTier(id, level))).toEqual(tiers);
+  });
+
+  it('is 0 for a negative level', () => {
+    expect(upgradeTier('tables', -1)).toBe(0);
+  });
+});
+
 describe('getShopLayout', () => {
+  it('reports tier 0 on a new game and the tier of each upgrade after buying', () => {
+    const s = createNewGame('A', 'normal', 1);
+    const fresh = getShopLayout(s);
+    expect(fresh.machines.map((m) => m.tier)).toEqual([0]);
+    expect(fresh.counter.tier).toBe(0);
+    expect(fresh.furnitureTier).toBe(0);
+    expect(fresh.outdoorTier).toBe(0);
+    expect(fresh.decorTier).toEqual({ plant: 0, painting: 0, light: 0 });
+    expect(fresh.windowBarTier).toBe(0);
+
+    s.upgrades = { better_machine: 2, fast_machine: 1, grinder: 3, blender: 1, big_counter: 2, tables: 3, outdoor_seating: 1, plants: 2, paintings: 3, lights: 1, window_bar: 2 };
+    const layout = getShopLayout(s);
+    const tierOf = (kind: string): number[] => layout.machines.filter((m) => m.kind === kind).map((m) => m.tier);
+    // espresso and fast follow better_machine; equipment follows its own level.
+    expect(tierOf('espresso')).toEqual([2]);
+    expect(tierOf('fast')).toEqual([2]);
+    expect(tierOf('grinder')).toEqual([3]);
+    expect(tierOf('blender')).toEqual([1]);
+    expect(layout.machines.find((m) => m.kind === 'grinder')!.quality).toBe(3);
+    expect(layout.counter).toMatchObject({ level: 2, tier: 2 });
+    expect(layout.furnitureTier).toBe(2);
+    expect(layout.outdoorTier).toBe(1);
+    expect(layout.decorTier).toEqual({ plant: 2, painting: 3, light: 1 });
+    expect(layout.windowBarTier).toBe(2);
+  });
+
   it('lists the new table where the renderer can place it', () => {
     const s = createNewGame('A', 'normal', 1);
     const before = getShopLayout(s);

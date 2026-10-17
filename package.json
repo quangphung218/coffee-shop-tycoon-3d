@@ -1,7 +1,7 @@
 {
   "name": "coffee-shop-tycoon-3d",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
     "media:p22": "npm run build && node scripts/capture-p22.mjs",
     "media:p23": "npm run build && node scripts/capture-p23.mjs",
     "media:p24": "npm run build && node scripts/capture-p24.mjs",
+    "media:p25": "npm run build && node scripts/capture-p25.mjs",
     "media:loading": "npm run build && node scripts/capture-loading.mjs",
     "review:p22": "npm run build && node scripts/review-p22.mjs",
     "layout": "npm run build && node scripts/check-layout.mjs",

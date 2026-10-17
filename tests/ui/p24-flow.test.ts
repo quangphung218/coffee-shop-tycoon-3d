@@ -159,11 +159,12 @@ describe('P24 Kho: Gợi ý then Nhập hàng', () => {
     sw.click();
     expect(state.menu.find((m) => m.id === itemId)!.enabled).toBe(true);
     expect(sw.getAttribute('aria-checked')).toBe('true');
-    // Still short: the warning label and the way to Kho stay on the row.
-    expect(q(row, '[data-lock="stock"]').hidden).toBe(false);
-    expect(q(row, '[data-goto="inventory"]').hidden).toBe(false);
-
-    const panel = openKho(s);
+    // Still short: the warning label stays on the row and is itself the way to Kho.
+    const short = q<HTMLButtonElement>(row, '[data-lock="stock"]');
+    expect(short.hidden).toBe(false);
+    short.click();
+    expect(s.hud.openPanelId).toBe('inventory');
+    const panel = s.hud.panelEl;
     q<HTMLButtonElement>(panel, '[data-action="suggest"]').click();
     for (const id of needs) {
       const line = q(panel, `li[data-ingredient="${id}"]`);

@@ -320,7 +320,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
     { class: 'rpt-dialog' },
     h('div', { class: 'rpt-head' }, h('span', { class: 'rpt-head-icon' }, icon('i-trophy', { size: 32 })), h('div', { class: 'rpt-head-text' }, title, sub)),
     body,
-    h('div', { class: 'rpt-foot' }, save, h('div', { class: 'rpt-foot-actions' }, menu, replay, next)),
+    h('div', { class: 'rpt-foot' }, save, h('div', { class: 'rpt-foot-actions wk-foot-actions' }, menu, replay, next)),
   );
 
   function renderSave(): void {

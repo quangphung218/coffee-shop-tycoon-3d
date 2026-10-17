@@ -176,6 +176,20 @@ export function getUpgrade(id: UpgradeId): UpgradeDef {
   return def;
 }
 
+/** Number of looks an upgraded object goes through (tier 1..UPGRADE_TIERS; 0 = not bought). */
+export const UPGRADE_TIERS = 3;
+
+/**
+ * Look tier of an upgrade at `level`: 0 when not bought, else the levels split
+ * into UPGRADE_TIERS even steps of ceil(maxLevel / UPGRADE_TIERS). Levels past
+ * maxLevel (shop-level bonus) stay at the top tier.
+ */
+export function upgradeTier(id: UpgradeId, level: number): 0 | 1 | 2 | 3 {
+  if (level <= 0) return 0;
+  const step = Math.ceil(getUpgrade(id).maxLevel / UPGRADE_TIERS);
+  return Math.min(UPGRADE_TIERS, Math.ceil(level / step)) as 1 | 2 | 3;
+}
+
 /** Price of buying the next level when `currentLevel` levels are owned; null at max level. */
 export function upgradeCost(def: UpgradeDef, currentLevel: number, priceMult = 1): number | null {
   if (currentLevel >= def.maxLevel) return null;

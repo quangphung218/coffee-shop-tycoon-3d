@@ -8,6 +8,7 @@ import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/t
 import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
+import { fresh } from '../core/fresh';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
@@ -676,6 +677,18 @@ export function createHud(actions: HudActions): Hud {
           spoken.textContent = n > 0 ? `, ${n} mục cần chú ý` : '';
         });
       }
+      // "Mới": a small dot while the panel holds items opened this session and is not open.
+      const id = p.id;
+      const newSpoken = h('span', { class: 'sr-only', attrs: { 'data-fresh-sr': '' } });
+      const newDot = h('span', { class: 'dock-new', hidden: true, attrs: { 'aria-hidden': 'true' } });
+      btn.append(newSpoken, newDot);
+      dockWatch.watch(
+        () => fresh.count(id) > 0 && openId !== id,
+        (on) => {
+          newDot.hidden = !on;
+          newSpoken.textContent = on ? ', có mục mới' : '';
+        },
+      );
       items.push(btn);
     }
     setChildren(dock, ...items);
@@ -694,6 +707,8 @@ export function createHud(actions: HudActions): Hud {
     handle?.dispose?.();
     handle = null;
     openId = null;
+    // The player has seen the tab's new items.
+    fresh.clearTab(closed);
     panelBody.replaceChildren();
     panelEl.hidden = true;
     syncPressed();
@@ -709,6 +724,8 @@ export function createHud(actions: HudActions): Hud {
     if (openId !== null) {
       handle?.dispose?.();
       panelBody.replaceChildren();
+      // Switching panels closes the old one: its new items were seen.
+      if (openId !== id) fresh.clearTab(openId);
     }
     openId = id;
     opener = from ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
@@ -729,6 +746,11 @@ export function createHud(actions: HudActions): Hud {
     renderDock();
   });
   renderDock();
+  // New items show on the dock at once, even before the next frame's update.
+  const offFresh = fresh.subscribe(() => {
+    const state = actions.getState();
+    if (state) dockWatch.run(state);
+  });
 
   // An icon and a value; the sr-only word names the value for a screen reader.
   const value = (id: IconId, word: string, b: HTMLElement): HTMLElement =>
@@ -788,6 +810,7 @@ export function createHud(actions: HudActions): Hud {
     },
     dispose() {
       offPanels();
+      offFresh();
       edges?.disconnect();
       closeMenu(false);
       closePhases(false);

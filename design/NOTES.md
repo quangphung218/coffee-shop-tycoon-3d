@@ -94,6 +94,8 @@ Quy tắc:
 - **Nút có bóng, nhãn phẳng.** Nút giữ ba mức nghỉ/hover/nhấn (`--btn-shadow-rest/hover/press`), chỉ đổi độ nổi. Nhãn, badge, chip không có bóng và không có con trỏ tay.
 - **Mỗi trạng thái đổi một tín hiệu.** Hover đổi độ nổi, nhấn đổi độ nổi, đang chọn đổi nền, focus đổi viền + vòng trong; không trạng thái nào đổi cùng lúc cỡ, viền và bóng.
 - **Chỉ báo pha không dùng chấm.** Pha trong ngày luôn hiện bằng chữ (Chuẩn bị, Mở cửa, Cao điểm, Đóng cửa); chấm không nhãn không được dùng làm chỉ báo.
+- **Số kết quả của màn tổng kết dùng một cỡ.** Số lãi Báo cáo ngày và "Điểm tuần" ở Tổng kết tuần cùng `--font-size-2xl`; số khác `--font-size-value`, nhãn `--font-size-label`. Cột 7 ngày giữ chữ nhỏ của biểu đồ để vừa 390 px.
+- **Chân màn tổng kết không cắt nút.** Ở ≤ 640 px, chân Tổng kết tuần xuống hàng: "Về menu" và "Chơi lại" chung hàng đầu, nút chính cả hàng dưới; nhãn dài xuống dòng, không có kích thước cố định.
 - **Thông báo giao dịch chỉ qua toast.** Nhập hàng, mua nâng cấp, chạy marketing báo số tiền và số dư bằng toast; không chèn câu giao dịch vào thân bảng.
 
 Thời lượng animation: `fast` 120 ms (hover, nhấn, công tắc), `base` 200 ms (đổi tab, mở menu sổ, toast vào), `slow` 320 ms (panel trượt, báo cáo hiện), `toast-visible` 4 s (chỉ toast thông tin/thành công; cảnh báo/lỗi ở lại tới khi đóng). Tôn trọng `prefers-reduced-motion`: bỏ trượt, chỉ đổi độ mờ.

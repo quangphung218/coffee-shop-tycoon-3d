@@ -8,6 +8,7 @@ import { CameraController } from './camera';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
 import { ShopView } from './shop';
+import { UpgradeFx } from './upgradeFx';
 
 export interface WorldOptions {
   quality?: Quality;
@@ -65,6 +66,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const reducedMotion = (): boolean => reducedMotionForced || (motionQuery?.matches ?? false);
   const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
+  const upgradeFx = new UpgradeFx(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const ray = new Raycaster();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
@@ -103,6 +105,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       if (firstLayout) camera.reset(true);
       firstLayout = false;
     }
+    upgradeFx.update(state, now);
     ambient.update(state, alpha, dt);
     actors.update(state, alpha);
     street.update(state, alpha, dt);
@@ -134,6 +137,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       view.setQuality(q);
       shop.setQuality(q);
       ambient.setQuality(q);
+      upgradeFx.setQuality(q);
       street.setQuality(q);
       actors.setQuality(q);
     },
@@ -158,6 +162,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       street.dispose();
       actors.dispose();
       ambient.dispose();
+      upgradeFx.dispose();
       shop.dispose();
       view.dispose();
     },

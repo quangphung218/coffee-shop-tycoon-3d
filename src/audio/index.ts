@@ -2,12 +2,13 @@ import type { GameEvent } from '../sim/types';
 
 /**
  * Sounds synthesised with Web Audio, no files: doorbell, coffee machine,
- * cash, notification, angry customer and a soft looping chord pad. The
- * AudioContext is only created by unlock(), which main.ts calls on the
- * player's first click or key press (browsers block audio before that).
+ * cash, notification, angry customer, level-up, upgrade bought and a soft
+ * looping chord pad. The AudioContext is only created by unlock(), which
+ * main.ts calls on the player's first click or key press (browsers block
+ * audio before that).
  */
 
-export type SoundName = 'doorbell' | 'brew' | 'cash' | 'notify' | 'angry';
+export type SoundName = 'doorbell' | 'brew' | 'cash' | 'notify' | 'angry' | 'levelup' | 'upgrade';
 
 export interface Audio {
   /** Creates or resumes the AudioContext; call from a user gesture. */
@@ -22,10 +23,14 @@ export interface Audio {
 }
 
 /** Same sound again within this window is skipped, so 4x speed does not stack dozens of bells. */
-const MIN_GAP_S: Record<SoundName, number> = { doorbell: 0.25, brew: 1.2, cash: 0.12, notify: 0.3, angry: 0.4 };
+const MIN_GAP_S: Record<SoundName, number> = { doorbell: 0.25, brew: 1.2, cash: 0.12, notify: 0.3, angry: 0.4, levelup: 1.0, upgrade: 0.2 };
 
 export function soundForEvent(event: GameEvent): SoundName | null {
   switch (event.type) {
+    case 'level_up':
+      return 'levelup';
+    case 'spend':
+      return event.kind === 'upgrade' ? 'upgrade' : null;
     case 'doorbell':
       return 'doorbell';
     case 'brew':
@@ -41,6 +46,12 @@ export function soundForEvent(event: GameEvent): SoundName | null {
     default:
       return null;
   }
+}
+
+/** Sounds for one frame of events; a level-up drowns the end-of-day 'notify' that comes with it. */
+export function soundsForEvents(events: readonly GameEvent[]): SoundName[] {
+  const names = events.map(soundForEvent).filter((n): n is SoundName => n !== null);
+  return names.includes('levelup') ? names.filter((n) => n !== 'notify') : names;
 }
 
 const MUSIC_GAIN = 0.16;
@@ -147,6 +158,19 @@ export function createAudio(initial: { music: number; sfx: number }): Audio {
       tone(220, t, 0.45, 'sawtooth', 0.18, sfxBus!, 110);
       tone(233, t + 0.05, 0.45, 'sawtooth', 0.12, sfxBus!, 98);
     },
+    // Rising C–E–G–C' arpeggio, the top note held with a soft octave shimmer.
+    levelup: (t) => {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((f, i) => tone(f, t + i * 0.09, i === notes.length - 1 ? 0.45 : 0.2, 'triangle', 0.32, sfxBus!));
+      tone(2093, t + 0.27, 0.4, 'sine', 0.08, sfxBus!);
+    },
+    // Two-note bell, G then D, each with a faint upper partial.
+    upgrade: (t) => {
+      tone(783.99, t, 0.2, 'sine', 0.35, sfxBus!);
+      tone(2351.97, t, 0.12, 'sine', 0.06, sfxBus!);
+      tone(1174.66, t + 0.1, 0.25, 'sine', 0.35, sfxBus!);
+      tone(3523.96, t + 0.1, 0.15, 'sine', 0.06, sfxBus!);
+    },
   };
 
   function scheduleMusic(): void {
@@ -222,10 +246,7 @@ export function createAudio(initial: { music: number; sfx: number }): Audio {
     },
     play,
     handleEvents(events) {
-      for (const e of events) {
-        const name = soundForEvent(e);
-        if (name) play(name);
-      }
+      for (const name of soundsForEvents(events)) play(name);
     },
     setMusic(on) {
       musicOn = on;

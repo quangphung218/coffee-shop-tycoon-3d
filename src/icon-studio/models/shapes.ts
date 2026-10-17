@@ -192,6 +192,22 @@ export function inkDot(r: number): Object3D {
   return part(new SphereGeometry(r, 8, 6), 'ink', { outline: false });
 }
 
+/**
+ * Upgrade look, as in the game scene: 1 is the base icon, 2 adds a working
+ * detail and steel trim, 3 turns the trim gold.
+ */
+export type Tier = 1 | 2 | 3;
+
+/** Trim colour of a tier: none at 1, steel at 2, gold at 3. */
+export function trim(tier: Tier, base: PaletteKey): PaletteKey {
+  return tier === 1 ? base : tier === 2 ? 'skyLight' : 'honeyDeep';
+}
+
+/** Small gold star facing +Z, `r` to its tips, for a tier 3 front face (like the scene's star badge). */
+export function tierStar(r = 0.2): Object3D {
+  return part(extrude(star(5, r, r * 0.45), 0.06, 0.03), 'honey');
+}
+
 /** Flat round badge (cream-200) that role icons stand on, so they read as one set. */
 export function badgeBase(r = 0.85): Object3D {
   return part(lathe([[0, 0], [r, 0], [r, 0.14], [r * 0.92, 0.2], [0, 0.2]], 24), 'creamDeep');

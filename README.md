@@ -79,7 +79,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá). Tab Tổng kết vừa một màn:
-   - băng "Lên cấp N" với danh sách mở khóa (ngày có lên cấp);
+   - thẻ "Lên cấp N" (ngày có lên cấp): huy hiệu cấp bật lên kèm confetti, chip có icon cho món, nâng cấp và dụng cụ vừa mở (tối đa 3, phần dư ghi "+N");
    - 4 ô số chính: Lãi/Lỗ, Doanh thu, Khách (phục vụ/đến), Sao; mỗi ô có Δ so hôm qua và Δ so trung bình các ngày trước trong tuần;
    - dòng Tuần N · ngày d/7 với doanh thu tuần so mục tiêu;
    - Thu chi cạnh nhiệm vụ đạt/hụt kèm thưởng và KN, một dòng 3 món bán chạy và món hết nguyên liệu;
@@ -186,6 +186,7 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
 | [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần: lịch mở khoá tuần 1, sự kiện, thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, save cũ. |
+| [docs/reports/p25-progression.md](docs/reports/p25-progression.md) | Menu gọn với công tắc nhỏ, thẻ lên cấp, đồ vật và icon đổi theo bậc nâng cấp: ảnh trước/sau, kiểm layout, khởi động và khung hình. |
 | [docs/reports/p24-ui.md](docs/reports/p24-ui.md) | Lỗi gợi ý nhập bỏ sót nguyên liệu của món mới bật, thang cỡ chữ/nút/viền/bóng chung, ảnh trước/sau HUD, dock, các bảng, toast, báo cáo. |
 | [docs/reports/p23-ui.md](docs/reports/p23-ui.md) | Ảnh trước/sau HUD 3 cụm, Daily Report gọn, Tổng kết tuần 1 và 2, danh sách thành phần lúc tải. |
 | [docs/reports/p21-week.md](docs/reports/p21-week.md) | Báo cáo tuần 7 ngày: log mô phỏng 7 ngày cùng seed, ảnh trước/sau màn kết tuần, mẫu JSON Số liệu chơi. |

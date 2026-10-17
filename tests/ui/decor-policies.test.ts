@@ -190,7 +190,7 @@ describe('"Mở ngày N" on items the week calendar opens', () => {
     expect(label.hidden).toBe(false);
     expect(label.textContent).toBe('Mở ngày 4');
     const sw = q(body, '[data-item="mocha"] [role="switch"]');
-    expect(q(document, `#${sw.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa vào ngày 4');
+    expect(q(document, `#${sw.getAttribute('aria-describedby')!.split(' ').pop()}`).textContent).toContain('Mở khóa vào ngày 4');
 
     const old = game();
     delete old.week;

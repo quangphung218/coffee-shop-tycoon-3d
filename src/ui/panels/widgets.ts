@@ -25,13 +25,17 @@ export interface Toggle {
   set(checked: boolean, disabled?: boolean, describedBy?: string): void;
 }
 
-/** role="switch" button with a text state ("Bán"/"Không"). */
-export function toggle(label: string, onText: string, offText: string, onChange: (next: boolean) => void): Toggle {
-  const state = h('span', { class: 'toggle-state' });
+/**
+ * role="switch" button with a text state ("Bán"/"Không"). `compact` drops the
+ * text and draws a 40 × 24 track inside the same 44 px target (Menu rows):
+ * aria-checked alone carries the state.
+ */
+export function toggle(label: string, onText: string, offText: string, onChange: (next: boolean) => void, opts: { compact?: boolean } = {}): Toggle {
+  const state = opts.compact ? null : h('span', { class: 'toggle-state' });
   const el = h(
     'button',
     {
-      class: 'toggle',
+      class: opts.compact ? 'toggle toggle-compact' : 'toggle',
       attrs: { type: 'button', role: 'switch', 'aria-checked': 'false', 'aria-label': label },
       on: {
         click: () => {
@@ -47,7 +51,7 @@ export function toggle(label: string, onText: string, offText: string, onChange:
     el,
     set(checked, disabled = false, describedBy) {
       el.setAttribute('aria-checked', String(checked));
-      state.textContent = checked ? onText : offText;
+      if (state) state.textContent = checked ? onText : offText;
       setAriaDisabled(el, disabled);
       if (describedBy) el.setAttribute('aria-describedby', describedBy);
       else el.removeAttribute('aria-describedby');
@@ -336,13 +340,16 @@ export function reasonLine(danger = true): HTMLElement {
 /**
  * Shows or hides a reason line and points `control` at it. The icon defaults
  * to i-lock while the control is aria-disabled, so call this after
- * setAriaDisabled; pass `ic` for other lines (info, done).
+ * setAriaDisabled; pass `ic` for other lines (info, done). Other ids already
+ * in aria-describedby stay, ahead of the reason.
  */
 export function setReason(line: HTMLElement, control: HTMLElement, text: string | null, ic: IconId | null = isAriaDisabled(control) ? 'i-lock' : null): void {
   line.hidden = !text;
   setIconText(line, text ? ic : null, text ?? '');
-  if (text) control.setAttribute('aria-describedby', line.id);
-  else if (control.getAttribute('aria-describedby') === line.id) control.removeAttribute('aria-describedby');
+  const ids = (control.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((id) => id && id !== line.id);
+  if (text) ids.push(line.id);
+  if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
+  else control.removeAttribute('aria-describedby');
 }
 
 /** Dispatch that refreshes the panel right away instead of waiting for the next frame. */

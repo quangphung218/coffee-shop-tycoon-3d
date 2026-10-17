@@ -1,12 +1,14 @@
 import {
   type BufferGeometry,
   ConeGeometry,
+  CylinderGeometry,
   Group,
   IcosahedronGeometry,
   InstancedMesh,
   type Material,
   Mesh,
   Object3D,
+  OctahedronGeometry,
   PlaneGeometry,
   type Scene,
 } from 'three';
@@ -19,10 +21,6 @@ import {
   BACK_COUNTER_Z,
   CHAIR_OFFSET,
   CHAIR_SIZE,
-  COUNTER_DEPTH,
-  COUNTER_TOP_DEPTH,
-  COUNTER_TOP_EXTRA,
-  MACHINE_SIZE,
   PARASOL_POLE_RADIUS,
   PLANT_RADIUS,
   TABLE_RADIUS,
@@ -30,31 +28,23 @@ import {
   backCounterSpan,
   wallSpans,
 } from '../../sim/nav/footprints';
-import { getShopLayout, type Area, type LayoutMachine, type ShopLayout } from '../../sim/upgrades';
+import { getShopLayout, type Area, type DecorKind, type MachineKind, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
+import { BACK_COUNTER_HEIGHT, COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
 import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
 import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part } from './parts';
 
-export { SHARED_MATERIAL };
+export { SHARED_MATERIAL, machineGeometry };
 
 /**
  * Low-poly shop built from getShopLayout(state). All furniture shares one
  * flat-shaded vertex-colour Lambert material; repeated pieces (tables, chairs,
  * parasols, coins, cups, decor) are InstancedMesh. When the layout changes
- * only the affected meshes are refreshed. Windows, awning, sign and the other
+ * only the affected meshes are refreshed; a new upgrade tier only points the
+ * same InstancedMesh at another cached geometry. Windows, awning, sign and the other
  * architectural details come from FacadeView (facade.ts).
  */
 
-/** Body and accent colours of the espresso machine per better_machine level. */
-const MACHINE_TIERS: readonly (readonly [number, number])[] = [
-  [PALETTE.steel, PALETTE.steelDark],
-  [0xe05a4f, 0xf2f2f2],
-  [PALETTE.mint, PALETTE.gold],
-  [PALETTE.gold, 0x3b2418],
-];
-
-const COUNTER_HEIGHT = 1;
-const BACK_COUNTER_HEIGHT = 0.9;
 const TABLE_TOP_Y = 0.78;
 const MAX_CUPS_PER_TABLE = 3;
 const CUP_SPOTS: readonly (readonly [number, number])[] = [
@@ -71,16 +61,49 @@ const UPGRADE_IDS: readonly UpgradeId[] = UPGRADES.map((u) => u.id);
 
 // ---------- Geometry builders (built once, or on layout change) ----------
 
-function tableGeometry(): BufferGeometry {
+/**
+ * Tables, chairs, parasols and decor have a look per upgrade tier
+ * (upgradeTier, like the machines in equipment.ts). Tier 1 is the original
+ * model, tier 2 adds a detail and steel trim, tier 3 gold trim. Each tier
+ * stays within 1.6 times the triangles of tier 1.
+ */
+export type LookTier = 1 | 2 | 3;
+
+/** Tier 0 (not bought) draws as tier 1; levels past the top tier as tier 3. */
+function lookTier(tier: number): LookTier {
+  return Math.max(1, Math.min(3, Math.floor(tier))) as LookTier;
+}
+
+/** Open tube: no caps, for trims and thin rods. */
+function tube(rTop: number, rBottom: number, h: number, segments: number): CylinderGeometry {
+  return new CylinderGeometry(rTop, rBottom, h, segments, 1, true);
+}
+
+/** Tier 2 lays a cloth with a coral runner over the top on a steel foot; tier 3 has a stone top with a gold rim and a gold foot. */
+function tableGeometry(tier: LookTier): BufferGeometry {
+  const stem = part(cyl(0.06, 0.06, TABLE_TOP_Y - 0.08, 6), PALETTE.woodDark, 0, (TABLE_TOP_Y - 0.08) / 2, 0);
+  const foot = (color: number): BufferGeometry => part(cyl(0.28, 0.3, 0.04, 8), color, 0, 0.02, 0);
+  if (tier === 1) {
+    return merge([part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0), stem, foot(PALETTE.woodDark)]);
+  }
+  if (tier === 2) {
+    return merge([
+      part(cyl(TABLE_RADIUS + 0.01, TABLE_RADIUS + 0.03, 0.16, 10), PALETTE.cream, 0, TABLE_TOP_Y - 0.08, 0),
+      part(box(0.18, 0.004, 2 * TABLE_RADIUS + 0.02), PALETTE.coral, 0, TABLE_TOP_Y + 0.002, 0),
+      stem,
+      foot(PALETTE.steel),
+    ]);
+  }
   return merge([
-    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0),
-    part(cyl(0.06, 0.06, TABLE_TOP_Y - 0.08, 6), PALETTE.woodDark, 0, (TABLE_TOP_Y - 0.08) / 2, 0),
-    part(cyl(0.28, 0.3, 0.04, 8), PALETTE.woodDark, 0, 0.02, 0),
+    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.stone, 0, TABLE_TOP_Y - 0.04, 0),
+    part(tube(TABLE_RADIUS + 0.015, TABLE_RADIUS + 0.015, 0.06, 10), PALETTE.gold, 0, TABLE_TOP_Y - 0.035, 0),
+    stem,
+    foot(PALETTE.gold),
   ]);
 }
 
-/** Chair facing +z with its back toward -z. */
-function chairGeometry(): BufferGeometry {
+/** Chair facing +z with its back toward -z. Tier 2 adds a seat cushion on steel legs; tier 3 a high back with a gold top rail. */
+function chairGeometry(tier: LookTier): BufferGeometry {
   const legs: BufferGeometry[] = [];
   for (const [lx, lz] of [
     [-0.17, -0.17],
@@ -88,21 +111,47 @@ function chairGeometry(): BufferGeometry {
     [-0.17, 0.17],
     [0.17, 0.17],
   ] as const) {
-    legs.push(part(box(0.05, 0.42, 0.05), PALETTE.woodDark, lx, 0.21, lz));
+    legs.push(part(box(0.05, 0.42, 0.05), tier === 2 ? PALETTE.steel : PALETTE.woodDark, lx, 0.21, lz));
   }
-  return merge([
-    ...legs,
-    part(box(CHAIR_SIZE, 0.07, CHAIR_SIZE), PALETTE.mint, 0, 0.45, 0),
-    part(box(CHAIR_SIZE, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2),
-  ]);
+  const parts = [...legs, part(box(CHAIR_SIZE, 0.07, CHAIR_SIZE), PALETTE.mint, 0, 0.45, 0)];
+  if (tier < 3) parts.push(part(box(CHAIR_SIZE, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2));
+  if (tier >= 2) parts.push(part(box(CHAIR_SIZE - 0.06, 0.05, CHAIR_SIZE - 0.06), tier === 2 ? PALETTE.coral : PALETTE.cream, 0, 0.51, 0.02));
+  if (tier === 3) {
+    parts.push(part(box(CHAIR_SIZE, 0.75, 0.06), PALETTE.mint, 0, 0.85, -0.2), part(box(CHAIR_SIZE + 0.02, 0.05, 0.08), PALETTE.gold, 0, 1.245, -0.2));
+  }
+  return merge(parts);
 }
 
-function parasolGeometry(): BufferGeometry {
-  return merge([
-    part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
-    part(new ConeGeometry(1.1, 0.45, 8), PALETTE.coral, 0, 2.15, 0),
-    part(cyl(0.08, 0.08, 0.1, 6), PALETTE.cream, 0, 2.42, 0),
-  ]);
+/** Parasol canopy as eight wedges, coloured in turn from `colors` (same triangles as one 8-sided cone). */
+function canopy(radius: number, height: number, y: number, colors: readonly number[]): BufferGeometry[] {
+  const wedge = Math.PI / 4;
+  return Array.from({ length: 8 }, (_, i) => part(new ConeGeometry(radius, height, 1, 1, false, i * wedge, wedge), colors[i % colors.length]!, 0, y, 0));
+}
+
+/** Tier 2 has a striped canopy on a steel pole; tier 3 a bigger striped canopy with gold tassels and a gold cap. */
+function parasolGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) {
+    return merge([
+      part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
+      part(new ConeGeometry(1.1, 0.45, 8), PALETTE.coral, 0, 2.15, 0),
+      part(cyl(0.08, 0.08, 0.1, 6), PALETTE.cream, 0, 2.42, 0),
+    ]);
+  }
+  const radius = tier === 2 ? 1.1 : 1.3;
+  const height = tier === 2 ? 0.45 : 0.5;
+  const parts = [
+    part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.steel, 0, 1.05, 0),
+    ...canopy(radius, height, 2.15, [PALETTE.coral, PALETTE.cream]),
+    part(cyl(0.08, 0.08, 0.1, 6), tier === 2 ? PALETTE.steel : PALETTE.gold, 0, 2.15 + height / 2 + 0.02, 0),
+  ];
+  if (tier === 3) {
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const r = radius - 0.03;
+      parts.push(part(tube(0.035, 0, 0.14, 3), PALETTE.gold, Math.sin(a) * r, 2.15 - height / 2 - 0.07, Math.cos(a) * r));
+    }
+  }
+  return merge(parts);
 }
 
 function coinGeometry(): BufferGeometry {
@@ -120,185 +169,96 @@ function cupGeometry(): BufferGeometry {
   ]);
 }
 
-function plantGeometry(): BufferGeometry {
-  return merge([
+/** Unit directions from the foliage centre where the tier 2 flowers sit, and their colours. */
+const FLOWER_SPOTS: readonly (readonly [number, number, number, number])[] = [
+  [0.55, 0.45, 0.7, PALETTE.coral],
+  [-0.65, 0.3, 0.7, PALETTE.gold],
+  [0.1, 0.75, 0.65, PALETTE.cream],
+];
+
+/** Potted plant pivoting on its base (ambient.ts sways it). Tier 2 adds flowers and a steel pot rim; tier 3 is a tall plant in a gold pot. */
+function plantGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 3) {
+    return merge([
+      part(cyl(0.25, 0.18, 0.55, 8), PALETTE.gold, 0, 0.275, 0),
+      part(new IcosahedronGeometry(PLANT_RADIUS, 0), PALETTE.plant, 0, 1, 0),
+      part(new IcosahedronGeometry(0.32, 0), PALETTE.plantDark, 0.12, 1.45, 0.05),
+      part(new IcosahedronGeometry(0.22, 0), PALETTE.plant, -0.05, 1.8, 0),
+    ]);
+  }
+  const parts = [
     part(cyl(0.25, 0.18, 0.45, 8), PALETTE.pot, 0, 0.225, 0),
     part(new IcosahedronGeometry(PLANT_RADIUS, 0), PALETTE.plant, 0, 0.85, 0),
     part(new IcosahedronGeometry(0.28, 0), PALETTE.plantDark, 0.15, 1.2, 0.05),
-  ]);
+  ];
+  if (tier === 2) {
+    parts.push(part(tube(0.26, 0.26, 0.05, 8), PALETTE.steel, 0, 0.43, 0));
+    for (const [dx, dy, dz, color] of FLOWER_SPOTS) {
+      const r = PLANT_RADIUS * 0.95;
+      parts.push(part(new OctahedronGeometry(0.07, 0), color, dx * r, 0.85 + dy * r, dz * r));
+    }
+  }
+  return merge(parts);
 }
 
-/** Painting facing +z, centred on its hook. */
-function paintingGeometry(): BufferGeometry {
-  return merge([
+/** Painting facing +z, centred on its hook. Tier 2 adds a steel outer frame and a picture light; tier 3 a gold frame and a gold plaque. */
+function paintingGeometry(tier: LookTier): BufferGeometry {
+  const parts = [
     part(box(1, 0.75, 0.05), PALETTE.woodDark, 0, 0, 0),
     part(box(0.86, 0.3, 0.06), PALETTE.coral, 0, 0.15, 0),
     part(box(0.86, 0.31, 0.06), PALETTE.mint, 0, -0.155, 0),
     part(new IcosahedronGeometry(0.12, 0), PALETTE.gold, 0.22, 0.18, 0.04),
-  ]);
-}
-
-function lampGeometry(): BufferGeometry {
-  return merge([
-    part(cyl(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.95, 0),
-    part(new ConeGeometry(0.3, 0.28, 8, 1, true), PALETTE.gold, 0, 2.38, 0),
-  ]);
-}
-
-/** Back-counter top the machines stand on. */
-const MACHINE_Y = BACK_COUNTER_HEIGHT;
-
-function espressoGeometry(quality: number): BufferGeometry {
-  const [body, accent] = MACHINE_TIERS[Math.min(quality, MACHINE_TIERS.length - 1)]!;
-  const y = MACHINE_Y;
-  const parts: BufferGeometry[] = [
-    part(box(0.9, 0.6, 0.55), body, 0, y + 0.3, 0),
-    part(box(MACHINE_SIZE.espresso.width, 0.08, MACHINE_SIZE.espresso.depth), accent, 0, y + 0.64, 0),
-    part(box(0.8, 0.05, 0.25), accent, 0, y + 0.03, 0.3),
-    // Group heads with a portafilter and twin spouts below the left one.
-    part(cyl(0.06, 0.06, 0.12, 6), accent, -0.2, y + 0.38, 0.32),
-    part(cyl(0.06, 0.06, 0.12, 6), accent, 0.2, y + 0.38, 0.32),
-    part(cyl(0.065, 0.065, 0.05, 8), PALETTE.steelDark, -0.2, y + 0.27, 0.34),
-    part(box(0.035, 0.035, 0.16), PALETTE.woodDark, -0.2, y + 0.27, 0.48),
-    part(cyl(0.012, 0.012, 0.07, 6), PALETTE.steelDark, -0.23, y + 0.2, 0.34),
-    part(cyl(0.012, 0.012, 0.07, 6), PALETTE.steelDark, -0.17, y + 0.2, 0.34),
-    part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, -0.2, y + 0.11, 0.32),
   ];
-  if (quality >= 1) parts.push(part(new IcosahedronGeometry(0.08, 0), accent, 0.33, y + 0.5, 0.29));
-  if (quality >= 2) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, -0.25, y + 0.84, -0.05, 0, Math.PI));
-  if (quality >= 3) parts.push(part(new ConeGeometry(0.16, 0.32, 8), accent, 0.25, y + 0.84, -0.05, 0, Math.PI));
-  return merge(parts);
-}
-
-function fastGeometry(quality: number): BufferGeometry {
-  const [body, accent] = MACHINE_TIERS[Math.min(quality, MACHINE_TIERS.length - 1)]!;
-  const y = MACHINE_Y;
-  return merge([
-    part(box(0.6, 0.9, 0.5), PALETTE.steel, 0, y + 0.45, 0),
-    part(box(MACHINE_SIZE.fast.width, 0.06, MACHINE_SIZE.fast.depth), accent, 0, y + 0.93, 0),
-    part(box(0.3, 0.12, 0.12), accent, 0, y + 0.5, 0.3),
-    part(new ConeGeometry(0.18, 0.3, 8), body, 0, y + 1.11, 0, 0, Math.PI),
-    part(cyl(0.05, 0.045, 0.1, 8), PALETTE.cup, 0, y + 0.06, 0.3),
-  ]);
-}
-
-/** Bean grinder: squat body, a tapered bean hopper on top and a dosing chute. */
-function grinderGeometry(): BufferGeometry {
-  const y = MACHINE_Y;
-  return merge([
-    part(box(0.3, 0.1, 0.42), PALETTE.steelDark, 0, y + 0.05, 0),
-    part(box(0.26, 0.4, 0.34), PALETTE.steel, 0, y + 0.3, 0),
-    part(box(0.12, 0.1, 0.1), PALETTE.steelDark, 0, y + 0.18, 0.2),
-    part(cyl(0.05, 0.06, 0.1, 6), PALETTE.cup, 0, y + 0.07, 0.24),
-    part(cyl(0.14, 0.1, 0.22, 10), PALETTE.coffee, 0, y + 0.62, 0),
-    part(cyl(0.15, 0.15, 0.03, 10), PALETTE.steelDark, 0, y + 0.74, 0),
-    part(box(0.04, 0.12, 0.04), PALETTE.gold, 0.11, y + 0.3, 0.17),
-  ]);
-}
-
-/** Smoothie blender: motor base, a glass jar and a lid. */
-function blenderGeometry(): BufferGeometry {
-  const y = MACHINE_Y;
-  return merge([
-    part(box(0.3, 0.26, 0.34), PALETTE.steel, 0, y + 0.13, 0),
-    part(box(0.2, 0.06, 0.2), PALETTE.steelDark, 0, y + 0.28, 0),
-    part(cyl(0.13, 0.1, 0.34, 8), PALETTE.glass, 0, y + 0.48, 0),
-    part(cyl(0.135, 0.135, 0.04, 8), PALETTE.mint, 0, y + 0.67, 0),
-    part(box(0.04, 0.1, 0.03), PALETTE.coral, 0.12, y + 0.14, 0.18),
-  ]);
-}
-
-/** Pastry display: a wood cabinet with a glazed frame and treats on two shelves. */
-function pastryCaseGeometry(): BufferGeometry {
-  const y = MACHINE_Y;
-  const w = 0.56;
-  const d = 0.42;
-  const parts: BufferGeometry[] = [
-    part(box(w, 0.14, d), PALETTE.wood, 0, y + 0.07, 0),
-    part(box(w, 0.02, d), PALETTE.woodDark, 0, y + 0.15, 0),
-    part(box(w, 0.03, d), PALETTE.steelDark, 0, y + 0.52, 0),
-    part(box(w - 0.1, 0.02, d - 0.08), PALETTE.cream, 0, y + 0.33, 0),
-  ];
-  // Glass-tinted corner posts read as a case without hiding the treats.
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      parts.push(part(box(0.03, 0.36, 0.03), PALETTE.glass, (sx * (w - 0.03)) / 2, y + 0.34, (sz * (d - 0.03)) / 2));
-    }
-  }
-  const treats = [PALETTE.gold, PALETTE.coffee, PALETTE.coral];
-  for (let i = 0; i < 3; i++) {
-    const x = -0.16 + i * 0.16;
-    parts.push(part(new IcosahedronGeometry(0.05, 0), treats[i]!, x, y + 0.2, 0));
-    parts.push(part(new IcosahedronGeometry(0.05, 0), treats[(i + 2) % 3]!, x, y + 0.38, 0));
+  if (tier === 2) {
+    parts.push(part(box(1.08, 0.83, 0.045), PALETTE.steel, 0, 0, 0), part(box(0.5, 0.04, 0.08), PALETTE.steel, 0, 0.45, 0.03));
+  } else if (tier === 3) {
+    parts.push(part(box(1.1, 0.85, 0.045), PALETTE.gold, 0, 0, 0), part(box(0.26, 0.07, 0.03), PALETTE.gold, 0, -0.5, 0));
   }
   return merge(parts);
 }
 
-/** Ice maker: a white chest with a steel lid, a window hatch and a cold-blue badge. */
-function iceMakerGeometry(): BufferGeometry {
-  const y = MACHINE_Y;
-  const w = 0.46;
-  const d = 0.42;
-  return merge([
-    part(box(w, 0.5, d), PALETTE.cup, 0, y + 0.25, 0),
-    part(box(w + 0.02, 0.06, d + 0.02), PALETTE.steel, 0, y + 0.53, 0),
-    part(box(0.26, 0.18, 0.02), PALETTE.glass, 0, y + 0.22, d / 2),
-    part(box(0.28, 0.03, 0.04), PALETTE.steelDark, 0, y + 0.12, d / 2),
-    part(new IcosahedronGeometry(0.05, 0), PALETTE.mint, 0, y + 0.4, d / 2 + 0.01),
-  ]);
-}
+/** Bulbs hang under a shade this far either side of the rod from tier 2. */
+const TWIN_LAMP_X = 0.28;
 
-/** Dishwasher: a steel box with a front door, a handle bar and a control strip. */
-function dishwasherGeometry(): BufferGeometry {
-  const y = MACHINE_Y;
-  const w = 0.54;
-  const d = 0.42;
-  return merge([
-    part(box(w, 0.6, d), PALETTE.steel, 0, y + 0.3, 0),
-    part(box(w - 0.06, 0.44, 0.02), PALETTE.steelDark, 0, y + 0.28, d / 2),
-    part(box(w - 0.12, 0.04, 0.04), PALETTE.cup, 0, y + 0.5, d / 2),
-    part(box(w - 0.06, 0.08, 0.02), PALETTE.mint, 0, y + 0.56, d / 2),
-    part(new IcosahedronGeometry(0.03, 0), PALETTE.gold, w / 2 - 0.08, y + 0.56, d / 2 + 0.01),
-  ]);
-}
-
-/** Merged geometry of one machine or piece of equipment, sitting on the back counter. */
-export function machineGeometry(m: LayoutMachine): BufferGeometry {
-  switch (m.kind) {
-    case 'espresso':
-      return espressoGeometry(m.quality);
-    case 'fast':
-      return fastGeometry(m.quality);
-    case 'grinder':
-      return grinderGeometry();
-    case 'blender':
-      return blenderGeometry();
-    case 'pastry_case':
-      return pastryCaseGeometry();
-    case 'ice_maker':
-      return iceMakerGeometry();
-    case 'dishwasher':
-      return dishwasherGeometry();
+/** Hanging lamp. Tier 2 has two cream shades on a steel bar; tier 3 two gold shades on a gold bar with a gold finial. */
+function lampGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) {
+    return merge([
+      part(cyl(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.95, 0),
+      part(new ConeGeometry(0.3, 0.28, 8, 1, true), PALETTE.gold, 0, 2.38, 0),
+    ]);
   }
-}
-
-function counterGeometry(width: number, level: number): BufferGeometry {
+  const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+  const shade = tier === 2 ? PALETTE.cream : PALETTE.gold;
   const parts = [
-    part(box(width, COUNTER_HEIGHT - 0.06, COUNTER_DEPTH), PALETTE.wood, 0, (COUNTER_HEIGHT - 0.06) / 2, 0),
-    part(box(width + COUNTER_TOP_EXTRA, 0.06, COUNTER_TOP_DEPTH), PALETTE.woodDark, 0, COUNTER_HEIGHT - 0.03, 0),
-    part(box(width - 0.2, 0.12, 0.04), level >= 1 ? PALETTE.gold : PALETTE.cream, 0, 0.55, 0.41),
-    // Cash register at the right end.
-    part(box(0.45, 0.25, 0.35), 0x3b2418, width / 2 - 0.4, COUNTER_HEIGHT + 0.125, 0),
-    part(box(0.35, 0.18, 0.04), PALETTE.mint, width / 2 - 0.4, COUNTER_HEIGHT + 0.35, -0.05, 0, -0.3),
+    part(tube(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.99, 0),
+    part(tube(0.012, 0.012, 2 * TWIN_LAMP_X, 4), trim, 0, 2.49, 0, 0, 0, Math.PI / 2),
+    part(new ConeGeometry(0.2, 0.22, 8, 1, true), shade, -TWIN_LAMP_X, 2.38, 0),
+    part(new ConeGeometry(0.2, 0.22, 8, 1, true), shade, TWIN_LAMP_X, 2.38, 0),
   ];
-  // Pastry plates on a wider counter.
-  for (let i = 0; i < level; i++) {
-    const x = -width / 2 + 0.5 + i * 0.6;
-    parts.push(part(cyl(0.2, 0.2, 0.03, 10), PALETTE.cup, x, COUNTER_HEIGHT + 0.015, 0.1));
-    parts.push(part(new IcosahedronGeometry(0.1, 0), 0xd99a4e, x, COUNTER_HEIGHT + 0.09, 0.1));
-  }
+  if (tier === 3) parts.push(part(tube(0.04, 0, 0.08, 4), PALETTE.gold, 0, 2.45, 0));
   return merge(parts);
 }
+
+/** Glowing bulb(s) of a lamp, placed at the bulb height: one, two from tier 2, bigger at tier 3. */
+function bulbGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) return new IcosahedronGeometry(0.1, 0);
+  const r = tier === 2 ? 0.08 : 0.09;
+  return merge([part(new OctahedronGeometry(r, 0), PALETTE.bulb, -TWIN_LAMP_X, 0, 0), part(new OctahedronGeometry(r, 0), PALETTE.bulb, TWIN_LAMP_X, 0, 0)]);
+}
+
+/** Pieces drawn per look tier; geometry for each (piece, tier) is built once on first use. */
+const TIERED_GEOMETRY = {
+  table: tableGeometry,
+  chair: chairGeometry,
+  parasol: parasolGeometry,
+  plant: plantGeometry,
+  painting: paintingGeometry,
+  lamp: lampGeometry,
+  bulb: bulbGeometry,
+} as const satisfies Record<string, (tier: LookTier) => BufferGeometry>;
+
+export type TieredPiece = keyof typeof TIERED_GEOMETRY;
 
 function backCounterGeometry(minX: number, maxX: number): BufferGeometry {
   const w = maxX - minX;
@@ -316,6 +276,30 @@ export type SceneHit =
   | { kind: 'cash'; tableId: number }
   | { kind: 'trash'; tableId: number }
   | { kind: 'machine' };
+
+/** Where an upgrade's sparkle goes and which mesh (if a single one) bounces about its base at `pivotY`. */
+export interface UpgradeAnchor {
+  x: number;
+  y: number;
+  z: number;
+  object: Object3D | null;
+  pivotY: number;
+}
+
+const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
+  better_machine: 'espresso',
+  fast_machine: 'fast',
+  grinder: 'grinder',
+  pastry_case: 'pastry_case',
+  blender: 'blender',
+  ice_maker: 'ice_maker',
+  dishwasher: 'dishwasher',
+};
+
+const DECOR_FOR_UPGRADE = { plants: 'plant', paintings: 'painting', lights: 'light' } as const satisfies Partial<Record<UpgradeId, DecorKind>>;
+
+/** Sparkle height over each decor kind: the foliage, the painting hook, the bulb. */
+const DECOR_SPARKLE_Y: Record<DecorKind, number> = { plant: 1, painting: 1.45, light: 2.28 };
 
 interface Wall {
   mesh: Mesh;
@@ -367,18 +351,13 @@ export class ShopView {
     unit: part(box(1, 1, 1), PALETTE.floor),
     patio: part(box(1, 1, 1), PALETTE.patio),
     wall: part(box(1, 1, 1), PALETTE.wall),
-    table: tableGeometry(),
-    chair: chairGeometry(),
-    parasol: parasolGeometry(),
     coin: coinGeometry(),
     cup: cupGeometry(),
-    plant: plantGeometry(),
-    painting: paintingGeometry(),
-    lamp: lampGeometry(),
-    bulb: new IcosahedronGeometry(0.1, 0),
     door: doorGeometry(),
     doorGlass: doorGlassGeometry(),
   };
+  /** Geometry per tiered piece and look tier, kept for the life of the view (tiers 2 and 3 built when first shown). */
+  private readonly tierGeo = new Map<string, BufferGeometry>();
 
   private readonly indoorFloor: Mesh;
   private readonly expansionFloor: Mesh;
@@ -452,10 +431,10 @@ export class ShopView {
     this.root.add(this.machines);
     this.pickables.push(this.machines);
 
-    this.plants = instanced(this.geo.plant, SHARED_MATERIAL, DECOR_CAPACITY, true);
-    this.paintings = instanced(this.geo.painting, SHARED_MATERIAL, DECOR_CAPACITY, false);
-    this.lamps = instanced(this.geo.lamp, SHARED_MATERIAL, DECOR_CAPACITY, false);
-    this.bulbs = instanced(this.geo.bulb, GLOW_MATERIAL, DECOR_CAPACITY, false);
+    this.plants = instanced(this.tiered('plant', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
+    this.paintings = instanced(this.tiered('painting', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.lamps = instanced(this.tiered('lamp', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.bulbs = instanced(this.tiered('bulb', 1), GLOW_MATERIAL, DECOR_CAPACITY, false);
     this.root.add(this.plants, this.paintings, this.lamps, this.bulbs);
 
     this.facade = new FacadeView(quality);
@@ -486,6 +465,54 @@ export class ShopView {
   /** Layout of the current build (a new object after every rebuild), or null before the first update. */
   get current(): ShopLayout | null {
     return this.layout;
+  }
+
+  /**
+   * Where the piece an upgrade changed stands, for the purchase sparkle: the
+   * machine of that kind, the counter, the newest table or decor slot, or the
+   * middle of the side room. `object` is the single mesh to bounce (machines
+   * and the counter); instanced pieces only get the position. Null before
+   * the first update or when the piece is not drawn (window_bar).
+   */
+  upgradeAnchor(id: UpgradeId): UpgradeAnchor | null {
+    const layout = this.layout;
+    if (!layout) return null;
+    const kind = MACHINE_FOR_UPGRADE[id];
+    if (kind) {
+      const i = layout.machines.findIndex((m) => m.kind === kind);
+      if (i < 0) return null;
+      const m = layout.machines[i]!;
+      return { x: m.pos.x, y: BACK_COUNTER_HEIGHT + 0.5, z: m.pos.z, object: this.machines.children[i] ?? null, pivotY: BACK_COUNTER_HEIGHT };
+    }
+    switch (id) {
+      case 'big_counter': {
+        const { pos } = layout.counter;
+        return { x: pos.x, y: COUNTER_HEIGHT + 0.3, z: pos.z, object: this.counter, pivotY: 0 };
+      }
+      case 'tables':
+      case 'outdoor_seating': {
+        const outdoor = id === 'outdoor_seating';
+        let newest: ShopLayout['tables'][number] | null = null;
+        for (const t of layout.tables) {
+          if ((t.zone === 'outdoor') === outdoor && (!newest || t.id > newest.id)) newest = t;
+        }
+        return newest ? { x: newest.pos.x, y: TABLE_TOP_Y + 0.3, z: newest.pos.z, object: null, pivotY: 0 } : null;
+      }
+      case 'plants':
+      case 'paintings':
+      case 'lights': {
+        const decor = DECOR_FOR_UPGRADE[id];
+        const items = layout.decor.filter((d) => d.kind === decor).slice(0, DECOR_CAPACITY);
+        const last = items[items.length - 1];
+        return last ? { x: last.pos.x, y: DECOR_SPARKLE_Y[decor], z: last.pos.z, object: null, pivotY: 0 } : null;
+      }
+      case 'expand_area': {
+        const e = layout.expansion;
+        return e ? { x: (e.minX + e.maxX) / 2, y: 1, z: (e.minZ + e.maxZ) / 2, object: null, pivotY: 0 } : null;
+      }
+      default:
+        return null;
+    }
   }
 
   /** Rebuilds the facade details for a graphics quality (low drops the small ones). */
@@ -537,11 +564,30 @@ export class ShopView {
       if (o instanceof Mesh) o.geometry.dispose();
     });
     for (const g of Object.values(this.geo)) g.dispose();
+    for (const g of this.tierGeo.values()) g.dispose();
+    this.tierGeo.clear();
     this.machines.clear();
     this.facade.dispose();
   }
 
   // ---------- layout ----------
+
+  /** Cached geometry of a piece at a look tier. */
+  private tiered(piece: TieredPiece, tier: LookTier): BufferGeometry {
+    const key = `${piece}${tier}`;
+    let geo = this.tierGeo.get(key);
+    if (!geo) {
+      geo = TIERED_GEOMETRY[piece](tier);
+      this.tierGeo.set(key, geo);
+    }
+    return geo;
+  }
+
+  /** Points an instanced mesh at the piece's geometry for an upgrade tier; the mesh, its instances and draw call stay. */
+  private setTier(mesh: InstancedMesh, piece: TieredPiece, tier: number): void {
+    const geo = this.tiered(piece, lookTier(tier));
+    if (mesh.geometry !== geo) mesh.geometry = geo;
+  }
 
   private applyLayout(layout: ShopLayout): void {
     const prev = this.layout;
@@ -604,15 +650,15 @@ export class ShopView {
   }
 
   private buildCounter(layout: ShopLayout): void {
-    const { pos, width, level } = layout.counter;
-    const sig = `${width}|${level}`;
+    const { pos, width, level, tier } = layout.counter;
+    const sig = `${width}|${level}|${tier}`;
     if (sig !== this.counterSig) {
       this.counterSig = sig;
       if (this.counter) {
         this.counter.geometry.dispose();
-        this.counter.geometry = counterGeometry(width, level);
+        this.counter.geometry = counterGeometry(width, level, tier);
       } else {
-        this.counter = new Mesh(counterGeometry(width, level), WOOD_MATERIAL);
+        this.counter = new Mesh(counterGeometry(width, level, tier), WOOD_MATERIAL);
         this.counter.castShadow = true;
         this.counter.receiveShadow = true;
         this.root.add(this.counter);
@@ -627,7 +673,7 @@ export class ShopView {
   }
 
   private buildMachines(layout: ShopLayout): void {
-    const sig = layout.machines.map((m) => `${m.kind}${m.quality}@${m.pos.x},${m.pos.z}`).join(';');
+    const sig = layout.machines.map((m) => `${m.kind}${m.quality}t${m.tier}@${m.pos.x},${m.pos.z}`).join(';');
     if (sig === this.machineSig) return;
     this.machineSig = sig;
     this.clearMachines();
@@ -661,9 +707,10 @@ export class ShopView {
       mesh.dispose();
     }
     this.tableCap = capacity;
-    this.tables = instanced(this.geo.table, WOOD_MATERIAL, capacity, true);
-    this.chairs = instanced(this.geo.chair, WOOD_MATERIAL, capacity * 2, true);
-    this.parasols = instanced(this.geo.parasol, SHARED_MATERIAL, capacity, true);
+    // buildTables sets the tier geometry right after a reallocation.
+    this.tables = instanced(this.tiered('table', 1), WOOD_MATERIAL, capacity, true);
+    this.chairs = instanced(this.tiered('chair', 1), WOOD_MATERIAL, capacity * 2, true);
+    this.parasols = instanced(this.tiered('parasol', 1), SHARED_MATERIAL, capacity, true);
     this.coins = instanced(this.geo.coin, SHARED_MATERIAL, capacity, false);
     this.cups = instanced(this.geo.cup, SHARED_MATERIAL, capacity * MAX_CUPS_PER_TABLE, false);
     // Icons move every frame; skip culling instead of recomputing bounds.
@@ -682,6 +729,9 @@ export class ShopView {
   private buildTables(layout: ShopLayout): void {
     const n = layout.tables.length;
     if (n > this.tableCap) this.allocTables(growCapacity(n, this.tableCap));
+    this.setTier(this.tables, 'table', layout.furnitureTier);
+    this.setTier(this.chairs, 'chair', layout.furnitureTier);
+    this.setTier(this.parasols, 'parasol', layout.outdoorTier);
     const d = this.dummy;
     let chairs = 0;
     let parasols = 0;
@@ -714,6 +764,11 @@ export class ShopView {
   }
 
   private buildDecor(layout: ShopLayout): void {
+    const { plant, painting, light } = layout.decorTier;
+    this.setTier(this.plants, 'plant', plant);
+    this.setTier(this.paintings, 'painting', painting);
+    this.setTier(this.lamps, 'lamp', light);
+    this.setTier(this.bulbs, 'bulb', light);
     const d = this.dummy;
     let plants = 0;
     let paintings = 0;
