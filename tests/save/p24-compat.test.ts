@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { counterGeometry, machineGeometry } from '../../src/render/scene/equipment';
 import { listSlots, loadGame, saveGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { getMenuItem } from '../../src/sim/data/menu';
@@ -7,7 +8,8 @@ import { dispatch } from '../../src/sim/index';
 import { autoRestockSuggestion, expectedDemand } from '../../src/sim/inventory';
 import { isUnlocked } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
-import type { GameState, IngredientId, MenuItemId } from '../../src/sim/types';
+import type { GameState, IngredientId, MenuItemId, UpgradeId } from '../../src/sim/types';
+import { getShopLayout, grantUpgradeLevel } from '../../src/sim/upgrades';
 import { playDay, runOpenDay } from '../integration/helpers';
 
 /**
@@ -144,5 +146,57 @@ describe('P23 save with several weeks and no missedDemand', { timeout: 120_000 }
     expect(loaded.phase).toBe('report');
     expect(() => autoRestockSuggestion(loaded)).not.toThrow();
     expect(autoRestockSuggestion(loaded).totalCost).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('P24 save with upgrades and the P25 look tiers', () => {
+  /** A P24 game (version 3) with most upgrades bought, a level-7 bonus level on better_machine and grinder. */
+  function p24Upgraded(): GameState {
+    const s = createNewGame('Quán Cũ', 'normal', 2525);
+    s.xp = 30_000;
+    s.shopLevel = 7;
+    const levels: Partial<Record<UpgradeId, number>> = {
+      tables: 4,
+      better_machine: 4,
+      fast_machine: 2,
+      big_counter: 1,
+      outdoor_seating: 1,
+      plants: 2,
+      paintings: 1,
+      lights: 2,
+      window_bar: 1,
+      grinder: 4,
+      pastry_case: 2,
+      blender: 1,
+      ice_maker: 1,
+      dishwasher: 2,
+    };
+    for (const [id, level] of Object.entries(levels) as [UpgradeId, number][]) {
+      for (let i = 0; i < level; i++) grantUpgradeLevel(s, id);
+    }
+    s.events = [];
+    return s;
+  }
+
+  it('loads and builds a layout and models with the tier of every upgrade', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(saveKey('1'), JSON.stringify({ version: P23_VERSION, savedAt: 1_700_000_000_000, state: p24Upgraded() }));
+    const s = load(storage);
+    const layout = getShopLayout(s);
+    const tierOf = (kind: string): number => layout.machines.find((m) => m.kind === kind)!.tier;
+    // Bonus levels past maxLevel stay at tier 3.
+    expect(tierOf('espresso')).toBe(3);
+    expect(layout.machines.filter((m) => m.kind === 'fast').map((m) => m.tier)).toEqual([3, 3]);
+    expect(tierOf('grinder')).toBe(3);
+    expect(tierOf('pastry_case')).toBe(2);
+    expect(tierOf('blender')).toBe(1);
+    expect(tierOf('dishwasher')).toBe(2);
+    expect(layout.counter.tier).toBe(1);
+    expect(layout.furnitureTier).toBe(2);
+    expect(layout.outdoorTier).toBe(1);
+    expect(layout.decorTier).toEqual({ plant: 2, painting: 1, light: 2 });
+    expect(layout.windowBarTier).toBe(1);
+    for (const m of layout.machines) expect(() => machineGeometry(m).dispose(), m.kind).not.toThrow();
+    expect(() => counterGeometry(layout.counter.width, layout.counter.level, layout.counter.tier).dispose()).not.toThrow();
   });
 });

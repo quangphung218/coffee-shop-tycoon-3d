@@ -494,7 +494,8 @@ Chất lượng đồ họa:
 
 - Chiếu sáng gồm `HemisphereLight` + `DirectionalLight` tông ấm, cộng `scene.environment` lấy từ `RoomEnvironment` của three qua `PMREMGenerator` (0 byte tải). Env map dựng một lần, dùng lại qua các lần đổi mức; mức Thấp tắt env để bớt một lần lấy mẫu mỗi điểm ảnh.
 - Đồ trong quán và ngoài phố dùng chung một `MeshStandardMaterial` phẳng (flatShading, roughness cao) để bắt ánh sáng môi trường mà vẫn giữ nét hoạt hình; một `CanvasTexture` vân nhỏ (≤ 128 px) vẽ lúc chạy, lát lên mọi mặt làm map màu.
-- Mỗi máy và dụng cụ (`espresso`, `fast`, `grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là một mesh gộp (`machineGeometry` trong `shop.ts`), một draw call.
+- Mỗi máy và dụng cụ (`espresso`, `fast`, `grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là một mesh gộp (`machineGeometry` trong `equipment.ts`), một draw call. Quầy (`counterGeometry`) cũng vậy.
+- Máy và quầy đổi hình theo bậc `upgradeTier` (0..3, `getShopLayout` ghi vào `tier`): bậc 0 và 1 là hình gốc; bậc 2 thêm chi tiết chức năng và đế thép; bậc 3 có đế vàng và huy hiệu sao vàng. Số tam giác bậc 3 không quá 1,6 lần bậc 1.
 
 Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 
