@@ -168,8 +168,8 @@ describe('P24 HUD at peak', () => {
     expect(pills).toHaveLength(1);
     expect(pills[0]!.textContent).toBe('Cao điểm');
     expect(q(today, '[data-stat="phase-next"]').textContent).toBe('tới 13:00');
-    // The four phase names exist only for screen readers, never as drawn steps.
-    expect([...today.querySelectorAll('li')].filter((li) => !li.closest('.sr-only'))).toEqual([]);
+    // The four phase names show only in the pill's closed list, never as drawn steps.
+    expect([...today.querySelectorAll('li')].filter((li) => !li.closest('[hidden]'))).toEqual([]);
     expect(s.hud.el.textContent).not.toMatch(DOTS);
     expect(today.querySelectorAll('[class*="dot"]')).toHaveLength(0);
     expectNoEmoji('HUD at peak');

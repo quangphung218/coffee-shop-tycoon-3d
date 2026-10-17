@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState, Phase } from '../../src/sim/types';
-import { createHud, nextSpeed, type Hud } from '../../src/ui/hud/hud';
+import { createHud, nextSpeed, phaseHours, type Hud } from '../../src/ui/hud/hud';
 
 // Vitest stubs .css imports to '', so ui.css is read through a dynamically
 // named node:fs import (as tests/ui/layout-overflow.test.ts).
@@ -152,17 +152,25 @@ describe('HUD clusters (P23)', () => {
     expect(q(bar, '[data-action="open"]').title).toContain('07:00');
   });
 
-  it('keeps every phase name in an sr-only list and the title, with the current one marked', () => {
+  it('lists the four phases with their hours from the sim clock, the current one marked', () => {
     const state = game();
     state.phase = 'peak';
     state.minute = 12 * 60;
     const { bar } = mountHud(state);
     const list = q(bar, 'ol.phases');
-    expect(list.classList.contains('sr-only')).toBe(true);
+    expect(list.getAttribute('aria-label')).toBe('Pha trong ngày');
     const items = [...list.querySelectorAll<HTMLElement>('li')];
-    expect(items.map((li) => li.textContent)).toEqual(['Chuẩn bị', 'Mở cửa', 'Cao điểm', 'Đóng cửa']);
+    expect(items.map((li) => q(li, '.ph-hours').textContent)).toEqual([
+      'Đồng hồ dừng ở 07:00 tới khi mở cửa',
+      '07:00–11:00, 13:00–17:00, 19:00–20:00',
+      '11:00–13:00, 17:00–19:00',
+      'Từ 20:00 tới khi khách cuối rời đi',
+    ]);
+    expect(items.map((li) => visibleText(q(li, '.ph-name')))).toEqual(['Chuẩn bị', 'Mở cửa', 'Cao điểm', 'Đóng cửa']);
     expect(items.filter((li) => li.getAttribute('aria-current') === 'step').map((li) => li.dataset.phase)).toEqual(['peak']);
-    expect(q(bar, '.hud-phase').title).toBe('Pha trong ngày: Chuẩn bị, Mở cửa, Cao điểm, Đóng cửa. Bây giờ: Cao điểm, tới 13:00.');
+    // "· bây giờ" marks the current one in words, not colour alone.
+    expect(items.map((li) => !q(li, '.ph-now').hidden)).toEqual([false, false, true, false]);
+    expect(phaseHours('report')).toBe('');
   });
 
   it('shows the current phase as one flat pill with its name, and no dots', () => {
@@ -171,17 +179,21 @@ describe('HUD clusters (P23)', () => {
     state.minute = 12 * 60;
     const { bar } = mountHud(state);
     const today = q(bar, '[data-cluster="today"]');
-    // The only list items are the sr-only names: none is drawn as a dot.
-    const shownItems = [...today.querySelectorAll('li')].filter((li) => !li.closest('.sr-only'));
+    // The list stays closed until the pill is pressed: no step is drawn as a dot.
+    const shownItems = [...today.querySelectorAll('li')].filter((li) => !li.closest('[hidden]'));
     expect(shownItems).toEqual([]);
     const pills = today.querySelectorAll<HTMLElement>('.phase-pill');
     expect(pills).toHaveLength(1);
     expect(pills[0]!.dataset.phase).toBe('peak');
     expect(pills[0]!.textContent).toBe('Cao điểm');
+    expect(pills[0]!.getAttribute('aria-label')).toBe('Cao điểm, tới 13:00. Xem các pha trong ngày');
     expect(q(pills[0]!, '.ic').dataset.icon).toBe('i-flame');
+    // Still a label: no elevation shadow, no border, no hover rule; only the focus ring.
     const pillRule = UI_RULES.find((r) => r.selector === '.phase-pill');
     expect(decl(pillRule!.body, 'box-shadow')).toBe('var(--label-shadow)');
-    expect(decl(pillRule!.body, 'border')).toBeUndefined();
+    expect(decl(pillRule!.body, 'border')).toBe('0');
+    expect(UI_RULES.filter((r) => r.selector.includes('.phase-pill:hover'))).toEqual([]);
+    expect(UI_RULES.some((r) => r.selector.split(',').map((s) => s.trim()).includes('.phase-pill:focus-visible'))).toBe(true);
   });
 
   it.each<[Phase, number, string]>([
@@ -279,7 +291,8 @@ describe('HUD touch targets and speed control', () => {
     const state = game();
     state.phase = phase;
     const { bar } = mountHud(state);
-    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button')];
+    // The phase pill is a label-sized button with an invisible 44 px hit area (its own test).
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button:not(.phase-pill)')];
     expect(buttons.length).toBeGreaterThan(0);
     for (const b of buttons) {
       const name = b.dataset.action ?? b.getAttribute('aria-label');
@@ -371,6 +384,100 @@ describe('HUD touch targets and speed control', () => {
     const { bar } = mountHud(game());
     expect(q(bar, '.speed').hidden).toBe(true);
     expect(q(bar, '[data-action="speed-cycle"]').hidden).toBe(true);
+  });
+});
+
+describe('HUD phase pill', () => {
+  function mountPeak(): { bar: HTMLElement; pill: HTMLButtonElement; list: HTMLElement } {
+    const state = game();
+    state.phase = 'peak';
+    state.minute = 12 * 60;
+    const { bar } = mountHud(state);
+    return { bar, pill: q<HTMLButtonElement>(bar, '.phase-pill'), list: q(bar, 'ol.phases') };
+  }
+  const key = (el: Element, k: string): boolean => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+
+  it('is a focusable button that controls the closed phase list', () => {
+    const { pill, list } = mountPeak();
+    expect(pill.tagName).toBe('BUTTON');
+    expect(pill.type).toBe('button');
+    pill.focus();
+    expect(document.activeElement).toBe(pill);
+    expect(pill.getAttribute('aria-expanded')).toBe('false');
+    expect(pill.getAttribute('aria-controls')).toBe(list.id);
+    expect(list.hidden).toBe(true);
+    // A disclosure in place, not a modal.
+    expect(document.querySelector('[role="dialog"], [aria-modal]')).toBeNull();
+  });
+
+  it('opens the four phases on Enter and closes on Esc without reaching the shell', () => {
+    const { pill, list } = mountPeak();
+    pill.focus();
+    expect(key(pill, 'Enter')).toBe(false); // default prevented: no second toggle from a click
+    expect(list.hidden).toBe(false);
+    expect(pill.getAttribute('aria-expanded')).toBe('true');
+    expect(list.querySelectorAll('li')).toHaveLength(4);
+
+    const shell = vi.fn();
+    window.addEventListener('keydown', shell);
+    try {
+      key(pill, 'Escape');
+    } finally {
+      window.removeEventListener('keydown', shell);
+    }
+    expect(shell).not.toHaveBeenCalled();
+    expect(list.hidden).toBe(true);
+    expect(pill.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(pill);
+    // Closed, Esc goes on to the shell as before.
+    const after = vi.fn();
+    window.addEventListener('keydown', after);
+    key(pill, 'Escape');
+    window.removeEventListener('keydown', after);
+    expect(after).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles on a press of the pill and closes on a press outside', () => {
+    const { pill, list } = mountPeak();
+    pill.click();
+    expect(list.hidden).toBe(false);
+    // A press inside the list keeps it open.
+    q(list, 'li').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(list.hidden).toBe(false);
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(list.hidden).toBe(true);
+    pill.click();
+    expect(list.hidden).toBe(false);
+    pill.click();
+    expect(list.hidden).toBe(true);
+    expect(pill.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes when focus leaves it and stops listening once disposed', () => {
+    const { bar, pill, list } = mountPeak();
+    pill.click();
+    pill.focus();
+    const other = q<HTMLButtonElement>(bar, '[data-action="pause"]');
+    pill.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: other }));
+    expect(list.hidden).toBe(true);
+    pill.click();
+    mounted!.dispose();
+    mounted = null;
+    expect(list.hidden).toBe(true);
+  });
+
+  it('keeps a 44 px hit area and stays on screen at 390 px', () => {
+    const hit = UI_RULES.find((r) => r.selector === '.phase-pill::before')!.body;
+    expect(decl(hit, 'width')).toBe('max(100%, var(--size-target))');
+    expect(decl(hit, 'height')).toBe('max(100%, var(--size-target))');
+    expect(decl(UI_RULES.find((r) => r.selector === '.phase-pill')!.body, 'position')).toBe('relative');
+    const list = UI_RULES.find((r) => r.selector === '.phases')!.body;
+    expect(decl(list, 'max-width')).toBe('min(20rem, calc(100vw - 2 * var(--space-3)))');
+    expect(decl(list, 'box-shadow')).toBe('var(--frame-shadow)');
+    // From 640 px down the list hangs from the Hôm nay frame's left edge, not the pill.
+    const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+    expect(phone).toMatch(/\.hud-phase\s*\{\s*position:\s*static;/);
   });
 });
 

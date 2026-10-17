@@ -1,5 +1,6 @@
 import { CLOSING_MINUTE, PEAK_WINDOWS } from '../../sim/clock';
 import { WEATHER_ARRIVALS } from '../../sim/customers';
+import { DAY_START_MINUTE } from '../../sim/state';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
 import { DAY_EVENTS } from '../../sim/data/week';
 import { weekDay, weekIndex } from '../../sim/progression';
@@ -60,6 +61,35 @@ export function nextPhaseMinute(phase: Phase, minute: number): number | null {
   if (phase !== 'opening' && phase !== 'peak') return null;
   const marks = [...PEAK_WINDOWS.flat(), CLOSING_MINUTE].filter((m) => m > minute);
   return marks.length ? Math.min(...marks) : null;
+}
+
+const range = ([start, end]: readonly [number, number]): string => `${formatClock(start)}–${formatClock(end)}`;
+
+/**
+ * When each of the four day phases runs, from the sim clock: "11:00–13:00,
+ * 17:00–19:00" for the peak, the gaps between the peaks for opening.
+ */
+export function phaseHours(phase: Phase): string {
+  switch (phase) {
+    case 'preparation':
+      return `Đồng hồ dừng ở ${formatClock(DAY_START_MINUTE)} tới khi mở cửa`;
+    case 'opening': {
+      const open: [number, number][] = [];
+      let from = DAY_START_MINUTE;
+      for (const [start, end] of PEAK_WINDOWS) {
+        if (start > from) open.push([from, start]);
+        from = end;
+      }
+      if (CLOSING_MINUTE > from) open.push([from, CLOSING_MINUTE]);
+      return open.map(range).join(', ');
+    }
+    case 'peak':
+      return PEAK_WINDOWS.map(range).join(', ');
+    case 'closing':
+      return `Từ ${formatClock(CLOSING_MINUTE)} tới khi khách cuối rời đi`;
+    default:
+      return '';
+  }
 }
 
 export function phaseLabel(phase: Phase): string {
@@ -267,20 +297,43 @@ export function createHud(actions: HudActions): Hud {
   );
 
   // The current phase as one flat pill (icon and name) and, while open before
-  // closing, "tới 13:00" for the next change. The four phases sit in an
-  // sr-only list (current one marked) and in the title.
-  const phaseItems = PHASE_STEPS.map((step) => ({ step, li: h('li', { attrs: { 'data-phase': step.phase }, text: step.label }) }));
-  const phaseList = h('ol', { class: 'phases sr-only', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li));
-  const phasePill = h('span', { class: 'phase-pill', attrs: { 'aria-hidden': 'true' } });
+  // closing, "tới 13:00" for the next change. The pill is a disclosure
+  // button: a press drops the four phases with their hours in place under it
+  // (current one marked); Esc, a press outside or on the pill closes it.
+  const PHASES_ID = uid('hud-phases');
+  const phaseItems = PHASE_STEPS.map((step) => ({
+    step,
+    now: h('span', { class: 'ph-now', text: ' · bây giờ', hidden: true, attrs: { 'aria-hidden': 'true' } }),
+    li: h('li', { attrs: { 'data-phase': step.phase } }),
+  }));
+  for (const { step, now, li } of phaseItems) {
+    setChildren(
+      li,
+      icon(PHASE_ICONS[step.phase]),
+      h('b', { class: 'ph-name' }, step.label, now),
+      h('span', { class: 'ph-hours', text: phaseHours(step.phase) }),
+    );
+  }
+  const phaseList = h(
+    'ol',
+    { class: 'phases', id: PHASES_ID, hidden: true, attrs: { 'aria-label': 'Pha trong ngày' } },
+    ...phaseItems.map((p) => p.li),
+  );
+  const phasePill = h('button', {
+    class: 'phase-pill',
+    attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': PHASES_ID, 'data-action': 'phases' },
+  });
   const phaseNext = h('small', { class: 'ph-next', attrs: { 'data-stat': 'phase-next' } });
-  const phaseBox = h('span', { class: 'hud-phase' }, phaseList, phasePill, phaseNext);
+  const phaseBox = h('span', { class: 'hud-phase' }, phasePill, phaseNext, phaseList);
   w.watch(
     (s) => `${s.phase}|${nextPhaseMinute(s.phase, s.minute) ?? ''}`,
     (_, s) => {
       const phase = s.phase;
-      for (const { step, li } of phaseItems) {
-        if (step.phase === phase) li.setAttribute('aria-current', 'step');
+      for (const { step, now, li } of phaseItems) {
+        const current = step.phase === phase;
+        if (current) li.setAttribute('aria-current', 'step');
         else li.removeAttribute('aria-current');
+        now.hidden = !current;
       }
       phasePill.dataset.phase = phase;
       setChildren(phasePill, icon(PHASE_ICONS[phase]), h('span', { class: 'ph-label', text: phaseLabel(phase) }));
@@ -288,10 +341,50 @@ export function createHud(actions: HudActions): Hud {
       const nextText = next === null ? '' : `tới ${formatClock(next)}`;
       phaseNext.textContent = nextText;
       phaseNext.hidden = !nextText;
-      const now = nextText ? `${phaseLabel(phase)}, ${nextText}` : phaseLabel(phase);
-      phaseBox.title = `Pha trong ngày: ${PHASE_STEPS.map((p) => p.label).join(', ')}. Bây giờ: ${now}.`;
+      const label = nextText ? `${phaseLabel(phase)}, ${nextText}` : phaseLabel(phase);
+      phasePill.setAttribute('aria-label', `${label}. Xem các pha trong ngày`);
     },
   );
+
+  function onPhasesOutside(e: PointerEvent): void {
+    if (!(e.target instanceof Node) || !phaseBox.contains(e.target)) closePhases(false);
+  }
+  // Esc closes the list first, wherever focus is (Safari does not focus a
+  // clicked button), and never reaches the shell's pause screen.
+  function onPhasesKey(e: KeyboardEvent): void {
+    if (e.key !== 'Escape') return;
+    e.stopPropagation();
+    e.preventDefault();
+    const active = document.activeElement;
+    closePhases(active === phasePill || active === document.body || active === null);
+  }
+  function openPhases(): void {
+    if (!phaseList.hidden) return;
+    phaseList.hidden = false;
+    phasePill.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', onPhasesOutside, true);
+    document.addEventListener('keydown', onPhasesKey, true);
+  }
+  function closePhases(refocus = true): void {
+    if (phaseList.hidden) return;
+    phaseList.hidden = true;
+    phasePill.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', onPhasesOutside, true);
+    document.removeEventListener('keydown', onPhasesKey, true);
+    if (refocus) phasePill.focus();
+  }
+  const togglePhases = (): void => (phaseList.hidden ? openPhases() : closePhases());
+  phasePill.addEventListener('click', togglePhases);
+  // Enter toggles on keydown; preventDefault drops the click it would also fire.
+  phasePill.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    togglePhases();
+  });
+  phaseBox.addEventListener('focusout', (e) => {
+    const next = (e as FocusEvent).relatedTarget;
+    if (next instanceof Node && !phaseBox.contains(next)) closePhases(false);
+  });
 
   // Money counts up when it rises; drops and the first value are shown at once.
   const money = h('b', { attrs: { 'data-stat': 'money' } });
@@ -697,6 +790,7 @@ export function createHud(actions: HudActions): Hud {
       offPanels();
       edges?.disconnect();
       closeMenu(false);
+      closePhases(false);
       closePanel();
       if (resetTimer) clearTimeout(resetTimer);
       if (levelTimer) clearTimeout(levelTimer);

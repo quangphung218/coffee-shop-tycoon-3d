@@ -219,9 +219,10 @@
 
 /* Summary figures: profit, revenue, customers, stars, each with its change
    against yesterday and the week so far (arrow shape, sign, then colour). */
+/* The profit column is wider so a 32 px "+2.345.000đ" fits on one line. */
 .rpt-figs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
 /* Each cell spans four rows of the figures grid (label, value, sub, changes)
@@ -258,10 +259,14 @@
   font-weight: var(--font-weight-heavy);
 }
 .rpt-fig-value {
-  font-size: var(--font-size-value);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
+}
+/* The profit or loss is the headline figure. */
+.rpt-fig.is-result .rpt-fig-value {
+  font-size: var(--font-size-2xl);
 }
 .rpt-fig-sub,
 .rpt-fig-delta {
@@ -699,7 +704,7 @@
   color: var(--text-muted);
 }
 .rpt-kpi-value {
-  font-size: var(--font-size-value);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
@@ -895,6 +900,10 @@
   }
   .rpt-figs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* The profit takes the whole first row, the other three share two below. */
+  .rpt-fig.is-result {
+    grid-column: 1 / -1;
   }
   /* Label and bar on the first line, the numbers on the second. */
   .rpt-week {

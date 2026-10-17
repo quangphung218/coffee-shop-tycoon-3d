@@ -8,8 +8,8 @@
   font-size: var(--font-size-md);
   line-height: var(--line-height-base);
   color: var(--text-primary);
-  /* Panel head: 48px icon tile plus padding and bottom outline. */
-  --panel-head-h: calc(48px + 2 * var(--space-3) + var(--size-outline));
+  /* Panel head: icon tile (one HUD row high) plus padding and bottom outline. */
+  --panel-head-h: calc(var(--size-hud-row) + 2 * var(--space-3) + var(--size-outline));
 }
 #ui *,
 #ui *::before,
@@ -1128,8 +1128,9 @@ legend {
    the scene, panel dock at the bottom centre. The bar itself is transparent
    and lets clicks through to the 3D scene; only the pills catch them. */
 #ui {
-  /* Room the dock takes at the bottom: button + padding + outline + shadow + gap. */
-  --dock-space: calc(var(--size-control-lg) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + 6px + var(--space-3));
+  /* Room the dock takes at the bottom: button + padding + outline + the ink
+     of --frame-shadow + gap (its soft haze takes no room). */
+  --dock-space: calc(var(--size-control-lg) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + var(--shadow-sm-y) + var(--space-3));
 }
 .hud-layer {
   display: contents;
@@ -1265,31 +1266,88 @@ legend {
   }
 }
 /* Phase: the current one as a flat honey label (icon and name) and "tới
-   13:00" for the next change; the four names live in the sr-only list and
-   the title. */
+   13:00" for the next change. The label is a button that drops the four
+   phases with their hours under it, like the camera menu; it keeps the
+   label look (no elevation shadow, no hover lift), only the focus ring. */
 .hud-phase {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
-.phases {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
 .phase-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   min-height: var(--size-control-sm);
   padding: 0 var(--space-3) 0 var(--space-1);
+  border: 0;
   border-radius: var(--label-radius);
   background: var(--accent-primary);
   color: var(--text-primary);
   box-shadow: var(--label-shadow);
+  font: inherit;
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   white-space: nowrap;
+  cursor: pointer;
+}
+/* Invisible hit area: at least 44 px each way around the smaller pill. */
+.phase-pill::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--size-target));
+  height: max(100%, var(--size-target));
+  transform: translate(-50%, -50%);
+}
+.phases {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-group-gap);
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--surface-panel-solid);
+  border: var(--size-frame-outline) solid var(--border-outline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--frame-shadow);
+  white-space: normal;
+}
+.phases li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+}
+.phases li > .ic {
+  grid-row: span 2;
+}
+.phases .ph-name {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-heavy);
+}
+.phases .ph-hours {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+}
+/* The current phase: the pill's honey fill and the words "· bây giờ". */
+.phases li[aria-current='step'] {
+  background: var(--accent-primary);
+}
+.phases li[aria-current='step'] .ph-hours {
+  color: var(--text-primary);
 }
 /* 480 px and down: the pill alone; the next change stays in the title. */
 @media (max-width: 480px) {
@@ -1661,7 +1719,7 @@ legend {
   background: var(--surface-panel-solid);
   border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--frame-shadow);
   overflow: clip;
   animation: panel-in var(--duration-slow) var(--easing-standard);
 }
@@ -1687,8 +1745,8 @@ legend {
   flex: none;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: var(--size-hud-row);
+  height: var(--size-hud-row);
   background: var(--surface-panel-solid);
   border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: var(--radius-md);
@@ -1964,10 +2022,15 @@ legend {
 .hud-menu-item {
   --bw: var(--size-outline-sm);
 }
+/* The phase label has no border: the ring sits just inside its edge. */
+.phase-pill {
+  --bw: 0px;
+}
 .btn:focus-visible,
 .input:focus-visible,
 .icon-btn:focus-visible,
 .hud-btn:focus-visible,
+.phase-pill:focus-visible,
 .hud-menu-item:focus-visible,
 .seg button:focus-visible,
 .dock-btn:focus-visible,
@@ -2065,6 +2128,10 @@ legend {
     padding: 0 var(--space-2) 0 var(--size-group-gap);
     font-size: var(--font-size-caption);
   }
+  /* The phase list hangs from the Hôm nay frame's left edge, so it stays on screen. */
+  .hud-phase {
+    position: static;
+  }
   .phase-pill .ic,
   .hud-val > .ic,
   .week-chip > .ic,
@@ -2109,7 +2176,7 @@ legend {
   }
   /* Dock: a 4-column grid across the bottom (two rows of 56px). */
   #ui {
-    --dock-space: calc(2 * var(--size-control-lg) + var(--size-group-gap) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + 6px + var(--space-3));
+    --dock-space: calc(2 * var(--size-control-lg) + var(--size-group-gap) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + var(--shadow-sm-y) + var(--space-3));
   }
   .dock {
     display: grid;

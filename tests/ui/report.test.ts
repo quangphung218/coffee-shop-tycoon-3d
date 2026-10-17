@@ -598,15 +598,21 @@ describe('report.css', () => {
 
   it('sizes text and controls on the P24 scale with one 2px frame and the card shadow on the dialog only', async () => {
     const src = await css();
-    const P24_TYPE = ['caption', 'label', 'value', 'panel-title', 'screen-title'];
+    // Figures sit one step above the text around them: lg in the cells, 2xl for the profit.
+    const P24_TYPE = ['caption', 'label', 'value', 'panel-title', 'screen-title', 'lg', '2xl'];
     const sizes = [...src.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1]!.trim());
     expect(sizes.length).toBeGreaterThan(0);
     for (const v of sizes) expect(P24_TYPE.map((t) => `var(--font-size-${t})`)).toContain(v);
     expect(src.match(/\.rpt-head h3\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-screen-title\)/);
     expect(src.match(/\.rpt-h4\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-panel-title\)/);
-    for (const sel of ['\\.rpt-fig-value', '\\.rpt-kpi-value', '\\.wk-goal-num']) {
-      expect(src.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1]).toMatch(/font-size:\s*var\(--font-size-value\)/);
+    for (const sel of ['\\.rpt-fig-value', '\\.rpt-kpi-value']) {
+      expect(src.match(new RegExp(`\\n${sel}\\s*\\{([^}]*)\\}`))?.[1]).toMatch(/font-size:\s*var\(--font-size-lg\)/);
     }
+    expect(src.match(/\.rpt-fig\.is-result \.rpt-fig-value\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-2xl\)/);
+    expect(src.match(/\.wk-goal-num\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-value\)/);
+    // The 32 px profit gets a wider column, and the whole first row on a phone.
+    expect(src).toMatch(/\.rpt-figs\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.5fr\) repeat\(3, minmax\(0, 1fr\)\)/);
+    expect(src.slice(src.indexOf('@media (max-width: 640px)'))).toMatch(/\.rpt-fig\.is-result\s*\{[^}]*grid-column:\s*1 \/ -1/);
     expect(src.match(/\.rpt-dialog\s*\{([^}]*)\}/)?.[1]).toMatch(/border:\s*var\(--size-frame-outline\) solid/);
     expect([...src.matchAll(/box-shadow:\s*([^;]+);/g)].map((m) => m[1]!.trim())).toEqual(['var(--shadow-card)', 'var(--shadow-sm)']);
     expect(src).toMatch(/\.rpt-foot \.btn\s*\{[^}]*min-height:\s*var\(--size-control-md\)/);
