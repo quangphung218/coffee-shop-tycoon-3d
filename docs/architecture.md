@@ -61,12 +61,13 @@ Thứ tự tải atlas (`src/main.ts`):
 
 | Lúc | Việc | Ô `.ic` hiện |
 | --- | --- | --- |
-| Đầu `start()`, cùng lúc `import('./render/scene')` | `watchIconAtlas()` tải `atlas@1x.webp` | Ô chờ: nền `--color-cream-200`, viền `--border-strong`, bo 30%, đứng yên |
+| Đầu `start()` (Main Menu hiện) | | Ô chờ: nền `--color-cream-200`, viền `--border-strong`, bo 30%, đứng yên |
+| Chunk `import('./render/scene')` (gọi sau khi menu đã vẽ) tải xong hoặc lỗi | `watchIconAtlas()` tải `atlas@1x.webp`, `fetchPriority = 'low'` | Vẫn ô chờ |
 | @1x tải xong (`html.icons-ready`) | | Ô của atlas @1x |
 | Sau `performance.mark('cst:world')` | `enableHdIcons()` tải `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
 | @2x tải xong (`html.icons-hd`) | | `image-set(@1x 1x, @2x 2x)`: màn 2x lấy @2x |
 
-Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và @2x không tranh băng thông với chunk cảnh 3D. URL ảnh tương đối (`icons3d/…` trong JS, `/icons3d/…` trong CSS do Vite đổi theo `base: './'`).
+Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và không atlas nào tranh băng thông với chunk cảnh 3D. URL ảnh tương đối (`icons3d/…` trong JS, `/icons3d/…` trong CSS do Vite đổi theo `base: './'`).
 
 Thêm icon:
 
@@ -366,7 +367,7 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 1. `index.html` vẽ màn hình chờ `#boot` (CSS và SVG inline: linh vật ly, thanh tiến độ, %, một mẹo chơi; không chờ font) ngay khi HTML tới. Bản build dời `<link rel="stylesheet">` xuống dưới `#boot`, nên màn chờ không đợi CSS; JS vẫn chỉ chạy khi CSS đã tải.
 2. Script inline dưới `#boot` lấp thanh theo file đã tải xong (Resource Timing), tính theo dung lượng: chunk chính và CSS. Sau 5 s chưa xong thì đổi dòng chữ thành "Mạng đang chậm…"; script hoặc stylesheet tải lỗi thì hiện "Không tải được game" và nút **Thử lại** (tải lại trang).
 3. Chunk chính (UI, sim, save, audio) chạy `createShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`.
-4. `main.ts` gọi `import('./render/scene')` và `watchIconAtlas()` (atlas @1x) ngay đầu `start()`. Sau khi menu đã vẽ, `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
+4. Khi menu đã vẽ (`afterPaint()`), `main.ts` mới gọi `import('./render/scene')`; chunk này tải xong (hoặc lỗi) thì `watchIconAtlas()` mới tải atlas @1x. Tiếp đó `createWorld` dựng cảnh, `world.prepare()` biên dịch shader bằng `compileAsync`, rồi canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
 5. Sau `cst:world`, `enableHdIcons()` tải atlas @2x cho icon trên màn 2x và nhãn 3D ([Icon và font](#icon-và-font)).
 
 Danh sách file và dung lượng do plugin `cst-loading-screen` trong `vite.config.ts` ghi vào `window.__cstAssets` lúc build: `boot` (cho Main Menu) và `scene` (chunk `src/render` và `three`). Lúc `npm run dev` hai danh sách rỗng: thanh màn chờ đứng yên, thanh cảnh 3D chỉ nhảy theo bước.
@@ -390,10 +391,10 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 | --- | --- | --- | --- |
 | `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 194,6 kB | 67,2 kB | Ngay khi mở trang, cần cho Main Menu |
 | `index-*.css` | 70,2 kB | 11,4 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 87,3 kB | 32,4 kB | Sau khi chunk chính chạy |
-| `three-*.js` | 502,0 kB | 126,1 kB | Sau khi chunk chính chạy; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (`src/render`) | 87,3 kB | 32,4 kB | Sau khi Main Menu đã vẽ |
+| `three-*.js` | 502,0 kB | 126,1 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
-| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Đầu `start()`, cùng lúc chunk cảnh; không chặn Main Menu |
+| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi chunk cảnh tải xong; không chặn Main Menu |
 | `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.

@@ -181,6 +181,8 @@ export function watchIconAtlas(root: HTMLElement = document.documentElement, win
   const load = (): void => {
     const img = new Image();
     img.decoding = 'async';
+    // Below the scripts and fonts the page is still loading.
+    img.fetchPriority = 'low';
     img.onload = () => root.classList.add(ICONS_READY_CLASS);
     img.onerror = () => {
       if (retried) return;

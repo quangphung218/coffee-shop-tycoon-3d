@@ -1,7 +1,7 @@
 import type { PersonaId } from '../../sim/types';
 
 /**
- * Code-driven character animations. poseFor()is a pure function of the
+ * Code-driven character animations. poseFor() is a pure function of the
  * animation and its phase, so every pose can be tested without three.
  *
  * Angles are radians. Arms and legs swing around x (positive = toward the
