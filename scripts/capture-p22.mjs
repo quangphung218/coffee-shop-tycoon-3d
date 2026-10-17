@@ -235,6 +235,7 @@ function atlasTimeline() {
   return {
     menu: ms(mark('cst:menu')),
     world: ms(mark('cst:world')),
+    iconsReady: ms(mark('cst:icons')),
     threeEnd: ms(three?.responseEnd),
     atlas1Start: ms(a1?.startTime),
     atlas1End: ms(a1?.responseEnd),
@@ -695,7 +696,7 @@ async function menuAtlasSession(browser, url, who) {
     await sleep(500);
     out.times = await page.evaluate(atlasTimeline);
     const t = out.times;
-    progress(who, `Main Menu on mobile: menu ${t.menu} ms, three.js in ${t.threeEnd} ms, atlas @1x ${t.atlas1Start}-${t.atlas1End} ms, icons drawn ${drawnMs} ms, 3D scene ${t.world} ms, atlas @2x ${t.atlas2Start ?? 'not asked'} ms, requests @1x ${t.atlas1Requests} / @2x ${t.atlas2Requests}`);
+    progress(who, `Main Menu on mobile: menu ${t.menu} ms, three.js in ${t.threeEnd} ms, atlas @1x ${t.atlas1Start}-${t.atlas1End} ms, cst:icons ${t.iconsReady ?? 'none'} ms, icons drawn ${drawnMs} ms, 3D scene ${t.world} ms, atlas @2x ${t.atlas2Start ?? 'not asked'} ms, requests @1x ${t.atlas1Requests} / @2x ${t.atlas2Requests}`);
     return out;
   } finally {
     await context.close();
