@@ -142,9 +142,10 @@ Chi tiết các lớp: [docs/architecture.md](docs/architecture.md).
 | `npm run preview` | Mở bản build. |
 | `npm run media` | Build rồi chụp lại ảnh, GIF, mp4 và ảnh trước/sau vào `docs/media/` ([docs/media.md](docs/media.md)). |
 | `npm run layout` | Build rồi kiểm tràn ngang, CLS bảng Kho ở 390/768/1440 px và số hàng HUD ở 390/768/1280/1440 px. |
+| `npm run perf:frames` | Build rồi đo frame time và long task 5 s đầu sau khi cảnh 3D hiện; thêm `-- --base <commit>` để so với bản cũ ([báo cáo](docs/reports/p23-loading-frames.md)). |
 | `npm run icons` | Dựng lại atlas icon 3D trong `public/icons3d/`. |
 
-- `npm run media` và `npm run layout` cần Chromium của Playwright: `npx playwright install chromium`.
+- `npm run media`, `npm run layout` và `npm run perf:frames` cần Chromium của Playwright: `npx playwright install chromium`.
 - Xem nhân vật và animation riêng: `npm run dev` rồi mở `/?preview=actors`.
 - Commit theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:`…); version tự tăng theo các commit này.
 
