@@ -195,9 +195,28 @@ export function loadIconAtlas(): Promise<ImageBitmap> {
   return hdBitmap;
 }
 
-/** Object URL of the @2x atlas once it is fetched and decoded, so switching to it never shows an empty box. */
+/** Kept alive so the browser keeps the decoded @2x image the CSS is about to draw. */
+let hdImage: HTMLImageElement | undefined;
+
+/**
+ * Object URL of the @2x atlas once it is fetched and decoded, so switching to
+ * it never shows an empty box. The canvas copy (createImageBitmap) is not the
+ * one the CSS draws, so an <img> of the same URL is decoded too, off the main
+ * thread (img.decode()); otherwise the first paint after the switch decodes
+ * the whole atlas.
+ */
 function hdAtlasUrl(): Promise<string> {
-  return loadIconAtlas().then(() => atlasFile(2, 'auto').then((file) => file.url));
+  return loadIconAtlas()
+    .then(() => atlasFile(2, 'auto'))
+    .then(async (file) => {
+      if (typeof Image !== 'undefined') {
+        const img = (hdImage ??= new Image());
+        img.src = file.url;
+        // jsdom has no decode(); a failed decode still switches, as before.
+        if (typeof img.decode === 'function') await img.decode().catch(() => {});
+      }
+      return file.url;
+    });
 }
 
 /** performance mark set when the @1x atlas reaches ui.css; startup measurements read it. */

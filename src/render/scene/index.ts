@@ -29,9 +29,10 @@ export interface World {
    */
   update(state: GameState, alpha: number): void;
   /**
-   * Lays out `state` and compiles its shaders without drawing, so the first
-   * update() does not stall the page. Resolves once the GPU has finished.
-   * `onStep` gets the 0–1 progress of each step as it moves.
+   * Lays out `state`, compiles its shaders, builds every customer tag and
+   * uploads it, then draws one warm-up frame (the canvas is still hidden), so
+   * the first update() calls do not stall the page. Resolves once the GPU
+   * has finished. `onStep` gets the 0–1 progress of each step as it moves.
    */
   prepare(state: GameState, onStep?: (id: PrepareStep, fraction: number) => void): Promise<void>;
   setQuality(quality: Quality): void;
@@ -115,8 +116,19 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     async prepare(state: GameState, onStep?: (id: PrepareStep, fraction: number) => void): Promise<void> {
       sync(state, state.tickAccumulator);
       onStep?.('shaders', 0);
+      // Tags, pooled people and coins first, so the compile covers their materials.
+      const textures = actors.prebuild();
       await view.renderer.compileAsync(view.scene, camera.camera);
       onStep?.('shaders', 1);
+      onStep?.('labels', 0);
+      textures.forEach((t, i) => {
+        view.renderer.initTexture(t);
+        onStep?.('labels', (i + 1) / (textures.length + 1));
+      });
+      // One frame on the still hidden canvas uploads the geometry, the
+      // remaining textures and the shadow-pass shaders compile() skips.
+      actors.drawWarm(() => view.renderer.render(view.scene, camera.camera));
+      onStep?.('labels', 1);
     },
     setQuality: (q) => {
       view.setQuality(q);

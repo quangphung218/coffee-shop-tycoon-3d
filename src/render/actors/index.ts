@@ -1,5 +1,6 @@
-import { Group, type Object3D, type Raycaster, type Scene } from 'three';
+import { Group, type Object3D, type Raycaster, type Scene, type Texture } from 'three';
 import type { Quality } from '../../save/settings';
+import { PERSONA_IDS } from '../../sim/data/personas';
 import { buildNavGrid, type NavGrid } from '../../sim/nav';
 import type { Command, GameState, PersonaId, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
@@ -18,9 +19,10 @@ import {
   strideCycles,
   stylePose,
   type AnimName,
+  type Mood,
 } from './animations';
 import { CoinFx, Steam, puffTexture, steamFor } from './fx';
-import { Label, LabelAssets, commandForCustomer, labelFor } from './labels';
+import { LABEL_BUBBLES, Label, LabelAssets, commandForCustomer, faceFor, labelFor } from './labels';
 import { Pool } from './pool';
 import { createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
 import {
@@ -69,6 +71,18 @@ export interface Actors {
   setReducedMotion(reduce: boolean): void;
   /** Steam, coin bounce, bubble pop and body bounce are toned down (low quality or reduced motion). */
   calm(): boolean;
+  /**
+   * Before the scene shows: makes the tag of every icon, WARM_BODIES pooled
+   * characters and WARM_COINS coin popups (hidden, so a shader compile of
+   * the scene covers them). Returns the tag and steam textures to upload.
+   */
+  prebuild(): Texture[];
+  /**
+   * Shows the pooled characters in every persona and mood, with tags, steam
+   * and a coin, for one call of `draw` (a frame nobody sees), so their GPU
+   * uploads happen now; then puts them back.
+   */
+  drawWarm(draw: () => void): void;
   dispose(): void;
 }
 
@@ -99,6 +113,13 @@ const SECONDS_PER_GAME_MINUTE = 0.5;
 const LOOK_AHEAD = 0.3;
 /** Seconds to blend between the stride and the standing pose when starting or stopping. */
 const BLEND_SECONDS = 0.18;
+/** Characters built before the scene shows: one per persona and a staff member. */
+export const WARM_BODIES = PERSONA_IDS.length + 1;
+/** Coin popups built before the scene shows. */
+export const WARM_COINS = 3;
+const WARM_MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry'];
+/** Seconds past every coin's life, so CoinFx.update puts the warm-up coins back. */
+const COIN_FORGET_S = 1e6;
 
 interface Body {
   char: Character;
@@ -453,6 +474,41 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     },
 
     calm,
+
+    prebuild(): Texture[] {
+      const bodies = Array.from({ length: WARM_BODIES }, () => pool.acquire());
+      for (const body of bodies) pool.release(body);
+      const now = performance.now() / 1000;
+      for (let i = 0; i < WARM_COINS; i++) coins.spawn(1, { x: 0, z: 0 }, now);
+      coins.update(now + COIN_FORGET_S, true);
+      const textures = assets.prebuild();
+      return puff ? [...textures, puff] : textures;
+    },
+
+    drawWarm(draw: () => void): void {
+      const home = layout ? playerHome(layout) : { x: 0, z: 0 };
+      const now = performance.now() / 1000;
+      const bodies = Array.from({ length: WARM_BODIES }, () => pool.acquire());
+      bodies.forEach((body, i) => {
+        const persona = PERSONA_IDS[i];
+        body.char.setLook(persona ? { role: 'customer', look: i, persona } : { role: 'barista', look: i });
+        body.char.setMood(WARM_MOODS[i % WARM_MOODS.length]!);
+        body.char.root.position.set(home.x + (i % 3) * 0.5 - 0.5, 0, home.z + Math.floor(i / 3) * 0.5);
+        body.char.root.visible = true;
+        body.label.set({ icon: LABEL_BUBBLES[i % LABEL_BUBBLES.length]!, patience: 0.5, ready: false, face: faceFor(0.5) }, now);
+        body.steam.update(true, now);
+      });
+      coins.spawn(1, home, now);
+      try {
+        draw();
+      } finally {
+        for (const body of bodies) {
+          body.label.set(NO_LABEL, now);
+          pool.release(body);
+        }
+        coins.update(now + COIN_FORGET_S, true);
+      }
+    },
 
     inspect(key: string): ActorInfo | null {
       const actor = actors.get(key);

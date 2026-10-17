@@ -57,6 +57,11 @@ export interface LabelContent {
   face?: IconId | null;
 }
 
+/** Every bubble a tag can show: each menu item, and the angry face. */
+export const LABEL_BUBBLES: readonly IconId[] = [...new Set<IconId>([...Object.values(MENU_ICONS), ANGRY_ICON])];
+/** Every icon drawn on its own: the mood faces beside the bar, and the coin of the cash popups. */
+export const LABEL_FACES: readonly IconId[] = ['i-face-happy', 'i-face-ok', 'i-face-worried', 'i-coin'];
+
 export function labelFor(state: GameState, c: Customer): LabelContent {
   if (c.state === 'angry_leave') return { icon: ANGRY_ICON, patience: null, ready: false, face: null };
   if (c.state !== 'queueing' && c.state !== 'ordering' && c.state !== 'waiting') return { icon: null, patience: null, ready: false, face: null };
@@ -105,6 +110,20 @@ export class LabelAssets {
   /** `id` on its own, for the face beside the bar. */
   face(id: IconId): SpriteMaterial {
     return this.material(this.faces, id, false);
+  }
+
+  /**
+   * Makes the material of every icon a tag can show (LABEL_BUBBLES,
+   * LABEL_FACES), so the first customers do not draw canvases mid-frame.
+   * Returns every icon texture, ready for renderer.initTexture; empty without
+   * a DOM. Does not wait for the @2x atlas: on a slow network that held the
+   * scene back about a second. Each texture draws its icon when the atlas
+   * arrives and re-uploads (one 128 px texture).
+   */
+  prebuild(): Texture[] {
+    for (const id of LABEL_BUBBLES) this.icon(id);
+    for (const id of LABEL_FACES) this.face(id);
+    return [...this.textures];
   }
 
   /** Reduced motion forced on by the "Luôn giảm" setting, whatever the OS says. */

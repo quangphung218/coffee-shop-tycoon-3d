@@ -8,6 +8,7 @@
 ## Báo cáo
 
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.
+- [reports/p23-loading-frames.md](reports/p23-loading-frames.md): P23, cách đo frame time và long task 5 s đầu sau khi cảnh 3D hiện, mỗi bước warm-up trong `world.prepare()` ứng với nguồn giật nào.
 - [reports/p23-long-economy.md](reports/p23-long-economy.md): P23, mô phỏng 4 tuần ở 3 độ khó × 3 chiến lược × 3 seed: doanh thu, lãi, tiền, cấp, nâng cấp còn lại, cúp; lý do chọn mục tiêu tuần, thưởng cúp và cấp 7–10.
 - [reports/p22-review.md](reports/p22-review.md): P22, review tuần 7 ngày ở 390 và 1440 px: mọi vấn đề có bằng chứng và điểm tác động × công sức, phần đã sửa với ảnh trước/sau so với v0.4.0, khởi động và FPS, phần để đợt sau.
 - [reports/p22-economy.md](reports/p22-economy.md): P22, mô phỏng tuần 7 ngày ở 3 độ khó × 5 chiến lược × 6 seed: doanh thu, lãi, tiền thấp nhất, cúp, và danh sách vấn đề cân bằng có số liệu.
