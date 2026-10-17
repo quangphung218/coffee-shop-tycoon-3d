@@ -320,6 +320,8 @@ const HUD_STYLES = {
   cluster: '.hud [data-cluster="progress"]',
   steps: '.hud ol.phases:not(.sr-only) > li',
   current: '.hud ol.phases:not(.sr-only) > li[aria-current="step"], .hud .phase-pill',
+  // The current step's name; P23 hides it on a phone, leaving the icon alone.
+  currentName: '.hud ol.phases:not(.sr-only) > li[aria-current="step"] .ph-label, .hud .phase-pill .ph-label',
   next: '.hud .ph-next:not([hidden])',
   dock: 'nav.dock',
   dockBtn: 'nav.dock .dock-btn',
@@ -442,15 +444,24 @@ async function panelSession(browser, url, save, viewport, who) {
     // Both purchases in one page task, well inside the 4 s merge window even
     // when software WebGL makes Playwright clicks slow.
     await page.evaluate(
-      async ({ buy, more }) => {
+      async ({ buy, more, held }) => {
         const tick = () => new Promise((r) => setTimeout(r, 150));
         document.querySelector(buy)?.click();
         await tick();
         document.querySelector(more)?.click();
         await tick();
         document.querySelector(buy)?.click();
+        // A hovered toast stays up (toast.ts); a slow screenshot can outlast its 4 s.
+        for (let i = 0; i < 20; i++) {
+          const toast = document.querySelector(held);
+          if (toast) {
+            toast.dispatchEvent(new PointerEvent('pointerenter'));
+            return;
+          }
+          await tick();
+        }
       },
-      { buy: `${PANEL} [data-action="buy"]`, more: `${ROW('data-ingredient', 'cup')} .step-btn[aria-label^="Thêm"]` },
+      { buy: `${PANEL} [data-action="buy"]`, more: `${ROW('data-ingredient', 'cup')} .step-btn[aria-label^="Thêm"]`, held: '.toasts .toast' },
     );
     await sleep(600);
     await scrollPanel(page, null);
@@ -587,11 +598,13 @@ async function hudBoard(browser, name, width, when, { base, cur }) {
   const dots = Math.max(0, (b.steps?.count ?? 0) - 1);
   const next = a.next?.text ? ` + "${a.next.text}"` : '';
   const title = when === 'prep' ? 'HUD pha chuẩn bị' : 'HUD giờ cao điểm';
+  const baseCurrent = b.currentName ? `pill "${b.currentName.text}"` : 'icon pha không chữ';
+  const curCurrent = a.currentName ? `có chữ "${a.currentName.text}"` : 'chỉ có icon';
   return board(browser, name, {
     frames: [before(base.png, title), after(cur.png, title)],
     marks: keep([
-      { frame: 0, boxes: base.boxes.phase, label: `Dải ${b.steps?.count ?? 0} bước: ${dots} chấm không chữ quanh pill "${b.current?.text ?? ''}"` },
-      { frame: 1, boxes: cur.boxes.phase, label: `Chấm pha → 1 pill có chữ "${a.current?.text ?? ''}"${next}` },
+      { frame: 0, boxes: base.boxes.phase, label: `Dải ${b.steps?.count ?? 0} bước: ${dots} chấm không chữ quanh ${baseCurrent}` },
+      { frame: 1, boxes: cur.boxes.phase, label: `Chấm pha → 1 pill ${curCurrent}${next}` },
       { frame: 0, boxes: base.boxes.progress, label: `Khung cụm: viền ${b.cluster?.outline}px, bóng ${b.cluster?.shadow}px` },
       { frame: 1, boxes: cur.boxes.progress, label: `Viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}, cao ${change(b.cluster?.h, a.cluster?.h)}` },
     ]),
@@ -604,7 +617,7 @@ async function hudBoard(browser, name, width, when, { base, cur }) {
     ...(width >= DESK.width ? { gutter: 0 } : {}),
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, ngày ${SAVE_DAY} tuần 1 (Hội chợ), ${PHASE_WORD[when]}, ván Vừa seed ${SEED}. P23: dải ${b.steps?.count ?? 0} bước pha, chỉ bước hiện tại có chữ, ${dots} bước còn lại là chấm. P24: một pill tên pha${a.next?.text ? ` và giờ đổi pha (${a.next.text})` : ''}, danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Khung cụm: viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}.`,
+      `Khổ ${width} px, ngày ${SAVE_DAY} tuần 1 (Hội chợ), ${PHASE_WORD[when]}, ván Vừa seed ${SEED}. P23: dải ${b.steps?.count ?? 0} bước pha, ${b.currentName ? 'chỉ bước hiện tại có chữ' : 'bước hiện tại chỉ có icon'}, ${dots} bước còn lại là chấm. P24: một pill tên pha${a.next?.text ? ` và giờ đổi pha (${a.next.text})` : ''}, danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Khung cụm: viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}.`,
     ],
   });
 }
