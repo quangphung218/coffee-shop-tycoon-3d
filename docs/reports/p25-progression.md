@@ -15,7 +15,7 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 - Menu: mỗi món một dòng thấp (P24: 150 px, món thiếu hàng 236 px ở 390 px); công tắc nhỏ trên dòng, "Thiếu Cam" là nút mở Kho. Tên món và dòng giá xuống dòng thay vì bị cắt.
 - Lên cấp: thẻ có huy hiệu cấp bật lên, chip icon các mục mở khoá và confetti 1,4 s không chặn bấm.
 - Nâng cấp: máy pha, máy xay, tủ bánh, quầy, bàn ghế, cây, tranh, đèn đổi hình theo 3 bậc; vừa mua thì máy nảy và rắc sao; mỗi bậc có icon riêng và dòng "Bậc n/3".
-- Kiểm: `npm run check` đạt. Layout, ảnh, khởi động và khung hình đo lại theo [mục 4](#4-kết-quả-kiểm).
+- Kiểm: `npm run check` và `npm run layout` đạt. Ảnh, khởi động và khung hình đo lại theo [mục 4](#4-kết-quả-kiểm).
 
 ## 2. Ý đã làm và để sau
 
@@ -68,8 +68,8 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
 | `npm run check` | tsc, test, build xanh | PASS: 90 file, 1273 test |
-| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, mọi nút ≥ 44 px, tên món và dòng giá Menu không bị cắt (`scrollWidth ≤ clientWidth`, không "…"), báo cáo có thẻ lên cấp vừa 1280×720 | Chờ lượt đo |
-| Cao một dòng Menu ở 390 px | ≤ 72 px khi không nhãn, ≤ 96 px khi có nhãn ("Thiếu …", "Mở …", "Mới"): đủ chỗ cho tên và "Giá … · lãi …%" xuống dòng mà vẫn đọc trọn | Chờ lượt đo |
+| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, mọi nút ≥ 44 px, tên món và dòng giá Menu không bị cắt (`scrollWidth ≤ clientWidth`, không "…"), báo cáo có thẻ lên cấp vừa 1280×720 | PASS: lệnh thoát mã 0 ở 390/768/1280/1440 |
+| Cao một dòng Menu ở 390 px | ≤ 72 px khi không nhãn, ≤ 96 px khi có nhãn ("Thiếu …", "Mở …", "Mới"): đủ chỗ cho tên và "Giá … · lãi …%" xuống dòng mà vẫn đọc trọn | PASS: 56 px không nhãn, 89 px "Thiếu Cam" (P24: 150 / 236 px); 6/11 món thấy trọn (P24: 3) |
 | Main Menu di động so với `5d33195` | ≤ base + 5% | Chờ lượt đo |
 | JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | 75,8 kB (`vite build`); chờ số base cùng lượt |
 | Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | Chờ lượt đo |
