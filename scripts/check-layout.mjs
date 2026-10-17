@@ -24,8 +24,10 @@
 // click on the Nước cam switch (no Cam), and the Daily Report of the first
 // level-up. Both must not overflow and every button must be at least
 // --size-target (a positioned ::before counts as tap area); at 390 px a
-// sellable Menu row must be at most 64 px and a short-of-stock row 80 px;
-// at 1280×720 the level-up report must fit without scrolling.
+// Menu row with no label must be at most 72 px and a row with a label
+// ("Thiếu …", "Mở …", "Mới") 96 px; at every width no Menu name or meta line
+// may be cut (scrollWidth > clientWidth or "…"); at 1280×720 the level-up
+// report must fit without scrolling.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -577,8 +579,12 @@ const P25_VIEWPORTS = [
   { width: 1280, height: 720 },
   { width: 1440, height: 900 },
 ];
-/** Menu row height limits at 390 px: a sellable row, a row short of stock (P25 compact Menu). */
-const MENU_ROW_MAX = { ok: 64, short: 80 };
+/**
+ * Menu row height limits at 390 px: a sellable row, a row with a status label
+ * (P25 compact Menu). Room for a name and a "Giá … · lãi …%" line that wrap
+ * whole instead of being cut.
+ */
+const MENU_ROW_MAX = { ok: 72, short: 96 };
 const MENU_ROW_WIDTH = 390;
 
 /**
@@ -598,6 +604,26 @@ function smallButtons({ root, target, eps }) {
     const w = Math.max(r.width, extra ? parseFloat(before.width) || 0 : 0);
     const h = Math.max(r.height, extra ? parseFloat(before.height) || 0 : 0);
     if (w < target - eps || h < target - eps) out.push(`button ${b.dataset.action ?? b.getAttribute('aria-label') ?? b.textContent.trim().slice(0, 24)} ${w.toFixed(1)}×${h.toFixed(1)} < ${target} px`);
+  }
+  return { out, count };
+}
+
+/**
+ * Runs in the page: the name and meta line of each shown Menu row that is cut,
+ * i.e. scrolls sideways (scrollWidth > clientWidth) or shows "…".
+ */
+function menuTextCut() {
+  const out = [];
+  let count = 0;
+  for (const li of document.querySelectorAll('#ui > .panel:not([hidden]) li[data-item]')) {
+    for (const el of li.querySelectorAll('.item-text > .item-title, .item-text > .item-meta')) {
+      if (el.getClientRects().length === 0) continue;
+      count++;
+      const text = (el.textContent ?? '').trim();
+      const kind = el.classList.contains('item-title') ? 'name' : 'meta';
+      if (el.scrollWidth > el.clientWidth) out.push(`${li.dataset.item} ${kind} "${text}" scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+      if (text.includes('…')) out.push(`${li.dataset.item} ${kind} "${text}" shows "…"`);
+    }
   }
   return { out, count };
 }
@@ -631,9 +657,9 @@ async function resumeSave(browser, viewport, save, ready) {
 
 /**
  * P25 compact Menu on the day-3 morning, after a click on the Nước cam
- * switch (no Cam in stock): no overflow, every button ≥ --size-target, and at
- * 390 px each sellable row ≤ MENU_ROW_MAX.ok and each short-of-stock row ≤
- * MENU_ROW_MAX.short.
+ * switch (no Cam in stock): no overflow, every button ≥ --size-target, no
+ * name or meta line cut (menuTextCut), and at 390 px each row without a label
+ * ≤ MENU_ROW_MAX.ok and each row with one ≤ MENU_ROW_MAX.short.
  */
 async function checkMenuCompact(browser, viewport, save, results) {
   const size = `${viewport.width}×${viewport.height}`;
@@ -648,27 +674,36 @@ async function checkMenuCompact(browser, viewport, save, results) {
     const rows = await page.evaluate(() =>
       [...document.querySelectorAll('#ui > .panel:not([hidden]) li[data-item]')].map((li) => {
         const miss = li.querySelector('[data-lock="stock"]');
-        return { id: li.dataset.item, h: li.getBoundingClientRect().height, short: !!miss && !miss.hidden, locked: li.classList.contains('is-locked') };
+        const labelled = [...li.querySelectorAll('.item-status > *')].some((b) => !b.hidden);
+        return { id: li.dataset.item, h: li.getBoundingClientRect().height, short: !!miss && !miss.hidden, labelled };
       }),
     );
     const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
     const small = await page.evaluate(smallButtons, { root: '#ui > .panel:not([hidden])', target, eps: EPS });
-    const ok = rows.filter((r) => !r.short && !r.locked);
-    const short = rows.filter((r) => r.short);
+    const ok = rows.filter((r) => !r.labelled);
+    const labelled = rows.filter((r) => r.labelled);
     const max = (list) => Math.max(0, ...list.map((r) => r.h));
     const fails = [...small.out];
     if (viewport.width === MENU_ROW_WIDTH) {
       for (const r of ok) if (r.h > MENU_ROW_MAX.ok + EPS) fails.push(`${r.id} row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.ok} px`);
-      for (const r of short) if (r.h > MENU_ROW_MAX.short + EPS) fails.push(`${r.id} (short of stock) row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.short} px`);
+      for (const r of labelled) if (r.h > MENU_ROW_MAX.short + EPS) fails.push(`${r.id} (with a label) row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.short} px`);
     }
-    if (short.length === 0) fails.push('no row shows a "Thiếu …" label');
+    if (!rows.some((r) => r.short)) fails.push('no row shows a "Thiếu …" label');
     const limit = viewport.width === MENU_ROW_WIDTH ? ` (ngưỡng ${MENU_ROW_MAX.ok}/${MENU_ROW_MAX.short} px)` : '';
     results.push({
       viewport: size,
       screen: 'Menu gọn: cao dòng, nút',
       pass: fails.length === 0,
-      detail: `${rows.length} dòng; bán được cao tối đa ${max(ok).toFixed(1)} px, thiếu hàng ${max(short).toFixed(1)} px${limit}; ${small.count} nút ≥ ${target} px`,
+      detail: `${rows.length} dòng; không nhãn cao tối đa ${max(ok).toFixed(1)} px, có nhãn ${max(labelled).toFixed(1)} px${limit}; ${small.count} nút ≥ ${target} px`,
       fails,
+    });
+    const cut = await page.evaluate(menuTextCut);
+    results.push({
+      viewport: size,
+      screen: 'Menu gọn: tên, giá không bị cắt',
+      pass: cut.out.length === 0,
+      detail: `${cut.count} dòng chữ, ${cut.out.length} bị cắt`,
+      fails: cut.out,
     });
   } finally {
     await context.close();
