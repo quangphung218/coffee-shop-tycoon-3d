@@ -1,7 +1,7 @@
 import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { BONUS_LEVEL_PRICE_MULT, maxLevelBonus } from './data/levels';
-import { getUpgrade, upgradeCost } from './data/upgrades';
+import { getUpgrade, upgradeCost, upgradeTier } from './data/upgrades';
 import { CHAIR_OFFSET } from './nav/footprints';
 import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
 import type { GameState, Table, UpgradeId, Vec2 } from './types';
@@ -31,6 +31,8 @@ export interface LayoutMachine {
   kind: MachineKind;
   /** better_machine level: shinier model, better drinks. */
   quality: number;
+  /** Look tier 0..3 (upgradeTier): better_machine for espresso and fast, the machine's own level otherwise. */
+  tier: number;
 }
 
 export type DecorKind = 'plant' | 'painting' | 'light';
@@ -49,11 +51,17 @@ export interface ShopLayout {
   outdoor: Area | null;
   door: Vec2;
   pickup: Vec2;
-  counter: { pos: Vec2; width: number; level: number };
+  /** `tier` is the big_counter look tier (upgradeTier). */
+  counter: { pos: Vec2; width: number; level: number; tier: number };
   machines: LayoutMachine[];
   tables: LayoutTable[];
   decor: LayoutDecor[];
   totalSeats: number;
+  /** Look tiers 0..3 (upgradeTier) of the tables, the outdoor seating, each decor kind and the window bar. */
+  furnitureTier: number;
+  outdoorTier: number;
+  decorTier: Record<DecorKind, number>;
+  windowBarTier: number;
 }
 
 /** The front wall (with the door) is at z = 6. */
@@ -284,12 +292,15 @@ function decorFor(state: GameState): LayoutDecor[] {
 export function getShopLayout(state: GameState): ShopLayout {
   const counterLevel = upgradeLevel(state, 'big_counter');
   const quality = upgradeLevel(state, 'better_machine');
-  const machines: LayoutMachine[] = [{ pos: { ...MACHINE_POS }, kind: 'espresso', quality }];
+  const tier = (id: UpgradeId): number => upgradeTier(id, upgradeLevel(state, id));
+  const brewTier = tier('better_machine');
+  const machines: LayoutMachine[] = [{ pos: { ...MACHINE_POS }, kind: 'espresso', quality, tier: brewTier }];
   for (let i = 0; i < upgradeLevel(state, 'fast_machine'); i++) {
-    machines.push({ pos: { x: MACHINE_POS.x + 1.2 * (i + 1), z: MACHINE_POS.z }, kind: 'fast', quality });
+    machines.push({ pos: { x: MACHINE_POS.x + 1.2 * (i + 1), z: MACHINE_POS.z }, kind: 'fast', quality, tier: brewTier });
   }
   for (const kind of Object.keys(EQUIPMENT_SPOTS) as (keyof typeof EQUIPMENT_SPOTS)[]) {
-    if (upgradeLevel(state, kind) > 0) machines.push({ pos: { ...EQUIPMENT_SPOTS[kind] }, kind, quality: upgradeLevel(state, kind) });
+    const level = upgradeLevel(state, kind);
+    if (level > 0) machines.push({ pos: { ...EQUIPMENT_SPOTS[kind] }, kind, quality: level, tier: tier(kind) });
   }
   const expandLevel = upgradeLevel(state, 'expand_area');
   return {
@@ -298,10 +309,19 @@ export function getShopLayout(state: GameState): ShopLayout {
     outdoor: upgradeLevel(state, 'outdoor_seating') > 0 ? outdoorArea() : null,
     door: { ...DOOR_POS },
     pickup: { ...PICKUP_POS },
-    counter: { pos: { ...COUNTER_POS }, width: COUNTER_WIDTH + COUNTER_WIDTH_PER_LEVEL * counterLevel, level: counterLevel },
+    counter: {
+      pos: { ...COUNTER_POS },
+      width: COUNTER_WIDTH + COUNTER_WIDTH_PER_LEVEL * counterLevel,
+      level: counterLevel,
+      tier: tier('big_counter'),
+    },
     machines,
     tables: state.tables.map((t) => ({ id: t.id, pos: { ...t.pos }, seats: t.seats, zone: tableZone(t.pos) })),
     decor: decorFor(state),
     totalSeats: totalSeats(state),
+    furnitureTier: tier('tables'),
+    outdoorTier: tier('outdoor_seating'),
+    decorTier: { plant: tier(DECOR_UPGRADE.plant), painting: tier(DECOR_UPGRADE.painting), light: tier(DECOR_UPGRADE.light) },
+    windowBarTier: tier('window_bar'),
   };
 }
