@@ -1,5 +1,5 @@
 import { upgradeUnlockLevel } from '../../sim/data/levels';
-import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
+import { getUpgrade, UPGRADE_TIERS, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import {
   DECOR_REFUND_SHARE,
@@ -13,7 +13,7 @@ import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { UPGRADE_ICONS } from '../core/iconMap';
-import { icon, type IconId } from '../core/icons';
+import { type IconId, loadTierAtlas, tierIcon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { unlockHint } from './menu';
 import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
@@ -54,6 +54,17 @@ export function effectText(e: UpgradeEffect): string {
   return parts.join(' · ');
 }
 
+/**
+ * "Bậc 1/3 · mua để lên bậc 2 · " for the upgrade meta line once bought; the
+ * hint only when the next level (`canBuy`) changes the look. Empty at level 0.
+ */
+export function tierText(id: UpgradeId, level: number, canBuy: boolean): string {
+  const tier = upgradeTier(id, level);
+  if (tier === 0) return '';
+  const next = canBuy ? upgradeTier(id, level + 1) : tier;
+  return `Bậc ${tier}/${UPGRADE_TIERS} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
+}
+
 /** How long "Gỡ" stays armed waiting for a second click, ms (as "Về mặc định" in Cài đặt). */
 export const REMOVE_CONFIRM_MS = 3000;
 
@@ -65,13 +76,15 @@ export function decorRefund(state: GameState, id: UpgradeId): number {
 }
 
 /**
- * Nâng cấp by group, one row per upgrade (icon | name + price of the next
- * level, current level and the effect per level | "Mở ngày N" / "Tối đa" |
- * Mua). "Mua" asks for an in-place confirm, then sends buy_upgrade.
+ * Nâng cấp by group, one row per upgrade (icon of the current tier | name +
+ * price of the next level, current level and the effect per level, then
+ * "Bậc n/3" once bought | "Mở ngày N" / "Tối đa" | Mua). "Mua" asks for an in-place confirm, then sends buy_upgrade.
  * Owned decor without seats has "Gỡ (+X)": the first click arms it for
  * REMOVE_CONFIRM_MS, a second click sends remove_decor.
  */
 export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
+  // Before the rows, so the icons they draw switch to their tier look when it lands.
+  void loadTierAtlas();
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
 
@@ -116,13 +129,14 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
     const def = getUpgrade(id);
     const badge = h('span', { class: 'badge', hidden: true });
     const meta = h('p', { class: 'item-meta' });
+    const iconBox = h('span', { class: 'item-icon' });
     const buy = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'buy' }, text: 'Mua' });
     const why = reasonLine();
     const more = h('div', { class: 'item-actions' }, why);
     const li = h(
       'li',
       { class: 'item item-row', attrs: { 'data-upgrade': id } },
-      h('span', { class: 'item-icon' }, icon(UPGRADE_ICONS[id], { size: 32 })),
+      iconBox,
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: def.name }), meta),
       h('span', { class: 'item-status' }, badge),
       buy,
@@ -162,7 +176,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
         const max = maxUpgradeLevel(s, id);
-        meta.textContent = `${cost === null ? '' : `Giá ${formatMoney(cost)} · `}Cấp ${lv}/${max} · mỗi cấp ${effectText(def.effectPerLevel)}`;
+        meta.textContent = `${cost === null ? '' : `Giá ${formatMoney(cost)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}mỗi cấp ${effectText(def.effectPerLevel)}`;
         // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
@@ -184,6 +198,11 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         }
         showBuy(cost !== null && !confirming());
       },
+    );
+    // Icon of the current look tier.
+    w.watch(
+      (s) => upgradeTier(id, upgradeLevel(s, id)),
+      (tier) => iconBox.replaceChildren(tierIcon(UPGRADE_ICONS[id], tier, { size: 32 })),
     );
     return li;
   }

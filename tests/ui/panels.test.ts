@@ -541,7 +541,7 @@ describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', 
     expect(q(tables, '.item-status .badge').hidden).toBe(true);
 
     const plants = q(body, '[data-upgrade="plants"]');
-    expect(q(plants, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · mỗi cấp /);
+    expect(q(plants, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · Bậc 3\/3 · mỗi cấp /);
     expect(q(plants, '.item-status').textContent).toBe('Tối đa');
     expect(q(plants, '[data-action="buy"]').hidden).toBe(true);
     expect(q(plants, '[data-remove="plants"]').hidden).toBe(false);
