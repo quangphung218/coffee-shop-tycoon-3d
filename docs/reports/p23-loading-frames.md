@@ -98,3 +98,16 @@ Hai cấu hình như `measure-startup.mjs`: máy bàn không giới hạn, và d
 | Canvas hiện ra | Đã xử lý: `#scene.is-ready` chỉ đổi `opacity`, không đổi bố cục | Không đổi |
 
 Theo tài liệu `WebGLRenderer` của three.js (<https://threejs.org/docs/pages/WebGLRenderer.html>): `compileAsync` dùng `KHR_parallel_shader_compile`; `initTexture` nạp texture lên GPU trước, tránh khựng lúc giải mã và tải lên. Mã `compile()` trong `three@0.180` duyệt cả vật thể ẩn khi gom vật liệu, nên nhân vật trong pool được biên dịch dù đang ẩn.
+
+## Kết luận và việc còn lại
+
+| Số đo | Bản cũ `f9508d8` | Bản mới | Kết luận |
+| --- | --- | --- | --- |
+| Frame > 50 ms, headless | 42–43 (máy bàn), 40 (di động) | 39–44 (máy bàn), 40–45 (di động) | Như nhau: headless khoá nhịp khung, số này không cho biết giật. |
+| Frame > 50 ms, cửa sổ thật | 0 | 0 | Trên M2 không có khung > 50 ms ở cả hai bản; không đo được mức giảm. |
+| Main Menu, di động | 1067 ms | 1045 ms | Cả hai bản trên mốc 1 s: menu đã chậm hơn mốc từ trước P23, warm-up không làm chậm thêm. |
+
+Việc còn lại:
+
+1. Đo lại `measure-frames.mjs --headed` trên máy thật yếu hơn M2 (điện thoại tầm trung, laptop GPU tích hợp), nơi bản cũ có khung > 50 ms, để thấy warm-up giảm được bao nhiêu.
+2. Tách việc riêng để đưa Main Menu di động về dưới 1 s; việc này không thuộc phần warm-up.
