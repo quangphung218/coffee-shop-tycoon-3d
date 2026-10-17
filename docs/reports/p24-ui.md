@@ -93,7 +93,7 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | Playtest Cam, Bột bánh, Bơ trong gợi ý | Có cả ba | PASS (mục 1) |
 | `npm run check` | tsc, test, build xanh | PASS: 80 file, 1117 test |
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | PASS, 48/48: 6 bảng, Daily Report, Đánh giá không tràn ở 390/768/1440; CLS Kho 0,000000 ở cả ba khổ; HUD 2 hàng cao 104 px ở 390 và 768, 1 hàng cao 56 px ở 1280 và 1440, kể cả ngày "Tăng giá nhập"; mọi nút HUD ≥ 44 px |
-| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL: 1107 ms (cảnh 3D 3077 ms); máy bàn 140 ms |
+| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL so với mốc: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
 
 Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple M2), trung vị 3 lần, chỉ đo bản hiện tại.
@@ -107,6 +107,18 @@ Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple
 | Khung > 50 ms (3 lần) | 34 (42/34/33) | 49 (49/45/56) |
 | Long task | 0 | 0 |
 
-- Main Menu di động đã trên 1 s từ trước P24: [p23-loading-frames.md](p23-loading-frames.md) đo 1067 ms ở `f9508d8` và 1045 ms ở `0205afe`. Lượt này không đo `3a08fe2` cùng lúc, nên chưa tách được phần P24 thêm vào.
+- Main Menu di động đã trên 1 s từ trước P24 ([p23-loading-frames.md](p23-loading-frames.md): 1067 ms ở `f9508d8`, 1045 ms ở `0205afe`). P24 không làm chậm thêm, theo lượt so cùng lúc bên dưới.
+
+`measure-startup.mjs --base 3a08fe2 --runs 5`, cùng máy, trung vị 5 lần:
+
+| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
+| --- | --- | --- | --- | --- |
+| Máy bàn | `3a08fe2` | 48 ms | 53 ms | 339 ms |
+| Máy bàn | P24 | 84 ms | 61 ms | 300 ms |
+| Di động, CPU 4x | `3a08fe2` | 388 ms | 1216 ms | 3219 ms |
+| Di động, CPU 4x | P24 | 464 ms | 1132 ms | 3243 ms |
+
+- Main Menu di động: P24 1132 ms so với 1216 ms của `3a08fe2` (−84 ms, −6,9%). Vẫn trên mốc 1 s, nhưng không lùi so với P23.
+- Gói tải gần như không đổi: JS chính 72,9 → 73,2 kB gzip, CSS 12,8 → 12,7 kB gzip.
 - Headless khoá nhịp khung, nên số khung > 50 ms chỉ dùng để so khoảng (P23: 39–44 máy bàn, 40–45 di động), không cho biết có giật.
 | `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |
