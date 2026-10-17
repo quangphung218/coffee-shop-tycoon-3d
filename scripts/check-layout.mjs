@@ -239,6 +239,9 @@ async function checkHud(page, results, viewport, screen, maxRows) {
 
 /** Sets 4x: the speed option where the group shows, else the phone's cycling button until it reads 4x. */
 async function setSpeed4(page) {
+  // Right after "Mở cửa" the HUD has not redrawn yet; the group and the
+  // cycling button lose `hidden` together on the next frame.
+  await page.locator('.hud .speed:not([hidden])').waitFor({ state: 'attached' });
   const option = page.locator('.hud .speed [data-speed="4"]');
   if (await option.isVisible()) return option.click();
   const cycle = page.locator('.hud [data-action="speed-cycle"]');
