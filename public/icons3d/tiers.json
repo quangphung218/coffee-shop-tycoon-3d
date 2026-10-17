@@ -383,153 +383,153 @@
   "smallQuality": {
     "i-tables-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.074,
-      "creamShare": 0
+      "edgeContrast": 10.669,
+      "creamShare": 0.108
     },
     "i-tables-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.902,
-      "creamShare": 0
+      "edgeContrast": 9.403,
+      "creamShare": 0.02
     },
     "i-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 8.323,
-      "creamShare": 0.006
+      "edgeContrast": 10.441,
+      "creamShare": 0.087
     },
     "i-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.708,
+      "edgeContrast": 10.054,
       "creamShare": 0.003
     },
     "i-fast-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.347,
-      "creamShare": 0.003
+      "edgeContrast": 9.674,
+      "creamShare": 0.107
     },
     "i-fast-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.033,
+      "edgeContrast": 9.984,
       "creamShare": 0
     },
     "i-counter-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.255,
-      "creamShare": 0.043
+      "edgeContrast": 11.237,
+      "creamShare": 0.076
     },
     "i-counter-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.786,
-      "creamShare": 0.045
+      "edgeContrast": 11.181,
+      "creamShare": 0.074
     },
     "i-outdoor-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.199,
-      "creamShare": 0
+      "edgeContrast": 9.746,
+      "creamShare": 0.122
     },
     "i-outdoor-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.155,
-      "creamShare": 0
+      "edgeContrast": 10.916,
+      "creamShare": 0.122
     },
     "i-expand-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.925,
-      "creamShare": 0.05
+      "edgeContrast": 9.565,
+      "creamShare": 0.062
     },
     "i-expand-t3": {
       "edgeInk": 1,
-      "edgeContrast": 8.566,
-      "creamShare": 0.026
+      "edgeContrast": 9.545,
+      "creamShare": 0
     },
     "i-plants-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.939,
-      "creamShare": 0
+      "edgeContrast": 9.527,
+      "creamShare": 0.009
     },
     "i-plants-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.067,
+      "edgeContrast": 10.778,
       "creamShare": 0
     },
     "i-paintings-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.549,
-      "creamShare": 0.003
+      "edgeContrast": 11.816,
+      "creamShare": 0.025
     },
     "i-paintings-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.018,
+      "edgeContrast": 11.894,
       "creamShare": 0
     },
     "i-lights-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.08,
-      "creamShare": 0.007
+      "edgeContrast": 9.593,
+      "creamShare": 0.196
     },
     "i-lights-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.625,
+      "edgeContrast": 9.443,
       "creamShare": 0
     },
     "i-window-bar-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.853,
-      "creamShare": 0
+      "edgeContrast": 7.89,
+      "creamShare": 0.003
     },
     "i-window-bar-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.967,
-      "creamShare": 0
+      "edgeContrast": 7.898,
+      "creamShare": 0.003
     },
     "i-grinder-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.155,
-      "creamShare": 0.059
+      "edgeContrast": 11.376,
+      "creamShare": 0.056
     },
     "i-grinder-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.432,
-      "creamShare": 0.05
+      "edgeContrast": 10.926,
+      "creamShare": 0.01
     },
     "i-pastry-case-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.223,
-      "creamShare": 0.006
+      "edgeContrast": 11.013,
+      "creamShare": 0
     },
     "i-pastry-case-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.128,
+      "edgeContrast": 11.196,
       "creamShare": 0
     },
     "i-blender-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.515,
-      "creamShare": 0.003
+      "edgeContrast": 9.463,
+      "creamShare": 0
     },
     "i-blender-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.76,
+      "edgeContrast": 9.096,
       "creamShare": 0
     },
     "i-ice-maker-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.178,
-      "creamShare": 0.006
+      "edgeContrast": 9.005,
+      "creamShare": 0.082
     },
     "i-ice-maker-t3": {
       "edgeInk": 1,
-      "edgeContrast": 8.706,
-      "creamShare": 0.01
+      "edgeContrast": 9.793,
+      "creamShare": 0.022
     },
     "i-dishwasher-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.409,
-      "creamShare": 0.02
+      "edgeContrast": 7.489,
+      "creamShare": 0.033
     },
     "i-dishwasher-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.219,
-      "creamShare": 0.009
+      "edgeContrast": 7.526,
+      "creamShare": 0.03
     }
   }
 }
