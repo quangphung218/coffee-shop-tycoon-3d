@@ -375,17 +375,23 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 
 Danh sách file và dung lượng do plugin `cst-loading-screen` trong `vite.config.ts` ghi vào `window.__cstAssets` lúc build: `boot` (cho Main Menu) và `scene` (chunk `src/render` và `three`). Lúc `npm run dev` hai danh sách rỗng: thanh màn chờ đứng yên, thanh cảnh 3D chỉ nhảy theo bước.
 
-Tiến độ cảnh 3D (`src/ui/core/loadProgress.ts`, `src/ui/core/sceneGate.ts`):
+Tiến độ cảnh 3D là danh sách thành phần (`LOAD_COMPONENTS` trong `src/ui/core/loadProgress.ts`, hiện bằng `src/ui/core/sceneGate.ts`). Mỗi mục có trạng thái chờ, đang tải, xong hoặc lỗi và tiến độ 0–1; tổng % là trung bình có trọng số.
 
-| Bước | Thanh |
-| --- | --- |
-| Tải `scene` | 0–80%, theo dung lượng file đã xong |
-| `createWorld` xong | 90% |
-| `prepare()` xong | 100%, cảnh sẵn sàng |
+| Mục (`id`) | Trọng số | Tiến độ lấy từ |
+| --- | --- | --- |
+| Mã cảnh 3D (`code`) | 55 | `watchDownloads`: dung lượng file `scene` đã xong; lúc dev nhảy thẳng từ 0 lên xong |
+| Font (`fonts`) | 5 | `loadFonts()`: `document.fonts.load` cho Nunito 400 và 700, cả hai subset |
+| Icon (`icons`) | 5 | `onIconAtlas()`: atlas @1x của `watchIconAtlas()` |
+| Dựng quán (`world`) | 10 | `createWorld` xong |
+| Biên dịch shader (`shaders`) | 15 | `onStep('shaders', f)` của `world.prepare()` (`compileAsync`) |
+| Nhãn và texture (`labels`) | 10 | `onStep('labels', f)` của `world.prepare()`; xong khi `prepare()` xong |
 
-- Trong lúc tải, Main Menu, Ván mới và Tải game có dòng tiến độ kèm mẹo. Các nút vào quán (**Tiếp tục**, **Bắt đầu ngày 1**, **Tải slot**) bị `aria-disabled`, tô dần theo tiến độ và ghi "Đang chuẩn bị N%". **Ván mới** vẫn mở form.
+Âm thanh tổng hợp bằng Web Audio, không có file, nên không có trong danh sách.
+
+- Trong lúc tải, Main Menu, Ván mới và Tải game có dòng tiến độ: thanh tổng %, mỗi thành phần một dòng (icon trạng thái, tên, %) và một mẹo. Các nút vào quán (**Tiếp tục**, **Bắt đầu ngày 1**, **Tải slot**) bị `aria-disabled`, tô dần theo tổng % và ghi "Đang chuẩn bị N%". **Ván mới** vẫn mở form.
+- Cảnh sẵn sàng (100%, mở nút vào quán) chỉ khi mọi mục đã xong.
 - Sau 8 s chưa xong: dòng chữ đổi thành "Mạng đang chậm, game vẫn đang tải…".
-- Tải lỗi: dòng tiến độ báo lỗi và có nút **Thử lại**. Thử lại gọi lại `import()`; trình duyệt có thể giữ lỗi của module cũ, nên nếu vẫn lỗi mà trang trả lời được thì tải lại trang. Lỗi khi dựng cảnh (WebGL) báo riêng.
+- Một mục lỗi: dòng tiến độ báo lỗi, mục đó có nút **Thử lại**. Font và Icon tải lại riêng mục đó. Bốn mục còn lại tải lại cùng nhau: gọi lại `import()`; trình duyệt có thể giữ lỗi của module cũ, nên nếu vẫn lỗi mà trang trả lời được thì tải lại trang. Lỗi khi dựng quán hay biên dịch shader (WebGL) báo riêng.
 - Khi đang chơi không tải thêm file nào: quán, mở rộng và khu mới đều dựng bằng code, nên không có chỉ báo tải giữa game.
 
 Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`, `src/save`: làm vậy kéo three.js trở lại chunk chính.

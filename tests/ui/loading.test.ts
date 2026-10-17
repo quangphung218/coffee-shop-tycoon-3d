@@ -4,7 +4,7 @@ import { saveGame } from '../../src/save/save';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage } from '../../src/save/storage';
 import { createNewGame as createGameState } from '../../src/sim/state';
-import { BUILT_SHARE, DOWNLOAD_SHARE, downloadedFraction, matchAsset, readAssets, sceneProgress } from '../../src/ui/core/loadProgress';
+import { downloadedFraction, initialComponents, LOAD_COMPONENTS, loadFonts, matchAsset, readAssets } from '../../src/ui/core/loadProgress';
 import { progressPercent, SCENE_ERROR_TEXT, SCENE_LOADING_TEXT, SCENE_SLOW_TEXT, SceneGate } from '../../src/ui/core/sceneGate';
 import { LOADING_TIPS } from '../../src/ui/core/tips';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
@@ -43,12 +43,17 @@ describe('loading progress', () => {
     expect(downloadedFraction([], new Set())).toBeNull();
   });
 
-  it('gives downloads their share, then fixed marks for building and compiling', () => {
-    expect(sceneProgress(0.5, 'download')).toBeCloseTo(0.5 * DOWNLOAD_SHARE);
-    expect(sceneProgress(null, 'download')).toBe(0);
-    expect(sceneProgress(1, 'built')).toBe(BUILT_SHARE);
-    expect(sceneProgress(1, 'compiled')).toBe(1);
-    expect(DOWNLOAD_SHARE).toBeLessThan(BUILT_SHARE);
+  it('loads Nunito 400 and 700 with text from both subsets, and fails when a face fails', async () => {
+    const calls: [string, string | undefined][] = [];
+    const fonts = { load: (font: string, text?: string) => (calls.push([font, text]), Promise.resolve([])) } as unknown as FontFaceSet;
+    await loadFonts(fonts);
+    expect(calls.map(([f]) => f)).toEqual(['400 1em Nunito', '700 1em Nunito']);
+    expect(calls[0]![1]).toMatch(/[A-Za-z]/);
+    expect(calls[0]![1]).toMatch(/[Đđạ-ỹ]/);
+    const broken = { load: () => Promise.reject(new Error('NetworkError')) } as unknown as FontFaceSet;
+    await expect(loadFonts(broken)).rejects.toThrow();
+    // No Font Loading API (old browsers, tests): nothing to wait for.
+    await expect(loadFonts(undefined)).resolves.toBeUndefined();
   });
 
   it('reads the lists index.html puts on window, or empty ones', () => {
@@ -128,6 +133,101 @@ describe('SceneGate', () => {
     expect(gate.state.message).toBeUndefined();
     gate.set({ status: 'ready' });
     expect(line.hidden).toBe(true);
+  });
+
+  it('lists every component on the status line, one row each with a status icon and percent', () => {
+    const gate = new SceneGate({ status: 'loading', progress: 0, slow: false, components: initialComponents() });
+    const line = gate.statusLine();
+    const rows = [...line.querySelectorAll<HTMLElement>('.scene-load-list > li')];
+    expect(rows.map((r) => r.dataset.component)).toEqual(LOAD_COMPONENTS.map((c) => c.id));
+    expect(rows.map((r) => q(r, '.scene-load-label').textContent)).toEqual([
+      'Mã cảnh 3D',
+      'Font',
+      'Icon',
+      'Dựng quán',
+      'Biên dịch shader',
+      'Nhãn và texture',
+    ]);
+    for (const row of rows) {
+      expect(row.dataset.status).toBe('waiting');
+      expect(q(row, '.scene-load-mark .ic').dataset.icon).toBe('i-dot-empty');
+      expect(q(row, '.scene-load-item-pct').textContent).toBe('0%');
+      expect(q<HTMLButtonElement>(row, 'button').hidden).toBe(true);
+      expect(row.textContent).not.toMatch(EMOJI);
+    }
+
+    gate.setComponent('code', { status: 'loading', progress: 0.5 });
+    gate.setComponent('fonts', { status: 'done' });
+    const code = q(line, '[data-component="code"]');
+    expect(code.dataset.status).toBe('loading');
+    expect(q(code, '.scene-load-mark .ic').dataset.icon).toBe('i-busy');
+    expect(q(code, '.scene-load-item-pct').textContent).toBe('50%');
+    expect(q(code, '.sr-only').textContent).toBe(': đang tải');
+    const fonts = q(line, '[data-component="fonts"]');
+    expect(q(fonts, '.scene-load-mark .ic').dataset.icon).toBe('i-check');
+    expect(q(fonts, '.scene-load-item-pct').textContent).toBe('100%');
+    // The rows are built once and updated in place.
+    expect(line.querySelector('[data-component="code"]')).toBe(code);
+  });
+
+  it('weighs the overall percent by component and reads 100 only once every one is done', () => {
+    const gate = new SceneGate({ status: 'loading', progress: 0, slow: false, components: initialComponents() });
+    const btn = document.createElement('button');
+    document.body.append(btn);
+    gate.bind(btn);
+    const line = gate.statusLine();
+    // Mã cảnh 3D is 55 of the 100 weight: half of it is 27.5%.
+    gate.setComponent('code', { status: 'loading', progress: 0.5 });
+    expect(progressPercent(gate.state)).toBe(27);
+    expect(q(line, '.scene-load-pct').textContent).toBe('27%');
+    expect(q(btn, '.btn-prep').textContent).toBe('Đang chuẩn bị 27%');
+
+    for (const c of LOAD_COMPONENTS.slice(0, -1)) gate.setComponent(c.id, { status: 'done' });
+    // Everything but Nhãn và texture done, and that one at 99%: still not 100, still gated.
+    gate.setComponent('labels', { status: 'loading', progress: 0.999 });
+    expect(gate.state.status).toBe('loading');
+    expect(gate.ready).toBe(false);
+    expect(progressPercent(gate.state)).toBeLessThan(100);
+    expect(btn.getAttribute('aria-disabled')).toBe('true');
+    expect(line.hidden).toBe(false);
+    // Progress 1 is not the same as done.
+    gate.setComponent('labels', { progress: 1 });
+    expect(gate.ready).toBe(false);
+
+    gate.setComponent('labels', { status: 'done' });
+    expect(gate.ready).toBe(true);
+    expect(progressPercent(gate.state)).toBe(100);
+    expect(btn.hasAttribute('aria-disabled')).toBe(false);
+    expect(line.hidden).toBe(true);
+    btn.remove();
+  });
+
+  it('turns to error when one component fails, with Thử lại on that row only', () => {
+    const gate = new SceneGate({ status: 'loading', progress: 0, slow: false, components: initialComponents() });
+    const retry = vi.fn();
+    gate.onRetry = retry;
+    const line = gate.statusLine();
+    gate.setComponent('code', { status: 'done' });
+    gate.setComponent('fonts', { status: 'error' });
+    expect(gate.state.status).toBe('error');
+    expect(gate.ready).toBe(false);
+    expect(line.classList.contains('is-failed')).toBe(true);
+    expect(q(line, '.scene-load-msg').textContent).toBe(SCENE_ERROR_TEXT);
+
+    const fonts = q(line, '[data-component="fonts"]');
+    expect(fonts.dataset.status).toBe('error');
+    expect(q(fonts, '.scene-load-mark .ic').dataset.icon).toBe('i-error');
+    const buttons = [...line.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !b.hidden);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]!.closest('li')).toBe(fonts);
+    expect(buttons[0]!.textContent).toBe('Thử lại');
+    buttons[0]!.click();
+    expect(retry).toHaveBeenCalledWith('fonts');
+
+    // Retrying puts it back to loading; the error clears.
+    gate.setComponent('fonts', { status: 'loading' });
+    expect(gate.state.status).toBe('loading');
+    expect(q<HTMLButtonElement>(fonts, 'button').hidden).toBe(true);
   });
 
   it('keeps the tips short and emoji-free', () => {

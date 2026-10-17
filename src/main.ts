@@ -16,8 +16,8 @@ import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
-import { readAssets, sceneProgress, watchDownloads, type SceneStage } from './ui/core/loadProgress';
-import { enableHdIcons, watchIconAtlas } from './ui/core/icons';
+import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
+import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
 import { registerPrepPanels } from './ui/panels';
 import { registerReviewsPanel } from './ui/report';
@@ -35,6 +35,9 @@ const BOOT_FADE_MS = 300;
 const SCENE_SLOW_MS = 8000;
 
 type WorldModule = typeof import('./render/scene');
+
+/** Loading-list items that come with the 3D scene chunk; one Thử lại redoes them all. */
+const WORLD_COMPONENTS: readonly LoadComponentId[] = ['code', 'world', 'shaders', 'labels'];
 
 /** A busy lunchtime shop that plays itself behind the main menu. */
 function createMenuScene(): GameState {
@@ -91,9 +94,22 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // chunk at low priority: it must be in before the 3D scene starts drawing,
   // which leaves the main thread too busy to hand it to the CSS quickly. The
   // boxes show placeholder tiles until then. The @2x one waits for the scene.
+  // The shop opens only once every item on the loading list is done.
+  const scene = new SceneGate({ status: 'loading', progress: 0, slow: false, components: initialComponents() });
+  onIconAtlas((state) => scene.setComponent('icons', { status: state }));
   void painted.then(() => watchIconAtlas());
+  const fetchFonts = (): void => {
+    scene.setComponent('fonts', { status: 'loading' });
+    loadFonts().then(
+      () => scene.setComponent('fonts', { status: 'done' }),
+      (err: unknown) => {
+        console.error('Fonts failed to load', err);
+        scene.setComponent('fonts', { status: 'error' });
+      },
+    );
+  };
+  void painted.then(fetchFonts);
   const assets = readAssets();
-  const scene = new SceneGate({ status: 'loading', progress: 0, slow: false });
   const storage = defaultStorage();
   const settings = loadSettings(storage);
   const audio = createAudio({ music: settings.musicVolume, sfx: settings.sfxVolume });
@@ -156,21 +172,18 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // Build the scene only after the menu is on screen, then fade it in. The
   // play buttons wait on `scene`, which follows the real downloads and steps.
   const loadWorld = (module: Promise<WorldModule>): void => {
-    let stage: SceneStage = 'download';
-    let downloaded: number | null = null;
-    const show = (): void => scene.set({ progress: sceneProgress(downloaded, stage) });
-    scene.set({ status: 'loading', progress: 0, slow: false });
-    const stopWatch = watchDownloads(assets.scene, (f) => {
-      downloaded = f;
-      show();
-    });
+    for (const id of WORLD_COMPONENTS) scene.setComponent(id, { status: 'waiting', progress: 0 });
+    scene.setComponent('code', { status: 'loading' });
+    scene.set({ slow: false });
+    const stopWatch = watchDownloads(assets.scene, (f) => scene.setComponent('code', { progress: f }));
     const slowTimer = setTimeout(() => scene.set({ slow: true }), SCENE_SLOW_MS);
-    let downloadFailed = true;
+    /** The item running when something throws. */
+    let step: LoadComponentId = 'code';
     void Promise.all([module, afterPaint()])
       .then(async ([{ createWorld }]) => {
-        downloadFailed = false;
-        downloaded = 1;
-        show();
+        scene.setComponent('code', { status: 'done' });
+        step = 'world';
+        scene.setComponent('world', { status: 'loading' });
         const s = shell.settings;
         const w = createWorld(canvas, {
           quality: s.quality,
@@ -178,28 +191,34 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
           cameraRotateSpeed: s.cameraRotateSpeed,
           reducedMotion: s.reducedMotion === 'reduce',
         });
-        stage = 'built';
-        show();
+        scene.setComponent('world', { status: 'done' });
+        step = 'shaders';
         // Clicks in the scene go through the same dispatch as the UI.
         w.onCommand((cmd) => shell.dispatch(cmd));
         try {
-          await w.prepare(shell.state ?? menuScene);
+          await w.prepare(shell.state ?? menuScene, (id, fraction) => {
+            step = id;
+            scene.setComponent(id, { status: fraction >= 1 ? 'done' : 'loading', progress: fraction });
+          });
         } catch (err) {
           w.dispose();
           throw err;
         }
+        // prepare() has finished every step, including any it did not report.
+        scene.setComponent('shaders', { status: 'done' });
+        scene.setComponent('labels', { status: 'done' });
+        scene.set({ slow: false });
         world = w;
         canvas.classList.add('is-ready');
-        scene.set({ status: 'ready', progress: 1, slow: false });
         performance.mark('cst:world');
         void enableHdIcons();
       })
       .catch((err: unknown) => {
         console.error('3D scene failed to load', err);
+        scene.setComponent(step, { status: 'error' });
         scene.set({
-          status: 'error',
           slow: false,
-          message: downloadFailed ? undefined : 'Trình duyệt không dựng được quán 3D (WebGL). Thử lại, hoặc mở bằng trình duyệt khác.',
+          message: step === 'code' ? undefined : 'Trình duyệt không dựng được quán 3D (WebGL). Thử lại, hoặc mở bằng trình duyệt khác.',
         });
       })
       .finally(() => {
@@ -207,7 +226,11 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         clearTimeout(slowTimer);
       });
   };
-  scene.onRetry = () => loadWorld(retryWorldModule());
+  scene.onRetry = (id) => {
+    if (id === 'fonts') fetchFonts();
+    else if (id === 'icons') retryIconAtlas();
+    else loadWorld(retryWorldModule());
+  };
   loadWorld(worldModule);
 }
 
