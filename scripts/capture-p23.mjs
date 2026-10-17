@@ -247,7 +247,11 @@ async function toJpeg({ png, quality }) {
 
 // --- Capture sessions. ---
 
-/** Number of rows `boxes` take: boxes whose vertical ranges overlap share a row. */
+/**
+ * Number of rows `boxes` take, as check-layout.mjs counts HUD rows: a box
+ * starts a new row when it begins below the shortest box of the current row
+ * (Điều khiển spans both rows on a phone).
+ */
 function rowCount(boxes) {
   let rows = 0;
   let bottom = -Infinity;
@@ -255,10 +259,13 @@ function rowCount(boxes) {
     if (b.y >= bottom - 2) {
       rows++;
       bottom = b.y + b.h;
-    } else bottom = Math.max(bottom, b.y + b.h);
+    } else bottom = Math.min(bottom, b.y + b.h);
   }
   return rows;
 }
+
+/** Scene strip (px) kept under a desktop HUD, so its labels have room off the HUD text. */
+const HUD_LABEL_ROOM = 170;
 
 /** HUD parts of each build: P22 pills (direct children of .hud-left / .hud-right), P23 clusters. */
 const HUD_SELS = {
@@ -353,6 +360,12 @@ async function reportSession(browser, url, save, viewport, who) {
     await resume(page, url, save, '.rpt-layer:not([hidden])');
     await page.locator('[data-block="money"]').first().waitFor();
     await sleep(1200);
+    // Focus on "Ngày tiếp theo" scrolls the P22 layer to its foot; both frames start at the top.
+    await page.evaluate(() => {
+      const layer = document.querySelector('.rpt-layer:not([hidden])');
+      for (const el of [layer, ...(layer?.querySelectorAll('*') ?? [])]) if (el && el.scrollTop > 0) el.scrollTop = 0;
+    });
+    await sleep(300);
     const out = { png: await shot(page), boxes: await page.evaluate(measureAll, REPORT_SELS), texts: await page.evaluate(measureTexts), overflow: await page.evaluate(reportOverflow) };
     progress(who, `report day ${REPORT_DAY} at ${viewport.width}: ${out.overflow} px below the fold`);
     return out;
@@ -507,7 +520,8 @@ async function hudBoard(browser, name, title, width, { base, cur }, prep) {
   return board(browser, name, {
     frames: [before(base.png, title), after(cur.png, title)],
     marks: keep(marks),
-    include: [...b.hud, ...a.hud],
+    // A desktop HUD is a thin strip: keep some scene under it for the labels.
+    include: [...b.hud, ...a.hud].map((r) => (width >= DESK.width ? { ...r, h: r.h + HUD_LABEL_ROOM } : r)),
     avoid: avoidTexts(base, cur),
     notes: [
       `Khổ ${width} px, ${prep ? `sáng ngày ${SAVE_DAY} (pha chuẩn bị)` : `ngày ${SAVE_DAY} giờ cao điểm (mở ở 4x, chụp ở 1x)`}, ván Vừa seed ${SEED}. P22: ${b.pills.length} khung pill rời trên ${rowCount(b.pills)} hàng. P23: ${a.clusters.length} cụm trên ${rowCount(a.clusters)} hàng; Hôm nay gồm ngày, tuần, thời tiết, giờ và dải pha; Tiến độ gồm tiền, sao, cấp và thanh KN; Điều khiển gồm nút pha hoặc tốc độ, dừng và menu camera/cài đặt.`,
@@ -531,7 +545,7 @@ async function reportBoard(browser, name, viewport, { base, cur }) {
     include: [...b.dialog, ...a.dialog],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${viewport.width}×${viewport.height}, báo cáo ngày ${REPORT_DAY} vừa mở, cửa sổ không nới thêm. P22: ô kết quả và ${Math.max(0, b.frames.length - 1)} khung mục, phải ${fold(base.overflow)}. P23: một hàng 4 ô (lãi/lỗ, doanh thu, khách, sao) mỗi ô kèm Δ so hôm qua và so trung bình tuần, một dòng tiến độ tuần, Thu chi bên cạnh nhiệm vụ, bán chạy và hết nguyên liệu; đánh giá chuyển sang tab Đánh giá. Mỗi bản dùng save do sim của chính nó chơi nên số có thể lệch nhau.`,
+      `Khổ ${viewport.width}×${viewport.height}, báo cáo ngày ${REPORT_DAY} vừa mở và cuộn về đầu, cửa sổ không nới thêm. P22: ô kết quả và ${Math.max(0, b.frames.length - 1)} khung mục, phải ${fold(base.overflow)}. P23: một hàng 4 ô (lãi/lỗ, doanh thu, khách, sao) mỗi ô kèm Δ so hôm qua và so trung bình tuần, một dòng tiến độ tuần, Thu chi bên cạnh nhiệm vụ, bán chạy và hết nguyên liệu; đánh giá chuyển sang tab Đánh giá. Mỗi bản dùng save do sim của chính nó chơi nên số có thể lệch nhau.`,
     ],
   });
 }
