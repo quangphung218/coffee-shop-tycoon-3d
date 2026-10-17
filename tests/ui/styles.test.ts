@@ -105,11 +105,12 @@ describe('ui.css icons (3D atlas)', () => {
     expect(ic).toMatch(/background-position:\s*var\(--ic-pos/);
   });
 
-  it('shows a still cream tile with a thin ink line until the atlas is in, without changing the box', () => {
+  it('shows a still sunken tile with an ink line until the atlas is in, only from tokens, without changing the box', () => {
     const wait = body('html:not(.icons-ready, .icons-hd) .ic');
-    expect(wait).toMatch(/background-color:\s*var\(--color-cream-200\)/);
-    expect(wait).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--border-strong\)/);
-    expect(wait).toMatch(/border-radius:/);
+    expect(wait).toMatch(/background-color:\s*var\(--surface-sunken\)/);
+    expect(wait).toMatch(/box-shadow:\s*inset 0 0 0 var\(--size-icon-stroke\) var\(--border-outline\)/);
+    expect(wait).toMatch(/border-radius:\s*var\(--radius-sm\)/);
+    expect(wait).not.toMatch(/#[0-9a-f]{3,8}\b|\d+(px|%)|--color-/i);
     expect(wait).not.toMatch(/animation|width|height|border:|margin|padding/);
   });
 

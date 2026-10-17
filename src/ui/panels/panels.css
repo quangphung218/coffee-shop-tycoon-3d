@@ -70,11 +70,43 @@
   background: var(--surface-sunken);
   border-top: var(--size-outline) solid var(--border-outline);
 }
-/* Short body (phone at 390, a HUD on four rows): the Kho foot is ~190px of a
-   ~210-270px body, so sticking it would cover Auto-restock and the list
-   (P22 review layout-blocked-suggest-390). It scrolls with the list instead,
-   still last and still on the bottom border when the list is short. */
+/* Short body (phone at 390, a HUD on four rows, body ~207-270px): the full
+   Kho foot is ~190px and would cover Auto-restock and the list (P22 review
+   layout-blocked-suggest-390). The foot stays stuck but packs down: the two
+   totals share one row, the buy button drops to the 44px target. Every cell
+   has a fixed width and line count, so a new total never moves the button. */
 @container panel-body (max-height: 30rem) {
+  .prep .panel-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+  .prep .panel-foot > :not(.foot-sum),
+  .prep .panel-foot > .foot-sum:only-of-type {
+    grid-column: 1 / -1;
+  }
+  .prep .panel-foot > .foot-sum:not(:only-of-type) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0;
+    line-height: var(--line-height-tight);
+  }
+  .prep .panel-foot > .btn-lg {
+    min-height: var(--size-target);
+    padding: 0 var(--space-3);
+    font-size: var(--font-size-md);
+  }
+  .prep .panel-foot > .foot-hint {
+    margin-top: 0;
+    line-height: var(--line-height-tight);
+  }
+}
+/* Body under 12rem (a low landscape screen): even the packed foot (~145px)
+   would leave no room for the list, so it scrolls with the list instead,
+   still last and still on the bottom border when the list is short. */
+@container panel-body (max-height: 12rem) {
   .prep .panel-foot {
     position: static;
   }

@@ -65,7 +65,7 @@ v0.4.0 khoanh nét đứt cam, P22 nét liền xanh.
 | Id | Đã sửa gì | Test |
 | --- | --- | --- |
 | ui-icons-blank-390, ui-icons-blank-1440 | Ô icon hiện ô chờ màu kem tới khi atlas @1x tải xong; atlas @2x chỉ tải sau khi cảnh 3D hiện (`cst:world`). Bảng: 0/5 ô trống (v0.4.0 5/5). | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts`, `tests/ui/styles.test.ts` |
-| layout-blocked-suggest-390 | Thân bảng có chân thấp dưới 30rem thì chân không dính mà cuộn sau danh sách; desktop, tablet giữ chân dính. Bảng: nút Gợi ý chạm được, 1/12 dòng chạm được khi cuộn (v0.4.0 0/12). | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` |
+| layout-blocked-suggest-390 | Thân bảng có chân thấp dưới 30rem thì chân vẫn dính đáy nhưng gọn (hai tổng chung một hàng, nút Nhập hàng 44 px); chỉ dưới 12rem chân mới cuộn sau danh sách; desktop, tablet giữ chân đầy đủ. Bảng: nút Gợi ý chạm được, 1/12 dòng chạm được khi cuộn (v0.4.0 0/12). | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` |
 | actors-persona-motion | Mỗi cá tính có dáng đi và thói quen lúc chờ riêng (văn phòng xem điện thoại, sinh viên tay đút túi, sành cà phê chắp tay sau lưng, gia đình nhìn quanh); tốc độ và đường đi không đổi. | `tests/render/actors.test.ts` |
 | actors-persona-accessory | Khách quen đội mũ len tím, gia đình xách túi vải vàng; dùng chung ô mesh phụ kiện, không đổ bóng. | `tests/render/actors.test.ts` |
 | actors-impatient-silhouette | Khách sốt ruột khoanh tay, gõ chân 0,5 rad (trước 0,35), mỗi vòng gỡ tay xem đồng hồ. | `tests/render/actors.test.ts` |

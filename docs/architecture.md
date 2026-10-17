@@ -61,7 +61,7 @@ Thứ tự tải atlas (`src/main.ts`):
 
 | Lúc | Việc | Ô `.ic` hiện |
 | --- | --- | --- |
-| Đầu `start()` (Main Menu hiện) | | Ô chờ: nền `--color-cream-200`, viền `--border-strong`, bo 30%, đứng yên |
+| Đầu `start()` (Main Menu hiện) | | Ô chờ: nền `--surface-sunken`, viền trong `--size-icon-stroke` màu `--border-outline`, bo `--radius-sm`, đứng yên |
 | Chunk `import('./render/scene')` (gọi sau khi menu đã vẽ) tải xong hoặc lỗi | `watchIconAtlas()` tải `atlas@1x.webp`, `fetchPriority = 'low'` | Vẫn ô chờ |
 | @1x tải xong (`html.icons-ready`) | | Ô của atlas @1x |
 | Sau `performance.mark('cst:world')` | `enableHdIcons()` tải `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |

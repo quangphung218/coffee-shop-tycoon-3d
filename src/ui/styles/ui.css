@@ -45,9 +45,9 @@
   transition: transform var(--duration-fast) var(--easing-bounce);
 }
 html:not(.icons-ready, .icons-hd) .ic {
-  border-radius: 30%;
-  background-color: var(--color-cream-200);
-  box-shadow: inset 0 0 0 1px var(--border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-sunken);
+  box-shadow: inset 0 0 0 var(--size-icon-stroke) var(--border-outline);
 }
 html.icons-ready .ic {
   background-image: url('/icons3d/atlas@1x.webp');
