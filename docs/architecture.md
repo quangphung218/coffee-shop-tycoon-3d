@@ -473,7 +473,7 @@ Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon 
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `public/icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
 | `public/icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
-| `public/icons3d/tiers.json` + `public/icons3d/tiers@1x.webp` hoặc `public/icons3d/tiers@2x.webp` (tải từ `TIER_ATLAS_URLS`) | 8,8 kB + 40,8 kB hoặc 96,2 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có, hoặc thêm @2x khi `icons-hd` bật sau |
+| `public/icons3d/tiers.json` + `public/icons3d/tiers@1x.webp` hoặc `public/icons3d/tiers@2x.webp` (tải từ `TIER_ATLAS_URLS`) | 8,8 kB + 40,6 kB hoặc 95,7 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có, hoặc thêm @2x khi `icons-hd` bật sau |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
