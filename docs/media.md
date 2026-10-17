@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -280,6 +280,37 @@ Nhãn trên ba bảng nhân vật cao 2,2% bề rộng bảng (tối thiểu 15 
 
 Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm `no subject within 150 s` (không tìm được khách cho cận cảnh; khung đó bị bỏ) và bảng trên 600 kB sau 4 lần thu nhỏ. Có `!!` thì lệnh kết thúc với mã 1: sửa rồi chạy lại trước khi dùng bảng.
 
+## Ảnh trước/sau P23
+
+```sh
+npm run media:p23
+```
+
+Lệnh build bản hiện tại, xuất P22 `f9508d8` ra thư mục tạm và build nó, mở `vite preview` cho bản hiện tại ở `4173` và P22 ở `4174`, rồi `scripts/capture-p23.mjs` chụp cả hai bản ở 390×844 và 1280×720. P22 khoanh nét đứt cam, P23 nét liền xanh, nhãn ghi chỗ đã đổi. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `f9508d8`.
+
+1. Sim của mỗi bản chơi ván Vừa của chính nó (seed `MEDIA_SEED >>> 0`, nhập hàng theo gợi ý, tự phục vụ) và in bảng ngày: P23 tới ngày 14, P22 tới ngày 7. Ván lưu ở sáng ngày 2, báo cáo ngày 3, báo cáo ngày 7 và (P23) báo cáo ngày 14, nạp qua **Tiếp tục**.
+2. Sáng ngày 2: chụp HUD pha chuẩn bị ở hai khổ, **Mở cửa** ở 4x tới cao điểm, về 1x rồi chụp HUD ở hai khổ.
+3. Báo cáo ngày 3 vừa mở, cửa sổ không nới thêm: chụp và đo số px phải cuộn.
+4. Báo cáo ngày 7 (và ngày 14) → **Xem kết tuần**: chụp tổng kết tuần, cửa sổ nới cao cho vừa cả hộp.
+5. Main Menu tải không cache qua Slow 4G (150 ms RTT, 1,6 Mbps, CPU 4x), `three-*.js` giữ 11 s như `npm run media:loading`, từng bản một: chụp lúc cảnh 3D đang tải.
+
+Mười hai bảng JPEG chất lượng 75, mỗi file ghi vào cả `docs/media/` và `docs/reports/p23-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
+
+| File | Nội dung |
+| --- | --- |
+| `hud-prep-<w>-p23.jpg` | HUD pha chuẩn bị: P22 khoanh từng khung pill và dòng ghi chú; P23 khoanh 3 cụm và nút Mở cửa. Nhãn ghi số khung, số cụm và số hàng. |
+| `hud-peak-<w>-p23.jpg` | HUD giờ cao điểm: như trên, thêm nút Camera và Cài đặt riêng (P22) cạnh menu gộp (P23). |
+| `report-day3-<w>-p23.jpg` | Báo cáo ngày 3: P22 khoanh các khung mục; P23 khoanh 4 ô số chính, dòng Δ so hôm qua, Δ so TB tuần và tiến độ tuần. Nhãn ghi số px phải cuộn hoặc "vừa một màn". |
+| `week1-<w>-p23.jpg` | Tổng kết tuần 1: bảng 7 ngày và nút Chơi lại (P22); biểu đồ cột, thưởng cúp, khối tuần sau và nút **Sang tuần 2** (P23). |
+| `week2-<w>-p23.jpg` | Màn kết tuần 1 của P22 (ván dừng sau ngày 7) cạnh tổng kết tuần 2 của P23: bảng so với tuần 1 và nút **Sang tuần 3**. |
+| `loading-<w>-p23.jpg` | Main Menu đang tải: một thanh % (P22) cạnh danh sách thành phần, mỗi dòng % riêng (P23). |
+
+Bảng dùng trong [báo cáo P23 giao diện](reports/p23-ui.md). Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm bảng trên 600 kB. Có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in bảng ngày, không mở server hay trình duyệt:
+
+```sh
+P23_SAVES_ONLY=1 node scripts/capture-p23.mjs
+```
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -293,6 +324,9 @@ Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm
 | `P21_WEEK_ONLY` | (trống) | `1` để `scripts/capture-p21.mjs` chỉ in bảng tuần rồi dừng. |
 | `P22_BASE` | `f720b6f` | Commit "trước" mà `npm run media:p22` so với bản hiện tại. |
 | `P22_SEED` | seed của `review:p22` | Seed của tuần mà `npm run media:p22` dựng ván ngày 2. |
+| `P23_BASE` | `f9508d8` | Commit "trước" mà `npm run media:p23` so với bản hiện tại. |
+| `P23_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p23` chơi trên sim mỗi bản. |
+| `P23_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p23.mjs` chỉ chơi ván, in bảng ngày rồi dừng. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
 
@@ -317,6 +351,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | `review:p22` hết thời gian một bước chờ cao điểm hay báo cáo | WebGL phần mềm vẽ chậm làm ngày game chậm theo; chạy `REVIEW_VIEWPORTS=390` rồi `REVIEW_VIEWPORTS=1440`, hoặc `MEDIA_HEADED=1`. |
 | `no P22 board for <id>: add a builder in scripts/capture-p22.mjs` | `fixed-ui.json` hoặc `fixed-actors.json` có mục mới; thêm hàm dựng bảng cho id đó trong `fixedBoards()`. |
 | `git archive f720b6f failed` hoặc `vite build of f720b6f failed` | Như dòng `d643d89` ở trên: `git fetch --unshallow`, hoặc `npm ci` rồi thử lại. |
+| `npm run media:p23` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện đã đổi; sửa selector trong `scripts/capture-p23.mjs` (`HUD_SELS`, `REPORT_SELS`, `WEEK_SELS`, `LOADING_SELS`, `[data-action="week-end"]`, `[data-speed]`). `git archive f9508d8 failed`: `git fetch --unshallow`. |
 | `!! <bảng>-p22.png: no subject within 150 s` | Cao điểm không có khách hợp cận cảnh (cá tính, mặt sốt ruột, đứng yên); chạy lại, hoặc đổi `P22_SEED`. |
 
 ## Kiểm lề và CLS
