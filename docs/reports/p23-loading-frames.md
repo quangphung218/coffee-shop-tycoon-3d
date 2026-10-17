@@ -41,7 +41,20 @@ Hai cấu hình như `measure-startup.mjs`: máy bàn không giới hạn, và d
 
 - Long task trong 5 s đầu giảm: máy bàn 73 → 0 ms, di động 275 → 135 ms.
 - Frame time giống nhau ở hai bản vì headless khoá nhịp khung (xem [Cách đo](#cách-đo)).
-- Cảnh 3D di động chậm thêm 1051 ms: `prebuild()` chờ atlas @2x (289 kB) qua mạng 1,6 Mbps. Bản hiện tại bỏ bước chờ đó.
+- Cảnh 3D di động chậm thêm 1051 ms: `prebuild()` chờ atlas @2x (289 kB) qua mạng 1,6 Mbps. `0205afe` bỏ bước chờ đó.
+
+Đo lại sau `0205afe`, cùng lệnh và cùng máy:
+
+| Cấu hình | Bản | Cảnh 3D | Frame p50 | p95 | Max | Frame > 50 ms | Long task (số / tổng) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Máy bàn | `f9508d8` | 184 ms | 83 ms | 133 ms | 133 ms | 43 | 0 / 0 ms |
+| Máy bàn | `0205afe` | 298 ms | 83 ms | 133 ms | 150 ms | 44 | 0 / 0 ms |
+| Di động, CPU 4x | `f9508d8` | 3043 ms | 67 ms | 133 ms | 133 ms | 40 | 0 / 0 ms |
+| Di động, CPU 4x | `0205afe` | 3173 ms | 67 ms | 117 ms | 133 ms | 45 | 0 / 0 ms |
+
+- Cảnh 3D di động chậm hơn bản cũ 130 ms (4%), trong ngưỡng 10%. Máy bàn chậm hơn 114 ms: khung warm-up và `initTexture` chạy trước `cst:world`.
+- Lần đo này không có long task ở cả hai bản. Hai lần đo cộng lại cho thấy long task chỉ thỉnh thoảng xuất hiện trên M2 ở headless, nên chưa đủ để kết luận phần warm-up làm giảm chúng.
+- Số khung > 50 ms dao động 34–54 mỗi lần ở cả hai bản, do headless khoá nhịp khung.
 
 ## Thay đổi và nguồn giật
 
