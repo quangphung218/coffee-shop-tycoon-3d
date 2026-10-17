@@ -301,7 +301,10 @@ export function enableHdIcons(
 ): Promise<void> {
   if (win.devicePixelRatio <= 1) return Promise.resolve();
   return load().then(
-    (url) => useAtlas(root, url, ICONS_HD_CLASS),
+    (url) => {
+      useAtlas(root, url, ICONS_HD_CLASS);
+      upgradeTierAtlas(root);
+    },
     () => {},
   );
 }
@@ -339,6 +342,10 @@ interface TierManifest {
 
 let tierManifest: TierManifest | null = null;
 let tierLoad: Promise<boolean> | undefined;
+/** Scale of the tiers image TIER_ATLAS_VAR points at, once loaded. */
+let tierScale: 1 | 2 | undefined;
+/** The @2x tiers image load that replaces a loaded @1x one (upgradeTierAtlas). */
+let tierHdLoad: Promise<void> | undefined;
 /**
  * Icons drawn with their base look while the load runs; they switch when it
  * lands. Held weakly, so a panel closed meanwhile does not keep its nodes.
@@ -380,12 +387,43 @@ function okResponse(res: Response): Response {
   return res;
 }
 
+/** Points TIER_ATLAS_VAR at a fetched tiers image, decoded first as hdAtlasUrl does, so no box shows empty. */
+async function useTierImage(root: HTMLElement, blob: Blob): Promise<void> {
+  const url = URL.createObjectURL(blob);
+  if (typeof Image !== 'undefined') {
+    const img = new Image();
+    img.src = url;
+    if (typeof img.decode === 'function') await img.decode().catch(() => {});
+  }
+  root.style.setProperty(TIER_ATLAS_VAR, `url("${url}")`);
+}
+
+/**
+ * Once `root` has ICONS_HD_CLASS and the tiers atlas is loaded at @1x, swaps
+ * in the @2x image, fetched once. The manifest cells are in % of the image,
+ * so the drawn icons stay put. A failed fetch keeps @1x and is tried again on
+ * the next call.
+ */
+function upgradeTierAtlas(root: HTMLElement): void {
+  if (tierScale !== 1 || tierHdLoad || !root.classList.contains(ICONS_HD_CLASS)) return;
+  tierHdLoad = fetch(TIER_ATLAS_URLS[2])
+    .then(okResponse)
+    .then((res) => res.blob())
+    .then((blob) => useTierImage(root, blob))
+    .then(() => {
+      tierScale = 2;
+    })
+    .catch(() => {
+      tierHdLoad = undefined;
+    });
+}
+
 /**
  * Loads the tiers atlas on first call: tiers.json and the @1x image (@2x when
  * `root` already has ICONS_HD_CLASS), then sets TIER_ATLAS_VAR and switches
- * the icons tierIcon() drew meanwhile. Resolves true once loaded, false on
- * failure; a failed load keeps the base icons and is tried again on the next
- * call.
+ * the icons tierIcon() drew meanwhile. A @1x load moves to @2x when HD comes
+ * on (upgradeTierAtlas). Resolves true once loaded, false on failure; a
+ * failed load keeps the base icons and is tried again on the next call.
  */
 export function loadTierAtlas(root: HTMLElement = document.documentElement): Promise<boolean> {
   if (!tierLoad) {
@@ -399,15 +437,11 @@ export function loadTierAtlas(root: HTMLElement = document.documentElement): Pro
         ]),
       )
       .then(async ([manifest, blob]) => {
-        const url = URL.createObjectURL(blob);
-        // Decoded before the switch, as hdAtlasUrl does, so no box shows empty.
-        if (typeof Image !== 'undefined') {
-          const img = new Image();
-          img.src = url;
-          if (typeof img.decode === 'function') await img.decode().catch(() => {});
-        }
-        root.style.setProperty(TIER_ATLAS_VAR, `url("${url}")`);
+        await useTierImage(root, blob);
         tierManifest = manifest;
+        tierScale = scale;
+        // HD may have come on while the @1x image loaded.
+        upgradeTierAtlas(root);
         for (const w of tierWaiting) {
           const el = w.el.deref();
           if (el?.isConnected) useTierCell(el, manifest, w.id, w.size);

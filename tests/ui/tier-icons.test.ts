@@ -123,6 +123,59 @@ describe('loading', () => {
     expect(tierRequests().map((r) => r.url)).toContain(icons.TIER_ATLAS_URLS[2]);
     expect(tierRequests().map((r) => r.url)).not.toContain(icons.TIER_ATLAS_URLS[1]);
   });
+
+  const hdRequests = (): Request[] => requests.filter((r) => r.url === icons.TIER_ATLAS_URLS[2]);
+  const enableHd = (): Promise<void> => icons.enableHdIcons(html, { devicePixelRatio: 2 }, () => Promise.resolve('blob:atlas-hd'));
+
+  it('moves a loaded @1x image to @2x once when HD comes on later', async () => {
+    open(game({}));
+    await deliverTiers();
+    expect(html.style.getPropertyValue(icons.TIER_ATLAS_VAR)).toBe('url("blob:tiers-1")');
+    expect(hdRequests()).toHaveLength(0);
+
+    await enableHd();
+    await enableHd();
+    open(game({}));
+    await deliverTiers();
+    expect(hdRequests()).toHaveLength(1);
+    expect(html.classList.contains(icons.ICONS_HD_CLASS)).toBe(true);
+    expect(html.style.getPropertyValue(icons.TIER_ATLAS_VAR)).toBe('url("blob:tiers-2")');
+
+    await enableHd();
+    await settle();
+    expect(hdRequests()).toHaveLength(1);
+  });
+
+  it('moves to @2x when HD comes on while the @1x image is loading', async () => {
+    open(game({}));
+    await settle();
+    await enableHd();
+    await deliverTiers();
+    await deliverTiers();
+    expect(hdRequests()).toHaveLength(1);
+    expect(html.style.getPropertyValue(icons.TIER_ATLAS_VAR)).toBe('url("blob:tiers-2")');
+  });
+
+  it('keeps @1x when the @2x fetch fails, and tries again on the next HD switch', async () => {
+    open(game({}));
+    await deliverTiers();
+    await enableHd();
+    await deliverTiers(404);
+    expect(html.style.getPropertyValue(icons.TIER_ATLAS_VAR)).toBe('url("blob:tiers-1")');
+
+    await enableHd();
+    await deliverTiers();
+    expect(hdRequests()).toHaveLength(2);
+    expect(html.style.getPropertyValue(icons.TIER_ATLAS_VAR)).toBe('url("blob:tiers-2")');
+  });
+
+  it('asks for nothing more on a 1x screen', async () => {
+    open(game({}));
+    await deliverTiers();
+    await icons.enableHdIcons(html, { devicePixelRatio: 1 }, () => Promise.resolve('blob:atlas-hd'));
+    await settle();
+    expect(hdRequests()).toHaveLength(0);
+  });
 });
 
 describe('row icons', () => {

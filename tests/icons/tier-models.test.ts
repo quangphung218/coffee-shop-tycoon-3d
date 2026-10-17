@@ -1,8 +1,15 @@
 import { Box3, Mesh, type Object3D, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { MACHINE_TIER_COLORS } from '../../src/icon-studio/models/shop';
 import { type Tier, upgradeModel } from '../../src/icon-studio/models/tiers';
-import { mat, type Pose, POSES } from '../../src/icon-studio/style';
+import { mat, PALETTE, type PaletteKey, type Pose, POSES } from '../../src/icon-studio/style';
+import { PALETTE as SCENE_PALETTE } from '../../src/render/scene/palette';
 import { UPGRADE_ICONS } from '../../src/ui/core/iconMap';
+
+const FS_MODULE = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
 
 // P25 fix: tiers 2 and 3 redraw the thing itself (no plinth under it, no
 // badge beside it), so the stage frames it as big as the tier 1 icon.
@@ -87,4 +94,52 @@ describe('upgrade tier models', () => {
   it('use steel trim at tier 2', () => {
     for (const id of IDS) expect(meshes(upgradeModel(id, 2)).some((m) => m.material === mat('skyLight')), id).toBe(true);
   });
+});
+
+/** [body, accent] per better_machine level, read from MACHINE_TIERS in the scene source so the test follows it. */
+function sceneMachineTiers(): (readonly [number, number])[] {
+  const src = readFileSync('src/render/scene/equipment.ts', 'utf8');
+  const table = src.match(/const MACHINE_TIERS[^=]*=\s*\[([\s\S]*?)\n\];/)?.[1] ?? '';
+  const hex = (v: string): number => (v.startsWith('0x') ? parseInt(v, 16) : SCENE_PALETTE[v.replace('PALETTE.', '') as keyof typeof SCENE_PALETTE]);
+  return [...table.matchAll(/\[\s*([\w.]+)\s*,\s*([\w.]+)\s*\]/g)].map((m) => [hex(m[1]!), hex(m[2]!)] as const);
+}
+
+/** The icon token nearest (RGB distance) to a scene colour. */
+function nearestToken(hex: number): PaletteKey {
+  const rgb = (n: number) => [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const dist = (k: PaletteKey) => {
+    const [a, b] = [rgb(hex), rgb(parseInt(PALETTE[k].slice(1), 16))];
+    return a.reduce((s, v, i) => s + (v - b[i]!) ** 2, 0);
+  };
+  return (Object.keys(PALETTE) as PaletteKey[]).reduce((best, k) => (dist(k) < dist(best) ? k : best));
+}
+
+/** The biggest mesh by box volume: the machine body. */
+function body(model: Object3D): Mesh {
+  model.updateMatrixWorld(true);
+  const volume = (m: Mesh) => new Box3().setFromObject(m, true).getSize(new Vector3()).toArray().reduce((a, b) => a * b, 1);
+  return meshes(model).reduce((best, m) => (volume(m) > volume(best) ? m : best));
+}
+
+describe('machine tier colours', () => {
+  // better_machine has maxLevel 3, so look tier n is level n: MACHINE_TIERS[n].
+  const tiers = sceneMachineTiers();
+
+  it('read the scene table', () => {
+    expect(tiers).toHaveLength(4);
+  });
+
+  for (const id of ['i-machine', 'i-fast-machine'] as const) {
+    it(`${id} tiers 2 and 3 take the body and accent colours of the scene at that tier`, () => {
+      const base = body(upgradeModel(id, 1)).material;
+      for (const tier of [2, 3] as const) {
+        const [sceneBody, sceneAccent] = tiers[tier]!;
+        const model = upgradeModel(id, tier);
+        expect(MACHINE_TIER_COLORS[tier]).toEqual([nearestToken(sceneBody), nearestToken(sceneAccent)]);
+        expect(body(model).material, `${id} t${tier} body`).toBe(mat(nearestToken(sceneBody)));
+        expect(body(model).material, `${id} t${tier} body`).not.toBe(base);
+        expect(meshes(model).some((m) => m.material === mat(nearestToken(sceneAccent))), `${id} t${tier} accent`).toBe(true);
+      }
+    });
+  }
 });

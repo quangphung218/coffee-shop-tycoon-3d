@@ -43,22 +43,34 @@ export function tables(tier: Tier = 1): Group {
 }
 
 /**
+ * Body and accent colours of the machine icons at tiers 2 and 3: the nearest
+ * tokens to the scene's MACHINE_TIERS (src/render/scene/equipment.ts) at
+ * better_machine level 2 (mint 0x2fb898, gold 0xf2c14e) and level 3 (gold,
+ * dark brown 0x3b2418). Tier 1 keeps the sky body of the main atlas.
+ */
+export const MACHINE_TIER_COLORS: Readonly<Record<2 | 3, readonly [PaletteKey, PaletteKey]>> = {
+  2: ['mint', 'honey'],
+  3: ['honey', 'ink'],
+};
+
+/**
  * Espresso machine: sky body, group head, cup on the tray, honey button.
- * Tier 2 adds a pressure gauge and a steel top and tray; tier 3 turns them
- * gold and adds a star on the front.
+ * Tier 2 has a mint body, a pressure gauge, a honey top and a steel tray;
+ * tier 3 a honey body, a dark top, a gold tray and a star on the front.
  */
 function machineBody(tier: Tier = 1): Group {
-  const body = at(part(box(1.3, 1.3, 0.9, 0.1), 'sky'), 0, 0.85);
+  const color = tier === 1 ? 'sky' : MACHINE_TIER_COLORS[tier][0];
+  const body = at(part(box(1.3, 1.3, 0.9, 0.1), color), 0, 0.85);
   const tray = at(part(box(1.1, 0.12, 0.7, 0.04), trim(tier, 'creamDeep')), 0, 0.06, 0.1);
   const head = at(part(new CylinderGeometry(0.16, 0.16, 0.2, 10), 'coffeeDark'), 0, 0.85, 0.5);
   const cup = at(part(lathe([[0, 0], [0.14, 0], [0.2, 0.28], [0, 0.28]]), 'cream'), 0, 0.12, 0.5);
   const button = at(part(new SphereGeometry(0.1, 8, 6), 'honey'), 0.4, 1.25, 0.46);
-  const lip = at(part(box(1.3, 0.3, 0.12, 0.05), 'sky'), 0, 0.35, 0.4);
+  const lip = at(part(box(1.3, 0.3, 0.12, 0.05), color), 0, 0.35, 0.4);
   const g = group(body, tray, head, cup, button, lip);
   if (tier === 1) return g;
   const gauge = at(part(disc(0.2, 0.08, 18), 'cream'), -0.35, 1.18, 0.47);
   const needle = at(part(box(0.05, 0.2, 0.03, 0.01), 'coral', { outline: false }), -0.32, 1.22, 0.52, -0.6);
-  const lid = at(part(box(1.38, 0.1, 0.98, 0.04), trim(tier, 'sky')), 0, 1.5);
+  const lid = at(part(box(1.38, 0.1, 0.98, 0.04), MACHINE_TIER_COLORS[tier][1]), 0, 1.5);
   g.add(gauge, needle, lid);
   if (tier === 3) g.add(at(tierStar(0.2), 0.4, 0.8, 0.48));
   return g;
@@ -71,21 +83,21 @@ function hopper(x: number, y: number, color: PaletteKey): Group {
   return at(group(cone, beans), x, y);
 }
 
-/** i-machine: the espresso machine; one steel bean hopper on top at tier 2, two gold ones at tier 3. */
+/** i-machine: the espresso machine; one bean hopper on top at tier 2, two at tier 3, in the accent colour like the scene's. */
 export function machine(tier: Tier = 1): Group {
   const g = machineBody(tier);
-  if (tier === 2) g.add(hopper(-0.3, 1.55, 'skyLight'));
-  if (tier === 3) g.add(hopper(-0.32, 1.55, 'honeyDeep'), hopper(0.32, 1.55, 'honeyDeep'));
+  if (tier === 2) g.add(hopper(-0.3, 1.55, MACHINE_TIER_COLORS[2][1]));
+  if (tier === 3) g.add(hopper(-0.32, 1.55, MACHINE_TIER_COLORS[3][1]), hopper(0.32, 1.55, MACHINE_TIER_COLORS[3][1]));
   return g;
 }
 
-/** i-fast-machine: the machine with a honey lightning bolt in front; a steam wand from tier 2, a gold dome at tier 3. */
+/** i-fast-machine: the machine with a honey lightning bolt in front; a steam wand from tier 2, a dome in the body colour at tier 3. */
 export function fastMachine(tier: Tier = 1): Group {
   const bolt = at(part(extrude(polygon([[0.1, 0.75], [-0.35, 0], [-0.02, 0], [-0.15, -0.65], [0.35, 0.12], [0.02, 0.12]]), 0.16, 0.04), 'honey'), 0.7, 1.0, 0.45);
   const g = machineBody(tier);
   g.position.x = -0.15;
   if (tier >= 2) g.add(at(part(new CylinderGeometry(0.05, 0.05, 0.6, 6), trim(tier, 'sky')), -0.72, 0.6, 0.3, -0.35));
-  if (tier === 3) g.add(at(part(new SphereGeometry(0.34, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 'honeyDeep'), 0, 1.55));
+  if (tier === 3) g.add(at(part(new SphereGeometry(0.34, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), MACHINE_TIER_COLORS[3][0]), 0, 1.55));
   return group(g, bolt);
 }
 

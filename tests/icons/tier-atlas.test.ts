@@ -99,7 +99,8 @@ describe('tier models', () => {
     expect(colours(t2).has(mat('skyLight'))).toBe(true);
     expect(colours(t2).has(mat('honeyDeep'))).toBe(false);
     expect(colours(t3).has(mat('honeyDeep'))).toBe(true);
-    expect(honeyParts(t3)).toBe(honeyParts(MODELS['i-machine']!()) + 1);
+    // Tier 3 adds the star and paints the body and its lip honey (MACHINE_TIER_COLORS).
+    expect(honeyParts(t3)).toBe(honeyParts(MODELS['i-machine']!()) + 3);
   });
 });
 
