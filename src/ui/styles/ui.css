@@ -1275,16 +1275,22 @@ legend {
   align-items: center;
   gap: var(--space-2);
 }
+/* The button is a full 44 px target; a transparent border above and below
+   (--pill-inset) keeps the painted label --size-control-sm high. */
 .phase-pill {
+  --pill-inset: calc((var(--size-target) - var(--size-control-sm)) / 2);
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--size-control-sm);
+  min-width: var(--size-target);
+  min-height: var(--size-target);
   padding: 0 var(--space-3) 0 var(--space-1);
-  border: 0;
+  border: var(--pill-inset) solid transparent;
+  border-inline-width: 0;
   border-radius: var(--label-radius);
   background: var(--accent-primary);
+  background-clip: padding-box;
   color: var(--text-primary);
   box-shadow: var(--label-shadow);
   font: inherit;
@@ -1292,16 +1298,6 @@ legend {
   font-weight: var(--font-weight-heavy);
   white-space: nowrap;
   cursor: pointer;
-}
-/* Invisible hit area: at least 44 px each way around the smaller pill. */
-.phase-pill::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: max(100%, var(--size-target));
-  height: max(100%, var(--size-target));
-  transform: translate(-50%, -50%);
 }
 .phases {
   position: absolute;
@@ -2022,7 +2018,7 @@ legend {
 .hud-menu-item {
   --bw: var(--size-outline-sm);
 }
-/* The phase label has no border: the ring sits just inside its edge. */
+/* The phase pill's border is only its transparent inset: the ring sits just inside the 44 px box. */
 .phase-pill {
   --bw: 0px;
 }
@@ -2040,6 +2036,10 @@ legend {
   border-color: var(--focus-ring);
   outline: var(--size-focus-width) solid var(--focus-ring);
   outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}
+/* The pill's border is only its transparent inset: the ring alone marks focus. */
+.phase-pill:focus-visible {
+  border-color: transparent;
 }
 .input:focus-visible {
   caret-color: var(--focus-ring);
@@ -2123,8 +2123,12 @@ legend {
   .hud-controls > .speed-cycle {
     display: inline-flex;
   }
+  /* The label paints one icon high; the 44 px target overhangs the clock
+     above and the frame edge below (negative margins), so the row keeps its
+     height. */
   .phase-pill {
-    min-height: 0;
+    --pill-inset: calc((var(--size-target) - var(--size-icon-sm)) / 2);
+    margin-block: calc(-1 * var(--pill-inset));
     padding: 0 var(--space-2) 0 var(--size-group-gap);
     font-size: var(--font-size-caption);
   }

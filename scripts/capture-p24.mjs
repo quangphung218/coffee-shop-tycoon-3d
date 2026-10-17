@@ -6,27 +6,35 @@
 //
 // Boards (JPEG quality 75, in docs/reports/p24-review only), one per width
 // <w> of 390 and 1280, all on day 3 of week 1 (Hội chợ) unless noted:
-//   hud-prep-<w>-p24.jpg    HUD in preparation, Nước cam just switched on
+//   hud-prep-<w>-p24.jpg    HUD in preparation
 //   hud-peak-<w>-p24.jpg    the same day at the peak (opened at 4x, then 1x)
+//   phases-<w>-p24.jpg      the peak with the phase list opened from the pill
 //   dock-<w>-p24.jpg        the dock in preparation
+//   menu-<w>-p24.jpg        Menu after a click on the Nước cam switch, no Cam in stock
+//   panel-<w>-p24.jpg       the same side panel: its frame and shadow
 //   kho-<w>-p24.jpg         Kho after Gợi ý, the Cam row in view
 //   toast-<w>-p24.jpg       Kho after two Nhập hàng in a row (the suggestion, then one more pack of Ly)
-//   menu-<w>-p24.jpg        Menu with Nước cam on and no Cam in stock
 //   staff-<w>-p24.jpg       Nhân viên
 //   upgrades-<w>-p24.jpg    Nâng cấp
 //   report-<w>-p24.jpg      Daily Report of day 3, the window not grown
 //   week1-<w>-p24.jpg       week 1 summary after day 7, the window grown to fit
 //
 // Each build plays its own saves with its own sim (Normal, the same seed, the
-// basic strategy of tests/integration/helpers.ts, restock as suggested,
-// Nước cam switched on on day 3 and Bánh ngọt on day 6), so a save always
-// matches the build that loads it. Both print what Gợi ý suggests on those
-// mornings: the P23 sim leaves out Cam, Bột bánh and Bơ. P24_SAVES_ONLY=1
-// plays the saves and prints them, without a server or browser.
+// basic strategy of tests/integration/helpers.ts, restock as suggested), so a
+// save always matches the build that loads it. The mornings of day 3 and day
+// 6 are saved before anything is switched on; in the browser the playtest
+// clicks the Menu switch (Nước cam on day 3, Bánh ngọt on day 6), presses Gợi
+// ý in Kho, reads which rows it filled, presses Nhập hàng and counts the spend
+// toasts. The P24 build must switch the item on, tag Cam (day 3), Bột bánh
+// and Bơ (day 6) in Gợi ý and show one merged toast; anything else is a `!!`.
+// After each saved morning the sim switches the same item on, so later days
+// sell it. The sim's own suggestion is printed beside the days as a cross
+// check. P24_SAVES_ONLY=1 plays the saves and prints them, without a server
+// or browser.
 //
 // Prints `!!` for a label with nothing to ring, a ring around a flat area or
-// mostly off the frame, a label that covers text, and a board over MAX_BYTES;
-// any `!!` ends the run with exit code 1.
+// mostly off the frame, a label that covers text, a board over MAX_BYTES and a
+// failed playtest; any `!!` ends the run with exit code 1.
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -49,10 +57,19 @@ const DIFFICULTY = 'normal';
 /** Day 3 of week 1: Hội chợ, and Nước cam opens. Morning shots and the Daily Report. */
 const SAVE_DAY = 3;
 const WEEK = 7;
-/** Menu items switched on in the morning of a day, before the restock. */
-const ENABLE = { 3: 'orange_juice', 6: 'cake' };
+/**
+ * Menu items switched on in the morning of a day, before the restock: its
+ * switch label, and the ingredients only it uses, which Gợi ý must then list.
+ */
+const ENABLE = {
+  3: { item: 'orange_juice', name: 'Nước cam', needs: ['orange'] },
+  6: { item: 'cake', name: 'Bánh ngọt', needs: ['flour', 'butter'] },
+};
 /** Ingredients only those items use; printed with each suggestion. */
 const WATCH = ['orange', 'flour', 'butter'];
+const WATCH_NAMES = { orange: 'Cam', flour: 'Bột bánh', butter: 'Bơ' };
+/** Day whose morning save the Bánh ngọt playtest loads. */
+const CAKE_DAY = 6;
 /** Upper bound on simulated minutes per day (tests/integration/helpers.ts DAY_GUARD). */
 const DAY_GUARD = 3000;
 const REVIEW = join(ROOT, 'docs', 'reports', 'p24-review');
@@ -83,9 +100,9 @@ const money = (n) => `${Math.round(n).toLocaleString('vi-VN')}đ`;
 
 /**
  * Plays a Normal game on `root`'s sim up to the report of day 7 and returns
- * the autosaves: the SAVE_DAY morning (Nước cam on, restock not bought yet),
- * the SAVE_DAY report and the day-7 report; plus the restock suggested on
- * each ENABLE morning.
+ * the autosaves: the SAVE_DAY and CAKE_DAY mornings (nothing switched on that
+ * day, restock not bought yet), the SAVE_DAY report and the day-7 report;
+ * plus the restock the sim suggests on each ENABLE morning once the item is on.
  */
 async function playSaves(root) {
   const { createServer } = await import('vite');
@@ -125,15 +142,19 @@ async function playSaves(root) {
     for (let day = 1; day <= WEEK; day++) {
       state.events = [];
       if (day > 1 && !sim.dispatch(state, { type: 'next_day' })) throw new Error(`${root}: next_day refused before day ${day}`);
-      const item = ENABLE[day];
+      state.events = [];
+      // Saved before the item goes on: the browser playtest clicks its switch.
+      if (day === SAVE_DAY) saves.morning = saveText(state);
+      if (day === CAKE_DAY) saves.morning6 = saveText(state);
+      const item = ENABLE[day]?.item;
       if (item) {
+        // What the switch sends, so the later days sell the item.
         if (!sim.dispatch(state, { type: 'set_menu_item', itemId: item, enabled: true })) throw new Error(`${root}: day ${day}: cannot switch on ${item}`);
         const plan = inventory.autoRestockSuggestion(state);
         const ids = plan.items.map((i) => i.id);
         suggestions.push({ day, item, items: plan.items.map((i) => `${name(i.id)} ${i.qty}`), missing: WATCH.filter((id) => !ids.includes(id) && inventory.stockOf(state, id) === 0).map(name) });
       }
       state.events = [];
-      if (day === SAVE_DAY) saves.morning = saveText(state);
       sim.dispatch(state, { type: 'apply_restock' });
       if (!sim.dispatch(state, { type: 'start_day' })) throw new Error(`${root}: day ${day}: start_day refused`);
       for (let guard = 0; state.phase !== 'report' && guard < DAY_GUARD; guard++) {
@@ -157,7 +178,7 @@ async function playSaves(root) {
 function printSaves(who, { days, suggestions, result }) {
   console.log(`${who}: Normal, seed ${SEED}`);
   for (const d of days) console.log(`  day ${String(d.day).padStart(2)}  revenue ${money(d.revenue).padStart(12)}  profit ${money(d.profit).padStart(12)}  served ${d.served}/${d.arrived}  stars ${d.stars.toFixed(2)}`);
-  for (const s of suggestions) console.log(`  day ${s.day} ${s.item} on, Gợi ý: ${s.items.join(', ') || '(nothing)'}${s.missing.length ? `; left out with none in stock: ${s.missing.join(', ')}` : ''}`);
+  for (const s of suggestions) console.log(`  day ${s.day} ${s.item} on in the sim, Gợi ý: ${s.items.join(', ') || '(nothing)'}${s.missing.length ? `; left out with none in stock: ${s.missing.join(', ')}` : ''}`);
   console.log(`  week 1: ${money(result.revenue)} / ${money(result.revenueTarget)}, ${result.stars.toFixed(1)}/${result.starsTarget} sao, ${result.score} điểm, ${result.cups} cúp`);
 }
 
@@ -230,6 +251,23 @@ function measureStyles(sels) {
 function reportOverflow() {
   const over = (el) => (el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
   return over(document.querySelector('#rpt-summary')) + over(document.querySelector('.rpt-layer:not([hidden])'));
+}
+
+/** For each ingredient id, its Kho row's pack count and whether the row is tagged "gợi ý" (P24 only has the tag). */
+function suggestionRows({ panel, ids }) {
+  const out = {};
+  for (const id of ids) {
+    const row = document.querySelector(`${panel} li[data-ingredient="${id}"]`);
+    out[id] = { packs: Number(row?.querySelector('.step-input')?.value ?? 0), tagged: !!row?.querySelector('.sug:not(.is-off)') };
+  }
+  return out;
+}
+
+/** The text of every toast on screen that reports a purchase ("Đã nhập …"). */
+function spendToasts() {
+  return [...document.querySelectorAll('.toasts .toast')]
+    .map((t) => [t.querySelector('.toast-title')?.textContent, t.querySelector('.toast-text')?.textContent].filter(Boolean).join(' · ').trim())
+    .filter((text) => text.startsWith('Đã nhập'));
 }
 
 /** Height the window needs so nothing inside `sel` (or its scrolling parents) is cut off. */
@@ -339,7 +377,36 @@ async function hudAt(page) {
   return out;
 }
 
-/** The SAVE_DAY morning: the HUD and dock in preparation, then opened at 4x and, at the peak, at 1x. */
+const PHASE_SELS = {
+  hud: HUD_SELS.hud,
+  phase: HUD_SELS.phase,
+  // P24 only: the list the pill drops; P23 has no .hud-phase.
+  list: '.hud .hud-phase ol.phases:not([hidden])',
+};
+const PHASE_STYLES = {
+  steps: HUD_STYLES.steps,
+  list: PHASE_SELS.list,
+  items: `${PHASE_SELS.list} > li`,
+  hours: `${PHASE_SELS.list} li[aria-current="step"] .ph-hours`,
+};
+
+/** The phase list opened with a click on the pill (P23 has no pill to press), at each viewport. */
+async function phasesAt(page) {
+  const pill = page.locator('.hud [data-action="phases"]');
+  if ((await pill.count()) > 0) {
+    await pill.click();
+    await page.locator(PHASE_SELS.list).waitFor();
+  }
+  const out = {};
+  for (const v of VIEWPORTS) {
+    await page.setViewportSize(v);
+    await sleep(900);
+    out[v.width] = await frame(page, PHASE_SELS, PHASE_STYLES);
+  }
+  return out;
+}
+
+/** The SAVE_DAY morning: the HUD and dock in preparation, then opened at 4x and, at the peak, at 1x with the phase list shut and open. */
 async function hudSession(browser, url, save, who) {
   const context = await gameContext(browser, DESK, save);
   const page = await context.newPage();
@@ -360,7 +427,9 @@ async function hudSession(browser, url, save, who) {
     await page.locator('[data-speed="1"]').first().click();
     const peak = await hudAt(page);
     progress(who, `HUD at the peak: "${peak[DESK.width].styles.current?.text ?? ''}"`);
-    return { prep, peak };
+    const phases = await phasesAt(page);
+    progress(who, `phase list: ${phases[DESK.width].boxes.list.length > 0 ? `open, now "${phases[DESK.width].styles.hours?.text ?? ''}"` : 'none to open'}`);
+    return { prep, peak, phases };
   } finally {
     await context.close();
   }
@@ -392,11 +461,30 @@ async function scrollPanel(page, sel) {
 const ROW = (attr, id) => `${PANEL} li[${attr}="${id}"]`;
 const MENU_SELS = { panel: PANEL, row: ROW('data-item', 'orange_juice') };
 const MENU_STYLES = {
+  panel: PANEL,
   badge: `${ROW('data-item', 'orange_juice')} .badge:not([hidden])`,
   dots: `${ROW('data-item', 'orange_juice')} .dots > *`,
   link: `${ROW('data-item', 'orange_juice')} .link-btn`,
   toggle: `${ROW('data-item', 'orange_juice')} .toggle`,
 };
+
+/** Clicks the Menu switch of `item` like a player and reports whether it turned on, and whether it was locked. */
+async function clickSwitch(page, item) {
+  const sw = page.locator(`${ROW('data-item', item)} .toggle`);
+  await sw.scrollIntoViewIfNeeded();
+  const locked = (await sw.getAttribute('aria-disabled')) === 'true';
+  // Playwright waits for an aria-disabled control to enable; a player can still tap it, so force the tap.
+  await sw.click({ force: locked });
+  await sleep(400);
+  return { checked: (await sw.getAttribute('aria-checked')) === 'true', locked };
+}
+
+/** Kho → Gợi ý nhập tự động, then the pack count and tag of each WATCH row. */
+async function pressSuggest(page) {
+  await page.locator(`${PANEL} [data-action="suggest"]`).click();
+  await sleep(400);
+  return page.evaluate(suggestionRows, { panel: PANEL, ids: WATCH });
+}
 const PEOPLE = `${PANEL} li[data-staff], ${PANEL} li[data-candidate]`;
 const STAFF_SELS = { panel: PANEL, row: PEOPLE };
 const STAFF_STYLES = { row: PEOPLE, meta: `:is(${PEOPLE}) .item-meta`, meter: `${PANEL} .meter`, vai: `${PANEL} .staff-row .stepper-label` };
@@ -416,9 +504,10 @@ const KHO_STYLES = {
 };
 
 /**
- * The SAVE_DAY morning at `viewport`: Menu (Nước cam row), Nhân viên, Nâng
- * cấp, Kho after Gợi ý (Cam row), then Nhập hàng, one more pack of Ly and
- * Nhập hàng again, shot with the toasts.
+ * The SAVE_DAY morning at `viewport`: Menu with a click on the Nước cam
+ * switch (Nước cam row), Nhân viên, Nâng cấp, Kho after Gợi ý (Cam row), then
+ * Nhập hàng, one more pack of Ly and Nhập hàng again, shot with the toasts.
+ * `playtest` is what the switch, Gợi ý and the toasts showed.
  */
 async function panelSession(browser, url, save, viewport, who) {
   const context = await gameContext(browser, viewport, save);
@@ -427,8 +516,10 @@ async function panelSession(browser, url, save, viewport, who) {
     await resume(page, url, save, '[data-action="open"]');
     await sleep(800);
     await openPanel(page, 'menu');
+    const { item, name } = ENABLE[SAVE_DAY];
+    const switched = await clickSwitch(page, item);
     await scrollPanel(page, MENU_SELS.row);
-    const menu = await frame(page, MENU_SELS, MENU_STYLES);
+    const menu = { ...(await frame(page, MENU_SELS, MENU_STYLES)), switched };
     await openPanel(page, 'staff');
     // The P23 rows are taller: bring the first one fully into view.
     await scrollPanel(page, 'li[data-staff], li[data-candidate]');
@@ -437,8 +528,7 @@ async function panelSession(browser, url, save, viewport, who) {
     await scrollPanel(page, null);
     const upgrades = await frame(page, UPGRADE_SELS, UPGRADE_STYLES);
     await openPanel(page, 'inventory');
-    await page.locator(`${PANEL} [data-action="suggest"]`).click();
-    await sleep(400);
+    const rows = await pressSuggest(page);
     await scrollPanel(page, KHO_ROW);
     const kho = await frame(page, KHO_SELS, KHO_STYLES);
     // Both purchases in one page task, well inside the 4 s merge window even
@@ -463,14 +553,55 @@ async function panelSession(browser, url, save, viewport, who) {
       },
       { buy: `${PANEL} [data-action="buy"]`, more: `${ROW('data-ingredient', 'cup')} .step-btn[aria-label^="Thêm"]`, held: '.toasts .toast' },
     );
+    const toasts = await page.evaluate(spendToasts);
     await sleep(600);
     await scrollPanel(page, null);
     const toast = await frame(page, KHO_SELS, KHO_STYLES, { toasts: true });
-    progress(who, `panels at ${viewport.width}: Gợi ý Cam ${kho.styles.qty?.text ?? '?'}, ${toast.boxes.toast.length} toast(s)`);
-    return { menu, staff, upgrades, kho, toast };
+    const playtest = { day: SAVE_DAY, name, switched, rows, toasts };
+    printPlaytest(who, viewport.width, playtest);
+    return { menu, staff, upgrades, kho, toast, playtest };
   } finally {
     await context.close();
   }
+}
+
+/** The CAKE_DAY morning at `viewport`: Menu → the Bánh ngọt switch, Kho → Gợi ý → Nhập hàng; no shots. */
+async function cakeSession(browser, url, save, viewport, who) {
+  const context = await gameContext(browser, viewport, save);
+  const page = await context.newPage();
+  try {
+    await resume(page, url, save, '[data-action="open"]');
+    await sleep(800);
+    await openPanel(page, 'menu');
+    const { item, name } = ENABLE[CAKE_DAY];
+    const switched = await clickSwitch(page, item);
+    await openPanel(page, 'inventory');
+    const rows = await pressSuggest(page);
+    const buy = page.locator(`${PANEL} [data-action="buy"]`);
+    // Dimmed (aria-disabled) when money is short: tap it anyway, the missing toast is the result.
+    await buy.click({ force: (await buy.getAttribute('aria-disabled')) === 'true' });
+    await sleep(400);
+    const playtest = { day: CAKE_DAY, name, switched, rows, toasts: await page.evaluate(spendToasts) };
+    printPlaytest(who, viewport.width, playtest);
+    return playtest;
+  } finally {
+    await context.close();
+  }
+}
+
+/** "day 3 at 390: Nước cam switch on; Gợi ý Cam 4 packs (tagged), …; 1 toast "Đã nhập …"". */
+function printPlaytest(who, width, { day, name, switched, rows, toasts }) {
+  const sw = switched.checked ? 'on' : `still off${switched.locked ? ' (locked)' : ''}`;
+  const sug = WATCH.map((id) => `${WATCH_NAMES[id]} ${rows[id].packs} packs${rows[id].tagged ? ' (tagged)' : ''}`).join(', ');
+  progress(who, `playtest day ${day} at ${width}: ${name} switch ${sw}; Gợi ý ${sug}; ${toasts.length} spend toast(s)${toasts.length ? ` ${toasts.map((t) => `"${t}"`).join(', ')}` : ''}`);
+}
+
+/** `!!` unless the switch turned on, Gợi ý tagged every ingredient `ids` with packs, and one spend toast showed. */
+function assertPlaytest(where, { name, switched, rows, toasts }, ids) {
+  if (!switched.checked) console.warn(`!! ${where}: the ${name} switch did not turn on${switched.locked ? ' (locked)' : ''}`);
+  const left = ids.filter((id) => !(rows[id].tagged && rows[id].packs > 0));
+  if (left.length > 0) console.warn(`!! ${where}: Gợi ý left out ${left.map((id) => WATCH_NAMES[id]).join(', ')}`);
+  if (toasts.length !== 1) console.warn(`!! ${where}: ${toasts.length} spend toasts after Nhập hàng, want 1`);
 }
 
 const REPORT_SELS = {
@@ -640,21 +771,64 @@ async function dockBoard(browser, name, width, { base, cur }) {
   });
 }
 
-async function khoBoard(browser, name, width, { base, cur }) {
+/** "bật được" or "bấm vẫn tắt (khóa)" for the switch click of a playtest. */
+const switchWord = (sw) => (sw.checked ? 'bật được' : `bấm vẫn tắt${sw.locked ? ' (khóa)' : ''}`);
+
+async function phasesBoard(browser, name, width, { base, cur }) {
+  const b = base.styles;
+  const a = cur.styles;
+  return board(browser, name, {
+    frames: [before(base.png, 'Bấm vào pha'), after(cur.png, 'Bấm vào pill pha')],
+    marks: keep([
+      { frame: 0, boxes: base.boxes.phase, label: `Dải ${b.steps?.count ?? 0} bước, chấm không chữ, không bấm được` },
+      { frame: 1, boxes: cur.boxes.list, label: `Pill mở ${a.items?.count ?? 0} pha kèm giờ, bóng ${a.list?.shadow ?? 0}px` },
+    ]),
+    include:
+      width >= DESK.width
+        ? [...base.boxes.phase, ...cur.boxes.phase, ...cur.boxes.list].map((r) => ({ ...r, h: r.h + HUD_LABEL_ROOM }))
+        : [...base.boxes.hud, ...cur.boxes.hud, ...cur.boxes.list],
+    ...(width >= DESK.width ? { gutter: 0 } : {}),
+    avoid: avoidTexts(base, cur),
+    notes: [
+      `Khổ ${width} px, ngày ${SAVE_DAY} tuần 1, ${PHASE_WORD.peak}. P23: dải ${b.steps?.count ?? 0} bước, các bước khác bước hiện tại là chấm, không có chỗ xem giờ. P24: bấm pill pha mở danh sách ${a.items?.count ?? 0} pha kèm giờ, pha hiện tại ghi "bây giờ" (${quote(a.hours?.text ?? '', 50)}); Esc, bấm ra ngoài hoặc bấm lại pill để đóng.`,
+    ],
+  });
+}
+
+async function panelBoard(browser, name, width, { base, cur }) {
+  const b = base.styles.panel;
+  const a = cur.styles.panel;
+  // Some room around the panel, so its shadow shows on the board.
+  const around = (r) => ({ x: r.x - 24, y: r.y - 24, w: r.w + 48, h: r.h + 48 });
+  return board(browser, name, {
+    frames: [before(base.png, 'Bảng bên (Menu)'), after(cur.png, 'Bảng bên (Menu)')],
+    marks: [
+      { frame: 0, boxes: base.boxes.panel, label: `Bóng mực ${b?.shadow}px, viền ${b?.outline}px` },
+      { frame: 1, boxes: cur.boxes.panel, label: `Bóng mực ${change(b?.shadow, a?.shadow)} + bóng mờ, viền ${change(b?.outline, a?.outline)}` },
+    ],
+    include: [...base.boxes.panel, ...cur.boxes.panel].map(around),
+    avoid: avoidTexts(base, cur),
+    notes: [
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, bảng Menu đang mở. Bảng bên dùng --frame-shadow như HUD, dock và toast: vệt đen dưới khung ${change(b?.shadow, a?.shadow)}, cộng bóng mờ 0 6px 14px; viền ${change(b?.outline, a?.outline)}.`,
+    ],
+  });
+}
+
+async function khoBoard(browser, name, width, { base, cur }, sw) {
   const b = base.styles;
   const a = cur.styles;
   const qty = (s) => s.qty?.text ?? '0';
   return board(browser, name, {
     frames: [before(base.png, 'Kho sau Gợi ý'), after(cur.png, 'Kho sau Gợi ý')],
     marks: keep([
-      { frame: 0, boxes: base.boxes.row, label: b.tag ? `Cam trong gợi ý: ô nhập ${qty(b)}` : `Gợi ý bỏ qua Cam: ô nhập ${qty(b)}, không nhãn gợi ý` },
+      { frame: 0, boxes: base.boxes.row, label: b.tag || Number(qty(b)) > 0 ? `Cam trong gợi ý: ô nhập ${qty(b)}` : `Gợi ý bỏ qua Cam: ô nhập ${qty(b)}` },
       { frame: 1, boxes: cur.boxes.row, label: a.tag ? `Cam vào gợi ý: ô nhập ${qty(a)}, nhãn "gợi ý"` : `Cam vẫn ngoài gợi ý: ô nhập ${qty(a)}` },
       { frame: 0, boxes: first(base.boxes.label), label: `Nhãn thừa ${quote(b.label?.text ?? '', 34)} trên mỗi ô`, optional: true },
     ]),
     include: [...base.boxes.row, ...cur.boxes.row],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}: Nước cam vừa bật, kho chưa có Cam, bấm Gợi ý nhập tự động. P23 tính nhu cầu từ số bán hôm qua nên món chưa bán lần nào có nhu cầu 0 và Cam không vào gợi ý. P24 cho món mới bật phần nhu cầu theo độ phổ biến, Cam vào gợi ý (ô nhập ${qty(a)}). Hàng Kho dùng chung mẫu item-row: icon, tên, một dòng meta, một nhãn, ô nhập; bỏ nhãn "Nhập thêm (gói …)".`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, kho chưa có Cam: bấm công tắc Nước cam trong Menu (P23 ${switchWord(sw.base)}, P24 ${switchWord(sw.cur)}), rồi Gợi ý nhập tự động. P23 khóa công tắc món thiếu nguyên liệu và tính nhu cầu từ số bán hôm qua, nên Cam không vào gợi ý. P24 bật được món thiếu hàng và cho món mới bật phần nhu cầu theo độ phổ biến, Cam vào gợi ý (ô nhập ${qty(a)} gói). Hàng Kho dùng chung mẫu item-row: icon, tên, một dòng meta, một nhãn, ô nhập; bỏ nhãn "Nhập thêm (gói …)".`,
     ],
   });
 }
@@ -684,15 +858,15 @@ async function menuBoard(browser, name, width, { base, cur }) {
   const a = cur.styles;
   const link = a.link?.text && a.link.text !== b.link?.text ? `; link ${b.link?.text ? `"${b.link.text}" → ` : ''}"${a.link.text}"` : '';
   return board(browser, name, {
-    frames: [before(base.png, 'Menu: Nước cam thiếu Cam'), after(cur.png, 'Menu: Nước cam thiếu Cam')],
+    frames: [before(base.png, 'Menu: bấm bật Nước cam, thiếu Cam'), after(cur.png, 'Menu: bấm bật Nước cam, thiếu Cam')],
     marks: [
-      { frame: 0, boxes: base.boxes.row, label: `Nhãn "${b.badge?.text ?? ''}"${b.dots ? ` + ${b.dots.count} chấm phổ biến` : ''}` },
-      { frame: 1, boxes: cur.boxes.row, label: `"${b.badge?.text ?? ''}" → "${a.badge?.text ?? ''}"` },
+      { frame: 0, boxes: base.boxes.row, label: `Công tắc ${switchWord(base.switched)}, nhãn "${b.badge?.text ?? ''}"` },
+      { frame: 1, boxes: cur.boxes.row, label: `Công tắc ${switchWord(cur.switched)} ("${a.toggle?.text ?? ''}"), nhãn "${a.badge?.text ?? ''}"` },
     ],
     include: [...base.boxes.row, ...cur.boxes.row],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, Nước cam đã bật, kho chưa có Cam. P23: nhãn "${b.badge?.text ?? ''}" cạnh tên và chấm độ phổ biến; nguyên liệu thiếu chỉ ở dòng lý do. P24: nhãn trạng thái nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${b.dots && !a.dots ? ', độ phổ biến thành chữ trong dòng meta' : ''}${link}; hàng dùng chung mẫu item-row với Kho.`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, kho chưa có Cam, vừa bấm công tắc Nước cam. P23: công tắc khóa khi thiếu nguyên liệu nên bấm không bật được (vẫn "${b.toggle?.text ?? ''}"), nhãn "${b.badge?.text ?? ''}"${b.dots ? ' và chấm độ phổ biến' : ''}. P24: công tắc chỉ khóa món chưa mở khóa, món thiếu hàng bật được ("${a.toggle?.text ?? ''}") để Kho gợi ý nhập; nhãn nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${link}.`,
     ],
   });
 }
@@ -804,6 +978,9 @@ async function main() {
     for (const v of VIEWPORTS) {
       progress('both', `panels, report and week summary at ${v.width}`);
       const [curPanels, basePanels] = await Promise.all([panelSession(browser, curUrl, cur.saves.morning, v, 'P24'), panelSession(browser, baseUrl, base.saves.morning, v, 'P23')]);
+      const [curCake] = await Promise.all([cakeSession(browser, curUrl, cur.saves.morning6, v, 'P24'), cakeSession(browser, baseUrl, base.saves.morning6, v, 'P23')]);
+      assertPlaytest(`P24 day ${SAVE_DAY} at ${v.width}`, curPanels.playtest, ENABLE[SAVE_DAY].needs);
+      assertPlaytest(`P24 day ${CAKE_DAY} at ${v.width}`, curCake, ENABLE[CAKE_DAY].needs);
       const [curReport, baseReport, curWeek, baseWeek] = await Promise.all([
         reportSession(browser, curUrl, cur.saves.report, v, 'P24'),
         reportSession(browser, baseUrl, base.saves.report, v, 'P23'),
@@ -820,10 +997,12 @@ async function main() {
       const pair = (key) => ({ base: s.basePanels[key], cur: s.curPanels[key] });
       files.push(await hudBoard(browser, `hud-prep-${w}-p24.jpg`, w, 'prep', { base: baseHud.prep[w], cur: curHud.prep[w] }));
       files.push(await hudBoard(browser, `hud-peak-${w}-p24.jpg`, w, 'peak', { base: baseHud.peak[w], cur: curHud.peak[w] }));
+      files.push(await phasesBoard(browser, `phases-${w}-p24.jpg`, w, { base: baseHud.phases[w], cur: curHud.phases[w] }));
       files.push(await dockBoard(browser, `dock-${w}-p24.jpg`, w, { base: baseHud.prep[w], cur: curHud.prep[w] }));
-      files.push(await khoBoard(browser, `kho-${w}-p24.jpg`, w, pair('kho')));
-      files.push(await toastBoard(browser, `toast-${w}-p24.jpg`, w, pair('toast')));
       files.push(await menuBoard(browser, `menu-${w}-p24.jpg`, w, pair('menu')));
+      files.push(await panelBoard(browser, `panel-${w}-p24.jpg`, w, pair('menu')));
+      files.push(await khoBoard(browser, `kho-${w}-p24.jpg`, w, pair('kho'), { base: s.basePanels.playtest.switched, cur: s.curPanels.playtest.switched }));
+      files.push(await toastBoard(browser, `toast-${w}-p24.jpg`, w, pair('toast')));
       files.push(await staffBoard(browser, `staff-${w}-p24.jpg`, w, pair('staff')));
       files.push(await upgradesBoard(browser, `upgrades-${w}-p24.jpg`, w, pair('upgrades')));
       files.push(await reportBoard(browser, `report-${w}-p24.jpg`, v, { base: s.baseReport, cur: s.curReport }));

@@ -188,10 +188,12 @@ describe('HUD clusters (P23)', () => {
     expect(pills[0]!.textContent).toBe('Cao điểm');
     expect(pills[0]!.getAttribute('aria-label')).toBe('Cao điểm, tới 13:00. Xem các pha trong ngày');
     expect(q(pills[0]!, '.ic').dataset.icon).toBe('i-flame');
-    // Still a label: no elevation shadow, no border, no hover rule; only the focus ring.
+    // Still a label: no elevation shadow, no visible border, no hover rule; only the focus ring.
     const pillRule = UI_RULES.find((r) => r.selector === '.phase-pill');
     expect(decl(pillRule!.body, 'box-shadow')).toBe('var(--label-shadow)');
-    expect(decl(pillRule!.body, 'border')).toBe('0');
+    expect(decl(pillRule!.body, 'border')).toBe('var(--pill-inset) solid transparent');
+    expect(decl(pillRule!.body, 'background-clip')).toBe('padding-box');
+    expect(decl(UI_RULES.find((r) => r.selector === '.phase-pill:focus-visible')!.body, 'border-color')).toBe('transparent');
     expect(UI_RULES.filter((r) => r.selector.includes('.phase-pill:hover'))).toEqual([]);
     expect(UI_RULES.some((r) => r.selector.split(',').map((s) => s.trim()).includes('.phase-pill:focus-visible'))).toBe(true);
   });
@@ -291,8 +293,8 @@ describe('HUD touch targets and speed control', () => {
     const state = game();
     state.phase = phase;
     const { bar } = mountHud(state);
-    // The phase pill is a label-sized button with an invisible 44 px hit area (its own test).
-    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button:not(.phase-pill)')];
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button')];
+    expect(buttons.some((b) => b.matches('.phase-pill'))).toBe(true);
     expect(buttons.length).toBeGreaterThan(0);
     for (const b of buttons) {
       const name = b.dataset.action ?? b.getAttribute('aria-label');
@@ -466,18 +468,26 @@ describe('HUD phase pill', () => {
     expect(list.hidden).toBe(true);
   });
 
-  it('keeps a 44 px hit area and stays on screen at 390 px', () => {
-    const hit = UI_RULES.find((r) => r.selector === '.phase-pill::before')!.body;
-    expect(decl(hit, 'width')).toBe('max(100%, var(--size-target))');
-    expect(decl(hit, 'height')).toBe('max(100%, var(--size-target))');
-    expect(decl(UI_RULES.find((r) => r.selector === '.phase-pill')!.body, 'position')).toBe('relative');
+  it('is a 44 px button painted label-high, and stays on screen at 390 px', () => {
+    expect(UI_RULES.filter((r) => r.selector.includes('.phase-pill::before'))).toEqual([]);
+    const pill = UI_RULES.find((r) => r.selector === '.phase-pill')!.body;
+    expect(decl(pill, 'min-height')).toBe('var(--size-target)');
+    // The transparent inset leaves a --size-control-sm label inside the 44 px box.
+    expect(decl(pill, '--pill-inset')).toBe('calc((var(--size-target) - var(--size-control-sm)) / 2)');
+    expect(decl(pill, 'border-inline-width')).toBe('0');
     const list = UI_RULES.find((r) => r.selector === '.phases')!.body;
     expect(decl(list, 'max-width')).toBe('min(20rem, calc(100vw - 2 * var(--space-3)))');
     expect(decl(list, 'box-shadow')).toBe('var(--frame-shadow)');
-    // From 640 px down the list hangs from the Hôm nay frame's left edge, not the pill.
     const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+    // From 640 px down the list hangs from the Hôm nay frame's left edge, not the pill.
     expect(phone).toMatch(/\.hud-phase\s*\{\s*position:\s*static;/);
+    // The phone label is one icon high; negative margins keep the 44 px box from growing the row.
+    const phonePill = [...phone.matchAll(/(?:^|[}\s])\.phase-pill\s*\{([^}]*)\}/g)].map((m) => m[1]!.trim()).find((body) => decl(body, 'margin-block'));
+    expect(phonePill).toBeDefined();
+    expect(decl(phonePill!, '--pill-inset')).toBe('calc((var(--size-target) - var(--size-icon-sm)) / 2)');
+    expect(decl(phonePill!, 'margin-block')).toBe('calc(-1 * var(--pill-inset))');
+    expect(decl(phonePill!, 'min-height')).toBeUndefined();
   });
 });
 
