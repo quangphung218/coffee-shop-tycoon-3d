@@ -10,6 +10,11 @@ npx vitest run tests/integration/p22-strategies.test.ts --silent=false --reporte
 
 Test in bảng trung bình và bảng từng seed, chỉ assert tiền không âm và cùng seed ra cùng số.
 
+| Số | Mốc | Ở đâu |
+| --- | --- | --- |
+| Trước khi sửa E5 | `e3d5fd2`, trước `fd58a67` (sửa E5) | Các bảng từ [Trung bình 6 seed](#trung-bình-6-seed) tới hết [Vấn đề](#vấn-đề) và bảng đo từng dụng cụ ở [Quyết định](#quyết-định) |
+| Sau khi sửa E5 | `fd58a67` trở đi; lệnh trên ra số này | Cột "Sau" ở [Đã sửa](#đã-sửa) |
+
 ## Chiến lược
 
 | Id | Nhập hàng | Phục vụ | Thuê | Dụng cụ | Giá | Marketing |
