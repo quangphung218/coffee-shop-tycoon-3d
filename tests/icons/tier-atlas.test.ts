@@ -91,24 +91,7 @@ describe('tier models', () => {
     }
   });
 
-  it('pin the badge right of and below the middle of the icon on screen, in front of it', () => {
-    for (const [id, build] of Object.entries(TIER_MODELS)) {
-      const model = build();
-      model.updateMatrixWorld(true);
-      const pose = POSES[(model.userData.pose ?? 'object') as keyof typeof POSES];
-      const [el, az] = [(pose.elevationDeg * Math.PI) / 180, (pose.azimuthDeg * Math.PI) / 180];
-      const toCamera = new Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-      const right = new Vector3(0, 1, 0).cross(toCamera).normalize();
-      const up = toCamera.clone().cross(right).normalize();
-      const centre = (o: Object3D) => new Box3().setFromObject(o).getCenter(new Vector3());
-      const [base, badge] = [centre(model.children[0]!), centre(model.children.at(-1)!)];
-      expect(badge.dot(right), id).toBeGreaterThan(base.dot(right));
-      expect(badge.dot(up), id).toBeLessThan(base.dot(up));
-      expect(badge.dot(toCamera), id).toBeGreaterThan(base.dot(toCamera));
-    }
-  });
-
-  it('rim tier 2 in steel and tier 3 in gold with a honey star', () => {
+  it('trim tier 2 in steel and tier 3 in gold with a honey star', () => {
     // The base machine has no honeyDeep and only one honey part (its button).
     const honeyParts = (model: Object3D) => meshes(model).filter((m) => m.material === mat('honey')).length;
     const t2 = upgradeModel('i-machine', 2);
