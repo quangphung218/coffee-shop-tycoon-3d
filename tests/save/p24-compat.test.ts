@@ -121,6 +121,8 @@ describe('P23 save with several weeks and no missedDemand', { timeout: 120_000 }
     expect(loadGame('2', storage)).toEqual({ ok: true, value: s });
 
     dispatch(s, { type: 'apply_restock' });
+    // No lemons: lemon tea misses orders, so the day writes missedDemand.
+    setStock(s, 'lemon', 0);
     playDay(s);
     s.events = [];
     expect(s.today.missedDemand).toBeDefined();

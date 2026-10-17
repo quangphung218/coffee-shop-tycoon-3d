@@ -148,12 +148,17 @@ function referenceDay(state: GameState): DayStats | undefined {
   return state.history[state.history.length - 1];
 }
 
-/** Servings a day asked for: sold, plus orders lost to empty stock or missed while an item could not be made. */
+/**
+ * Servings a day asked for: sold, plus orders lost to empty stock, plus the
+ * missed-demand balance (positive for an item that could not be made, negative
+ * for the items sold in its place). Never below zero per item.
+ */
 function observedDemand(day: DayStats): Partial<Record<MenuItemId, number>> {
   const demand: Partial<Record<MenuItemId, number>> = {};
   for (const counts of [day.sold, day.outOfStock, day.missedDemand ?? {}]) {
     for (const [id, n] of Object.entries(counts) as [MenuItemId, number | undefined][]) demand[id] = (demand[id] ?? 0) + (n ?? 0);
   }
+  for (const id of Object.keys(demand) as MenuItemId[]) demand[id] = Math.max(0, demand[id]!);
   return demand;
 }
 

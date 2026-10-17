@@ -347,7 +347,8 @@ export interface DayStats {
   /**
    * Orders an item missed while it could not be made: each customer who
    * picked among the items in stock adds the item's share of the full menu
-   * weight. Absent in old saves.
+   * weight, and the item picked loses that total (so it can be negative).
+   * Absent in old saves.
    */
   missedDemand?: Partial<Record<MenuItemId, number>>;
   ratingStart: number;

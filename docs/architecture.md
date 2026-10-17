@@ -233,11 +233,11 @@ Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, 
 
 | Trường hợp | Nhu cầu |
 | --- | --- |
-| Món có nhu cầu quan sát > 0 | `sold` + `outOfStock` + `missedDemand` của món. |
+| Món có nhu cầu quan sát > 0 | `sold` + `outOfStock` + `missedDemand` của món, không âm. |
 | Món đang bật mà nhu cầu quan sát = 0 (mới bật, hay bị ẩn vì hết hàng) | Mức nền: tổng nhu cầu quan sát của ngày tham chiếu × `popularity` món / tổng `popularity` các món đang bật. |
 | Chưa có ngày tham chiếu, hoặc ngày đó tổng nhu cầu = 0 | Như mức nền, với tổng là `DAY_ONE_SERVINGS` theo độ khó. |
 
-`DayStats.missedDemand` ghi nhu cầu bị bỏ lỡ: khi `pickOrder` chỉ chọn trong các món còn làm được, mỗi món đang bật bị loại vì hết hàng được cộng trọng số của nó / tổng trọng số mọi món đang bật. Không rút thêm số ngẫu nhiên. Save cũ thiếu trường này coi như `{}`.
+`DayStats.missedDemand` ghi nhu cầu bị bỏ lỡ: khi `pickOrder` chỉ chọn trong các món còn làm được, mỗi món đang bật bị loại vì hết hàng được cộng trọng số của nó / tổng trọng số mọi món đang bật, và món khách chọn thay bị trừ đúng tổng phần đó (giá trị có thể âm), nên mỗi khách vẫn tính là một ly. Không rút thêm số ngẫu nhiên. Save cũ thiếu trường này coi như `{}`.
 
 `autoRestockSuggestion` lấy nhu cầu này nhân lượng nguyên liệu mỗi ly, cộng `RESTOCK_BUFFER` (20%), trừ tồn kho, làm tròn lên theo gói.
 

@@ -106,6 +106,25 @@ describe('demand missed while an item is out of stock', () => {
     expect(state.today.missedDemand?.lemon_tea).toBeGreaterThan(0);
   });
 
+  it('moves the missed share off the item picked instead, so demand never exceeds the customers', () => {
+    const s = createNewGame('A', 'normal', 1);
+    setStock(s, 'lemon', 0);
+    const picks = 200;
+    const sold: Partial<Record<MenuItemId, number>> = {};
+    for (let i = 0; i < picks; i++) {
+      const id = pickOrder(s)!;
+      sold[id] = (sold[id] ?? 0) + 1;
+    }
+    s.history.push({ ...createDayStats(1, 3), sold, missedDemand: s.today.missedDemand });
+    s.day = 2;
+    const demand = expectedDemand(s);
+    const total = Object.values(demand).reduce<number>((a, n) => a + (n ?? 0), 0);
+    expect(total).toBeCloseTo(picks, 6);
+    expect(demand.lemon_tea).toBeGreaterThan(0);
+    // Each item served in lemon tea's place keeps less than it sold.
+    for (const id of ['espresso', 'americano', 'latte'] as const) expect(demand[id]!).toBeLessThan(sold[id]!);
+  });
+
   it('adds the missed share to the next day demand', () => {
     const s = createNewGame('A', 'normal', 1);
     s.history.push({ ...createDayStats(1, 3), sold: { espresso: 10, lemon_tea: 2 }, missedDemand: { lemon_tea: 6 } });
