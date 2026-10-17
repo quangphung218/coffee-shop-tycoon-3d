@@ -496,14 +496,13 @@
   border-radius: var(--radius-pill);
 }
 
-/* "Lên cấp N" band (design/p20 §6): a thin flat tint with an ink outline,
-   the level and what it unlocks on one line (wraps when narrow). */
+/* "Lên cấp N" card: the level badge pops in, then the level line and the
+   unlock chips (two lines at most). At most 96 px tall at 1280 px. */
 .rpt-levelup {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--space-3);
-  padding: var(--space-1) var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
   border: var(--size-frame-outline) solid var(--border-outline);
@@ -511,11 +510,71 @@
   font-size: var(--font-size-caption);
   line-height: var(--line-height-tight);
 }
+.rpt-levelup-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  animation: rpt-badge-pop 400ms var(--easing-out) both;
+}
+@keyframes rpt-badge-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.rpt-levelup-num {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-levelup-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
 .rpt-levelup-title {
   font-size: var(--font-size-label);
 }
-.rpt-levelup .rpt-unlocks {
-  gap: 0 var(--space-3);
+/* Two chip lines at most; LEVELUP_CHIPS in report.ts keeps the rest to "+N". */
+.rpt-unlocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  max-height: calc(2 * var(--size-icon-md) + var(--space-1));
+  overflow: hidden;
+}
+.rpt-unlock-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rpt-unlock,
+.rpt-unlock-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--size-icon-md);
+  padding-right: var(--space-2);
+  background: var(--surface-panel-solid);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.rpt-unlock-more {
+  padding-left: var(--space-2);
+  font-weight: var(--font-weight-heavy);
 }
 
 /* Daily missions in the summary: label, name and reward, then the measure. */
@@ -933,6 +992,10 @@
   .rpt-result {
     padding: var(--space-3) var(--space-4);
   }
+  /* A phone has room to scroll: every chip wraps into view instead of being cut at two lines. */
+  .rpt-unlocks {
+    max-height: none;
+  }
 }
 
 /* Reduced motion: the card only fades in, the result strip does not stamp. */
@@ -941,6 +1004,9 @@
     animation: rpt-fade var(--duration-fast) var(--easing-standard);
   }
   .rpt-result {
+    animation: none;
+  }
+  .rpt-levelup-badge {
     animation: none;
   }
   .rpt-tab {
