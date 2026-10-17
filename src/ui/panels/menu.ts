@@ -9,6 +9,7 @@ import { isUnlocked, weekDay } from '../../sim/progression';
 import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
 import { h, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { fresh } from '../core/fresh';
 import { MENU_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
@@ -57,6 +58,18 @@ export function unlockHint(state: GameState, kind: 'menu' | 'upgrade', id: MenuI
   if (day !== Infinity && day > weekDay(state)) return { badge: `Mở ngày ${day}`, reason: `Mở khóa vào ngày ${day} của tuần.` };
   const level = kind === 'menu' ? menuUnlockLevel(id as MenuItemId) : upgradeUnlockLevel(id as UpgradeId);
   return { badge: `Mở ở cấp ${level}`, reason: `Mở khóa ở Cấp ${level}.` };
+}
+
+/** Slot for the "Mới" label of a row opened this session (core/fresh); fill it with setFresh. */
+export function freshBadge(): HTMLElement {
+  return h('span', { class: 'badge badge-new', hidden: true, attrs: { 'data-fresh': '' } });
+}
+
+/** Shows "Mới" (sparkle + word) or empties the slot, so a hidden one adds no text to the row. */
+export function setFresh(el: HTMLElement, on: boolean): void {
+  el.hidden = !on;
+  if (on) setIconText(el, 'i-sparkle', 'Mới');
+  else el.replaceChildren();
 }
 
 /** Ingredients the stock lacks for one cup of `item`. */
@@ -145,6 +158,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       on: { click: () => openOtherPanel('inventory') },
     });
     const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
+    const newBadge = freshBadge();
     const meta = h('p', { class: 'item-meta' });
     // The full line for screen readers (the switch's description while nothing blocks it) and as the row's title.
     const detail = h('span', { class: 'sr-only', id: uid('menu-detail') });
@@ -155,7 +169,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       { class: 'item item-row menu-row', attrs: { 'data-item': item.id } },
       h('span', { class: 'item-icon' }, icon(MENU_ICONS[item.id], { size: 32 })),
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: item.name }), meta, detail, why),
-      h('span', { class: 'item-status' }, missBadge, levelBadge),
+      h('span', { class: 'item-status' }, missBadge, levelBadge, newBadge),
       sw.el,
     );
     w.watch(
@@ -192,6 +206,11 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);
         if (!sw.el.hasAttribute('aria-describedby')) sw.el.setAttribute('aria-describedby', detail.id);
       },
+    );
+    // "Mới" only in an empty label slot; runs after the labels above are set.
+    w.watch(
+      () => fresh.has('menu', item.id) && missBadge.hidden && levelBadge.hidden,
+      (on) => setFresh(newBadge, on),
     );
     return li;
   });

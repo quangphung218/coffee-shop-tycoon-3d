@@ -16,6 +16,7 @@ import { defaultStorage } from './save/storage';
 import { dispatch, step } from './sim';
 import { createNewGame } from './sim/state';
 import type { GameState } from './sim/types';
+import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
@@ -130,7 +131,11 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       audio.setVolumes(s.musicVolume, s.sfxVolume);
     },
     onResetCamera: () => world?.resetCamera(),
-    onGameStart: () => world?.resetCamera(),
+    onGameStart: () => {
+      // "Mới" marks belong to the game that opened them.
+      fresh.clear();
+      world?.resetCamera();
+    },
     scene,
   });
   hideBoot();
@@ -156,6 +161,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       world?.update(game, game.tickAccumulator);
       shell.update();
       audio.handleEvents(game.events);
+      fresh.handleEvents(game.events);
       shell.handleEvents(game.events);
       game.events.length = 0;
     } else {

@@ -1115,6 +1115,11 @@ legend {
   background: var(--surface-sunken);
   color: var(--text-muted);
 }
+/* "Mới" on a row opened this session (core/fresh). */
+.badge-new {
+  background: var(--surface-selected);
+  color: var(--text-primary);
+}
 .star {
   color: var(--rating-star);
 }
@@ -1685,6 +1690,18 @@ legend {
   font-weight: var(--font-weight-heavy);
   line-height: 1;
 }
+/* "Mới" dot, top left so it never meets the count badge; inside the focus ring. */
+.dock-new {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  background: var(--accent-mint);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+}
 /* Divider between the dock's groups (Vận hành | Phát triển | Đánh giá). */
 .dock-sep {
   flex: 0 0 auto;
@@ -2217,6 +2234,10 @@ legend {
   /* Narrow cells: tuck the badge into the corner, still inside the focus ring. */
   .dock-badge {
     right: var(--space-1);
+  }
+  .dock-new {
+    top: var(--space-1);
+    left: var(--space-1);
   }
   /* The rows split the groups instead: Vận hành fills row one, so the divider
      takes no grid cell and both rows hold whole buttons. A later group on the

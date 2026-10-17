@@ -12,10 +12,11 @@ import {
 import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
+import { fresh } from '../core/fresh';
 import { UPGRADE_ICONS } from '../core/iconMap';
 import { type IconId, loadTierAtlas, tierIcon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { unlockHint } from './menu';
+import { freshBadge, setFresh, unlockHint } from './menu';
 import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
 
 /** Heading per upgrade `category` (design/p20 §4): equipment / space / decor. */
@@ -128,6 +129,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
   function row(id: UpgradeId): HTMLElement {
     const def = getUpgrade(id);
     const badge = h('span', { class: 'badge', hidden: true });
+    const newBadge = freshBadge();
     const meta = h('p', { class: 'item-meta' });
     const iconBox = h('span', { class: 'item-icon' });
     const buy = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'buy' }, text: 'Mua' });
@@ -138,7 +140,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       { class: 'item item-row', attrs: { 'data-upgrade': id } },
       iconBox,
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: def.name }), meta),
-      h('span', { class: 'item-status' }, badge),
+      h('span', { class: 'item-status' }, badge, newBadge),
       buy,
       more,
     );
@@ -203,6 +205,11 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
     w.watch(
       (s) => upgradeTier(id, upgradeLevel(s, id)),
       (tier) => iconBox.replaceChildren(tierIcon(UPGRADE_ICONS[id], tier, { size: 32 })),
+    );
+    // "Mới" only in an empty label slot (not over "Mở ở cấp N" or "Tối đa").
+    w.watch(
+      () => fresh.has('upgrades', id) && badge.hidden,
+      (on) => setFresh(newBadge, on),
     );
     return li;
   }
