@@ -154,11 +154,11 @@ describe('panel foot on a short body (P22 layout-blocked-suggest-390)', () => {
     expect(decl(body!.body, 'container-name')).toBe('panel-body');
   });
 
-  it('keeps the foot sticky but packed under 30rem and lets it scroll only under 12rem', () => {
+  it('keeps the foot sticky but packed under 30rem and lets it scroll only under 8rem', () => {
     const foot = PANELS.filter((r) => r.selector === '.prep .panel-foot').map((r) => decl(r.body, 'position'));
     expect(foot).toEqual(['sticky', undefined, 'static']);
     const queries = [...src.matchAll(/@container\s+panel-body\s*\(([^)]*)\)\s*\{\s*\.prep \.panel-foot\s*\{([^{}]*)\}/g)];
-    expect(queries.map((q) => q[1]!.replace(/\s+/g, ' ').trim())).toEqual(['max-height: 30rem', 'max-height: 12rem']);
+    expect(queries.map((q) => q[1]!.replace(/\s+/g, ' ').trim())).toEqual(['max-height: 30rem', 'max-height: 8rem']);
     expect(decl(queries[0]![2]!.trim(), 'display')).toBe('grid');
     expect(decl(queries[0]![2]!.trim(), 'padding')).toBe('var(--space-2) var(--space-3)');
     expect(decl(queries[1]![2]!.trim(), 'position')).toBe('static');
