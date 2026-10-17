@@ -127,6 +127,8 @@ describe('Daily Report', () => {
     expect(q(summary, '.rpt-split [data-block="top"]')).toBeTruthy();
 
     expect(text(el, '.rpt-sub')).toContain('Thường');
+    // The fixed opening hours are not repeated under every day's title.
+    expect(text(el, '.rpt-sub')).not.toContain('07:00');
     expect(text(el, '#rpt-title')).toContain('Hết ngày 3 · Quán Thử');
   });
 
@@ -589,9 +591,27 @@ describe('report.css', () => {
     expect(narrow).toMatch(/\.rpt-foot-actions\s*\{[^}]*flex-wrap:\s*nowrap/);
     expect(narrow).toMatch(/\.rpt-foot \.btn\s*\{[^}]*white-space:\s*nowrap/);
     expect(narrow).toMatch(/\.rpt-foot-actions > \.btn-primary\s*\{[^}]*flex:\s*1 1 auto/);
-    expect(narrow).toMatch(/\.rpt-foot-actions > \[data-action='reviews'\]\s*\{[^}]*min-height:\s*var\(--size-target-lg\)/);
+    expect(narrow).toMatch(/\.rpt-foot-actions > \[data-action='reviews'\]\s*\{[^}]*min-height:\s*var\(--size-control-lg\)/);
     expect(narrow).toMatch(/\.rpt-foot-actions > \[data-action='reviews'\] \.rpt-btn-text\s*\{[^}]*display:\s*none/);
     expect(narrow).not.toMatch(/\.rpt-foot \.btn\s*\{[^}]*flex:\s*1 1 10rem/);
+  });
+
+  it('sizes text and controls on the P24 scale with one 2px frame and the card shadow on the dialog only', async () => {
+    const src = await css();
+    const P24_TYPE = ['caption', 'label', 'value', 'panel-title', 'screen-title'];
+    const sizes = [...src.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1]!.trim());
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const v of sizes) expect(P24_TYPE.map((t) => `var(--font-size-${t})`)).toContain(v);
+    expect(src.match(/\.rpt-head h3\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-screen-title\)/);
+    expect(src.match(/\.rpt-h4\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-panel-title\)/);
+    for (const sel of ['\\.rpt-fig-value', '\\.rpt-kpi-value', '\\.wk-goal-num']) {
+      expect(src.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1]).toMatch(/font-size:\s*var\(--font-size-value\)/);
+    }
+    expect(src.match(/\.rpt-dialog\s*\{([^}]*)\}/)?.[1]).toMatch(/border:\s*var\(--size-frame-outline\) solid/);
+    expect([...src.matchAll(/box-shadow:\s*([^;]+);/g)].map((m) => m[1]!.trim())).toEqual(['var(--shadow-card)', 'var(--shadow-sm)']);
+    expect(src).toMatch(/\.rpt-foot \.btn\s*\{[^}]*min-height:\s*var\(--size-control-md\)/);
+    expect(src).toMatch(/\.rpt-foot \.btn-primary\s*\{[^}]*min-height:\s*var\(--size-control-lg\)/);
+    expect(src).toMatch(/\.rpt-tab\s*\{[^}]*min-height:\s*var\(--size-control-md\)/);
   });
 
   it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {

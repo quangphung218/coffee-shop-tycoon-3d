@@ -491,7 +491,8 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     (r, s) => {
       day = r?.day ?? s.day;
       title.textContent = `Hết ngày ${day} · ${s.shopName}`;
-      sub.textContent = `${DIFFICULTIES[s.difficulty].name} · 07:00–21:00`;
+      // Opening hours never change, so the line names only the difficulty.
+      sub.textContent = DIFFICULTIES[s.difficulty].name;
       renderBodies(s);
       showTab('summary');
       renderSave();
