@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
 import { SAVE_VERSION, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
+import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage } from '../../src/save/storage';
 import { HISTORY_DAYS } from '../../src/sim/clock';
 import { WEEK_LENGTH } from '../../src/sim/data/week';
@@ -7,7 +9,28 @@ import { profit } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState } from '../../src/sim/types';
+import { createShell, type Shell } from '../../src/ui/screens/shell';
 import { playDay } from '../integration/helpers';
+
+let shell: Shell | null = null;
+
+afterEach(() => {
+  shell?.dispose();
+  shell = null;
+  document.body.replaceChildren();
+});
+
+/** Opens `state` in the shell and goes from its report to the week summary. */
+function openWeekEnd(state: GameState): HTMLElement {
+  const root = document.createElement('div');
+  document.body.append(root);
+  shell = createShell({ root, storage: createMemoryStorage(), settings: { ...DEFAULT_SETTINGS }, seed: () => 1 });
+  shell.startGame(state);
+  shell.report.el.querySelector<HTMLButtonElement>('.rpt-foot .btn-primary')!.click();
+  const el = root.querySelector<HTMLElement>('[data-screen="weekEnd"]');
+  if (!el) throw new Error('missing week-end screen');
+  return el;
+}
 
 /** Days every migrated save must play on after loading. */
 const PLAY_ON_DAYS = 8;
@@ -36,13 +59,21 @@ function playOn(state: GameState, days: number): GameEvent[] {
   }
 }
 
-/** A v2 file of `state` as the pre-endless game wrote it: the week has no index and no archive. */
+/**
+ * A v2 file of `state` as the pre-endless game wrote it: the week has no index
+ * and no archive, and a scored week has no reward because v2 never paid one.
+ */
 function asV2(state: GameState): string {
   const raw: { state: Record<string, unknown> } = JSON.parse(JSON.stringify({ version: 2, savedAt: 1, state }));
   const week = raw.state.week as Record<string, unknown> | undefined;
   if (week) {
     delete week.index;
     delete week.archive;
+    const result = week.result as Record<string, unknown> | undefined;
+    if (result) {
+      raw.state.money = (raw.state.money as number) - ((result.reward as number | undefined) ?? 0);
+      delete result.reward;
+    }
   }
   return JSON.stringify({ version: 2, savedAt: 1, state: raw.state });
 }
@@ -80,7 +111,7 @@ describe('migrate v2 → v3', { timeout: 300_000 }, () => {
 
     expect(g.phase).toBe('report');
     expect(g.week!.index).toBe(1);
-    expect(g.week!.result).toEqual(result);
+    expect(g.week!.result).toEqual({ ...result, reward: undefined });
     const weekDays = [...s.history, s.today];
     expect(g.week!.archive).toEqual([
       {
@@ -108,6 +139,23 @@ describe('migrate v2 → v3', { timeout: 300_000 }, () => {
     expect(g.day).toBe(WEEK_LENGTH + PLAY_ON_DAYS);
     expect(g.week!.index).toBe(3);
     expect(g.week!.archive!.map((w) => w.index)).toEqual([1, 2]);
+  });
+
+  it('pays nothing for a week v2 scored and shows no reward line', () => {
+    const s = playedGame(77, WEEK_LENGTH);
+    // The sim would pay this week, so the reward line would show if it were recounted.
+    expect(s.week!.result!.reward).toBeGreaterThan(0);
+    const file = asV2(s);
+    const v2Money = JSON.parse(file).state.money as number;
+    const g = loadText(file);
+    expect(g.week!.result!.reward).toBeUndefined();
+    expect(g.money).toBe(v2Money);
+
+    const el = openWeekEnd(g);
+    expect(el.querySelector('h3')?.textContent).toBe('Tổng kết tuần 1');
+    expect(el.querySelector('[data-block="reward"]')).toBeNull();
+    expect(el.textContent).not.toContain('Thưởng');
+    expect(g.money).toBe(v2Money);
   });
 
   it('archives a scored week with profit 0 when the save has no history', () => {
@@ -156,6 +204,26 @@ describe('migrate v1 → v3', { timeout: 300_000 }, () => {
     const events = playOn(g, PLAY_ON_DAYS);
     expect(g.day).toBe(1 + PLAY_ON_DAYS);
     expect(g.week).toBeUndefined();
+    expect(events.some((e) => e.type === 'week_ended')).toBe(false);
+  });
+});
+
+describe('migrate v0 → v3', { timeout: 300_000 }, () => {
+  it(`loads a bare prototype save and plays on ${PLAY_ON_DAYS} days like v1 and v2`, () => {
+    const s = createNewGame('Quán Mẫu', 'normal', 13);
+    const legacy: Record<string, unknown> = JSON.parse(JSON.stringify(s));
+    const v0Fields = ['events', 'campaigns', 'orders', 'history', 'reviews', 'candidates', 'spawnAccumulator', 'weather', 'tickAccumulator', 'playerTasks'];
+    for (const k of [...v0Fields, 'week', 'seed', 'shopLevel', 'xp', 'missions']) delete legacy[k];
+    const g = loadText(JSON.stringify(legacy));
+    expect(g.day).toBe(1);
+    expect(g.week).toBeUndefined();
+    expect(g.shopLevel).toBeGreaterThanOrEqual(1);
+    expect(g.missions.length).toBeGreaterThan(0);
+
+    const events = playOn(g, PLAY_ON_DAYS);
+    expect(g.day).toBe(1 + PLAY_ON_DAYS);
+    expect(g.phase).toBe('report');
+    expect(g.history.map((d) => d.day)).toEqual(Array.from({ length: PLAY_ON_DAYS }, (_, i) => i + 1));
     expect(events.some((e) => e.type === 'week_ended')).toBe(false);
   });
 });

@@ -3,10 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
-import { buildDailyReport } from '../../src/sim/report';
+import { totalWages } from '../../src/sim/economy';
+import { grantWeekReward } from '../../src/sim/progression';
+import { buildDailyReport, closeDay } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { rollWeekPlan, scoreWeek, summarizeWeek } from '../../src/sim/week';
+import { formatMoney } from '../../src/ui/core/format';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 import { REPLAY_CONFIRM_MS } from '../../src/ui/screens/weekEnd';
@@ -26,11 +29,12 @@ function boot(onReplay?: (finished: GameState) => void, storage: StorageLike = c
   return { root, shell };
 }
 
-/** Scores the week like closeDay does on its last day: result plus one archive row. */
+/** Scores the week like closeDay does on its last day: result, one archive row and the cup reward paid. */
 function scoreLastDay(state: GameState): void {
   const result = scoreWeek(state)!;
   state.week!.result = result;
   (state.week!.archive ??= []).push(summarizeWeek(state, result)!);
+  result.reward = grantWeekReward(state, result);
 }
 
 /**
@@ -300,6 +304,32 @@ describe('week summary', () => {
     expect(level).toContain('Cappuccino');
     // The colon stays with its label.
     expect(levelEl.querySelector('.wk-next-label')?.textContent).toBe('Cấp 2 · Quán quen:');
+  });
+
+  it('shows exactly the reward closeDay added to the money in a new game', () => {
+    // A new game closing week day 7 with 2+ cups: the real closeDay scores and pays.
+    const state = createNewGame('Quán Mới', 'normal', 7);
+    for (let d = 1; d < WEEK_LENGTH; d++) {
+      const stats = createDayStats(d, 4.5);
+      stats.revenue = 5_000_000;
+      state.history.push(stats);
+    }
+    state.day = WEEK_LENGTH;
+    state.today = createDayStats(WEEK_LENGTH, 4.5);
+    state.today.revenue = 5_000_000;
+    state.rating = 4.5;
+    const before = state.money;
+    const wages = totalWages(state);
+    state.lastReport = closeDay(state);
+    state.phase = 'report';
+    const result = state.week!.result!;
+    expect(result.cups).toBeGreaterThanOrEqual(2);
+    const paid = state.money - before + wages;
+    expect(paid).toBeGreaterThan(0);
+    expect(result.reward).toBe(paid);
+
+    const { root } = openWeekEnd(state);
+    expect(block(weekEndEl(root), 'reward').textContent).toBe(`Thưởng +${formatMoney(paid)}`);
   });
 
   it('lights all 3 cups when both goals are beaten', () => {
