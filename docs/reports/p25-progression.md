@@ -75,7 +75,7 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | PASS: không file nào ở cả hai hồ sơ (`perf:frames`, cột cuối) |
 | `npm run perf:frames` | 0 long task | PASS: 0 ở máy bàn và di động |
 | `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | PASS: 0 long task ở mọi hiệu ứng và hồ sơ; 6/6 lượt level-up tải chunk confetti và có canvas; tỉ lệ khung > 50 ms 48–70% so với 63% chế độ thường |
-| 60 FPS máy bàn khi có hiệu ứng (`--fx --headed`) | p95 ≤ 16,7 ms ± nhịp màn hình | PASS: p95 18 ms (bằng chế độ thường), 0 khung > 50 ms ở máy bàn |
+| 60 FPS máy bàn khi có hiệu ứng (`--fx --headed`) | p95 ≤ 16,7 ms | Chưa đạt, cần đo trên máy thật: p95 18 ms, trên 16,7 ms; headless khoá nhịp khung nên chưa kết luận được 60 FPS |
 | `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | PASS: 21 bảng, thoát mã 0; `tier-pair` ghép icon và máy espresso cùng save ở mỗi bậc |
 
 ### Số đo
