@@ -374,19 +374,20 @@ Lệnh build bản hiện tại, xuất P24 `5d33195` ra thư mục tạm và bu
 
 Cận cảnh 3D cắt quanh vật theo vị trí chiếu từ `getShopLayout` qua camera mặc định (góc 45°, nghiêng isometric, zoom 1, tâm sàn trong nhà); vật ra ngoài khung hẹp ở 390 px thì không khoanh.
 
-Mười chín bảng JPEG chất lượng 75 trong `docs/reports/p25-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
+Hai mươi mốt bảng JPEG chất lượng 75 trong `docs/reports/p25-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
 
 | File | Nội dung |
 | --- | --- |
 | `menu-<w>-p25.jpg` | Menu sau khi bấm công tắc Nước cam: công tắc và nút "Thiếu Cam"; ghi chú có chiều cao dòng và số món thấy trọn. |
 | `upgrades-<w>-p25.jpg` | Nâng cấp: icon Máy espresso cao cấp ở P24 cấp 3 và P25 bậc 1/2/3, dòng "Bậc n/3". |
+| `tier-pair-<w>-p25.jpg` | Icon Máy espresso cao cấp đặt cạnh máy espresso trong cảnh 3D của cùng save: P24 cấp 3, P25 bậc 1/2/3. |
 | `scene-espresso-<w>-p25.jpg`, `scene-grinder-<w>-p25.jpg`, `scene-tables-<w>-p25.jpg`, `scene-decor-<w>-p25.jpg` | Cận cảnh máy espresso; máy xay và tủ bánh; bàn ghế; cây và đèn: P24 ở cấp của bậc 3, P25 bậc 1/2/3. |
 | `fx-<w>-p25.jpg` | Máy espresso 0,2 s sau **Mua** ở P24 và 0 / 0,2 / 0,5 s ở P25; nhãn ghi phần điểm ảnh trong khung khác khung lúc yên (kênh màu lệch > 24). |
 | `levelup-<w>-p25.jpg` | Báo cáo ngày lên cấp: dải P24, thẻ P25 lúc confetti đang bay và 2 s sau. |
 | `dock-<w>-p25.jpg` | Dock sáng ngày 3: chấm "Mới" trên Menu khi Nước cam vừa mở. |
 | `week1-390-p25.jpg` | Tổng kết tuần 1 ở 390 px: chân hộp và nút **Sang tuần 2**. |
 
-Bảng trước/sau dùng trong [báo cáo P25](reports/p25-progression.md). Cảnh báo `!!` như [Ảnh trước/sau P23](#ảnh-trướcsau-p23), thêm: dòng Menu ở 390 px cao quá 64 px (bán được) hay 80 px (thiếu hàng), công tắc Nước cam không bật, không có confetti hoặc confetti còn sau 2 s, không có chấm "Mới", nút chân Tổng kết tuần bị cắt. Có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in cấp, bậc của các save:
+Bảng trước/sau dùng trong [báo cáo P25](reports/p25-progression.md). Cảnh báo `!!` như [Ảnh trước/sau P23](#ảnh-trướcsau-p23), thêm: dòng Menu ở 390 px cao quá 72 px (bán được) hay 96 px (thiếu hàng), thiếu icon hay máy để ghép bảng `tier-pair`, công tắc Nước cam không bật, không có confetti hoặc confetti còn sau 2 s, không có chấm "Mới", nút chân Tổng kết tuần bị cắt. Có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in cấp, bậc của các save:
 
 ```sh
 P25_SAVES_ONLY=1 node scripts/capture-p25.mjs

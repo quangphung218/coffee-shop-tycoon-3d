@@ -27,7 +27,9 @@
 // the tier-1 save and, FX_LEAD_MS into the window, clicks Mua and its confirm
 // on Máy espresso cao cấp (sparkle and bounce); "level-up" starts the window
 // at the Tiếp tục click on the report save of the first level-up, which opens
-// the Daily Report with its level-up card and confetti.
+// the Daily Report with its level-up card and confetti. A working-tree
+// level-up run where the confetti chunk did not load or no canvas.fx-confetti
+// joined the DOM fails: it stays out of the table and the script exits 1.
 import { existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -66,6 +68,19 @@ const PROBE = `(() => {
       for (const e of list.getEntries()) tasks.push([e.startTime, e.duration]);
     }).observe({ type: 'longtask', buffered: true });
   } catch {}
+  // --fx: set once a confetti canvas joins the DOM (it removes itself after 1.4 s).
+  window.__confettiSeen = false;
+  new MutationObserver((list, mo) => {
+    for (const m of list) {
+      for (const n of m.addedNodes) {
+        if (n.nodeName === 'CANVAS' && n.classList.contains('fx-confetti')) {
+          window.__confettiSeen = true;
+          mo.disconnect();
+          return;
+        }
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
   const lazy = (end) => performance.getEntriesByType('resource').filter((e) => e.startTime < end && ${LAZY}.test(e.name)).map((e) => e.name.split('/').pop());
   const overlap = (t0, end) => {
     let total = 0;
@@ -261,15 +276,34 @@ async function measureFx(browser, url, profile, kind, save) {
       await page.locator('.rpt-layer:not([hidden])').waitFor({ timeout: FX_WINDOW_MS });
     }
     const r = await rec;
-    const confetti = kind === 'level-up' ? await page.evaluate(() => performance.getEntriesByType('resource').some((e) => /confetti-/.test(e.name))) : null;
+    const confetti =
+      kind === 'level-up'
+        ? await page.evaluate(() => ({
+            chunk: performance.getEntriesByType('resource').some((e) => /confetti-/.test(e.name)),
+            canvas: window.__confettiSeen === true,
+          }))
+        : null;
     return { ...stats(r), confetti };
   } finally {
     await context.close();
   }
 }
 
-/** --fx table: per build, profile and effect, the median over `runs` of measureFx. */
+/** --fx: why a level-up run of a build that has confetti shows none, or null when it ran. */
+function confettiMissing(r) {
+  if (!r.confetti) return null;
+  if (!r.confetti.chunk) return 'confetti chunk not loaded';
+  if (!r.confetti.canvas) return 'no confetti canvas in the DOM';
+  return null;
+}
+
+/**
+ * --fx table: per build, profile and effect, the median over `runs` of
+ * measureFx. Throws after the table when a run failed or, on the working
+ * tree, a level-up run threw no confetti; those runs stay out of the medians.
+ */
 async function runFx(browser, builds, runs) {
+  const failures = [];
   console.log(`| Build | Profile | Effect | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
   console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const profile of PROFILES) {
@@ -281,10 +315,18 @@ async function runFx(browser, builds, runs) {
           try {
             r = await measureFx(browser, c.build.url, profile, kind, c.build.fx[kind]);
           } catch (err) {
-            console.error(`  ${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: ${String(err.message ?? err).split('\n')[0]}`);
+            const msg = `${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: ${String(err.message ?? err).split('\n')[0]}`;
+            console.error(`  ${msg}`);
+            failures.push(msg);
             continue;
           }
-          console.error(`  ${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: p95 ${ms(r.p95)}, max ${ms(r.max)}, ${r.janky}/${r.frames} frames > ${JANK_MS} ms, ${r.longTasks} long tasks${r.confetti === null ? '' : `, confetti chunk ${r.confetti ? 'loaded' : 'not loaded'}`}`);
+          const confettiText = r.confetti === null ? '' : `, confetti chunk ${r.confetti.chunk ? 'loaded' : 'not loaded'}, canvas ${r.confetti.canvas ? 'seen' : 'not seen'}`;
+          console.error(`  ${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: p95 ${ms(r.p95)}, max ${ms(r.max)}, ${r.janky}/${r.frames} frames > ${JANK_MS} ms, ${r.longTasks} long tasks${confettiText}`);
+          const missing = c.build.confetti ? confettiMissing(r) : null;
+          if (missing) {
+            failures.push(`${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: ${missing}`);
+            continue;
+          }
           c.runs.push(r);
         }
       }
@@ -297,6 +339,7 @@ async function runFx(browser, builds, runs) {
       }
     }
   }
+  if (failures.length) throw new Error(`FAIL: ${failures.length} --fx run(s) not counted:\n  ${failures.join('\n  ')}`);
 }
 
 async function main() {
@@ -312,7 +355,8 @@ async function main() {
       temps.push(dir);
       builds.push({ label: `base (${args.base})`, root: dir });
     }
-    builds.push({ label: 'working tree', root: ROOT });
+    // The base may predate the confetti, so only the working tree must show it.
+    builds.push({ label: 'working tree', root: ROOT, confetti: true });
     if (args.fx) {
       const { playSaves } = await import('./capture-p25.mjs');
       for (const b of builds) {
