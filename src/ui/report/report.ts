@@ -311,8 +311,8 @@ function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
   );
 }
 
-/** Unlock chips the level-up card shows (two lines at 1280 px); the rest is counted as "+N". */
-export const LEVELUP_CHIPS = 6;
+/** Unlock chips the level-up card shows (one line from 1024 px); the rest is counted as "+N". */
+export const LEVELUP_CHIPS = 3;
 
 type UnlockGroup = 'menu' | 'upgrades' | 'tools';
 interface UnlockChip {

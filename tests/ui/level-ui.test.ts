@@ -15,6 +15,13 @@ import { getUpgrade } from '../../src/sim/data/upgrades';
 import { LEVEL_ICON, MENU_ICONS, UPGRADE_ICONS } from '../../src/ui/core/iconMap';
 import { LEVELUP_CHIPS, renderSummary } from '../../src/ui/report/report';
 
+// The project has no Node types: read CSS through a dynamically named node:fs
+// import, from the project root (jsdom's URL is rejected by node:fs).
+const FS_MODULE = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
+
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
 }
@@ -397,10 +404,23 @@ describe('daily report: missions, XP and level-up', () => {
   it(`shows at most ${LEVELUP_CHIPS} unlock chips and counts the rest as "+N"`, () => {
     const many: Unlocks = { menu: ['mocha', 'frappe', 'cake'], upgrades: ['paintings', 'lights', 'window_bar'], tools: ['blender', 'ice_maker'] };
     const band = q(summary(report({ levelUp: { level: 5, unlocks: many } })), '[data-block="level-up"]');
+    // One chip line from 1024 px: three chips, then "+N".
+    expect(LEVELUP_CHIPS).toBe(3);
     expect(band.querySelectorAll('.rpt-unlock')).toHaveLength(LEVELUP_CHIPS);
-    // The tools group has no chip left, so its heading is dropped too.
+    // Upgrades and tools have no chip left, so their headings are dropped too.
+    expect(band.querySelector('[data-group="upgrades"]')).toBeNull();
     expect(band.querySelector('[data-group="tools"]')).toBeNull();
-    expect(q(band, '[data-block="unlocks-more"]').textContent).toBe('+2');
+    expect(q(band, '[data-block="unlocks-more"]').textContent).toBe('+5');
+  });
+
+  it('keeps the card to a 40 px badge and one chip line from 1024 px', () => {
+    const css = readFileSync('src/ui/report/report.css', 'utf8');
+    const badge = /\.rpt-levelup-badge \.ic\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(badge).toMatch(/width:\s*40px/);
+    expect(badge).toMatch(/height:\s*40px/);
+    const wide = /@media \(min-width: 1024px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(wide).toMatch(/\.rpt-unlocks,\s*\.rpt-unlock-group\s*\{\s*flex-wrap:\s*nowrap;/);
+    expect(wide).toMatch(/\.rpt-unlocks\s*\{\s*max-height:\s*var\(--size-icon-md\);/);
   });
 
   it('says so when a level unlocks nothing', () => {

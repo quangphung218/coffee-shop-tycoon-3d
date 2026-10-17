@@ -570,8 +570,8 @@ describe('report.css', () => {
     expect(tip).toMatch(/white-space:\s*nowrap/);
     expect(tip).toMatch(/text-overflow:\s*ellipsis/);
     expect(src).toMatch(/\.rpt-tips\s*\{[^}]*display:\s*flex/);
-    // 8 px padding + 2 px frame around a 48 px badge and at most two 24 px chip lines stays under 96 px.
-    expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-2\) var\(--space-3\)/);
+    // 4 px padding + 2 px frame around a 40 px badge, the title and one 24 px chip line (from 1024 px) stays under 56 px.
+    expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-1\) var\(--space-3\)/);
     expect(src).toMatch(/\n\.rpt-unlocks\s*\{[^}]*max-height:\s*calc\(2 \* var\(--size-icon-md\) \+ var\(--space-1\)\)/);
     expect(src).toMatch(/\.rpt-unlock,\s*\.rpt-unlock-more\s*\{[^}]*height:\s*var\(--size-icon-md\)/);
     expect(src).toMatch(/\.rpt-layer\[data-screen='report'\] \.rpt-dialog\s*\{[^}]*max-width:\s*calc\(var\(--size-dialog\)/);

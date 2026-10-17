@@ -289,32 +289,43 @@
   grid-area: more;
 }
 
-/* Menu (P25): one line per item, icon 32 | name + short meta | one label |
-   small switch, so a phone shows more items. The 44 px switch target plus
-   2 × (4 + 2) px padding and frame makes a 56 px row; name and meta stay
-   one line each and the row's title holds the full line. */
+/* Menu (P25): icon 32 | name + meta | small switch on the first line, so a
+   phone shows more items. Name and meta wrap rather than cut; "Giá …" and
+   "lãi …%" each stay whole. The one status label sits under the meta in the
+   text column, and its line takes no room while the label slot is empty. */
 .item.menu-row {
-  grid-template-columns: 32px minmax(0, 1fr) auto auto;
-  grid-template-areas: 'icon text status control';
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon text control'
+    '. status .';
   align-items: center;
-  column-gap: var(--space-2);
+  gap: 0 var(--space-2);
   padding: var(--space-1) var(--space-2);
 }
-.menu-row .item-title,
-.menu-row .item-meta {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.menu-row > .toggle {
+  align-self: start;
+}
+.menu-row > .item-status {
+  justify-self: start;
+}
+.menu-row > .item-status > * {
+  margin-top: var(--space-1);
 }
 .menu-row .item-meta .ic {
   margin-right: var(--space-1);
   vertical-align: -3px;
 }
-/* "Thiếu Cam" opens Kho: a label-sized button whose hit area is 44 px tall
-   without growing the row. */
+.menu-row .item-meta .meta-part {
+  white-space: nowrap;
+}
+/* "Thiếu Cam" opens Kho, so it is drawn as a button (design/p20 §4): ink
+   frame and bottom shadow instead of the label's pill, danger tint kept,
+   arrow after the text; the hit area is 44 px tall without growing the row. */
 .badge-btn {
   position: relative;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--shadow-sm);
   font-family: inherit;
   cursor: pointer;
 }
@@ -337,9 +348,10 @@
   outline-offset: calc(-1 * var(--size-focus-width));
 }
 
-/* Compact switch (Menu rows): track 40 × 24 and a 16 px thumb inside the
+/* Compact switch (Menu rows): track 40 × 24 and a 14 px thumb inside the
    same 44 × 44 target; on/off moves the thumb and fills the track, no text
-   or tick. Focus uses the shared ring inside the track's border. */
+   or tick. Like the full switch, the thumb sits inside the focus-ring band
+   (2 px frame, 3 px ring, 20 px inner height) so the ring never covers it. */
 .toggle.toggle-compact {
   justify-content: center;
   min-width: var(--size-target);
@@ -351,13 +363,13 @@
   height: 24px;
 }
 .toggle-compact .toggle-thumb {
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
+  top: var(--size-focus-width);
+  left: var(--size-focus-width);
+  width: 14px;
+  height: 14px;
 }
 .toggle.toggle-compact[aria-checked='true'] .toggle-thumb {
-  left: 18px;
+  left: calc(100% - 14px - var(--size-focus-width));
 }
 .toggle.toggle-compact[aria-checked='true'] .toggle-thumb::after {
   content: none;

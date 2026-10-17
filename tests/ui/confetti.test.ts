@@ -164,6 +164,70 @@ describe('confetti burst', () => {
     }
   });
 
+  it('resizes the canvas with the host while it lives, then stops observing', () => {
+    const frames = stubFrames();
+    const observers: { cb: () => void; targets: Element[]; disconnected: boolean }[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        rec: (typeof observers)[number];
+        constructor(cb: () => void) {
+          this.rec = { cb, targets: [], disconnected: false };
+          observers.push(this.rec);
+        }
+        observe(el: Element) {
+          this.rec.targets.push(el);
+        }
+        disconnect() {
+          this.rec.disconnected = true;
+        }
+      },
+    );
+    const el = host();
+    let w = 400;
+    Object.defineProperty(el, 'clientWidth', { get: () => w });
+    Object.defineProperty(el, 'clientHeight', { value: 300 });
+    burst(el);
+    const canvas = el.querySelector('canvas')!;
+    expect(canvas.width).toBe(400);
+    expect(observers).toHaveLength(1);
+    expect(observers[0]!.targets).toEqual([el]);
+
+    w = 900;
+    observers[0]!.cb();
+    expect([canvas.width, canvas.height]).toEqual([900, 300]);
+
+    frames.step(16);
+    frames.step(C.CONFETTI_MS);
+    expect(el.querySelector('canvas')).toBeNull();
+    expect(observers[0]!.disconnected).toBe(true);
+  });
+
+  it('falls back to window resize without ResizeObserver, and removes the listener when stopped', () => {
+    stubFrames();
+    vi.stubGlobal('ResizeObserver', undefined);
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const el = host();
+    let h = 300;
+    Object.defineProperty(el, 'clientWidth', { value: 400 });
+    Object.defineProperty(el, 'clientHeight', { get: () => h });
+    const stop = burst(el);
+    const canvas = el.querySelector('canvas')!;
+    const onResize = add.mock.calls.find(([type]) => type === 'resize')?.[1];
+    expect(onResize).toBeTypeOf('function');
+
+    h = 500;
+    window.dispatchEvent(new Event('resize'));
+    expect(canvas.height).toBe(500);
+
+    stop();
+    expect(remove).toHaveBeenCalledWith('resize', onResize);
+    h = 700;
+    window.dispatchEvent(new Event('resize'));
+    expect(canvas.height).toBe(500);
+  });
+
   it('draws nothing without a 2D context', () => {
     stubFrames();
     vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null);
