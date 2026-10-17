@@ -89,7 +89,11 @@ describe('compact Menu rows', () => {
       expect(short.tagName).toBe('BUTTON');
       expect(short.classList.contains('badge-danger')).toBe(true);
       expect(short.querySelector('[data-icon="i-warning"]')).not.toBeNull();
+      // A forward arrow after the text says it goes somewhere.
+      expect((short.lastElementChild as HTMLElement).dataset.icon).toBe('i-forward');
       expect(short.textContent).toBe(`Thiếu ${getIngredient('lemon').name}`);
+      // The status label sits in its own slot (under the meta), not inside the text.
+      expect(short.closest('.item-status')).not.toBeNull();
       // The amounts stay in the description, off screen.
       const why = q(document, `#${short.getAttribute('aria-describedby')}`);
       expect(why.classList.contains('sr-only')).toBe(true);
@@ -128,13 +132,17 @@ describe('compact Menu rows', () => {
 });
 
 describe('compact switch CSS', () => {
-  it('draws a 40 × 24 track and a 16 px thumb', () => {
+  it('draws a 40 × 24 track and a 14 px thumb inside the focus-ring band', () => {
     const track = rule('.toggle-compact .toggle-track');
     expect(track).toMatch(/width:\s*40px/);
     expect(track).toMatch(/height:\s*24px/);
     const thumb = rule('.toggle-compact .toggle-thumb');
-    expect(thumb).toMatch(/width:\s*16px/);
-    expect(thumb).toMatch(/height:\s*16px/);
+    expect(thumb).toMatch(/width:\s*14px/);
+    expect(thumb).toMatch(/height:\s*14px/);
+    expect(thumb).toMatch(/top:\s*var\(--size-focus-width\)/);
+    expect(thumb).toMatch(/left:\s*var\(--size-focus-width\)/);
+    // On: the same band from the right edge.
+    expect(rule(".toggle.toggle-compact[aria-checked='true'] .toggle-thumb")).toMatch(/left:\s*calc\(100% - 14px - var\(--size-focus-width\)\)/);
   });
 
   it('keeps the hit area at least the 44 px target', () => {
@@ -144,7 +152,33 @@ describe('compact switch CSS', () => {
     expect(rule('.badge-btn::before')).toMatch(/height:\s*var\(--size-target\)/);
   });
 
-  it('puts the whole Menu row on one grid line', () => {
-    expect(rule('.item.menu-row')).toMatch(/grid-template-areas:\s*'icon text status control';/);
+  it('keeps the switch on the first line and the label under the meta', () => {
+    const row = rule('.item.menu-row');
+    expect(row).toMatch(/grid-template-columns:\s*32px minmax\(0, 1fr\) auto;/);
+    expect(row).toMatch(/grid-template-areas:\s*'icon text control'\s*'\. status \.';/);
+    expect(rule('.menu-row > .toggle')).toMatch(/align-self:\s*start/);
+  });
+
+  it('wraps the name and meta rather than cutting them, keeping each number whole', () => {
+    expect(CSS).not.toMatch(/\.menu-row[^{]*\.item-(title|meta)[^{]*\{[^}]*text-overflow/);
+    expect(rule('.menu-row .item-meta .meta-part')).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('draws "Thiếu X" as a button: ink frame, bottom shadow, no pill', () => {
+    const btn = rule('.badge-btn');
+    expect(btn).toMatch(/border:\s*var\(--size-outline-sm\) solid var\(--border-outline\)/);
+    expect(btn).toMatch(/box-shadow:\s*var\(--shadow-sm\)/);
+    expect(btn).toMatch(/border-radius:\s*var\(--btn-radius\)/);
+    expect(btn).not.toMatch(/background|color:/);
+  });
+});
+
+describe('Menu row meta', () => {
+  it('splits "Giá …" and "lãi …%" into parts that never break inside', () => {
+    const { body } = mountMenu(createNewGame('Quán Gọn', 'normal', 7));
+    const parts = [...body.querySelectorAll<HTMLElement>('[data-item="espresso"] .item-meta .meta-part')].map((p) => p.textContent);
+    expect(parts).toHaveLength(2);
+    expect(parts[0]).toMatch(/^Giá [\d.]+đ$/);
+    expect(parts[1]).toMatch(/^lãi \d+%$/);
   });
 });

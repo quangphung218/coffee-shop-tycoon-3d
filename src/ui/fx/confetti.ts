@@ -57,11 +57,21 @@ export function burst(host: HTMLElement, opts: ConfettiOptions = {}): () => void
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1';
 
-  const width = Math.max(1, host.clientWidth);
-  const height = Math.max(1, host.clientHeight);
-  const dpr = Math.min(CONFETTI_MAX_DPR, Math.max(1, doc.defaultView?.devicePixelRatio ?? 1));
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
+  const win = doc.defaultView;
+  let width = 1;
+  let height = 1;
+  let dpr = 1;
+  /** Sizes the backing store to the host; pieces keep their css px positions. */
+  function measure(): void {
+    width = Math.max(1, host.clientWidth);
+    height = Math.max(1, host.clientHeight);
+    dpr = Math.min(CONFETTI_MAX_DPR, Math.max(1, win?.devicePixelRatio ?? 1));
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+  measure();
+  // Follows the host while the burst lives (a rotated phone, a resized window).
+  const observer = win && typeof win.ResizeObserver === 'function' ? new win.ResizeObserver(() => measure()) : null;
 
   const colors = tokenColors(host);
   const p = new Float32Array(count * STRIDE);
@@ -90,6 +100,8 @@ export function burst(host: HTMLElement, opts: ConfettiOptions = {}): () => void
     done = true;
     if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
     raf = 0;
+    if (observer) observer.disconnect();
+    else win?.removeEventListener('resize', measure);
     canvas.remove();
   }
 
@@ -128,6 +140,8 @@ export function burst(host: HTMLElement, opts: ConfettiOptions = {}): () => void
   }
 
   host.append(canvas);
+  if (observer) observer.observe(host);
+  else win?.addEventListener('resize', measure);
   raf = requestAnimationFrame(frame);
   return stop;
 }

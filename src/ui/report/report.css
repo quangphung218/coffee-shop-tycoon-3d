@@ -496,13 +496,14 @@
   border-radius: var(--radius-pill);
 }
 
-/* "Lên cấp N" card: the level badge pops in, then the level line and the
-   unlock chips (two lines at most). At most 96 px tall at 1280 px. */
+/* "Lên cấp N" card: the 40 px level badge pops in, then the level line and
+   the unlock chips (one line from 1024 px, two below). At most 56 px tall at
+   1280 px: 2 × (2 frame + 4 padding) + 18 title + 24 chips. */
 .rpt-levelup {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
   border: var(--size-frame-outline) solid var(--border-outline);
@@ -516,6 +517,11 @@
   align-items: center;
   gap: var(--space-1);
   animation: rpt-badge-pop 400ms var(--easing-out) both;
+}
+/* The 48 px atlas cell drawn at 40 px (the cell scales with its box). */
+.rpt-levelup-badge .ic {
+  width: 40px;
+  height: 40px;
 }
 @keyframes rpt-badge-pop {
   0% {
@@ -538,13 +544,13 @@
 .rpt-levelup-text {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
   min-width: 0;
 }
 .rpt-levelup-title {
   font-size: var(--font-size-label);
 }
-/* Two chip lines at most; LEVELUP_CHIPS in report.ts keeps the rest to "+N". */
+/* Two chip lines at most (one from 1024 px, below); LEVELUP_CHIPS in
+   report.ts keeps the rest to "+N". */
 .rpt-unlocks {
   list-style: none;
   margin: 0;
@@ -575,6 +581,15 @@
 .rpt-unlock-more {
   padding-left: var(--space-2);
   font-weight: var(--font-weight-heavy);
+}
+@media (min-width: 1024px) {
+  .rpt-unlocks,
+  .rpt-unlock-group {
+    flex-wrap: nowrap;
+  }
+  .rpt-unlocks {
+    max-height: var(--size-icon-md);
+  }
 }
 
 /* Daily missions in the summary: label, name and reward, then the measure. */

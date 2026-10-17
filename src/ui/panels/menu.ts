@@ -7,7 +7,7 @@ import { stockOf } from '../../sim/inventory';
 import { canChangePolicy, policyLevel, PRICE_POLICY } from '../../sim/policies';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
-import { h, setAriaDisabled, uid, Watcher } from '../core/dom';
+import { h, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { fresh } from '../core/fresh';
 import { MENU_ICONS } from '../core/iconMap';
@@ -101,8 +101,8 @@ export function missingLabel(state: GameState, item: MenuItemDef): string | null
 
 /**
  * Menu hôm nay: the Mức giá choice (locked outside preparation), then one
- * compact row per item on a single line (icon | name + "[hot/cold] Giá · lãi
- * %" | one status label | small switch). The full line (margin per cup,
+ * compact row per item (icon | name + "[hot/cold] Giá · lãi %" with one status
+ * label under it | small switch). The full line (margin per cup,
  * popularity) is the switch's description and the row's title. An item the
  * stock cannot make shows a "Thiếu Cam" button that opens Kho (the amounts
  * only in its description); an item not open yet shows "Mở ngày N" or "Mở ở
@@ -186,7 +186,14 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
         const locked = levelLocked ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
-        setIconText(meta, item.temperature === 'hot' ? 'i-flame' : 'i-cold', `Giá ${formatMoney(price)} · lãi ${margin}%`);
+        // Each part keeps its number whole; the line may wrap between them.
+        setChildren(
+          meta,
+          icon(item.temperature === 'hot' ? 'i-flame' : 'i-cold', { size: 16 }),
+          h('span', { class: 'meta-part', text: `Giá ${formatMoney(price)}` }),
+          ' · ',
+          h('span', { class: 'meta-part', text: `lãi ${margin}%` }),
+        );
         detail.textContent = `Giá ${formatMoney(price)} · lãi ${formatMoney(price - item.cost)}/ly (${margin}%) · ${temp} · phổ biến ${popular}/5`;
         li.title = detail.textContent;
         // Dashed frame and lock icon mean "not open yet" only; missing stock is one warning label.
@@ -197,7 +204,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         missBadge.hidden = !locked;
         if (locked) {
           const label = missingLabel(s, item)!;
-          setIconText(missBadge, 'i-warning', label);
+          setChildren(missBadge, ...withIcon('i-warning', label), icon('i-forward', { size: 16 }));
           missBadge.setAttribute('aria-label', `${label}, mở Kho`);
         }
         // Short stock never locks the switch: on, it puts the item's ingredients in Gợi ý nhập.
