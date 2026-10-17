@@ -1,6 +1,14 @@
 # Tuần 7 ngày
 
-Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày, ngày 7 mở rộng quán, sự kiện và thời tiết theo ngày, mục tiêu và chấm điểm cuối tuần. Ván không giới hạn số ngày: hết tuần thì sang tuần tiếp theo (`state.week.index` tăng 1). Lịch nằm trong `src/sim/data/week.ts` (`WEEK_UNLOCKS`).
+Trang này mô tả luật tuần mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày ở tuần 1, ngày 7 mở rộng quán, sự kiện và thời tiết theo ngày, mục tiêu, chấm điểm và cúp cuối tuần, sang tuần mới, cấp quán 7–10 và cách save cũ được nâng. Ván không giới hạn số ngày: hết tuần thì sang tuần tiếp theo (`state.week.index` tăng 1). Luật và số liệu nằm trong `src/sim/week.ts` và `src/sim/data/week.ts`.
+
+- [Lịch mở khoá](#lịch-mở-khoá)
+- [Mở khoá theo cấp hoặc theo ngày](#mở-khoá-theo-cấp-hoặc-theo-ngày)
+- [Ngày 7: mở rộng quán](#ngày-7-mở-rộng-quán)
+- [Sự kiện và thời tiết](#sự-kiện-và-thời-tiết)
+- [Mục tiêu tuần](#mục-tiêu-tuần)
+- [Cấp quán 7–10](#cấp-quán-710)
+- [Save cũ](#save-cũ)
 
 ## Lịch mở khoá
 
@@ -99,6 +107,29 @@ Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `ind
 
 ### Sang tuần mới
 
-`next_day` từ báo cáo ngày 7 mở tuần tiếp theo: `index` + 1, `startedDay` = ngày mới, `plan` = `rollWeekPlan(seed, index)`, `goal` = `weekGoal(difficulty, index)`, xoá `result`, giữ `archive`. `state.history` chỉ giữ 28 ngày gần nhất; số liệu các tuần cũ đọc từ `archive`.
+`next_day` từ báo cáo ngày 7 mở tuần tiếp theo: `index` + 1, `startedDay` = ngày mới, `plan` = `rollWeekPlan(seed, index)`, `goal` = `weekGoal(difficulty, index)`, xoá `result`, giữ `archive`. `state.history` chỉ giữ 28 ngày gần nhất (`HISTORY_DAYS`); số liệu các tuần cũ đọc từ `archive`.
 
 Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp như trước.
+
+## Cấp quán 7–10
+
+Tới cấp 6 quán đã mở mọi món và nâng cấp. Cấp 7–10 (`LEVELS` trong `src/sim/data/levels.ts`) không mở gì mới; mỗi cấp cho mua thêm 1 cấp của hai nâng cấp đã có (`maxLevelBonus`). Cấp vượt trần gốc đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`).
+
+| Cấp | Tên | KN cần | Thêm 1 cấp cho |
+| --- | --- | --- | --- |
+| 7 | Điểm hẹn của quận | 27.000 | Máy espresso cao cấp, Máy xay hạt |
+| 8 | Thương hiệu được săn đón | 37.000 | Thêm bàn ghế, Tủ bánh |
+| 9 | Biểu tượng cà phê phố | 49.000 | Đèn trang trí, Máy xay sinh tố |
+| 10 | Huyền thoại thành phố | 63.000 | Máy espresso cao cấp, Máy rửa ly |
+
+Số đo 4 tuần dùng để chọn ngưỡng: [reports/p23-long-economy.md](../reports/p23-long-economy.md).
+
+## Save cũ
+
+Định dạng save hiện tại là phiên bản 3 (`SAVE_VERSION` trong `src/save/save.ts`). Khi tải save phiên bản 2:
+
+- `week` thiếu `index` thì nhận `index = 1`; thiếu `archive` thì nhận `archive` rỗng;
+- tuần đã chấm (`result` có sẵn, save lưu sau ngày 7) được ghi một dòng vào `archive` và giữ `result`, nên báo cáo vẫn mở màn Tổng kết tuần 1 và **Sang tuần 2** chơi tiếp; lợi nhuận và khách của dòng đó cộng từ các ngày tuần 1 còn trong `history` và `today`, không có thì 0;
+- `history` dài hơn 28 ngày bị cắt còn 28 ngày cuối.
+
+Save không có `week` không nhận `week`. Tiền, món, nâng cấp, cấp quán và XP không đổi.

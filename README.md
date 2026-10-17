@@ -9,7 +9,7 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 ![Một ngày ở quán: mở cửa, khách vào, phục vụ, báo cáo cuối ngày](docs/media/demo.gif)
 
 - **Cho ai:** người thích game quản lý nhẹ nhàng, chơi một ngày trong khoảng 7 phút.
-- **Trạng thái:** chơi được trọn một tuần 7 ngày, mỗi ngày có mở khoá, sự kiện và thời tiết riêng, hết mỗi tuần có màn Tổng kết tuần chấm điểm rồi chơi tiếp sang tuần sau; có nhân viên, nâng cấp, phố xá và save/load.
+- **Trạng thái:** chơi không giới hạn số ngày. Mỗi 7 ngày là một tuần có sự kiện, thời tiết và mục tiêu riêng, hết tuần có màn Tổng kết tuần chấm điểm rồi sang tuần sau; có nhân viên, nâng cấp, cấp quán 1–10, phố xá và save/load.
 - **Ngôn ngữ:** chữ trong game là tiếng Việt, tiền tính bằng đồng (vd `25.000đ`).
 
 ## Mục lục
@@ -31,13 +31,13 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | --- | --- |
 | Vòng ngày | Chuẩn bị → mở cửa → cao điểm → đóng cửa → Daily Report. |
 | Quản lý quán | Bật/tắt món, nhập nguyên liệu, tuyển và phân vai nhân viên, chạy marketing, mua nâng cấp và dụng cụ (máy xay, tủ bánh, máy xay sinh tố…). |
-| Tuần 7 ngày | Mỗi ván mới là một tuần 7 ngày. Lịch mở khoá theo ngày: từ ngày 2 mỗi ngày mở thêm món, dụng cụ hoặc khu; ngày 7 quán được tặng Mở rộng diện tích. Bảng lịch: [docs/spec/week-7-days.md](docs/spec/week-7-days.md). |
+| Tuần | Ván chơi liên tục từng tuần 7 ngày, không có ngày cuối. Tuần 1 có lịch mở khoá theo ngày: từ ngày 2 mỗi ngày mở thêm món, dụng cụ hoặc khu; ngày 7 quán được tặng Mở rộng diện tích. Từ tuần 2 mọi thứ trong lịch đã mở, phần còn lại mở theo cấp quán. Luật tuần: [docs/spec/week-7-days.md](docs/spec/week-7-days.md). |
 | Sự kiện và thời tiết | Mỗi ngày có thời tiết (nắng, mưa, nóng) và sự kiện (khai trương, hội chợ, nhà cung cấp tăng giá, ngày thường), lập sẵn theo seed của ván nên cùng seed ra cùng tuần. Mưa bớt khách, hội chợ đông khách, tăng giá làm nguyên liệu đắt hơn. |
 | Trang trí | Đặt trang trí (Cây xanh, Tranh treo tường, Đèn trang trí…) ở nhóm Trang trí của bảng Nâng cấp để quán hút khách và được thêm sao. Trang trí không kèm chỗ ngồi có nút **Gỡ** (bấm hai lần): gỡ cấp trên cùng, hoàn lại một nửa tiền đã trả. |
 | Mức giá và Mức lương | **Mức giá** (Rẻ / Chuẩn / Cao, bảng Menu): giá bán cao hơn thì sao và lượng khách giảm. **Mức lương** (Thấp / Chuẩn / Cao, bảng Nhân viên): lương cao hơn thì nhân viên làm nhanh hơn. Chỉ đổi được lúc chuẩn bị. |
-| Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó. Hết ngày 7 của tuần, màn Tổng kết tuần so doanh thu và sao với mục tiêu, chấm điểm 0–100 và cúp, so với tuần trước, rồi **Sang tuần N+1**. |
-| Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–6, mỗi cấp mở thêm món, nâng cấp và dụng cụ. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
-| Chỉ số kinh doanh | Daily Report có tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
+| Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó; mục tiêu doanh thu tăng 50% mỗi tuần, tối đa gấp 3 tuần 1. Hết ngày 7 của tuần, màn Tổng kết tuần chấm điểm 0–100 và 0–3 cúp, tuần được 2 cúp trở lên thưởng tiền, so với tuần trước, rồi **Sang tuần N+1**. |
+| Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–10. Cấp 1–6 mở thêm món, nâng cấp và dụng cụ; cấp 7–10 nâng trần cấp của vài nâng cấp đã có. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
+| Thống kê ngày và tuần | Daily Report so lãi, doanh thu, khách và sao với hôm qua và với trung bình tuần, kèm doanh thu tuần so mục tiêu. Tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
 | Tự phục vụ | Bấm khách, quầy hay bàn trong cảnh để nhận order, pha, mang đồ, thu tiền, dọn bàn. |
 | Khách và đánh giá | Khách có cá tính (văn phòng, sinh viên, khách quen, sành cà phê, gia đình) đổi gu món và độ kiên nhẫn; xếp hàng, bỏ về khi chờ lâu, để lại review 1–5 sao. |
 | Cảnh 3D | Quán, nhân vật và phố sinh bằng code; đèn ấm buổi tối; 3 mức đồ họa. |
@@ -47,10 +47,17 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | | |
 | --- | --- |
 | ![Main Menu](docs/media/main-menu.png)<br>Main Menu, quán chạy nền phía sau | ![Bảng Kho](docs/media/prep-inventory.png)<br>Chuẩn bị: nhập hàng ở bảng Kho |
-| ![Giờ cao điểm](docs/media/peak.png)<br>Cao điểm trưa: khách xếp hàng, nhân viên pha và mang món | ![Daily Report](docs/media/daily-report.png)<br>Daily Report: lãi/lỗ, khách, món bán chạy |
-| ![Đánh giá](docs/media/reviews.png)<br>Đánh giá của khách sau một ngày | ![Bảng Menu](docs/media/menu-icons.png)<br>Bảng Menu với icon 3D |
+| ![Giờ cao điểm](docs/media/peak.png)<br>Cao điểm trưa: khách xếp hàng, nhân viên pha và mang món | ![Đánh giá](docs/media/reviews.png)<br>Đánh giá của khách sau một ngày |
+| ![Bảng Menu](docs/media/menu-icons.png)<br>Bảng Menu với icon 3D | ![Hàng chờ](docs/media/queue.png)<br>Hàng chờ đi theo lối trống giữa các bàn |
 | ![Mặt tiền ban ngày](docs/media/facade-day.png)<br>Mặt tiền quán buổi sáng | ![Mặt tiền chiều tối](docs/media/facade-evening.png)<br>Chiều tối: cửa sổ và biển hiệu sáng ấm |
-| ![Hàng chờ](docs/media/queue.png)<br>Hàng chờ đi theo lối trống giữa các bàn | |
+
+Ba ảnh dưới ghép bản cũ (trái, nét đứt) với giao diện hiện tại (phải, nét liền); chi tiết ở [docs/reports/p23-ui.md](docs/reports/p23-ui.md).
+
+| Màn | Ảnh |
+| --- | --- |
+| HUD 3 cụm: Hôm nay · Tiến độ · Điều khiển | ![HUD giờ cao điểm](docs/media/hud-peak-1280-p23.jpg) |
+| Daily Report: 4 ô số kèm Δ so hôm qua và so trung bình tuần, doanh thu tuần so mục tiêu | ![Daily Report ngày 3](docs/media/report-day3-1280-p23.jpg) |
+| Tổng kết tuần 2: so với tuần 1, doanh thu từng ngày, mục tiêu tuần 3, nút **Sang tuần 3** | ![Tổng kết tuần 2](docs/media/week2-1280-p23.jpg) |
 
 ## Cài và chạy
 
@@ -73,7 +80,15 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD trên cùng gồm ba cụm: **Hôm nay** (ngày, tuần, thời tiết, sự kiện, giờ, pha), **Tiến độ** (tiền, sao, cấp quán và thanh XP) và **Điều khiển** (Mở cửa hoặc tốc độ, Dừng, menu camera và cài đặt). Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
-5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem tổng kết tuần**: màn Tổng kết tuần N hiện điểm 0–100, 0–3 cúp và tiền thưởng, doanh thu và sao so mục tiêu, bảng so với tuần trước (từ tuần 2), cột doanh thu 7 ngày có đánh dấu ngày tốt nhất, mục tiêu tuần tới và cấp quán tiếp theo mở gì. **Sang tuần N+1** mở ngày đầu tuần mới ở pha chuẩn bị; **Chơi lại** mở ván mới cùng tên quán và độ khó; **Về menu** (hoặc `Esc`) về Main Menu.
+5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá). Tab Tổng kết vừa một màn:
+   - băng "Lên cấp N" với danh sách mở khóa (ngày có lên cấp);
+   - 4 ô số chính: Lãi/Lỗ, Doanh thu, Khách (phục vụ/đến), Sao; mỗi ô có Δ so hôm qua và Δ so trung bình các ngày trước trong tuần;
+   - dòng Tuần N · ngày d/7 với doanh thu tuần so mục tiêu;
+   - Thu chi cạnh nhiệm vụ đạt/hụt kèm thưởng và KN, món bán chạy, món hết nguyên liệu;
+   - 2 gợi ý cho ngày mai.
+
+   Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới.
+6. **Tổng kết tuần**: hết ngày 7 của tuần, nút chính của báo cáo thành **Xem tổng kết tuần**. Màn Tổng kết tuần N hiện điểm 0–100, 0–3 cúp và tiền thưởng, doanh thu và sao so mục tiêu, bảng so với tuần trước (từ tuần 2), cột doanh thu 7 ngày có đánh dấu ngày tốt nhất, mục tiêu tuần tới và cấp quán tiếp theo. **Sang tuần N+1** (nút chính) mở ngày đầu tuần mới ở pha chuẩn bị; **Chơi lại** mở ván mới cùng tên quán và độ khó; **Về menu** (hoặc `Esc`) về Main Menu.
 
 Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần nhất bất cứ lúc nào.
 
@@ -112,7 +127,7 @@ Version đang chạy (vd `v0.1.0`) hiện ở chân Main Menu và cuối màn C�
 
 - Lưu trong `localStorage` của trình duyệt: slot tự động (ghi cuối mỗi ngày) và 3 slot lưu tay trong menu Tạm dừng.
 - **Tải game** ở Main Menu mở mọi slot; slot hỏng được báo, không bị xóa.
-- Định dạng lưu là phiên bản 2. Save từ bản cũ tự nâng khi tải: tính cấp quán từ lịch sử đã chơi và thêm nhiệm vụ ngày, giữ nguyên tiền và mọi món, nâng cấp đã mua (chi tiết ở [docs/architecture.md](docs/architecture.md#save-schema)).
+- Định dạng lưu là phiên bản 3. Save từ bản cũ tự nâng khi tải, giữ nguyên tiền và mọi món, nâng cấp đã mua: save v1 được tính cấp quán từ lịch sử đã chơi và thêm nhiệm vụ ngày; save v2 đã hết tuần 1 mở được tuần 2 và chơi tiếp (chi tiết ở [docs/architecture.md](docs/architecture.md#save-schema)).
 
 ## Cấu trúc thư mục
 
@@ -172,7 +187,8 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/architecture.md](docs/architecture.md) | Ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, FSM khách, save, hiệu năng. |
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
-| [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần 7 ngày: lịch mở khoá, sự kiện, thời tiết, mục tiêu và chấm điểm. |
+| [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần: lịch mở khoá tuần 1, sự kiện, thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, save cũ. |
+| [docs/reports/p23-ui.md](docs/reports/p23-ui.md) | Ảnh trước/sau HUD 3 cụm, Daily Report gọn, Tổng kết tuần 1 và 2, danh sách thành phần lúc tải. |
 | [docs/reports/p21-week.md](docs/reports/p21-week.md) | Báo cáo tuần 7 ngày: log mô phỏng 7 ngày cùng seed, ảnh trước/sau màn kết tuần, mẫu JSON Số liệu chơi. |
 | [docs/reports/loading-experience.md](docs/reports/loading-experience.md) | Màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau. |
 | [docs/reports/p19-polish.md](docs/reports/p19-polish.md) | Các chỉnh sửa P19 với ảnh trước/sau có khoanh. |
