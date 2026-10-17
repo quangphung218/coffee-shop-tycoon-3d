@@ -1,6 +1,6 @@
 # P24 — Nhập hàng cho món mới bật, thang giao diện chung
 
-Báo cáo P24 so với P23 `3a08fe2`: vì sao Gợi ý nhập tự động bỏ sót Cam, Bột bánh, Bơ và cách sửa; các chỗ đã thiết kế lại theo từng vùng; ảnh trước/sau có khoanh ở 390 và 1280 px; kết quả kiểm layout, khởi động và khung hình.
+Báo cáo P24 so với P23 `3a08fe2`: vì sao Gợi ý nhập tự động bỏ sót Cam, Bột bánh, Bơ, cách sửa và mục tiêu tuần đo lại sau khi sửa; các chỗ đã thiết kế lại theo từng vùng; ảnh trước/sau có khoanh ở 390 và 1280 px; kết quả kiểm layout, khởi động và khung hình.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -30,7 +30,7 @@ Không có dụng ý: món đã mở khoá và đã bật thì phải được n
 | `pickOrder` cộng phần trọng số của mỗi món đang hết vào `DayStats.missedDemand` (trường tùy chọn, không rút thêm số ngẫu nhiên); nhu cầu hôm sau cộng phần này. Save cũ thiếu trường đọc là `{}`. | `pickOrder`, `DayStats` |
 | Không đủ tiền thì không mua và báo "Thiếu …đ để nhập Cam, Bột bánh"; chân bảng Kho ghi số tiền còn thiếu. | `applyRestockSuggestion`, bảng Kho |
 | Mỗi lần mua thành công phát `GameEvent` `spend`; UI hiện toast, không ghi câu vào bảng. | sim, `src/ui/core/toast.ts` |
-| Mục tiêu tuần Khó và tốc độ tăng mục tiêu tuần đo lại sau khi sửa (`WEEK_GOALS.hard` 23.200.000đ, `WEEK_GOAL_GROWTH` 0,6). | `c7c9eca` |
+| Mục tiêu tuần Khó và tốc độ tăng mục tiêu tuần đo lại sau khi sửa (`WEEK_GOALS.hard` 23.200.000đ, `WEEK_GOAL_GROWTH` 0,6), số đo ở [mục dưới](#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập). | `c7c9eca` |
 
 "Chưa mở nhà cung cấp" không tồn tại trong game: lý do duy nhất không nhập được là thiếu tiền.
 
@@ -44,6 +44,50 @@ Ván Vừa, seed `1760400000000 >>> 0`, tự phục vụ, mỗi sáng bấm Gợ
 | Ngày 6, bật Bánh ngọt (Bột bánh 0, Bơ 0) | Cà phê hạt 1000, Sữa tươi 5000, Ly 50; thiếu Cam, Bột bánh, Bơ | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 | Bán 25 bánh, 7 ly Nước cam |
 
 Kết quả: **PASS**, gợi ý P24 có Cam, Bột bánh và Bơ. Cột P23 lấy từ `npm run media:p24`, sim mỗi bản chơi cùng ván; P23 không nhập Cam lần nào nên ngày 6 kho vẫn hết Cam. Tuần 1 của ván này: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.605.000đ, 91 điểm, 3 cúp.
+
+### Mục tiêu tuần sau khi sửa gợi ý nhập
+
+Gợi ý đúng nhập cả nguyên liệu của món mới bật, nên quán bán được thêm món và doanh thu tăng. Đo ở `c7c9eca` với mức cũ 0,5/tuần: chiến lược cơ bản có bật món mới ở Khó làm 28,9–29,9 triệu ở tuần 2, seed 1 và 42 được 3 cúp với mục tiêu 34,5 triệu. Mục tiêu đổi như sau, Dễ và Thường giữ mục tiêu tuần 1:
+
+| Số | P23 | P24 |
+| --- | --- | --- |
+| `WEEK_GOALS.hard` | 23.000.000 | 23.200.000 |
+| `WEEK_GOAL_GROWTH` | 0,5 | 0,6 |
+| Mục tiêu tuần 1–4, Dễ (triệu) | 28 / 42 / 56 / 70 | 28 / 44,8 / 61,6 / 78,4 |
+| Mục tiêu tuần 1–4, Thường (triệu) | 26,5 / 39,8 / 53 / 66,3 | 26,5 / 42,4 / 58,3 / 74,2 |
+| Mục tiêu tuần 1–4, Khó (triệu) | 23 / 34,5 / 46 / 57,5 | 23,2 / 37,1 / 51 / 65 |
+
+Từ tuần 5 mục tiêu chạm trần ×3: Dễ 84, Thường 79,5, Khó 69,6 triệu.
+
+Tuần 1, chiến lược cơ bản như [spec](../spec/week-7-days.md#mục-tiêu-tuần) (`a_basic` của `tests/integration/p22-strategies.test.ts`: mỗi sáng nhập theo gợi ý, tự phục vụ, không thuê, không nâng cấp, không bật món mới). Doanh thu triệu đồng, trong ngoặc là tỉ lệ so với mục tiêu:
+
+| Độ khó | Mục tiêu | Seed 1 | 42 | 777 | 2024 | 31337 | 9001 | Trung bình |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Dễ | 28,0 | 23,00 (82,2%) | 22,95 (82,0%) | 22,95 (82,0%) | 21,86 (78,1%) | 22,07 (78,8%) | 22,53 (80,5%) | 22,56 (80,6%) |
+| Thường | 26,5 | 21,97 (82,9%) | 20,95 (79,0%) | 21,21 (80,1%) | 20,84 (78,7%) | 20,32 (76,7%) | 20,86 (78,7%) | 21,03 (79,3%) |
+| Khó | 23,2 | 19,88 (85,7%) | 18,14 (78,2%) | 17,79 (76,7%) | 18,82 (81,1%) | 17,55 (75,6%) | 17,81 (76,8%) | 18,33 (79,0%) |
+
+Tuần 2–4, chiến lược của `tests/integration/p23-long-run.test.ts` (mỗi sáng bật mọi món đã mở khoá rồi nhập theo gợi ý), cùng 6 seed. `a_basic` không thuê, không nâng cấp; điểm theo thứ tự seed 1 / 42 / 777 / 2024 / 31337 / 9001:
+
+| Độ khó | Tuần | Mục tiêu (triệu) | Doanh thu TB (triệu) | Điểm | Cúp |
+| --- | --- | --- | --- | --- | --- |
+| Dễ | 2 | 44,8 | 32,96 | 85 / 85 / 84 / 84 / 84 / 83 | 2 |
+| Dễ | 3 | 61,6 | 33,42 | 73 / 73 / 73 / 72 / 72 / 72 | 2 |
+| Dễ | 4 | 78,4 | 33,05 | 66 / 65 / 65 / 65 / 66 / 65 | 1 |
+| Thường | 2 | 42,4 | 31,99 | 85 / 85 / 85 / 85 / 84 / 86 | 2 |
+| Thường | 3 | 58,3 | 32,52 | 73 / 74 / 74 / 73 / 73 / 72 | 2 |
+| Thường | 4 | 74,2 | 31,90 | 65 / 66 / 65 / 65 / 66 / 65 | 1 |
+| Khó | 2 | 37,1 | 29,47 | 87 / 87 / 86 / 84 / 87 / 85 | 2 |
+| Khó | 3 | 51,0 | 29,52 | 72 / 75 / 72 / 75 / 72 / 72 | 2 |
+| Khó | 4 | 65,0 | 28,73 | 64 / 65 / 66 / 64 / 64 / 65 | 1 |
+
+`c_spend` (thuê 1 barista, mua nâng cấp rẻ nhất mỗi sáng) và `e_marketing` (thêm chiến dịch rẻ nhất ngày lẻ) được 100 điểm, 3 cúp ở mọi tuần 2–4, mọi seed. Doanh thu trung bình tuần 2 / 3 / 4 (triệu):
+
+| Độ khó | `c_spend` | `e_marketing` |
+| --- | --- | --- |
+| Dễ | 93,67 / 93,67 / 94,33 | 94,26 / 94,37 / 95,10 |
+| Thường | 86,99 / 90,91 / 90,53 | 88,67 / 91,81 / 92,75 |
+| Khó | 71,26 / 83,40 / 82,65 | 73,08 / 85,93 / 85,85 |
 
 ## 2. Các chỗ đã thiết kế lại
 
@@ -95,6 +139,7 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | PASS, 48/48: 6 bảng, Daily Report, Đánh giá không tràn ở 390/768/1440; CLS Kho 0,000000 ở cả ba khổ; HUD 2 hàng cao 104 px ở 390 và 768, 1 hàng cao 56 px ở 1280 và 1440, kể cả ngày "Tăng giá nhập"; mọi nút HUD ≥ 44 px |
 | Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL so với mốc: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
+| `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |
 
 Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple M2), trung vị 3 lần, chỉ đo bản hiện tại.
 
@@ -121,4 +166,3 @@ Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple
 - Main Menu di động: P24 1132 ms so với 1216 ms của `3a08fe2` (−84 ms, −6,9%). Vẫn trên mốc 1 s, nhưng không lùi so với P23.
 - Gói tải gần như không đổi: JS chính 72,9 → 73,2 kB gzip, CSS 12,8 → 12,7 kB gzip.
 - Headless khoá nhịp khung, nên số khung > 50 ms chỉ dùng để so khoảng (P23: 39–44 máy bàn, 40–45 di động), không cho biết có giật.
-| `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |

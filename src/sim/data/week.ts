@@ -6,8 +6,8 @@ export const WEEK_LENGTH = 7;
 
 /**
  * Week targets by difficulty. Revenue is set so the basic strategy (restock
- * as suggested, serve alone) reaches about 70–90% of it; how it was measured
- * is in docs/spec/week-7-days.md.
+ * as suggested, serve alone) reaches about 80% of it (75–86% per seed); how it
+ * was measured is in docs/spec/week-7-days.md.
  */
 export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
   easy: { revenue: 28_000_000, stars: 3.8 },
@@ -17,9 +17,10 @@ export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
 
 /**
  * Revenue target growth per week after week 1, and its cap as a multiple of
- * week 1: a shop that keeps investing grows past 3× its week-1 revenue, while
- * one that never buys anything stays near 1.1× and drops to 2 cups from week 2.
- * Measured in docs/reports/p23-long-economy.md.
+ * week 1: a shop that keeps investing makes more than 3× the week-1 target by
+ * week 3, while one that never buys anything stays near 1.2–1.3× and drops to
+ * 2 cups in weeks 2–3, 1 cup from week 4. Measured after the restock fix in
+ * docs/reports/p24-ui.md.
  */
 export const WEEK_GOAL_GROWTH = 0.6;
 export const WEEK_GOAL_MAX_MULT = 3;
