@@ -353,6 +353,27 @@ atlas. The icons are drawn 4.5 s after atlas@1x is in: the fetch body
 the atlas arrives. Base draws at once because its atlas is in before its
 scene. Target (drawn within 300 ms of atlas@1x) not met.
 
+### fix2-2 A (@1x asked right after the menu paint, behind the scene chunk)
+
+$ npm run media:p22
+Exit code: 0
+
+Main Menu icons on mobile (390x844, one load per build, ms since navigation):
+
+| Mark | base (f720b6f) | fix2-2 A |
+| --- | --- | --- |
+| Main Menu | 1022 | 995 |
+| three.js in | 2605 | 2526 |
+| atlas @1x asked / in | 1006 / 2560 | 1012 / 2470 |
+| cst:icons (@1x handed to CSS) | | 2473 |
+| every icon drawn | 2608 | 2529 |
+| 3D scene | 2942 | 2942 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Reading: icons drawn 59 ms after atlas@1x is in (target 300 ms), one
+request per atlas. In this single load the 3D scene ties base; the
+median over 9 runs is measured with measure-startup.
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
