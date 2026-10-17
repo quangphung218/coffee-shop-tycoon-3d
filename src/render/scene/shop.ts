@@ -1,12 +1,14 @@
 import {
   type BufferGeometry,
   ConeGeometry,
+  CylinderGeometry,
   Group,
   IcosahedronGeometry,
   InstancedMesh,
   type Material,
   Mesh,
   Object3D,
+  OctahedronGeometry,
   PlaneGeometry,
   type Scene,
 } from 'three';
@@ -38,7 +40,8 @@ export { SHARED_MATERIAL, machineGeometry };
  * Low-poly shop built from getShopLayout(state). All furniture shares one
  * flat-shaded vertex-colour Lambert material; repeated pieces (tables, chairs,
  * parasols, coins, cups, decor) are InstancedMesh. When the layout changes
- * only the affected meshes are refreshed. Windows, awning, sign and the other
+ * only the affected meshes are refreshed; a new upgrade tier only points the
+ * same InstancedMesh at another cached geometry. Windows, awning, sign and the other
  * architectural details come from FacadeView (facade.ts).
  */
 
@@ -58,16 +61,49 @@ const UPGRADE_IDS: readonly UpgradeId[] = UPGRADES.map((u) => u.id);
 
 // ---------- Geometry builders (built once, or on layout change) ----------
 
-function tableGeometry(): BufferGeometry {
+/**
+ * Tables, chairs, parasols and decor have a look per upgrade tier
+ * (upgradeTier, like the machines in equipment.ts). Tier 1 is the original
+ * model, tier 2 adds a detail and steel trim, tier 3 gold trim. Each tier
+ * stays within 1.6 times the triangles of tier 1.
+ */
+export type LookTier = 1 | 2 | 3;
+
+/** Tier 0 (not bought) draws as tier 1; levels past the top tier as tier 3. */
+function lookTier(tier: number): LookTier {
+  return Math.max(1, Math.min(3, Math.floor(tier))) as LookTier;
+}
+
+/** Open tube: no caps, for trims and thin rods. */
+function tube(rTop: number, rBottom: number, h: number, segments: number): CylinderGeometry {
+  return new CylinderGeometry(rTop, rBottom, h, segments, 1, true);
+}
+
+/** Tier 2 lays a cloth with a coral runner over the top on a steel foot; tier 3 has a stone top with a gold rim and a gold foot. */
+function tableGeometry(tier: LookTier): BufferGeometry {
+  const stem = part(cyl(0.06, 0.06, TABLE_TOP_Y - 0.08, 6), PALETTE.woodDark, 0, (TABLE_TOP_Y - 0.08) / 2, 0);
+  const foot = (color: number): BufferGeometry => part(cyl(0.28, 0.3, 0.04, 8), color, 0, 0.02, 0);
+  if (tier === 1) {
+    return merge([part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0), stem, foot(PALETTE.woodDark)]);
+  }
+  if (tier === 2) {
+    return merge([
+      part(cyl(TABLE_RADIUS + 0.01, TABLE_RADIUS + 0.03, 0.16, 10), PALETTE.cream, 0, TABLE_TOP_Y - 0.08, 0),
+      part(box(0.18, 0.004, 2 * TABLE_RADIUS + 0.02), PALETTE.coral, 0, TABLE_TOP_Y + 0.002, 0),
+      stem,
+      foot(PALETTE.steel),
+    ]);
+  }
   return merge([
-    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.woodLight, 0, TABLE_TOP_Y - 0.04, 0),
-    part(cyl(0.06, 0.06, TABLE_TOP_Y - 0.08, 6), PALETTE.woodDark, 0, (TABLE_TOP_Y - 0.08) / 2, 0),
-    part(cyl(0.28, 0.3, 0.04, 8), PALETTE.woodDark, 0, 0.02, 0),
+    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.08, 10), PALETTE.stone, 0, TABLE_TOP_Y - 0.04, 0),
+    part(tube(TABLE_RADIUS + 0.015, TABLE_RADIUS + 0.015, 0.06, 10), PALETTE.gold, 0, TABLE_TOP_Y - 0.035, 0),
+    stem,
+    foot(PALETTE.gold),
   ]);
 }
 
-/** Chair facing +z with its back toward -z. */
-function chairGeometry(): BufferGeometry {
+/** Chair facing +z with its back toward -z. Tier 2 adds a seat cushion on steel legs; tier 3 a high back with a gold top rail. */
+function chairGeometry(tier: LookTier): BufferGeometry {
   const legs: BufferGeometry[] = [];
   for (const [lx, lz] of [
     [-0.17, -0.17],
@@ -75,21 +111,47 @@ function chairGeometry(): BufferGeometry {
     [-0.17, 0.17],
     [0.17, 0.17],
   ] as const) {
-    legs.push(part(box(0.05, 0.42, 0.05), PALETTE.woodDark, lx, 0.21, lz));
+    legs.push(part(box(0.05, 0.42, 0.05), tier === 2 ? PALETTE.steel : PALETTE.woodDark, lx, 0.21, lz));
   }
-  return merge([
-    ...legs,
-    part(box(CHAIR_SIZE, 0.07, CHAIR_SIZE), PALETTE.mint, 0, 0.45, 0),
-    part(box(CHAIR_SIZE, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2),
-  ]);
+  const parts = [...legs, part(box(CHAIR_SIZE, 0.07, CHAIR_SIZE), PALETTE.mint, 0, 0.45, 0)];
+  if (tier < 3) parts.push(part(box(CHAIR_SIZE, 0.45, 0.06), PALETTE.mint, 0, 0.7, -0.2));
+  if (tier >= 2) parts.push(part(box(CHAIR_SIZE - 0.06, 0.05, CHAIR_SIZE - 0.06), tier === 2 ? PALETTE.coral : PALETTE.cream, 0, 0.51, 0.02));
+  if (tier === 3) {
+    parts.push(part(box(CHAIR_SIZE, 0.75, 0.06), PALETTE.mint, 0, 0.85, -0.2), part(box(CHAIR_SIZE + 0.02, 0.05, 0.08), PALETTE.gold, 0, 1.245, -0.2));
+  }
+  return merge(parts);
 }
 
-function parasolGeometry(): BufferGeometry {
-  return merge([
-    part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
-    part(new ConeGeometry(1.1, 0.45, 8), PALETTE.coral, 0, 2.15, 0),
-    part(cyl(0.08, 0.08, 0.1, 6), PALETTE.cream, 0, 2.42, 0),
-  ]);
+/** Parasol canopy as eight wedges, coloured in turn from `colors` (same triangles as one 8-sided cone). */
+function canopy(radius: number, height: number, y: number, colors: readonly number[]): BufferGeometry[] {
+  const wedge = Math.PI / 4;
+  return Array.from({ length: 8 }, (_, i) => part(new ConeGeometry(radius, height, 1, 1, false, i * wedge, wedge), colors[i % colors.length]!, 0, y, 0));
+}
+
+/** Tier 2 has a striped canopy on a steel pole; tier 3 a bigger striped canopy with gold tassels and a gold cap. */
+function parasolGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) {
+    return merge([
+      part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.cream, 0, 1.05, 0),
+      part(new ConeGeometry(1.1, 0.45, 8), PALETTE.coral, 0, 2.15, 0),
+      part(cyl(0.08, 0.08, 0.1, 6), PALETTE.cream, 0, 2.42, 0),
+    ]);
+  }
+  const radius = tier === 2 ? 1.1 : 1.3;
+  const height = tier === 2 ? 0.45 : 0.5;
+  const parts = [
+    part(cyl(PARASOL_POLE_RADIUS, PARASOL_POLE_RADIUS, 2.1, 6), PALETTE.steel, 0, 1.05, 0),
+    ...canopy(radius, height, 2.15, [PALETTE.coral, PALETTE.cream]),
+    part(cyl(0.08, 0.08, 0.1, 6), tier === 2 ? PALETTE.steel : PALETTE.gold, 0, 2.15 + height / 2 + 0.02, 0),
+  ];
+  if (tier === 3) {
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const r = radius - 0.03;
+      parts.push(part(tube(0.035, 0, 0.14, 3), PALETTE.gold, Math.sin(a) * r, 2.15 - height / 2 - 0.07, Math.cos(a) * r));
+    }
+  }
+  return merge(parts);
 }
 
 function coinGeometry(): BufferGeometry {
@@ -107,30 +169,96 @@ function cupGeometry(): BufferGeometry {
   ]);
 }
 
-function plantGeometry(): BufferGeometry {
-  return merge([
+/** Unit directions from the foliage centre where the tier 2 flowers sit, and their colours. */
+const FLOWER_SPOTS: readonly (readonly [number, number, number, number])[] = [
+  [0.55, 0.45, 0.7, PALETTE.coral],
+  [-0.65, 0.3, 0.7, PALETTE.gold],
+  [0.1, 0.75, 0.65, PALETTE.cream],
+];
+
+/** Potted plant pivoting on its base (ambient.ts sways it). Tier 2 adds flowers and a steel pot rim; tier 3 is a tall plant in a gold pot. */
+function plantGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 3) {
+    return merge([
+      part(cyl(0.25, 0.18, 0.55, 8), PALETTE.gold, 0, 0.275, 0),
+      part(new IcosahedronGeometry(PLANT_RADIUS, 0), PALETTE.plant, 0, 1, 0),
+      part(new IcosahedronGeometry(0.32, 0), PALETTE.plantDark, 0.12, 1.45, 0.05),
+      part(new IcosahedronGeometry(0.22, 0), PALETTE.plant, -0.05, 1.8, 0),
+    ]);
+  }
+  const parts = [
     part(cyl(0.25, 0.18, 0.45, 8), PALETTE.pot, 0, 0.225, 0),
     part(new IcosahedronGeometry(PLANT_RADIUS, 0), PALETTE.plant, 0, 0.85, 0),
     part(new IcosahedronGeometry(0.28, 0), PALETTE.plantDark, 0.15, 1.2, 0.05),
-  ]);
+  ];
+  if (tier === 2) {
+    parts.push(part(tube(0.26, 0.26, 0.05, 8), PALETTE.steel, 0, 0.43, 0));
+    for (const [dx, dy, dz, color] of FLOWER_SPOTS) {
+      const r = PLANT_RADIUS * 0.95;
+      parts.push(part(new OctahedronGeometry(0.07, 0), color, dx * r, 0.85 + dy * r, dz * r));
+    }
+  }
+  return merge(parts);
 }
 
-/** Painting facing +z, centred on its hook. */
-function paintingGeometry(): BufferGeometry {
-  return merge([
+/** Painting facing +z, centred on its hook. Tier 2 adds a steel outer frame and a picture light; tier 3 a gold frame and a gold plaque. */
+function paintingGeometry(tier: LookTier): BufferGeometry {
+  const parts = [
     part(box(1, 0.75, 0.05), PALETTE.woodDark, 0, 0, 0),
     part(box(0.86, 0.3, 0.06), PALETTE.coral, 0, 0.15, 0),
     part(box(0.86, 0.31, 0.06), PALETTE.mint, 0, -0.155, 0),
     part(new IcosahedronGeometry(0.12, 0), PALETTE.gold, 0.22, 0.18, 0.04),
-  ]);
+  ];
+  if (tier === 2) {
+    parts.push(part(box(1.08, 0.83, 0.045), PALETTE.steel, 0, 0, 0), part(box(0.5, 0.04, 0.08), PALETTE.steel, 0, 0.45, 0.03));
+  } else if (tier === 3) {
+    parts.push(part(box(1.1, 0.85, 0.045), PALETTE.gold, 0, 0, 0), part(box(0.26, 0.07, 0.03), PALETTE.gold, 0, -0.5, 0));
+  }
+  return merge(parts);
 }
 
-function lampGeometry(): BufferGeometry {
-  return merge([
-    part(cyl(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.95, 0),
-    part(new ConeGeometry(0.3, 0.28, 8, 1, true), PALETTE.gold, 0, 2.38, 0),
-  ]);
+/** Bulbs hang under a shade this far either side of the rod from tier 2. */
+const TWIN_LAMP_X = 0.28;
+
+/** Hanging lamp. Tier 2 has two cream shades on a steel bar; tier 3 two gold shades on a gold bar with a gold finial. */
+function lampGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) {
+    return merge([
+      part(cyl(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.95, 0),
+      part(new ConeGeometry(0.3, 0.28, 8, 1, true), PALETTE.gold, 0, 2.38, 0),
+    ]);
+  }
+  const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+  const shade = tier === 2 ? PALETTE.cream : PALETTE.gold;
+  const parts = [
+    part(tube(0.012, 0.012, 1, 4), PALETTE.woodDark, 0, 2.99, 0),
+    part(tube(0.012, 0.012, 2 * TWIN_LAMP_X, 4), trim, 0, 2.49, 0, 0, 0, Math.PI / 2),
+    part(new ConeGeometry(0.2, 0.22, 8, 1, true), shade, -TWIN_LAMP_X, 2.38, 0),
+    part(new ConeGeometry(0.2, 0.22, 8, 1, true), shade, TWIN_LAMP_X, 2.38, 0),
+  ];
+  if (tier === 3) parts.push(part(tube(0.04, 0, 0.08, 4), PALETTE.gold, 0, 2.45, 0));
+  return merge(parts);
 }
+
+/** Glowing bulb(s) of a lamp, placed at the bulb height: one, two from tier 2, bigger at tier 3. */
+function bulbGeometry(tier: LookTier): BufferGeometry {
+  if (tier === 1) return new IcosahedronGeometry(0.1, 0);
+  const r = tier === 2 ? 0.08 : 0.09;
+  return merge([part(new OctahedronGeometry(r, 0), PALETTE.bulb, -TWIN_LAMP_X, 0, 0), part(new OctahedronGeometry(r, 0), PALETTE.bulb, TWIN_LAMP_X, 0, 0)]);
+}
+
+/** Pieces drawn per look tier; geometry for each (piece, tier) is built once on first use. */
+const TIERED_GEOMETRY = {
+  table: tableGeometry,
+  chair: chairGeometry,
+  parasol: parasolGeometry,
+  plant: plantGeometry,
+  painting: paintingGeometry,
+  lamp: lampGeometry,
+  bulb: bulbGeometry,
+} as const satisfies Record<string, (tier: LookTier) => BufferGeometry>;
+
+export type TieredPiece = keyof typeof TIERED_GEOMETRY;
 
 function backCounterGeometry(minX: number, maxX: number): BufferGeometry {
   const w = maxX - minX;
@@ -199,18 +327,13 @@ export class ShopView {
     unit: part(box(1, 1, 1), PALETTE.floor),
     patio: part(box(1, 1, 1), PALETTE.patio),
     wall: part(box(1, 1, 1), PALETTE.wall),
-    table: tableGeometry(),
-    chair: chairGeometry(),
-    parasol: parasolGeometry(),
     coin: coinGeometry(),
     cup: cupGeometry(),
-    plant: plantGeometry(),
-    painting: paintingGeometry(),
-    lamp: lampGeometry(),
-    bulb: new IcosahedronGeometry(0.1, 0),
     door: doorGeometry(),
     doorGlass: doorGlassGeometry(),
   };
+  /** Geometry per tiered piece and look tier, kept for the life of the view (tiers 2 and 3 built when first shown). */
+  private readonly tierGeo = new Map<string, BufferGeometry>();
 
   private readonly indoorFloor: Mesh;
   private readonly expansionFloor: Mesh;
@@ -284,10 +407,10 @@ export class ShopView {
     this.root.add(this.machines);
     this.pickables.push(this.machines);
 
-    this.plants = instanced(this.geo.plant, SHARED_MATERIAL, DECOR_CAPACITY, true);
-    this.paintings = instanced(this.geo.painting, SHARED_MATERIAL, DECOR_CAPACITY, false);
-    this.lamps = instanced(this.geo.lamp, SHARED_MATERIAL, DECOR_CAPACITY, false);
-    this.bulbs = instanced(this.geo.bulb, GLOW_MATERIAL, DECOR_CAPACITY, false);
+    this.plants = instanced(this.tiered('plant', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
+    this.paintings = instanced(this.tiered('painting', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.lamps = instanced(this.tiered('lamp', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.bulbs = instanced(this.tiered('bulb', 1), GLOW_MATERIAL, DECOR_CAPACITY, false);
     this.root.add(this.plants, this.paintings, this.lamps, this.bulbs);
 
     this.facade = new FacadeView(quality);
@@ -369,11 +492,30 @@ export class ShopView {
       if (o instanceof Mesh) o.geometry.dispose();
     });
     for (const g of Object.values(this.geo)) g.dispose();
+    for (const g of this.tierGeo.values()) g.dispose();
+    this.tierGeo.clear();
     this.machines.clear();
     this.facade.dispose();
   }
 
   // ---------- layout ----------
+
+  /** Cached geometry of a piece at a look tier. */
+  private tiered(piece: TieredPiece, tier: LookTier): BufferGeometry {
+    const key = `${piece}${tier}`;
+    let geo = this.tierGeo.get(key);
+    if (!geo) {
+      geo = TIERED_GEOMETRY[piece](tier);
+      this.tierGeo.set(key, geo);
+    }
+    return geo;
+  }
+
+  /** Points an instanced mesh at the piece's geometry for an upgrade tier; the mesh, its instances and draw call stay. */
+  private setTier(mesh: InstancedMesh, piece: TieredPiece, tier: number): void {
+    const geo = this.tiered(piece, lookTier(tier));
+    if (mesh.geometry !== geo) mesh.geometry = geo;
+  }
 
   private applyLayout(layout: ShopLayout): void {
     const prev = this.layout;
@@ -493,9 +635,10 @@ export class ShopView {
       mesh.dispose();
     }
     this.tableCap = capacity;
-    this.tables = instanced(this.geo.table, WOOD_MATERIAL, capacity, true);
-    this.chairs = instanced(this.geo.chair, WOOD_MATERIAL, capacity * 2, true);
-    this.parasols = instanced(this.geo.parasol, SHARED_MATERIAL, capacity, true);
+    // buildTables sets the tier geometry right after a reallocation.
+    this.tables = instanced(this.tiered('table', 1), WOOD_MATERIAL, capacity, true);
+    this.chairs = instanced(this.tiered('chair', 1), WOOD_MATERIAL, capacity * 2, true);
+    this.parasols = instanced(this.tiered('parasol', 1), SHARED_MATERIAL, capacity, true);
     this.coins = instanced(this.geo.coin, SHARED_MATERIAL, capacity, false);
     this.cups = instanced(this.geo.cup, SHARED_MATERIAL, capacity * MAX_CUPS_PER_TABLE, false);
     // Icons move every frame; skip culling instead of recomputing bounds.
@@ -514,6 +657,9 @@ export class ShopView {
   private buildTables(layout: ShopLayout): void {
     const n = layout.tables.length;
     if (n > this.tableCap) this.allocTables(growCapacity(n, this.tableCap));
+    this.setTier(this.tables, 'table', layout.furnitureTier);
+    this.setTier(this.chairs, 'chair', layout.furnitureTier);
+    this.setTier(this.parasols, 'parasol', layout.outdoorTier);
     const d = this.dummy;
     let chairs = 0;
     let parasols = 0;
@@ -546,6 +692,11 @@ export class ShopView {
   }
 
   private buildDecor(layout: ShopLayout): void {
+    const { plant, painting, light } = layout.decorTier;
+    this.setTier(this.plants, 'plant', plant);
+    this.setTier(this.paintings, 'painting', painting);
+    this.setTier(this.lamps, 'lamp', light);
+    this.setTier(this.bulbs, 'bulb', light);
     const d = this.dummy;
     let plants = 0;
     let paintings = 0;
