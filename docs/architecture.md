@@ -67,7 +67,7 @@ Thứ tự tải atlas (`src/main.ts`):
 | Sau `performance.mark('cst:world')`, màn 2x | `enableHdIcons()` fetch `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
 | @2x tải xong (`--ic-atlas`, `html.icons-hd`) | | Ô của atlas @2x |
 
-Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, cũng một lần. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh. Atlas @1x tải song song với chunk cảnh nhưng ưu tiên thấp hơn, để về trước khi cảnh 3D bắt đầu vẽ; @2x không tranh băng thông với chunk cảnh. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
+Mỗi atlas qua `atlasFile()`: một `fetch`, rồi blob và `URL.createObjectURL`; `--ic-atlas` nhận thẳng object URL đó (không tải qua `Image()`), nhãn 3D giải mã cùng blob bằng `createImageBitmap`. Fetch lỗi thì bỏ khỏi bộ nhớ đệm để lần sau xin lại. Nếu @2x về trước @1x (`html.icons-hd` đã có), @1x chỉ thêm `html.icons-ready`, không ghi đè `--ic-atlas`. Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, dùng chung lần fetch với UI. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh. Atlas @1x tải song song với chunk cảnh nhưng ưu tiên thấp hơn, để về trước khi cảnh 3D bắt đầu vẽ; @2x không tranh băng thông với chunk cảnh. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
 
 Thêm icon:
 
@@ -394,8 +394,8 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 | `index-*.js` (`src/render`) | 87,3 kB | 32,4 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 502,0 kB | 126,1 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
-| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi chunk cảnh tải xong; không chặn Main Menu |
-| `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` |
+| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
+| `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
@@ -421,14 +421,7 @@ Số đo thay đổi giữa các lượt đo; chỉ so các bản trong cùng m�
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `07439cf` | 780 ms | 1165 ms | 3181 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Mặt tiền, đèn ấm, điều hướng, icon 3D | 476 ms | 669 ms | 2515 ms |
 
-Lượt đo bản theo thứ tải hiện tại (ô chờ icon, chunk cảnh sau khi menu vẽ, atlas @1x sau chunk cảnh, @2x sau `cst:world`), so với v0.4.0 `f720b6f`, trung vị 9 lần ([p22-review/perf.txt](reports/p22-review/perf.txt)):
-
-| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu hiện | Cảnh 3D hiện |
-| --- | --- | --- | --- | --- |
-| Máy bàn, không giới hạn | `f720b6f` | 76 ms | 146 ms | 298 ms |
-| Máy bàn, không giới hạn | Thứ tải hiện tại | 112 ms | 122 ms | 365 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `f720b6f` | 428 ms | 1131 ms | 3177 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Thứ tải hiện tại | 400 ms | 1185 ms | 2670 ms |
+Số đo thứ tải hiện tại so với v0.4.0 `f720b6f`: [p22-review.md](reports/p22-review.md#4-hiệu-năng).
 
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 

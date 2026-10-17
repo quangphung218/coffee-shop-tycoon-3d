@@ -205,13 +205,29 @@ Lệnh build bản hiện tại, mở `vite preview` ở một cổng trống, r
 3. Ngày 2–7: nạp ván qua **Tiếp tục**, chụp HUD và bảng Việc, nhập hàng và thuê 2 nhân viên qua UI, mở cửa ở 4x, chụp cao điểm. Ngày 7 chụp thêm báo cáo và màn kết tuần.
 4. Mỗi màn được đo: tràn ngang, vùng bấm < 44 px, chữ < 12 px, phần tử che nhau, nút bấm không trúng (bị che), số toast; cao điểm đo FPS 10 s, người bước tại chỗ > 5 s và số kiểu ngoại hình.
 
-File tạo ra, ghi đè mỗi lần chạy:
+File tạo ra trong `.review-p22/` (git bỏ qua), ghi đè mỗi lần chạy:
 
 | File | Nội dung |
 | --- | --- |
-| `docs/reports/p22-review/390/*.jpg`, `*.png`, `docs/reports/p22-review/1440/*.png` | Ảnh từng màn, tên `d<ngày>-<màn>` (`d0` là Main Menu). |
-| `docs/reports/p22-review/metrics.json` | Bảng tuần, số đo Main Menu, từng màn, từng cao điểm, nút bị che, các lượt chạy. |
-| `docs/reports/p22-review/findings.json` | Vấn đề rút từ số đo: `id`, `area`, `title`, `evidence`, `impact`, `effort`, `ratio` (= impact / effort), `high` (ratio ≥ 1,5). |
+| `.review-p22/390/*.jpg`, `*.png`, `.review-p22/1440/*.png` | Ảnh từng màn, tên `d<ngày>-<màn>` (`d0` là Main Menu). |
+| `.review-p22/metrics.json` | Bảng tuần, số đo Main Menu, từng màn, từng cao điểm, nút bị che, các lượt chạy. |
+| `.review-p22/findings.json` | Vấn đề rút từ số đo: `id`, `area`, `title`, `evidence`, `impact`, `effort`, `ratio` (= impact / effort), `high` (ratio ≥ 1,5). |
+
+Xuất sang `docs/reports/p22-review/` cho [p22-review.md](reports/p22-review.md):
+
+| Lệnh | Việc |
+| --- | --- |
+| `npm run review:p22 -- --publish` | Chơi như trên, xong không lỗi thì xuất. |
+| `node scripts/review-p22.mjs --publish-only` | Chỉ xuất từ lượt chạy gần nhất trong `.review-p22/`, không build, không chơi. |
+
+Khi xuất:
+
+1. Chép `metrics.json`, `findings.json` sang `docs/reports/p22-review/`.
+2. Chỉ lấy ảnh mà `p22-review.md` liên kết (`p22-review/<khổ>/<tên>.png|jpg`), mã hóa lại JPEG chất lượng 75 thành `<tên>.jpg`; ảnh chưa có trong `.review-p22/` thì lấy bản đã xuất.
+3. Xóa mọi ảnh khác trong `docs/reports/p22-review/390/`, `1440/`.
+4. Đổi tham chiếu `<khổ>/<tên>.png` thành `.jpg` trong `p22-review.md` và các file JSON ở `docs/reports/p22-review/`.
+
+Lượt chạy đầu sau khi clone (chưa có `.review-p22/metrics.json`) gộp số đo các ngày không chơi từ `docs/reports/p22-review/metrics.json`.
 
 | Biến | Mặc định | Tác dụng |
 | --- | --- | --- |
@@ -252,9 +268,9 @@ Mỗi mục `fixed` trong `docs/reports/p22-review/fixed-ui.json` và `fixed-act
 
 | File | Nội dung |
 | --- | --- |
-| `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ. |
-| `main-menu-atlas-390-p22.png` | Main Menu 390 trên mạng di động, lúc icon hiện: nhãn ghi mốc menu hiện, `three-*.js` xong, xin atlas @1x, icon hiện; chú thích thêm `cst:world` và atlas @2x. P22 chỉ xin @1x sau khi chunk cảnh tải xong. Một lần đo; số trung vị ở [perf.txt](reports/p22-review/perf.txt). |
-| `kho-foot-390-p22.png` | Chân bảng Kho 390 lúc vừa mở: chiều cao chân và thân ở v0.4.0; P22 chân gọn và nút Nhập hàng. Chân P22 cuộn sau danh sách thì thêm khung cuộn tới cuối thân bảng. |
+| `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ. Nhãn ghi thêm mốc ms trên mạng di động (lần tải của bước 3): lúc ô trống hay ô chờ hiện, lúc icon hiện. |
+| `main-menu-atlas-390-p22.png` | Main Menu 390 trên mạng di động, lúc icon hiện: nhãn ghi mốc menu hiện, `three-*.js` xong, xin atlas @1x, icon hiện; chú thích thêm `cst:world` và atlas @2x. P22 xin @1x ngay sau khi menu vẽ, sau lệnh xin chunk cảnh. Một lần đo; số trung vị ở [perf.txt](reports/p22-review/perf.txt). |
+| `kho-foot-390-p22.png` | Chân bảng Kho 390 lúc vừa mở: chiều cao chân và thân ở v0.4.0; P22 khoanh chân gọn và nút Nhập hàng thấy ngay khi mở. Chân P22 không dính hoặc nút Nhập hàng ngoài tầm chạm lúc vừa mở thì in `!!`, thêm khung cuộn tới cuối thân bảng. |
 | `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, số dòng hàng chạm được khi cuộn. |
 | `actors-persona-motion-p22.png` | Khách văn phòng và sinh viên đứng chờ: dáng chờ chung ở v0.4.0, cầm điện thoại và tay đút túi ở P22; nhãn ghi góc tay, đầu, thân. |
 | `actors-persona-accessory-p22.png` | Khách quen và gia đình: không phụ kiện ở v0.4.0, mũ len và túi vải ở P22; nhãn ghi cỡ phụ kiện. |
