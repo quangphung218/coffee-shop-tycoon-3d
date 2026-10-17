@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ATLAS from '../../public/icons3d/atlas.json';
 import DESIGN from '../../design/t237-cartoon/icons/index.html?raw';
 import MAIN_TS from '../../src/main.ts?raw';
@@ -134,7 +134,7 @@ describe('drawIcon()', () => {
   it('copies the cell from the atlas, scaled to the image it was given', () => {
     const calls: number[][] = [];
     const ctx = { drawImage: (_img: unknown, ...args: number[]) => calls.push(args) } as unknown as CanvasRenderingContext2D;
-    const atlas = { naturalWidth: ATLAS.width * 2 } as HTMLImageElement;
+    const atlas = { width: ATLAS.width * 2 } as ImageBitmap;
     const c = iconCell('i-latte')!;
     expect(drawIcon(ctx, atlas, 'i-latte', 10, 20, 64)).toBe(true);
     expect(calls).toEqual([[c.x * 2, c.y * 2, c.w * 2, c.h * 2, 10, 20, 64, 64]]);
@@ -144,80 +144,58 @@ describe('drawIcon()', () => {
 });
 
 describe('atlas loading order', () => {
-  /** Every Image the code under test creates, so a test can fire its load or error. */
-  let images: HTMLImageElement[] = [];
-  const RealImage = globalThis.Image;
+  /** URL of every fetch the code under test makes, never answered. */
+  let fetched: { url: string; init?: RequestInit }[] = [];
 
   beforeEach(() => {
-    images = [];
-    globalThis.Image = class extends RealImage {
-      constructor() {
-        super();
-        images.push(this);
-      }
-    } as typeof Image;
+    fetched = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        fetched.push({ url, init });
+        return new Promise(() => {});
+      }),
+    );
   });
 
   afterEach(() => {
-    globalThis.Image = RealImage;
+    vi.unstubAllGlobals();
   });
 
   const freshRoot = (): HTMLElement => document.createElement('html');
 
-  it('marks the page icons-ready once the @1x atlas has loaded, and only then', () => {
+  it('asks for the @1x atlas with fetch, page-relative and at low priority, and holds icons-ready until it is in', () => {
     const root = freshRoot();
     watchIconAtlas(root, window);
-    expect(images).toHaveLength(1);
-    expect(images[0]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
-    images[0]!.onload?.(new Event('load'));
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(true);
-    expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
-  });
-
-  it('keeps the placeholders when the atlas fails, and tries once more when back online', () => {
-    const root = freshRoot();
-    const win = new EventTarget() as Window;
-    watchIconAtlas(root, win);
-    images[0]!.onerror?.(new Event('error'));
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
-    expect(images).toHaveLength(1);
-    win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
-    expect(images[1]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
-    images[1]!.onerror?.(new Event('error'));
-    win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
+    expect(fetched).toEqual([{ url: ICON_ATLAS_URLS[1], init: { priority: 'low' } }]);
     expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
   });
 
   it('adds icons-hd only after the @2x atlas has loaded, and never on a failed load', async () => {
     const root = freshRoot();
-    let done!: () => void;
-    const pending = enableHdIcons(root, () => new Promise<void>((resolve) => (done = resolve)));
+    let done!: (url: string) => void;
+    const pending = enableHdIcons(root, { devicePixelRatio: 2 }, () => new Promise((resolve) => (done = resolve)));
     await Promise.resolve();
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
-    done();
+    done('blob:hd');
     await pending;
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(true);
 
     const failed = freshRoot();
-    await enableHdIcons(failed, () => Promise.reject(new Error('offline')));
+    await enableHdIcons(failed, { devicePixelRatio: 2 }, () => Promise.reject(new Error('offline')));
     expect(failed.classList.contains(ICONS_HD_CLASS)).toBe(false);
   });
 
-  it('asks for the @1x atlas at low priority', () => {
-    watchIconAtlas(freshRoot(), window);
-    expect(images[0]!.fetchPriority).toBe('low');
-  });
-
-  it('is started by main.ts: @1x once the scene chunk is in (loaded or failed), @2x only after the 3D scene is ready', () => {
+  it('is started by main.ts: @1x after the menu paint, right behind the scene chunk request; @2x only after the 3D scene is ready', () => {
     const start = MAIN_TS.indexOf('function start(');
     const world = MAIN_TS.indexOf("performance.mark('cst:world')");
     expect(MAIN_TS.match(/watchIconAtlas\(\)/g)).toHaveLength(1);
-    expect(MAIN_TS).toContain("const worldModule = afterPaint().then(() => import('./render/scene'));");
-    expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeGreaterThan(start);
-    expect(MAIN_TS).toMatch(/const loadIcons = \(\): void => watchIconAtlas\(\);\s*void worldModule\.then\(loadIcons, loadIcons\);/);
+    // Both hang off the same paint promise; the import is registered first, so it is asked for first.
+    const chunk = MAIN_TS.indexOf("const worldModule = painted.then(() => import('./render/scene'));");
+    const atlas = MAIN_TS.indexOf('void painted.then(() => watchIconAtlas());');
+    expect(MAIN_TS).toContain('const painted = afterPaint();');
+    expect(chunk).toBeGreaterThan(start);
+    expect(atlas).toBeGreaterThan(chunk);
     expect(MAIN_TS.indexOf('enableHdIcons()')).toBeGreaterThan(world);
     expect(MAIN_TS.match(/enableHdIcons\(\)/g)).toHaveLength(1);
   });

@@ -299,6 +299,169 @@ FPS at the peak of day 1 (Easy, 4x), 10 s × 3 runs per cell, builds taking turn
 ok medium: working tree 2.3% above base
 ok high: working tree 1.8% below base
 
+### fix2-2 (one fetch per atlas, object URL in --ic-atlas)
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 9
+Exit code: 0
+
+Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)
+Runs per cell: 9 (median)
+
+## base (f720b6f)
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CFZSipkd.js | 194.2 kB | 66.9 kB |
+| index-Bt4HydkD.js | 85.5 kB | 31.8 kB |
+| index-BeuQBB1w.css | 69.9 kB | 11.2 kB |
+
+## working tree
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-C_fZeehp.js | 195.0 kB | 67.3 kB |
+| index-jf_PINTv.js | 87.3 kB | 32.3 kB |
+| index-BUhNX6QB.css | 70.7 kB | 11.4 kB |
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 88 ms | 177 ms | 327 ms |
+| working tree | Desktop, no throttling | 96 ms | 113 ms | 326 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 324 ms | 1018 ms | 3031 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 344 ms | 1018 ms | 2522 ms |
+
+Main Menu icons on mobile (npm run media:p22, 390x844, one load per build,
+ms since navigation):
+
+| Mark | base (f720b6f) | fix2-2 |
+| --- | --- | --- |
+| Main Menu | 1029 | 1004 |
+| three.js in | 2643 | 2015 |
+| atlas @1x asked / in | 1005 / 2600 | 2039 / 3193 |
+| cst:icons (@1x handed to CSS) | | 6910 |
+| every icon drawn | 2626 | 7702 |
+| 3D scene | 3012 | 2472 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Reading: Main Menu equal to base, 3D scene 509 ms ahead. One request per
+atlas. The icons are drawn 4.5 s after atlas@1x is in: the fetch body
+(cst:icons 3.7 s after responseEnd) and the CSS load of the blob URL
+(0.8 s) wait on a main thread busy with the 3D scene, which is up before
+the atlas arrives. Base draws at once because its atlas is in before its
+scene. Target (drawn within 300 ms of atlas@1x) not met.
+
+### fix2-2 A (@1x asked right after the menu paint, behind the scene chunk)
+
+$ npm run media:p22
+Exit code: 0
+
+Main Menu icons on mobile (390x844, one load per build, ms since navigation):
+
+| Mark | base (f720b6f) | fix2-2 A |
+| --- | --- | --- |
+| Main Menu | 1022 | 995 |
+| three.js in | 2605 | 2526 |
+| atlas @1x asked / in | 1006 / 2560 | 1012 / 2470 |
+| cst:icons (@1x handed to CSS) | | 2473 |
+| every icon drawn | 2608 | 2529 |
+| 3D scene | 2942 | 2942 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Reading: icons drawn 59 ms after atlas@1x is in (target 300 ms), one
+request per atlas. In this single load the 3D scene ties base; the
+median over 9 runs is measured with measure-startup.
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 9
+Exit code: 0
+
+Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)
+Runs per cell: 9 (median)
+
+## base (f720b6f)
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CFZSipkd.js | 194.2 kB | 66.9 kB |
+| index-Bt4HydkD.js | 85.5 kB | 31.8 kB |
+| index-BeuQBB1w.css | 69.9 kB | 11.2 kB |
+
+## working tree
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-BhksJkI_.js | 195.0 kB | 67.3 kB |
+| index-D6SYuP8I.js | 87.3 kB | 32.3 kB |
+| index-BUhNX6QB.css | 70.7 kB | 11.4 kB |
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 72 ms | 152 ms | 265 ms |
+| working tree | Desktop, no throttling | 72 ms | 81 ms | 277 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 332 ms | 981 ms | 2991 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 360 ms | 1006 ms | 2984 ms |
+
+Reading: 3D scene 7 ms ahead of base (target <= base: met). Main Menu
++25 ms (+2.5%, target <= +5%: met). The ~500 ms scene lead of the
+previous states is gone: the @1x atlas shares the line with the scene
+chunk again, in exchange for icons drawn by 2.5 s instead of 7.7 s.
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 5 --fps-only
+Exit code: -1 (the command time limit stopped it during high run 2)
+
+(Chunk tables as in the run above.)
+
+FPS at the peak of day 1 (Easy, 4x), 10 s × 5 runs per cell, builds taking turns, 1280×800 @2x
+
+  base (f720b6f) medium run 1: 12.2 FPS
+  working tree medium run 1: 12.9 FPS
+  base (f720b6f) medium run 2: 14.6 FPS
+  working tree medium run 2: 13.8 FPS
+  base (f720b6f) medium run 3: 13.0 FPS
+  working tree medium run 3: 10.3 FPS
+  base (f720b6f) medium run 4: 11.4 FPS
+  working tree medium run 4: 12.2 FPS
+  base (f720b6f) medium run 5: 12.3 FPS
+  working tree medium run 5: 12.1 FPS
+  base (f720b6f) high run 1: 12.1 FPS
+  working tree high run 1: 25.6 FPS
+  base (f720b6f) high run 2: 30.2 FPS
+
+Medium, 5 runs each (median of the lines above): base 12.3 FPS, working
+tree 12.2 FPS (-0.8%, target: no drop over 10%: met). High: not enough
+runs; measured on its own with --quality high below.
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 5 --fps-only --quality high
+Exit code: 0
+
+(Chunk tables as in the run above.)
+
+FPS at the peak of day 1 (Easy, 4x), 10 s × 5 runs per cell, builds taking turns, 1280×800 @2x
+
+  base (f720b6f) high run 1: 25.8 FPS
+  working tree high run 1: 27.1 FPS
+  base (f720b6f) high run 2: 24.4 FPS
+  working tree high run 2: 23.3 FPS
+  base (f720b6f) high run 3: 22.6 FPS
+  working tree high run 3: 25.2 FPS
+  base (f720b6f) high run 4: 24.3 FPS
+  working tree high run 4: 22.7 FPS
+  base (f720b6f) high run 5: 24.2 FPS
+  working tree high run 5: 25.3 FPS
+| Build | Quality | Average FPS (median of runs) | Runs | p5 FPS | Frames |
+| --- | --- | --- | --- | --- | --- |
+| base (f720b6f) | high | 24.3 | 25.8 / 24.4 / 22.6 / 24.3 / 24.2 | 15.0 | 1218 |
+| working tree | high | 25.2 | 27.1 / 23.3 / 25.2 / 22.7 / 25.3 | 15.0 | 1238 |
+ok high: working tree 3.5% above base
+
+Reading: high has its 5 runs for the first time in P22: +3.5% against
+base. Medium (-0.8%) and high both stay within 10% of base.
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
@@ -311,6 +474,8 @@ Same-run gaps on mobile (state minus base):
 | atlas fix, --runs 9 | +85 ms | -486 ms |
 | atlas fix again, --runs 9 | +84 ms | -512 ms |
 | fix 2, --runs 9 | +54 ms | -507 ms |
+| fix2-2 (one fetch per atlas), --runs 9 | +0 ms | -509 ms |
+| fix2-2 A (@1x after the menu paint), --runs 9 | +25 ms | -7 ms |
 
 - f5 is not the cause: f289da8 is within 53 ms of base on the scene.
 - The @1x atlas competing with the scene chunks was the scene cost: with
@@ -319,7 +484,8 @@ Same-run gaps on mobile (state minus base):
 - The menu gap moves between +17 and +118 ms for the same app code
   (integration head vs f289da8), so +54 ms is inside the spread of this
   setup. Desktop fix 2 shows the menu 24 ms ahead of base.
-- FPS: no !! line (medium +2.3%, high -1.8% against base).
+- FPS: no !! line (medium +2.3%, high -1.8% against base, 3 runs each).
+- fix2-2 A, 5 runs per quality: medium -0.8%, high +3.5% against base.
 - Absolute Main Menu < 1000 ms: base itself measures 1083-1163 ms on this
   machine, so no build meets it here.
 

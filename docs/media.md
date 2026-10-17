@@ -133,7 +133,7 @@ Bản cũ không có `.settings-body` vẫn chụp như cũ.
 node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 ```
 
-`--fps-only` chỉ đo FPS; `--fps` đo cả bảng khởi động. Mỗi lượt chơi ngày 1 Dễ ở 4x tới giờ cao điểm (chờ trong cửa sổ nhỏ), rồi lấy mẫu 10 s ở 1280×800, tỉ lệ điểm ảnh 2, mức Vừa và Cao. Mỗi ô chạy `--runs` lượt, hai bản xen kẽ nhau.
+`--fps-only` chỉ đo FPS; `--fps` đo cả bảng khởi động. Mỗi lượt chơi ngày 1 Dễ ở 4x tới giờ cao điểm (chờ trong cửa sổ nhỏ), rồi lấy mẫu 10 s ở 1280×800, tỉ lệ điểm ảnh 2, mức Vừa và Cao. Mỗi ô chạy `--runs` lượt, hai bản xen kẽ nhau. `--quality medium` hoặc `--quality high` chỉ đo một mức, để mỗi lệnh ngắn hơn giới hạn thời gian.
 
 | Cột | Nghĩa |
 | --- | --- |

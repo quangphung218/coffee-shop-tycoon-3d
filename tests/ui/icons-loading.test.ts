@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MAIN_TS from '../../src/main.ts?raw';
-import { enableHdIcons, ICON_ATLAS_URLS, ICONS_HD_CLASS, ICONS_READY_CLASS, icon, watchIconAtlas } from '../../src/ui/core/icons';
+import { ICON_ATLAS_URLS, ICON_ATLAS_VAR, ICONS_HD_CLASS, ICONS_READY_CLASS, icon } from '../../src/ui/core/icons';
 
-// P22 f1: menu icons show a still placeholder tile until the @1x atlas is in
+// P22 f1: menu icons show a still placeholder until the @1x atlas is in
 // (html.icons-ready), and the @2x atlas only loads once the 3D scene is up
 // (html.icons-hd), so it does not compete with the three.js chunk.
+// P22 fix2-2: each atlas file is fetched once and handed to ui.css as an
+// object URL in --ic-atlas, so the CSS never requests it a second time.
 
 // Vitest stubs .css imports (even ?raw) to '' and the project has no Node
 // types, so read the files through a dynamically named node:fs import.
@@ -30,6 +32,7 @@ function rules(css: string): Rule[] {
 
 const ALL = rules(UI_CSS);
 const PLACEHOLDER = 'html:not(.icons-ready, .icons-hd) .ic';
+const DRAWN = 'html.icons-ready .ic,\nhtml.icons-hd .ic';
 
 function rule(selector: string): Rule {
   const found = ALL.filter((r) => r.selector === selector);
@@ -52,117 +55,233 @@ function reducedMotionBlock(): string {
   return src.slice(open + 1, i);
 }
 
-/** Every Image created by the code under test, so a test can fire its load or error. */
-let images: HTMLImageElement[] = [];
-const RealImage = globalThis.Image;
+type Icons = typeof import('../../src/ui/core/icons');
+
+/** A fetch the test answers by hand. */
+interface Request {
+  url: string;
+  init: RequestInit | undefined;
+  answer(status?: number): void;
+  fail(): void;
+}
+
+let requests: Request[] = [];
+/** Every bitmap decoded by the code under test. */
+let bitmaps: ImageBitmap[] = [];
+let blobs = 0;
+/** The module under test, fresh per test: its per-atlas cache starts empty. */
+let mod: Icons;
 const html = document.documentElement;
 
-beforeEach(() => {
-  images = [];
-  globalThis.Image = class extends RealImage {
-    constructor() {
-      super();
-      images.push(this);
-    }
-  } as typeof Image;
+/** Lets the fetch → blob → bitmap chain move on. */
+const settle = async (): Promise<void> => {
+  for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r));
+};
+
+/** Answers request `i` with 200. */
+async function deliver(i: number): Promise<void> {
+  requests[i]!.answer();
+  await settle();
+}
+
+const count = (url: string): number => requests.filter((r) => r.url === url).length;
+
+beforeEach(async () => {
+  requests = [];
+  bitmaps = [];
+  blobs = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      (url: string, init?: RequestInit) =>
+        new Promise((resolve, reject) => {
+          requests.push({
+            url,
+            init,
+            answer: (status = 200) => resolve({ ok: status < 400, status, blob: () => Promise.resolve(new Blob([url])) }),
+            fail: () => reject(new TypeError('Failed to fetch')),
+          });
+        }),
+    ),
+  );
+  URL.createObjectURL = () => `blob:atlas-${++blobs}`;
+  vi.stubGlobal('createImageBitmap', (blob: Blob) => {
+    const bitmap = { width: 0, height: 0, source: blob } as unknown as ImageBitmap;
+    bitmaps.push(bitmap);
+    return Promise.resolve(bitmap);
+  });
   html.classList.remove(ICONS_READY_CLASS, ICONS_HD_CLASS);
+  html.style.removeProperty(ICON_ATLAS_VAR);
+  vi.resetModules();
+  mod = await import('../../src/ui/core/icons');
 });
 
 afterEach(() => {
-  globalThis.Image = RealImage;
+  vi.unstubAllGlobals();
   html.classList.remove(ICONS_READY_CLASS, ICONS_HD_CLASS);
+  html.style.removeProperty(ICON_ATLAS_VAR);
   document.body.replaceChildren();
 });
 
 describe('html.icons-ready (@1x atlas)', () => {
-  it('is not set while the @1x atlas is loading', () => {
-    watchIconAtlas();
-    expect(images).toHaveLength(1);
-    expect(images[0]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
+  it('is not set while the @1x atlas is loading', async () => {
+    mod.watchIconAtlas();
+    await settle();
+    expect(requests.map((r) => r.url)).toEqual([ICON_ATLAS_URLS[1]]);
+    expect(requests[0]!.init?.priority).toBe('low');
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('');
   });
 
-  it('is set on <html> by default once the @1x atlas has loaded, without icons-hd', () => {
-    watchIconAtlas();
-    images[0]!.onload?.(new Event('load'));
+  it('is set once the @1x atlas has loaded, with --ic-atlas pointing at the fetched file', async () => {
+    mod.watchIconAtlas();
+    await deliver(0);
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(true);
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:atlas-1")');
+    // Straight to ui.css: no extra decode or load step before the swap.
+    expect(bitmaps).toHaveLength(0);
+    expect(performance.getEntriesByName(mod.ICONS_MARK)).not.toHaveLength(0);
   });
 
-  it('never requests the @2x atlas for the menu', () => {
-    watchIconAtlas();
-    images[0]!.onload?.(new Event('load'));
-    expect(images.map((img) => img.getAttribute('src'))).toEqual([ICON_ATLAS_URLS[1]]);
+  it('sets --ic-atlas before or with icons-ready, never after', async () => {
+    const seen: string[] = [];
+    const observer = new MutationObserver((records) => seen.push(...records.map((m) => m.attributeName!)));
+    observer.observe(html, { attributes: true, attributeFilter: ['class', 'style'] });
+    mod.watchIconAtlas();
+    await deliver(0);
+    observer.disconnect();
+    expect(seen).toEqual(['style', 'class']);
   });
 
-  it('loads the same @1x file that ui.css draws from', () => {
-    const file = ICON_ATLAS_URLS[1].split('/').pop()!;
-    expect(rule('html.icons-ready .ic').body).toContain(`url('/icons3d/${file}')`);
+  it('fetches the @1x file exactly once, however often it is watched', async () => {
+    mod.watchIconAtlas();
+    mod.watchIconAtlas();
+    await deliver(0);
+    mod.watchIconAtlas();
+    await settle();
+    expect(count(ICON_ATLAS_URLS[1])).toBe(1);
+    expect(count(ICON_ATLAS_URLS[2])).toBe(0);
+  });
+
+  it('draws only from --ic-atlas in ui.css, with no URL of its own the browser could fetch again', () => {
+    expect(rule(DRAWN).body).toMatch(/background-image:\s*var\(--ic-atlas, none\)/);
+    expect(UI_CSS.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/atlas@[12]x|image-set\(/);
   });
 });
 
 describe('a failed @1x load', () => {
-  it('keeps the placeholder tile on every icon and leaves the box size alone', () => {
+  it('keeps the placeholder on every icon and leaves the box size alone', async () => {
     const el = icon('i-sparkle', { size: 32 });
     document.body.append(el);
     const before = { className: el.className, style: el.getAttribute('style') };
     const win = new EventTarget() as Window;
-    watchIconAtlas(html, win);
-    images[0]!.onerror?.(new Event('error'));
+    mod.watchIconAtlas(html, win);
+    requests[0]!.fail();
+    await settle();
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('');
     expect(el.matches(PLACEHOLDER)).toBe(true);
     expect({ className: el.className, style: el.getAttribute('style') }).toEqual(before);
-    expect(el.style.width).toBe('');
-    expect(el.style.height).toBe('');
   });
 
-  it('retries once when back online and only marks ready on a real load', () => {
-    const win = new EventTarget() as Window;
-    watchIconAtlas(html, win);
-    images[0]!.onerror?.(new Event('error'));
-    win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
+  it('treats an HTTP error like a network error', async () => {
+    mod.watchIconAtlas(html, new EventTarget() as Window);
+    requests[0]!.answer(404);
+    await settle();
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('');
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
-    images[1]!.onload?.(new Event('load'));
+  });
+
+  it('retries once when back online and only marks ready on a real load', async () => {
+    const win = new EventTarget() as Window;
+    mod.watchIconAtlas(html, win);
+    requests[0]!.fail();
+    await settle();
+    expect(requests).toHaveLength(1);
+    win.dispatchEvent(new Event('online'));
+    await settle();
+    expect(requests).toHaveLength(2);
+    expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
+    await deliver(1);
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(true);
   });
 
-  it('gives up after the retry fails, still on placeholders', () => {
+  it('gives up after the retry fails, still on placeholders', async () => {
     const win = new EventTarget() as Window;
-    watchIconAtlas(html, win);
-    images[0]!.onerror?.(new Event('error'));
+    mod.watchIconAtlas(html, win);
+    requests[0]!.fail();
+    await settle();
     win.dispatchEvent(new Event('online'));
-    images[1]!.onerror?.(new Event('error'));
+    await settle();
+    requests[1]!.fail();
+    await settle();
     win.dispatchEvent(new Event('online'));
     win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
+    await settle();
+    expect(requests).toHaveLength(2);
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
   });
 });
 
 describe('html.icons-hd (@2x atlas)', () => {
+  const screen2x = { devicePixelRatio: 2 };
+
   it('waits for the @2x load and is added only when it succeeds', async () => {
-    let done!: () => void;
-    const pending = enableHdIcons(html, () => new Promise<void>((resolve) => (done = resolve)));
-    await Promise.resolve();
-    await Promise.resolve();
+    let done!: (url: string) => void;
+    const pending = mod.enableHdIcons(html, screen2x, () => new Promise((resolve) => (done = resolve)));
+    await settle();
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
-    done();
+    done('blob:hd');
     await pending;
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(true);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:hd")');
   });
 
   it('is not added on a failed load, and the call does not throw', async () => {
-    await expect(enableHdIcons(html, () => Promise.reject(new Error('offline')))).resolves.toBeUndefined();
+    await expect(mod.enableHdIcons(html, screen2x, () => Promise.reject(new Error('offline')))).resolves.toBeUndefined();
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
   });
 
-  it('loads the @2x atlas by default', async () => {
-    const pending = enableHdIcons();
-    expect(images.map((img) => img.getAttribute('src'))).toEqual([ICON_ATLAS_URLS[2]]);
-    images[0]!.onload?.(new Event('load'));
-    await pending;
+  it('asks for nothing on a 1x screen', async () => {
+    await mod.enableHdIcons(html, { devicePixelRatio: 1 });
+    expect(requests).toHaveLength(0);
+    expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
+  });
+
+  it('fetches the @2x file once for the DOM and the 3D labels together', async () => {
+    const hd = mod.enableHdIcons(html, screen2x);
+    const labels = mod.loadIconAtlas();
+    await deliver(0);
+    await hd;
+    const [a, b] = await Promise.all([labels, mod.loadIconAtlas()]);
+    expect(count(ICON_ATLAS_URLS[2])).toBe(1);
+    expect(a).toBe(b);
+    // One decode, and the DOM uses the URL of the same blob.
+    expect(bitmaps).toEqual([a]);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:atlas-1")');
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(true);
+  });
+
+  it('keeps the @2x image when the @1x one comes in later', async () => {
+    mod.watchIconAtlas();
+    const hd = mod.enableHdIcons(html, screen2x);
+    await deliver(1);
+    await hd;
+    await deliver(0);
+    expect(html.classList.contains(ICONS_READY_CLASS)).toBe(true);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:atlas-1")');
+    expect(requests.map((r) => r.url)).toEqual([ICON_ATLAS_URLS[1], ICON_ATLAS_URLS[2]]);
+  });
+
+  it('lets the labels retry after a failed @2x fetch', async () => {
+    const first = mod.loadIconAtlas();
+    requests[0]!.fail();
+    await expect(first).rejects.toThrow();
+    const second = mod.loadIconAtlas();
+    await deliver(1);
+    await expect(second).resolves.toBe(bitmaps.at(-1));
+    expect(count(ICON_ATLAS_URLS[2])).toBe(2);
   });
 
   it('is turned on by main.ts only in the scene-ready branch, after cst:world', () => {
@@ -188,7 +307,7 @@ describe('html.icons-hd (@2x atlas)', () => {
   });
 });
 
-describe('ui.css placeholder tile', () => {
+describe('ui.css placeholder', () => {
   it('matches only while neither atlas class is on <html>', () => {
     const el = icon('i-sparkle');
     document.body.append(el);
@@ -199,17 +318,17 @@ describe('ui.css placeholder tile', () => {
     expect(el.matches(PLACEHOLDER)).toBe(false);
   });
 
-  it('draws a tile without an image, so nothing is fetched before the atlas is ready', () => {
+  it('draws a faint wash without an image or an outline, so it does not read as a checkbox', () => {
     const body = rule(PLACEHOLDER).body;
-    expect(body).toMatch(/background-color:/);
-    expect(body).not.toMatch(/background-image|url\(/);
+    expect(body).toMatch(/background-color:\s*var\(--surface-icon-wait\)/);
+    expect(body).not.toMatch(/background-image|url\(|box-shadow|border(-color|-width)?:|outline/);
     expect(rule('.ic').body).not.toMatch(/background-image|url\(/);
   });
 
   it('only sets the box size in the size rules, never in a loading-state rule', () => {
     const sizing = /(^|;)\s*(width|height|min-width|min-height|padding|margin|border(-width)?|font-size)\s*:/;
     const stateRules = ALL.filter((r) => /icons-(ready|hd)/.test(r.selector));
-    expect(stateRules.map((r) => r.selector)).toEqual([PLACEHOLDER, 'html.icons-ready .ic', 'html.icons-hd .ic']);
+    expect(stateRules.map((r) => r.selector)).toEqual([PLACEHOLDER, DRAWN]);
     for (const r of stateRules) expect(r.body, r.selector).not.toMatch(sizing);
     expect(rule('.ic').body).toMatch(/width:\s*var\(--size-icon-md\)/);
     expect(rule('.ic').body).toMatch(/height:\s*var\(--size-icon-md\)/);
@@ -219,14 +338,6 @@ describe('ui.css placeholder tile', () => {
     expect(rule(PLACEHOLDER).body).not.toMatch(/animation|transition|transform/);
     const shimmer = ALL.filter((r) => /icons-(ready|hd)/.test(r.selector) && /animation/.test(r.body));
     expect(shimmer).toEqual([]);
-  });
-
-  it('uses the @2x atlas only under html.icons-hd', () => {
-    const with2x = ALL.filter((r) => r.body.includes('atlas@2x'));
-    expect(with2x.map((r) => r.selector)).toEqual(['html.icons-hd .ic']);
-    // A browser without image-set() keeps the @1x declaration before it.
-    const hd = rule('html.icons-hd .ic').body;
-    expect(hd.indexOf("url('/icons3d/atlas@1x.webp');")).toBeLessThan(hd.indexOf('image-set('));
   });
 });
 

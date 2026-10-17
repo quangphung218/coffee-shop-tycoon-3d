@@ -95,21 +95,22 @@ describe('ui.css icons (3D atlas)', () => {
     }
   });
 
-  it('draws the cell from the @1x atlas once ready, and the @2x one only after the 3D scene', () => {
+  it('draws the cell from the atlas icons.ts fetched (--ic-atlas) once ready, never from a URL of its own', () => {
     const ic = body('.ic');
     expect(ic).not.toContain('background-image');
-    expect(body('html.icons-ready .ic')).toContain("background-image: url('/icons3d/atlas@1x.webp')");
-    expect(body('html.icons-hd .ic')).toContain("image-set(url('/icons3d/atlas@1x.webp') 1x, url('/icons3d/atlas@2x.webp') 2x)");
-    expect(uiCss.match(/atlas@2x/g)).toHaveLength(1);
+    expect(body('html.icons-ready .ic,\nhtml.icons-hd .ic')).toMatch(/background-image:\s*var\(--ic-atlas, none\)/);
+    expect(uiCss.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/icons3d|atlas@/);
     expect(ic).toMatch(/background-size:\s*var\(--ic-size/);
     expect(ic).toMatch(/background-position:\s*var\(--ic-pos/);
   });
 
-  it('shows a still sunken tile with an ink line until the atlas is in, only from tokens, without changing the box', () => {
+  it('shows a still, faint wash without an ink line until the atlas is in, only from tokens, without changing the box', () => {
     const wait = body('html:not(.icons-ready, .icons-hd) .ic');
-    expect(wait).toMatch(/background-color:\s*var\(--surface-sunken\)/);
-    expect(wait).toMatch(/box-shadow:\s*inset 0 0 0 var\(--size-icon-stroke\) var\(--border-outline\)/);
+    expect(wait).toMatch(/background-color:\s*var\(--surface-icon-wait\)/);
+    expect(wait).not.toMatch(/box-shadow|outline|border-color/);
     expect(wait).toMatch(/border-radius:\s*var\(--radius-sm\)/);
+    // A light wash of the ink colour, so it reads on cream and honey buttons alike.
+    expect(token('--surface-icon-wait')).toMatch(/^rgba\(58, 34, 22, 0\.(0\d|1\d?)\)$/);
     expect(wait).not.toMatch(/#[0-9a-f]{3,8}\b|\d+(px|%)|--color-/i);
     expect(wait).not.toMatch(/animation|width|height|border:|margin|padding/);
   });

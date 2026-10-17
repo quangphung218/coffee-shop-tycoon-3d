@@ -75,6 +75,8 @@
   --surface-disabled: var(--color-cream-200);
   --surface-selected: var(--color-honey-100);
   --surface-scrim: rgba(58, 34, 22, 0.5);
+  /* Icon box before the atlas is in: a faint coffee wash that reads on any button colour. */
+  --surface-icon-wait: rgba(58, 34, 22, 0.1);
 
   --border-subtle: var(--color-cream-200);
   --border-strong: var(--color-neutral-900);

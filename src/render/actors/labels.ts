@@ -141,7 +141,7 @@ export class LabelAssets {
     if (bubble) drawBubble(ctx);
     const tex = new CanvasTexture(canvas);
     tex.colorSpace = SRGBColorSpace;
-    if (typeof Image === 'undefined') return tex;
+    if (typeof createImageBitmap === 'undefined') return tex;
     loadIconAtlas().then(
       (atlas) => {
         if (this.disposed) return;
