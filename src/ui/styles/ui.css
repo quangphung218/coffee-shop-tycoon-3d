@@ -1819,6 +1819,95 @@ legend {
   cursor: not-allowed;
 }
 
+/* Week summary (src/ui/screens/weekEnd.ts): reward next to the cups, the
+   week-over-week change, seven revenue columns with the best day in honey,
+   and next week's goal and level. */
+.wk-score-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+.wk-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+.wk-reward b {
+  color: var(--text-ok);
+}
+.wk-delta {
+  justify-content: flex-end;
+}
+.wk-delta.is-up b {
+  color: var(--text-ok);
+}
+.wk-delta.is-down b {
+  color: var(--text-danger);
+}
+.wk-chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.wk-col-value {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.wk-col-track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: var(--space-16);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.wk-bar {
+  width: 100%;
+  min-height: var(--space-1);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-disabled);
+}
+.wk-col.is-best .wk-bar {
+  background: var(--data-bar);
+}
+.wk-col.is-best .wk-col-value {
+  font-weight: var(--font-weight-heavy);
+}
+.wk-col-day {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 var(--space-1);
+}
+.wk-next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.wk-next p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+}
+
 /* Focus (design/p17-states): one rule for every control. The border turns
    --focus-ring and a ring is drawn just INSIDE it, so nothing paints outside
    the ink outline and focus never overlaps a group frame or a neighbour.

@@ -150,7 +150,9 @@ export function createShell(options: ShellOptions): Shell {
       syncReport();
       openOtherPanel(panel);
     },
+    // "Xem tổng kết tuần": the week summary, whose "Sang tuần N+1" starts the next week.
     onWeekEnd: () => {
+      if (!state?.week?.result) return;
       screens.show('weekEnd');
       syncReport();
     },
@@ -270,7 +272,15 @@ export function createShell(options: ShellOptions): Shell {
   );
   const weekEnd = createWeekEnd({
     getState: () => state,
-    // A new week for the same shop name and difficulty, on a fresh seed.
+    // Leaves the scored week's report into day 1 of the next week, in preparation.
+    onNextWeek: () => {
+      if (!state || !dispatch({ type: 'next_day' })) return;
+      screens.show(null);
+      hud.update(state);
+      syncReport();
+      hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
+    },
+    // A new game for the same shop name and difficulty, on a fresh seed.
     onReplay: () => {
       if (!state) return;
       const finished = state;

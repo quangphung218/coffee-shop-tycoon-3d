@@ -357,7 +357,7 @@ function renderBusy(day: number): HTMLElement {
 /**
  * End-of-day overlay after the Daily Report of design/t237-cartoon: tabs
  * "Tổng kết", "Chỉ số" and "Đánh giá", the autosave status, "Xem đánh giá" and
- * "Ngày tiếp theo" (next_day), or "Xem kết tuần" once the week is scored.
+ * "Ngày tiếp theo" (next_day), or "Xem tổng kết tuần" once the week is scored.
  * The footer stays in view; only the tab body scrolls.
  */
 export function createDailyReport(options: DailyReportOptions): DailyReportView {
@@ -489,14 +489,14 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
       fillReviews(reviews, s.reviews, backBtn());
     },
   );
-  // After week day 7 next_day is refused: the main button leads to the week-end screen.
+  // After the last week day the main button leads to the week summary, which starts the next week.
   w.watch(
     (s) => s.week?.result !== undefined,
     (ended, s) => {
       if (ended !== weekEnded) renderBodies(s);
       weekEnded = ended;
       nextBtn.setAttribute('data-action', ended ? 'week-end' : 'next-day');
-      setChildren(nextBtn, ...(ended ? labelled('i-trophy', 'Xem kết tuần') : labelled('i-next-day', 'Ngày tiếp theo')));
+      setChildren(nextBtn, ...(ended ? labelled('i-trophy', 'Xem tổng kết tuần') : labelled('i-next-day', 'Ngày tiếp theo')));
     },
   );
   showTab('summary');
