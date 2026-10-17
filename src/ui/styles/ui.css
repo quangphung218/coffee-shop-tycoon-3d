@@ -56,6 +56,13 @@ html.icons-ready .ic,
 html.icons-hd .ic {
   background-image: var(--ic-atlas, none);
 }
+/* Upgrade tier looks (tierIcon): drawn from the tiers atlas, which Nâng cấp
+   loads on open; icons.ts sets data-atlas only once --ic-tiers is in. */
+html .ic[data-atlas='tiers'] {
+  border-radius: 0;
+  background-color: transparent;
+  background-image: var(--ic-tiers, none);
+}
 .ic-sm {
   width: var(--size-icon-sm);
   height: var(--size-icon-sm);
