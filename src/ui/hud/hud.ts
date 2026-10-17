@@ -35,6 +35,12 @@ export const HUD_SPEEDS = [1, 2, 4] as const;
 
 const SPEED_ICONS: Record<(typeof HUD_SPEEDS)[number], IconId> = { 1: 'i-speed-1', 2: 'i-speed-2', 4: 'i-speed-4' };
 
+/** The speed after `speed` in HUD_SPEEDS, back to 1x after 4x (and from an unknown speed). */
+export function nextSpeed(speed: number): number {
+  const i = HUD_SPEEDS.findIndex((v) => v === speed);
+  return HUD_SPEEDS[(i + 1) % HUD_SPEEDS.length]!;
+}
+
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
 
@@ -144,7 +150,8 @@ function countDuration(el: Element): number {
  * HUD in three clusters over the scene (P23), each one cream frame:
  * Hôm nay (day, week line, weather and event, clock, phase strip), Tiến độ
  * (money, rating, level with its XP bar) and Điều khiển (the phase action
- * "Mở cửa" / "Sang ngày mới" or the speed group, pause, and a menu with the
+ * "Mở cửa" / "Sang ngày mới" or the speed group (one cycling button on a
+ * phone), pause, and a menu with the
  * camera reset and settings). Values carry icons; their names are read from
  * sr-only words and titles. The panel buttons sit in a dock at the bottom centre.
  */
@@ -165,7 +172,9 @@ export function createHud(actions: HudActions): Hud {
   );
 
   // Today's weather (an icon) and event (icon and word, only on a special
-  // day), during a week. The title and accessible name say what they do.
+  // day), during a week. The title and accessible name say what they do;
+  // below 1440 px the event shows its icon only (ui.css), as a word like
+  // "Tăng giá nhập" pushed Điều khiển to a second row at 1280 px.
   const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'img', 'data-chip': 'weather' } });
   const eventChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'event' } });
   const weekChips = h('span', { class: 'hud-week', hidden: true }, weatherChip, eventChip);
@@ -319,9 +328,24 @@ export function createHud(actions: HudActions): Hud {
     ),
   );
   const speedGroup = h('div', { class: 'seg speed', attrs: { role: 'group', 'aria-label': 'Tốc độ game' } }, ...speedButtons);
+  // Phones (ui.css, 640 px down) show one button in place of the group: the
+  // current speed's icon and "2x"; a press steps 1x → 2x → 4x → 1x.
+  let shownSpeed: number = HUD_SPEEDS[0];
+  const speedCycle = h('button', {
+    class: 'hud-btn speed-cycle',
+    attrs: { type: 'button', 'data-action': 'speed-cycle' },
+    on: { click: () => actions.dispatch({ type: 'set_speed', speed: nextSpeed(shownSpeed) }) },
+  });
   w.watch(
     (s) => s.speed,
-    (speed) => speedButtons.forEach((b, i) => b.setAttribute('aria-pressed', String(HUD_SPEEDS[i] === speed))),
+    (speed) => {
+      shownSpeed = speed;
+      speedButtons.forEach((b, i) => b.setAttribute('aria-pressed', String(HUD_SPEEDS[i] === speed)));
+      const known = HUD_SPEEDS.find((v) => v === speed) ?? HUD_SPEEDS[0];
+      speedCycle.dataset.current = String(speed);
+      speedCycle.setAttribute('aria-label', `Tốc độ ${speed}x, bấm để chuyển sang ${nextSpeed(speed)}x`);
+      setChildren(speedCycle, icon(SPEED_ICONS[known]), h('span', { text: `${speed}x` }));
+    },
   );
   const pauseBtn = h(
     'button',
@@ -351,6 +375,7 @@ export function createHud(actions: HudActions): Hud {
     (phase) => {
       const open = phase === 'opening' || phase === 'peak' || phase === 'closing';
       speedGroup.hidden = !open;
+      speedCycle.hidden = !open;
       openBtn.hidden = phase !== 'preparation';
       nextDayBtn.hidden = phase !== 'report';
     },
@@ -621,7 +646,7 @@ export function createHud(actions: HudActions): Hud {
       ),
     ),
     cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-star', 'Đánh giá', ratingValue), levelChip),
-    cluster('controls', 'Điều khiển', openBtn, nextDayBtn, speedGroup, pauseBtn, menuWrap),
+    cluster('controls', 'Điều khiển', openBtn, nextDayBtn, speedGroup, speedCycle, pauseBtn, menuWrap),
     note,
     resetLive,
   );
