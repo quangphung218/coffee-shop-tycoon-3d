@@ -95,4 +95,4 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy |
 | Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | Chưa chạy |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | Chưa chạy |
-| `npm run media:p24` | Không cảnh báo `!!` | FAIL: 1 cảnh báo (toast ở 1280 tự đóng trước khi chụp) |
+| `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |
