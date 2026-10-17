@@ -228,6 +228,7 @@ function atlasTimeline() {
   const ms = (v) => (v === undefined ? null : Math.round(v));
   const res = (re) => performance.getEntriesByType('resource').find((e) => re.test(e.name));
   const mark = (name) => performance.getEntriesByName(name)[0]?.startTime;
+  const count = (re) => performance.getEntriesByType('resource').filter((e) => re.test(e.name)).length;
   const a1 = res(/\/icons3d\/atlas@1x/);
   const a2 = res(/\/icons3d\/atlas@2x/);
   const three = res(/\/three-[^/]*\.js/);
@@ -238,6 +239,8 @@ function atlasTimeline() {
     atlas1Start: ms(a1?.startTime),
     atlas1End: ms(a1?.responseEnd),
     atlas2Start: ms(a2?.startTime),
+    atlas1Requests: count(/\/icons3d\/atlas@1x/),
+    atlas2Requests: count(/\/icons3d\/atlas@2x/),
   };
 }
 
@@ -692,7 +695,7 @@ async function menuAtlasSession(browser, url, who) {
     await sleep(500);
     out.times = await page.evaluate(atlasTimeline);
     const t = out.times;
-    progress(who, `Main Menu on mobile: menu ${t.menu} ms, three.js in ${t.threeEnd} ms, atlas @1x ${t.atlas1Start}-${t.atlas1End} ms, icons drawn ${drawnMs} ms, 3D scene ${t.world} ms, atlas @2x ${t.atlas2Start ?? 'not asked'} ms`);
+    progress(who, `Main Menu on mobile: menu ${t.menu} ms, three.js in ${t.threeEnd} ms, atlas @1x ${t.atlas1Start}-${t.atlas1End} ms, icons drawn ${drawnMs} ms, 3D scene ${t.world} ms, atlas @2x ${t.atlas2Start ?? 'not asked'} ms, requests @1x ${t.atlas1Requests} / @2x ${t.atlas2Requests}`);
     return out;
   } finally {
     await context.close();
