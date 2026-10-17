@@ -27,6 +27,7 @@ export function runCampaign(state: GameState, id: MarketingId): CampaignResult {
   if (isCampaignActive(state, id)) return refuse(state, `${def.name} đang chạy`);
   if (!payMarketing(state, def.cost)) return refuse(state, `Không đủ tiền chạy ${def.name}`);
   state.campaigns.push({ id, daysLeft: def.days });
+  state.events.push({ type: 'spend', kind: 'campaign', label: def.name, amount: def.cost, moneyLeft: state.money });
   state.events.push({ type: 'notify', level: 'success', text: `Đã chạy ${def.name} (${def.days} ngày)` });
   return { ok: true, cost: def.cost };
 }

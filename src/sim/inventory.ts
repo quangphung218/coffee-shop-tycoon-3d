@@ -82,6 +82,7 @@ export function buyIngredient(state: GameState, id: IngredientId, qty: number): 
   const item = state.inventory.find((i) => i.id === id);
   if (item) item.qty += qty;
   else state.inventory.push({ id, qty });
+  state.events.push({ type: 'spend', kind: 'restock', label: def.name, amount: cost, moneyLeft: state.money });
   return { ok: true, cost };
 }
 
@@ -298,8 +299,6 @@ export function applyRestockSuggestion(state: GameState): RestockResult {
     const names = result.skipped.map((id) => getIngredient(id).name).join(', ');
     const short = String(Math.max(0, skippedCost - state.money)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short}đ để nhập ${names}` });
-  } else if (result.bought.length > 0) {
-    state.events.push({ type: 'notify', level: 'success', text: 'Đã nhập hàng theo gợi ý' });
   }
   return result;
 }
