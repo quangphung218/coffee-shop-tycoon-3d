@@ -33,11 +33,11 @@ Xếp theo điểm, rồi theo impact.
 
 | Id | Mảng | Mô tả | Bằng chứng | Impact | Effort | Điểm | Quyết định |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| layout-blocked-suggest-390 | Bố cục | Chân bảng Kho dính (~190 px) che nút Gợi ý nhập và đầu danh sách ở 390 | [d2](p22-review/390/d2-blocked-suggest.jpg), [d5](p22-review/390/d5-blocked-suggest.jpg), [d7](p22-review/390/d7-blocked-suggest.jpg); `blocked.390/d2-suggest` | 3 | 1 | 3 | Đã sửa |
+| layout-blocked-suggest-390 | Bố cục | Chân bảng Kho dính (~190 px) che nút Gợi ý nhập và đầu danh sách ở 390 | [d2](p22-review/390/d2-blocked-suggest.jpg), [d5](p22-review/390/d5-blocked-suggest.jpg), [d7](p22-review/390/d7-blocked-suggest.jpg); `blocked.390/d2-suggest` | 3 | 1 | 3 | Đã sửa một phần: nút Gợi ý và Nhập hàng chạm được khi mở Kho; khi cuộn, giữa dòng hàng vẫn nằm dưới chân bảng (0/12, v0.4.0 0/12) |
 | actors-persona-motion | Nhân vật | Các cá tính chỉ khác một phụ kiện, đi và đứng chờ như nhau | [390 d4](p22-review/390/d4-peak.jpg), [1440 d4](p22-review/1440/d4-peak.png) | 3 | 1 | 3 | Đã sửa |
 | E2 | Nghiệp vụ | Khó đạt 3 cúp dễ như Thường | Khó b: 3 cúp 6/6 seed; mục tiêu Khó 23.000k < Thường 26.500k ([E2](p22-economy.md#vấn-đề)) | 3 | 1 | 3 | Để đợt sau: đổi `WEEK_GOALS`, phá cân bằng P21 |
 | E6 | Nghiệp vụ | Giá Cao luôn thắng giá Chuẩn | d − c: lãi +2.143k đến +3.075k, 18/18 ván; cúp vẫn 3 ([E6](p22-economy.md#vấn-đề)) | 3 | 1 | 3 | Để đợt sau: cần đổi chấm điểm tuần |
-| ui-icons-blank-390 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải) | [d0-menu-first](p22-review/390/d0-menu-first.png); `menu.390.icons` | 2 | 1 | 2 | Đã sửa: ô trống thành ô chờ; icon hiện lúc 2529 ms (v0.4.0 2808 ms; 2608 ms cùng lượt), đổi lại cảnh 3D nhanh hơn 7 ms thay vì khoảng 500 ms |
+| ui-icons-blank-390 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải) | [d0-menu-first](p22-review/390/d0-menu-first.png); `menu.390.icons` | 2 | 1 | 2 | Đã sửa: ô trống thành ô chờ; icon hiện lúc 2550 ms (v0.4.0 2808 ms; 2564 ms cùng lượt), đổi lại cảnh 3D nhanh hơn 7 ms (trung vị 9 lần) thay vì khoảng 500 ms |
 | ui-icons-blank-1440 | Giao diện | 5/5 ô icon trống lúc Main Menu hiện (atlas@1x chưa tải) | [d0-menu-first](p22-review/1440/d0-menu-first.png); `menu.1440.icons` | 2 | 1 | 2 | Đã sửa: ô trống thành ô chờ; cùng thứ tải atlas với 390 |
 | actors-persona-accessory | Nhân vật | Khách quen và gia đình không có phụ kiện, trông như nhau | [390 d4](p22-review/390/d4-peak.jpg), [1440 d4](p22-review/1440/d4-peak.png) | 2 | 1 | 2 | Đã sửa |
 | actors-impatient-silhouette | Nhân vật | Dáng sốt ruột (gõ chân nhẹ) khó thấy từ camera chéo | [390 d4](p22-review/390/d4-peak.jpg) | 2 | 1 | 2 | Đã sửa |
@@ -64,14 +64,14 @@ v0.4.0 khoanh nét đứt cam, P22 nét liền xanh.
 
 | Id | Đã sửa gì | Test |
 | --- | --- | --- |
-| ui-icons-blank-390, ui-icons-blank-1440 | Ô icon hiện ô chờ tới khi atlas @1x tải xong (0/5 ô trống, v0.4.0 5/5). Atlas @1x xin ngay sau khi menu vẽ, sau lệnh xin chunk cảnh, ưu tiên thấp; mỗi atlas một lần `fetch`, CSS và canvas dùng chung object URL; @2x sau `cst:world`. Di động: icon hiện lúc 2529 ms, v0.4.0 2608 ms cùng lượt (2808 ms ở lượt trước). Đánh đổi: cảnh 3D chỉ còn nhanh hơn v0.4.0 7 ms (trước đó khoảng 500 ms, khi icon hiện lúc 5736–7702 ms). | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts`, `tests/ui/styles.test.ts` |
-| layout-blocked-suggest-390 | Chân bảng dính đáy ở mọi khổ. Thân dưới 30rem thì chân gọn (hai tổng chung một hàng, nút Nhập hàng 44 px); chỉ khi vùng nội dung thân dưới 8rem (128 px, điện thoại xoay ngang) chân mới cuộn sau danh sách. Bảng: nút Gợi ý chạm được, 1/12 dòng chạm được khi cuộn (v0.4.0 0/12). | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` |
+| ui-icons-blank-390, ui-icons-blank-1440 | Ô icon hiện ô chờ tới khi atlas @1x tải xong (0/5 ô trống, v0.4.0 5/5). Atlas @1x xin ngay sau khi menu vẽ, sau lệnh xin chunk cảnh, ưu tiên thấp; mỗi atlas một lần `fetch`, CSS và canvas dùng chung object URL; @2x sau `cst:world`. Di động: icon hiện lúc 2550 ms, v0.4.0 2564 ms cùng lượt (2808 ms ở lượt trước). Đánh đổi: cảnh 3D chỉ còn nhanh hơn v0.4.0 7 ms (trước đó khoảng 500 ms, khi icon hiện lúc 5736–7702 ms). | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts`, `tests/ui/styles.test.ts` |
+| layout-blocked-suggest-390 | Chân bảng dính đáy ở mọi khổ. Thân dưới 30rem thì chân gọn (hai tổng chung một hàng, nút Nhập hàng 44 px); chỉ khi vùng nội dung thân dưới 8rem (128 px, điện thoại xoay ngang) chân mới cuộn sau danh sách. Bảng: chân 144 px (v0.4.0 202 px) trong thân 207 px; nút Gợi ý chạm được (v0.4.0 bị `.foot-sum` che). Chưa sửa: cuộn dòng hàng đầu lên đỉnh thân thì giữa dòng vẫn nằm dưới chân, 0/12 dòng chạm được ở giữa (v0.4.0 0/12). | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` |
 | actors-persona-motion | Mỗi cá tính có dáng đi và thói quen lúc chờ riêng (văn phòng xem điện thoại, sinh viên tay đút túi, sành cà phê chắp tay sau lưng, gia đình nhìn quanh); tốc độ và đường đi không đổi. | `tests/render/actors.test.ts` |
 | actors-persona-accessory | Khách quen đội mũ len tím, gia đình xách túi vải vàng; dùng chung ô mesh phụ kiện, không đổ bóng. | `tests/render/actors.test.ts` |
 | actors-impatient-silhouette | Khách sốt ruột khoanh tay, gõ chân 0,5 rad (trước 0,35), mỗi vòng gỡ tay xem đồng hồ. | `tests/render/actors.test.ts` |
 | E5 | Máy làm đá mở ngày 2, giá gốc 80k (trước ngày 6, 200k); máy rửa ly mở ngày 4, giá gốc 400k (trước ngày 7, 800k). Hoàn vốn dụng cụ trong tuần 47/36/19% → 69/51/27%. | `tests/sim/week-tool-payback.test.ts`, `tests/sim/week-unlocks.test.ts` |
 | perf-startup-mobile | Nguyên nhân: `watchIconAtlas()` chạy ngay đầu `start()`, nên `atlas@1x.webp` (116 kB) tải trước chunk cảnh trên đường 1,6 Mbps. Giờ `main.ts` xin chunk cảnh sau khi menu đã vẽ, rồi mới xin atlas @1x (`priority: 'low'`). Lượt cuối, trung vị 9 lần: Main Menu 1006 ms (v0.4.0 981 ms, +2,5%), cảnh 3D 2984 ms (v0.4.0 2991 ms). Phụ kiện nhân vật không phải nguyên nhân: dùng chung material, không thêm shader. | `tests/ui/icons-loading.test.ts`, `tests/ui/icons.test.ts` |
-| Chân bảng Kho 390 | Ngưỡng cuộn chân hạ từ 12rem xuống 8rem. Ở 390×844, ván ngày 2: thân 207 px, vùng nội dung (trừ padding `--space-4`) 191 px, trên 128 px, nên chân gọn dính đáy và nút Nhập hàng thấy ngay khi mở Kho. Ngưỡng 12rem cũ (192 px) làm chân cuộn đi ở chính khổ này. | `tests/ui/p22-review-fixes.test.ts` (so 8rem với vùng nội dung 191 px; 12rem phải trượt), `tests/ui/layout-overflow.test.ts` |
+| Chân bảng Kho 390 | Ngưỡng cuộn chân hạ từ 12rem xuống 8rem. Ở 390×844, ván ngày 2: thân 207 px, vùng nội dung (trừ padding `--space-4`) 191 px, trên 128 px, nên chân gọn dính đáy. `media:p22`: chân 144 px dính, nút Nhập hàng 44 px chạm được ngay khi mở Kho. Ngưỡng 12rem cũ (192 px) làm chân cuộn đi ở chính khổ này. | `tests/ui/p22-review-fixes.test.ts` (so 8rem với vùng nội dung 191 px; 12rem phải trượt), `tests/ui/layout-overflow.test.ts` |
 | Ô chờ icon theo token | Ô chờ lấy nền `--surface-icon-wait`, bo `--radius-sm`, không viền, đứng yên; không còn mã màu hay px viết tay. | `tests/ui/styles.test.ts` |
 | Bảng kinh tế | [p22-economy.md](p22-economy.md) ghi rõ bảng nào là số trước khi sửa E5, bảng nào sau. | |
 | Lệnh `layout` | Sửa khoảng trắng thiếu ở mục `layout` của `package.json`. | |
@@ -116,7 +116,7 @@ Chênh lệch P22 trừ v0.4.0 trên di động, cùng lượt đo, theo từng 
 | Atlas @1x sau khi chunk cảnh tải xong | `--runs 9`, hai lượt | +85 ms, +84 ms | −486 ms, −512 ms | |
 | Thêm: xin chunk cảnh sau khi menu vẽ | `--runs 9` | +54 ms | −507 ms | 5736 ms (v0.4.0 2808 ms) |
 | Thêm: mỗi atlas một lần `fetch`, object URL | `--runs 9` | +0 ms | −509 ms | 7702 ms (v0.4.0 2626 ms) |
-| Hiện tại: atlas @1x ngay sau khi menu vẽ | `--runs 9` | +25 ms | −7 ms | 2529 ms (v0.4.0 2608 ms) |
+| Hiện tại: atlas @1x ngay sau khi menu vẽ | `--runs 9` | +25 ms | −7 ms | 2550 ms (v0.4.0 2564 ms) |
 
 - Đánh đổi: atlas @1x về trước khi cảnh 3D bắt đầu vẽ nên icon hiện sớm hơn v0.4.0, nhưng nó lại chia đường mạng với chunk cảnh, nên cảnh 3D mất khoảng 500 ms nhanh hơn của các bước trước.
 
@@ -124,16 +124,18 @@ Icon Main Menu trên di động (`npm run media:p22`, 390×844, tỉ lệ điể
 
 | Mốc | v0.4.0 `f720b6f` | P22 |
 | --- | --- | --- |
-| Main Menu hiện (ô trống / ô chờ) | 1022 | 995 |
-| Xin atlas @1x | 1006 | 1012 |
-| Atlas @1x tải xong | 2560 | 2470 |
-| Atlas @1x tới CSS (`cst:icons`) | | 2473 |
-| `three-*.js` tải xong | 2605 | 2526 |
-| Mọi ô vẽ icon | 2608 | 2529 |
-| Cảnh 3D hiện | 2942 | 2942 |
+| Main Menu hiện (ô trống / ô chờ) | 996 | 960 |
+| Xin atlas @1x | 981 | 981 |
+| Atlas @1x tải xong | 2553 | 2525 |
+| Atlas @1x tới CSS (`cst:icons`) | | 2528 |
+| Mọi ô vẽ icon | 2564 | 2550 |
+| `three-*.js` tải xong | 2604 | 2576 |
+| Xin atlas @2x | 2872 | 2718 |
+| Cảnh 3D hiện | 2882 | 2852 |
 | Số lần tải atlas @1x / @2x | 1 / 1 | 1 / 1 |
 
-- P22 giữ ô chờ 1534 ms (995 → 2529 ms); v0.4.0 để ô trống 1586 ms (1022 → 2608 ms). Icon vẽ 59 ms sau khi atlas @1x tải xong.
+- P22 giữ ô chờ 1590 ms (960 → 2550 ms); v0.4.0 để ô trống 1568 ms (996 → 2564 ms). Icon vẽ 25 ms sau khi atlas @1x tải xong.
+- Một lần tải mỗi bản: cảnh 3D lần này nhanh hơn v0.4.0 30 ms; so sánh dùng trung vị 9 lần ở trên.
 
 FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản xen kẽ, bản hiện tại. Chỉ kết luận từ lượt đo đủ 5 lần:
 
@@ -153,13 +155,14 @@ FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản x
 | --- | --- | --- | --- |
 | 1 | E2 | 3 | Mục tiêu và ngưỡng cúp riêng cho Khó (`WEEK_GOALS`). |
 | 2 | E6 | 3 | Làm giá Cao có cái giá rõ hơn (sao, khách bỏ về) hoặc tính vào điểm tuần. |
-| 3 | E1 | 1,5 | Giãn thang điểm tuần để chơi tốt và chơi tồi khác điểm (`scoreWeek`). |
-| 4 | E4 | 1,5 | Tủ bánh, máy xay sinh tố: hoàn vốn trong tuần, hoặc gợi ý bật món đi kèm. |
-| 5 | Cảnh 3D di động | | Lấy lại khoảng 500 ms của cảnh 3D mà icon vẫn hiện trước cảnh (vd. atlas @1x nhỏ hơn, hoặc gộp ô menu vào một ảnh riêng). |
-| 6 | perf-fps-1440, perf-fps-390 | 1 | Giảm draw call giờ cao điểm để tiến tới 60 FPS. |
-| 7 | E7 | 1 | Marketing: hiệu quả khi quán còn chỗ, hoặc báo quán đã đầy. |
-| 8 | E8 | 1 | Áp lực tiền trong tuần (chi phí cố định, giá vốn). |
-| 9 | E9 | 1 | Tính lãi vào điểm tuần. |
+| 3 | layout-blocked-suggest-390 | 3 | Dòng hàng Kho ở 390: chân gọn 144 px chiếm gần hết thân 207 px, giữa dòng không chạm được khi cuộn (0/12). Cần chân thấp hơn hoặc thân bảng cao hơn. |
+| 4 | E1 | 1,5 | Giãn thang điểm tuần để chơi tốt và chơi tồi khác điểm (`scoreWeek`). |
+| 5 | E4 | 1,5 | Tủ bánh, máy xay sinh tố: hoàn vốn trong tuần, hoặc gợi ý bật món đi kèm. |
+| 6 | Cảnh 3D di động | | Lấy lại khoảng 500 ms của cảnh 3D mà icon vẫn hiện trước cảnh (vd. atlas @1x nhỏ hơn, hoặc gộp ô menu vào một ảnh riêng). |
+| 7 | perf-fps-1440, perf-fps-390 | 1 | Giảm draw call giờ cao điểm để tiến tới 60 FPS. |
+| 8 | E7 | 1 | Marketing: hiệu quả khi quán còn chỗ, hoặc báo quán đã đầy. |
+| 9 | E8 | 1 | Áp lực tiền trong tuần (chi phí cố định, giá vốn). |
+| 10 | E9 | 1 | Tính lãi vào điểm tuần. |
 
 ## 6. Kiểm tra
 
