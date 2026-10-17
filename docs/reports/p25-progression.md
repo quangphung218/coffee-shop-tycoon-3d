@@ -15,7 +15,7 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 - Menu: mỗi món một dòng thấp (P24: 150 px, món thiếu hàng 236 px ở 390 px); công tắc nhỏ trên dòng, "Thiếu Cam" là nút mở Kho. Tên món và dòng giá xuống dòng thay vì bị cắt.
 - Lên cấp: thẻ có huy hiệu cấp bật lên, chip icon các mục mở khoá và confetti 1,4 s không chặn bấm.
 - Nâng cấp: máy pha, máy xay, tủ bánh, quầy, bàn ghế, cây, tranh, đèn đổi hình theo 3 bậc; vừa mua thì máy nảy và rắc sao; mỗi bậc có icon riêng và dòng "Bậc n/3".
-- Kiểm: `npm run check` và `npm run layout` đạt. Ảnh, khởi động và khung hình đo lại theo [mục 4](#4-kết-quả-kiểm).
+- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt. Khởi động và khung hình đo lại theo [mục 4](#4-kết-quả-kiểm).
 
 ## 2. Ý đã làm và để sau
 
@@ -58,8 +58,8 @@ Hiệu ứng vừa mua, phần điểm ảnh trong khung máy khác khung lúc y
 
 | Khổ | P24, 0,2 s | P25, 0 s | P25, 0,2 s | P25, 0,5 s |
 | --- | --- | --- | --- | --- |
-| 390 | 0,0% | 0,0% | 8,5% | 0,0% |
-| 1280 | 0,0% | 0,0% | 24,6% | 0,0% |
+| 390 | 0,0% | 0,0% | 24,9% | 0,0% |
+| 1280 | 0,0% | 0,0% | 7,7% | 0,0% |
 
 Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 0,5 s chỉ còn vài sao nhỏ, dưới ngưỡng đo.
 
@@ -76,7 +76,7 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | `npm run perf:frames` | 0 long task | Chờ lượt đo |
 | `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | Chờ lượt đo |
 | 60 FPS máy bàn khi có hiệu ứng (`--fx --headed`) | p95 ≤ 16,7 ms ± nhịp màn hình | PASS: p95 18 ms (bằng chế độ thường), 0 khung > 50 ms ở máy bàn |
-| `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | Chờ lượt đo |
+| `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | PASS: 21 bảng, thoát mã 0; `tier-pair` ghép icon và máy espresso cùng save ở mỗi bậc |
 
 ### Số đo
 
