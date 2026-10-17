@@ -368,6 +368,36 @@ kbd {
   transform: scaleX(0);
   transition: transform var(--duration-slow) var(--easing-out);
 }
+.scene-load-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.scene-load-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 24px;
+}
+.scene-load-item[data-status='done'] {
+  color: var(--text-primary);
+}
+.scene-load-item[data-status='error'] {
+  color: var(--text-danger);
+}
+.scene-load-mark {
+  display: inline-flex;
+}
+.scene-load-item-pct {
+  font-variant-numeric: tabular-nums;
+}
+.scene-load-retry {
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
 .scene-load-tip {
   display: flex;
   gap: var(--space-1);

@@ -216,14 +216,34 @@ function useAtlas(root: HTMLElement, url: string, cls: string): void {
   root.classList.add(cls);
 }
 
+/** Where the @1x atlas load stands, for the loading list. */
+export type IconAtlasState = 'loading' | 'done' | 'error';
+
+let atlasState: IconAtlasState | null = null;
+const atlasListeners = new Set<(state: IconAtlasState) => void>();
+
+function setAtlasState(state: IconAtlasState): void {
+  atlasState = state;
+  for (const fn of atlasListeners) fn(state);
+}
+
+/** Calls `fn` with each change of the @1x load, and at once if it has started. Returns an unsubscribe function. */
+export function onIconAtlas(fn: (state: IconAtlasState) => void): () => void {
+  atlasListeners.add(fn);
+  if (atlasState) fn(atlasState);
+  return () => atlasListeners.delete(fn);
+}
+
 /**
  * Loads the @1x atlas, the one every screen starts with, and marks `root`
  * with ICONS_READY_CLASS when it is in. On error the placeholders stay and
  * the load is tried once more when the browser comes back `online`.
+ * onIconAtlas() follows each try.
  */
 export function watchIconAtlas(root: HTMLElement = document.documentElement, win: Window = window): void {
   let retried = false;
   const load = (): void => {
+    setAtlasState('loading');
     // Below the scripts and fonts the page is still loading.
     atlasFile(1, 'low').then(
       (file) => {
@@ -231,8 +251,10 @@ export function watchIconAtlas(root: HTMLElement = document.documentElement, win
         if (!root.classList.contains(ICONS_HD_CLASS)) useAtlas(root, file.url, ICONS_READY_CLASS);
         else root.classList.add(ICONS_READY_CLASS);
         performance.mark(ICONS_MARK);
+        setAtlasState('done');
       },
       () => {
+        setAtlasState('error');
         if (retried) return;
         retried = true;
         win.addEventListener('online', load, { once: true });
@@ -240,6 +262,11 @@ export function watchIconAtlas(root: HTMLElement = document.documentElement, win
     );
   };
   load();
+}
+
+/** "Thử lại" on the loading list: asks for the @1x atlas again now (a failed fetch is not cached). */
+export function retryIconAtlas(): void {
+  watchIconAtlas();
 }
 
 /**

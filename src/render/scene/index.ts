@@ -18,6 +18,9 @@ export interface WorldOptions {
   reducedMotion?: boolean;
 }
 
+/** Steps of World.prepare that report progress; they match ids on the loading list (src/ui/core/loadProgress.ts). */
+export type PrepareStep = 'shaders' | 'labels';
+
 export interface World {
   /**
    * Draws one frame of `state`. `alpha` is the fraction of the next sim tick
@@ -28,8 +31,9 @@ export interface World {
   /**
    * Lays out `state` and compiles its shaders without drawing, so the first
    * update() does not stall the page. Resolves once the GPU has finished.
+   * `onStep` gets the 0–1 progress of each step as it moves.
    */
-  prepare(state: GameState): Promise<void>;
+  prepare(state: GameState, onStep?: (id: PrepareStep, fraction: number) => void): Promise<void>;
   setQuality(quality: Quality): void;
   setCameraKeys(mode: CameraKeys): void;
   setCameraRotateSpeed(speed: CameraRotateSpeed): void;
@@ -108,9 +112,11 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       sync(state, alpha);
       view.renderer.render(view.scene, camera.camera);
     },
-    async prepare(state: GameState): Promise<void> {
+    async prepare(state: GameState, onStep?: (id: PrepareStep, fraction: number) => void): Promise<void> {
       sync(state, state.tickAccumulator);
+      onStep?.('shaders', 0);
       await view.renderer.compileAsync(view.scene, camera.camera);
+      onStep?.('shaders', 1);
     },
     setQuality: (q) => {
       view.setQuality(q);

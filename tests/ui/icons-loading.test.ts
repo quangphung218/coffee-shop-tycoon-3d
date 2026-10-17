@@ -185,6 +185,24 @@ describe('a failed @1x load', () => {
     expect({ className: el.className, style: el.getAttribute('style') }).toEqual(before);
   });
 
+  it('reports loading, error and done to the loading list, and Thử lại asks again at once', async () => {
+    const seen: string[] = [];
+    mod.onIconAtlas((s) => seen.push(s));
+    mod.watchIconAtlas(html, new EventTarget() as Window);
+    requests[0]!.fail();
+    await settle();
+    expect(seen).toEqual(['loading', 'error']);
+    mod.retryIconAtlas();
+    expect(requests).toHaveLength(2);
+    await deliver(1);
+    expect(seen).toEqual(['loading', 'error', 'loading', 'done']);
+    expect(html.classList.contains(ICONS_READY_CLASS)).toBe(true);
+    // A late listener hears the current state at once.
+    const late: string[] = [];
+    mod.onIconAtlas((s) => late.push(s));
+    expect(late).toEqual(['done']);
+  });
+
   it('treats an HTTP error like a network error', async () => {
     mod.watchIconAtlas(html, new EventTarget() as Window);
     requests[0]!.answer(404);
@@ -289,7 +307,8 @@ describe('html.icons-hd (@2x atlas)', () => {
     const calls = [...src.matchAll(/enableHdIcons\(\)/g)].map((m) => m.index!);
     expect(calls).toHaveLength(1);
     const call = calls[0]!;
-    const ready = src.lastIndexOf("scene.set({ status: 'ready'", call);
+    // The scene is ready once its last steps are marked done.
+    const ready = src.lastIndexOf("scene.setComponent('labels', { status: 'done' })", call);
     const world = src.lastIndexOf("performance.mark('cst:world')", call);
     expect(ready).toBeGreaterThan(-1);
     expect(world).toBeGreaterThan(ready);
