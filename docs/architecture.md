@@ -91,7 +91,7 @@ Font chữ:
 2. Sim chạy tick cố định 1 phút game; tối đa `MAX_TICKS_PER_STEP` = 240 tick mỗi lần gọi. Phần lẻ còn lại nằm trong `state.tickAccumulator`.
 3. `world.update(game, game.tickAccumulator)`: render nội suy vị trí giữa hai tick bằng `alpha`.
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
-5. `audio.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`.
+5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` (`src/ui/core/fresh.ts`) giữ id món và nâng cấp vừa mở (`level_up`, `week_unlocks`) cho chấm "Mới" trên dock và nhãn "Mới" trên hàng; chỉ sống trong phiên, không vào save, xóa khi bắt đầu hay tải ván và khi đóng bảng Menu/Nâng cấp.
 
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên → khách → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
