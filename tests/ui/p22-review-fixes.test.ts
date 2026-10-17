@@ -113,17 +113,40 @@ describe('layout-blocked-suggest-390: Kho foot does not cover Auto-restock on a 
     expect(decl(body.body, 'overflow')).toBe('auto');
   });
 
-  it('unsticks the foot under a threshold above the measured short body', () => {
-    const blocks = containerBlocks(PANELS_CSS).filter((b) => b.name === 'panel-body');
-    expect(blocks).toHaveLength(1);
-    const m = blocks[0]!.query.match(/^max-height: ([\d.]+)rem$/);
-    expect(m, blocks[0]!.query).not.toBeNull();
-    const px = Number(m![1]) * ROOT_FONT_PX;
+  const blocks = containerBlocks(PANELS_CSS).filter((b) => b.name === 'panel-body');
+  const maxPx = (query: string): number => {
+    const m = query.match(/^max-height: ([\d.]+)rem$/);
+    expect(m, query).not.toBeNull();
+    return Number(m![1]) * ROOT_FONT_PX;
+  };
+
+  it('packs the foot on a short body, still stuck, with a 44 px buy button', () => {
+    expect(blocks).toHaveLength(2);
+    const px = maxPx(blocks[0]!.query);
     // The tallest body that was covered at 390 was ~270 px.
     expect(px).toBeGreaterThanOrEqual(270);
-    // A 900 px tall desktop panel body stays above it and keeps the sticky foot.
+    // A 900 px tall desktop panel body stays above it and keeps the full foot.
     expect(px).toBeLessThan(600);
-    const foot = blocks[0]!.rules.find((r) => r.selector === '.prep .panel-foot');
+    const foot = blocks[0]!.rules.find((r) => r.selector === '.prep .panel-foot')!;
+    expect(decl(foot.body, 'position')).toBeUndefined();
+    expect(decl(foot.body, 'display')).toBe('grid');
+    // Equal fixed columns: a longer total never moves the other cell or the button.
+    expect(decl(foot.body, 'grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 1fr)');
+    for (const r of blocks[0]!.rules) {
+      for (const prop of ['padding', 'gap']) {
+        const v = decl(r.body, prop);
+        if (v) expect(v, `${r.selector} ${prop}`).toMatch(/^(0|var\(--space-\d+\))( (0|var\(--space-\d+\)))*$/);
+      }
+    }
+    const btn = blocks[0]!.rules.find((r) => r.selector === '.prep .panel-foot > .btn-lg')!;
+    expect(decl(btn.body, 'min-height')).toBe('var(--size-target)');
+  });
+
+  it('unsticks the foot only on a very low body, below the 207 px Kho body at 390', () => {
+    const px = maxPx(blocks[1]!.query);
+    expect(px).toBeLessThan(207);
+    expect(px).toBeGreaterThan(0);
+    const foot = blocks[1]!.rules.find((r) => r.selector === '.prep .panel-foot');
     expect(foot).toBeDefined();
     expect(decl(foot!.body, 'position')).toBe('static');
   });
