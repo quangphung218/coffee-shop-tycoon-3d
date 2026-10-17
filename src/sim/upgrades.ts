@@ -1,5 +1,6 @@
 import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
+import { BONUS_LEVEL_PRICE_MULT, maxLevelBonus } from './data/levels';
 import { getUpgrade, upgradeCost } from './data/upgrades';
 import { CHAIR_OFFSET } from './nav/footprints';
 import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
@@ -93,10 +94,11 @@ const DECOR_SLOTS: Readonly<Record<DecorKind, readonly Vec2[]>> = {
     // Left wall, at the cross aisle between the first two rows.
     { x: -4.4, z: TABLE_ROW_Z + TABLE_ROW_PITCH / 2 },
   ],
-  // Pendants over the two inner tables of the middle row.
+  // Pendants over the two inner tables of the middle row; the third (shop level 9) over the first inner table.
   light: [
     { x: -1.5, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
     { x: 1.5, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
+    { x: -1.5, z: TABLE_ROW_Z },
   ],
 };
 const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = { plant: 'plants', painting: 'paintings', light: 'lights' };
@@ -183,9 +185,25 @@ export function upgradeLevel(state: GameState, id: UpgradeId): number {
   return state.upgrades[id] ?? 0;
 }
 
-/** Price of the next level at this difficulty; null at max level. */
+/** Highest level of an upgrade at the shop's level: its maxLevel plus the bonus of shop levels 7..10. */
+export function maxUpgradeLevel(state: GameState, id: UpgradeId): number {
+  return getUpgrade(id).maxLevel + maxLevelBonus(state.shopLevel, id);
+}
+
+/**
+ * Price the `level`-th level (from 1) of an upgrade costs at this difficulty,
+ * cap aside; levels above the upgrade's maxLevel cost BONUS_LEVEL_PRICE_MULT times more.
+ */
+export function upgradeLevelPrice(state: GameState, id: UpgradeId, level: number): number {
+  const base = getUpgrade(id);
+  const price = upgradeCost({ ...base, maxLevel: Infinity }, level - 1, DIFFICULTIES[state.difficulty].priceMult)!;
+  return level > base.maxLevel ? price * BONUS_LEVEL_PRICE_MULT : price;
+}
+
+/** Price of the next level at this difficulty; null at max level (maxUpgradeLevel). */
 export function nextUpgradeCost(state: GameState, id: UpgradeId): number | null {
-  return upgradeCost(getUpgrade(id), upgradeLevel(state, id), DIFFICULTIES[state.difficulty].priceMult);
+  const level = upgradeLevel(state, id);
+  return level >= maxUpgradeLevel(state, id) ? null : upgradeLevelPrice(state, id, level + 1);
 }
 
 /**
@@ -245,7 +263,7 @@ export function removeDecor(state: GameState, id: UpgradeId): RemoveDecorResult 
     state.events.push({ type: 'notify', level: 'error', text: reason });
     return { ok: false, reason };
   }
-  const paid = upgradeCost(def, level - 1, DIFFICULTIES[state.difficulty].priceMult) ?? 0;
+  const paid = upgradeLevelPrice(state, id, level);
   const refund = Math.round(paid * DECOR_REFUND_SHARE);
   state.upgrades[id] = level - 1;
   state.money += refund;

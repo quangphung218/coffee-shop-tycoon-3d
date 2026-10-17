@@ -15,9 +15,14 @@ export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
   hard: { revenue: 23_000_000, stars: 4.2 },
 };
 
-/** Revenue target growth per week after week 1, and its cap as a multiple of week 1. */
-export const WEEK_GOAL_GROWTH = 0.2;
-export const WEEK_GOAL_MAX_MULT = 2;
+/**
+ * Revenue target growth per week after week 1, and its cap as a multiple of
+ * week 1: a shop that keeps investing grows past 3× its week-1 revenue, while
+ * one that never buys anything stays near 1.1× and drops to 2 cups from week 2.
+ * Measured in docs/reports/p23-long-economy.md.
+ */
+export const WEEK_GOAL_GROWTH = 0.5;
+export const WEEK_GOAL_MAX_MULT = 3;
 
 /**
  * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue grows by
@@ -28,6 +33,25 @@ export function weekGoal(difficulty: Difficulty, index: number): WeekGoal {
   const base = WEEK_GOALS[difficulty];
   const mult = Math.min(WEEK_GOAL_MAX_MULT, 1 + WEEK_GOAL_GROWTH * Math.max(0, index - 1));
   return { revenue: Math.round((base.revenue * mult) / 100_000) * 100_000, stars: base.stars };
+}
+
+/** Fewest cups a week needs to pay WEEK_REWARDS. */
+export const WEEK_REWARD_MIN_CUPS = 2;
+
+/**
+ * Cash paid when a week ends with 2 or 3 cups, by difficulty. Harder games pay
+ * more because their prices are higher. Numbers in docs/reports/p23-long-economy.md.
+ */
+export const WEEK_REWARDS: Readonly<Record<Difficulty, Readonly<Record<2 | 3, number>>>> = {
+  easy: { 2: 1_000_000, 3: 1_500_000 },
+  normal: { 2: 1_500_000, 3: 2_250_000 },
+  hard: { 2: 2_000_000, 3: 3_000_000 },
+};
+
+/** Cash reward of a week scored with `cups` cups; 0 below WEEK_REWARD_MIN_CUPS. */
+export function weekReward(difficulty: Difficulty, cups: number): number {
+  if (cups < WEEK_REWARD_MIN_CUPS) return 0;
+  return WEEK_REWARDS[difficulty][cups >= 3 ? 3 : 2];
 }
 
 export interface WeekUnlockDay {

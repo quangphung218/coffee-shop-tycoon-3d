@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SHOP_LEVEL } from '../../src/sim/data/levels';
+import { FULL_UNLOCK_LEVEL } from '../../src/sim/data/levels';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { debtLimit, isOverDebtLimit, totalWages } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
@@ -12,7 +12,11 @@ import { playDay } from './helpers';
 
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 const SEED = 777;
-/** Days kept playing after the shop first reaches the top level, to measure a few level-6 days. */
+/**
+ * Days kept playing after the shop first reaches level 6, to measure a few level-6 days.
+ * The P20 milestones stop at level 6, where everything is unlocked; levels 7..10
+ * (cap raises only) are measured in tests/integration/p23-long-run.test.ts.
+ */
 const EXTRA_AT_TOP = 3;
 /** Safety bound; the sample strategy reaches level 6 on Hard well inside it. */
 const DAY_CAP = 50;
@@ -130,7 +134,7 @@ function simulate(difficulty: Difficulty, seed = SEED): Run {
     // Play on past the scored week (next_day is refused once week day 7 ends).
     delete state.week?.result;
     dispatch(state, { type: 'next_day' });
-    if (state.shopLevel >= MAX_SHOP_LEVEL && ++extra > EXTRA_AT_TOP) break;
+    if (state.shopLevel >= FULL_UNLOCK_LEVEL && ++extra > EXTRA_AT_TOP) break;
   }
   return { state, recs, levelDay, minMoney, overDebt };
 }
@@ -144,9 +148,9 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
 
   it('reaches level 6 on every difficulty with the sample strategy', () => {
     for (const d of DIFFICULTIES) {
-      expect(runs[d].state.shopLevel, d).toBe(MAX_SHOP_LEVEL);
+      expect(runs[d].state.shopLevel, d).toBe(FULL_UNLOCK_LEVEL);
       // A day was actually played at the top level, so the level-6 figures are real.
-      expect(runs[d].recs.some((r) => r.level === MAX_SHOP_LEVEL), d).toBe(true);
+      expect(runs[d].recs.some((r) => r.level === FULL_UNLOCK_LEVEL), d).toBe(true);
     }
   });
 
@@ -168,25 +172,25 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     const { levelDay } = runs.normal;
     expect(levelDay[2]).toBeGreaterThanOrEqual(NORMAL_LEVEL2_DAYS.min);
     expect(levelDay[2]).toBeLessThanOrEqual(NORMAL_LEVEL2_DAYS.max);
-    expect(levelDay[MAX_SHOP_LEVEL]).toBeGreaterThanOrEqual(NORMAL_TOP_LEVEL_DAYS.min);
-    expect(levelDay[MAX_SHOP_LEVEL]).toBeLessThanOrEqual(NORMAL_TOP_LEVEL_DAYS.max);
+    expect(levelDay[FULL_UNLOCK_LEVEL]).toBeGreaterThanOrEqual(NORMAL_TOP_LEVEL_DAYS.min);
+    expect(levelDay[FULL_UNLOCK_LEVEL]).toBeLessThanOrEqual(NORMAL_TOP_LEVEL_DAYS.max);
   });
 
   it('levels up faster on Easy and slower on Hard than on Normal', () => {
-    for (let level = 2; level <= MAX_SHOP_LEVEL; level++) {
+    for (let level = 2; level <= FULL_UNLOCK_LEVEL; level++) {
       const easy = runs.easy.levelDay[level]!;
       const normal = runs.normal.levelDay[level]!;
       const hard = runs.hard.levelDay[level]!;
       expect(easy, `easy level ${level}`).toBeLessThanOrEqual(normal);
       expect(hard, `hard level ${level}`).toBeGreaterThanOrEqual(normal);
     }
-    expect(runs.easy.levelDay[MAX_SHOP_LEVEL]).toBeLessThan(runs.normal.levelDay[MAX_SHOP_LEVEL]!);
-    expect(runs.hard.levelDay[MAX_SHOP_LEVEL]).toBeGreaterThan(runs.normal.levelDay[MAX_SHOP_LEVEL]!);
+    expect(runs.easy.levelDay[FULL_UNLOCK_LEVEL]).toBeLessThan(runs.normal.levelDay[FULL_UNLOCK_LEVEL]!);
+    expect(runs.hard.levelDay[FULL_UNLOCK_LEVEL]).toBeGreaterThan(runs.normal.levelDay[FULL_UNLOCK_LEVEL]!);
   });
 
   it('reaches every level in order, one level-up day after another', () => {
     for (const d of DIFFICULTIES) {
-      for (let level = 3; level <= MAX_SHOP_LEVEL; level++) {
+      for (let level = 3; level <= FULL_UNLOCK_LEVEL; level++) {
         expect(runs[d].levelDay[level]!, `${d} level ${level}`).toBeGreaterThanOrEqual(runs[d].levelDay[level - 1]!);
       }
     }
@@ -204,7 +208,7 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
 
   it('keeps food cost and labor within benchmark or advises on it at level 6', () => {
     for (const d of DIFFICULTIES) {
-      const topDays = runs[d].recs.filter((r) => r.level === MAX_SHOP_LEVEL);
+      const topDays = runs[d].recs.filter((r) => r.level === FULL_UNLOCK_LEVEL);
       expect(topDays.length, d).toBeGreaterThan(0);
       for (const rec of topDays) {
         const insights = rec.report.insights!;
@@ -244,8 +248,9 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     /** A grown level-6 shop: one barista and every affordable non-tool upgrade. */
     function warmup(seed: number): GameState {
       const s = createNewGame('Quán', 'normal', seed);
-      s.xp = 1e6;
-      s.shopLevel = MAX_SHOP_LEVEL;
+      // Far below any threshold, so the evening scoring never lifts the shop past level 6 (levels 7..10 raise caps).
+      s.xp = -1e6;
+      s.shopLevel = FULL_UNLOCK_LEVEL;
       for (let day = 1; day <= WARMUP_DAYS; day++) {
         enableUnlocked(s);
         dispatch(s, { type: 'apply_restock' });
@@ -289,7 +294,7 @@ describe('level and tool economic balance', { timeout: 120_000 }, () => {
     let anyNonFinite = false;
     for (const seed of PAYBACK_SEEDS) {
       const base = warmup(seed);
-      expect(base.shopLevel, `warmup seed ${seed}`).toBe(MAX_SHOP_LEVEL);
+      expect(base.shopLevel, `warmup seed ${seed}`).toBe(FULL_UNLOCK_LEVEL);
       const controlProfit = meanProfit(structuredClone(base));
       for (const tool of TOOLS) {
         const fork = structuredClone(base);

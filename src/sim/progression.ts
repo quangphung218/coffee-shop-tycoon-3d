@@ -6,11 +6,11 @@ import {
   unlocksBetween,
   upgradeUnlockLevel,
 } from './data/levels';
-import { dayUnlockDay } from './data/week';
+import { dayUnlockDay, weekReward } from './data/week';
 import { ingredientCostUsed } from './economy';
 import { nextRating } from './rating';
 import { mulberry32 } from './rng';
-import type { GameState, MenuEntry, MenuItemId, Mission, MissionId, Unlocks, UpgradeId } from './types';
+import type { GameState, MenuEntry, MenuItemId, Mission, MissionId, Unlocks, UpgradeId, WeekResult } from './types';
 
 /** XP for each customer served. */
 export const XP_PER_SERVED = 2;
@@ -232,6 +232,19 @@ export function scoreProgression(state: GameState): ProgressionResult {
     return { xpGained, levelUp: { level: newLevel, unlocks } };
   }
   return { xpGained };
+}
+
+/**
+ * Pays the cash reward of a week just scored (weekReward by difficulty and
+ * cups) and announces it. Returns the amount, 0 when the week earned too few cups.
+ */
+export function grantWeekReward(state: GameState, result: WeekResult): number {
+  const reward = weekReward(state.difficulty, result.cups);
+  if (reward <= 0) return 0;
+  state.money += reward;
+  const amount = String(reward).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  state.events.push({ type: 'notify', level: 'success', text: `Thưởng tuần ${result.cups} cúp: +${amount}đ` });
+  return reward;
 }
 
 /** Lowest level that leaves every owned upgrade and enabled menu item unlocked. */

@@ -1,8 +1,14 @@
-import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { upgradeUnlockLevel } from '../../sim/data/levels';
-import { getUpgrade, upgradeCost, UPGRADES } from '../../sim/data/upgrades';
+import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
-import { DECOR_REFUND_SHARE, isRemovableDecor, nextUpgradeCost, upgradeLevel } from '../../sim/upgrades';
+import {
+  DECOR_REFUND_SHARE,
+  isRemovableDecor,
+  maxUpgradeLevel,
+  nextUpgradeCost,
+  upgradeLevel,
+  upgradeLevelPrice,
+} from '../../sim/upgrades';
 import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -55,8 +61,7 @@ export const REMOVE_CONFIRM_MS = 3000;
 export function decorRefund(state: GameState, id: UpgradeId): number {
   const level = upgradeLevel(state, id);
   if (level <= 0) return 0;
-  const paid = upgradeCost(getUpgrade(id), level - 1, DIFFICULTIES[state.difficulty].priceMult) ?? 0;
-  return Math.round(paid * DECOR_REFUND_SHARE);
+  return Math.round(upgradeLevelPrice(state, id, level) * DECOR_REFUND_SHARE);
 }
 
 /**
@@ -148,7 +153,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       (_, s) => {
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
-        level.textContent = `Cấp ${lv}/${def.maxLevel} · ${def.description}`;
+        level.textContent = `Cấp ${lv}/${maxUpgradeLevel(s, id)} · ${def.description}`;
         // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);

@@ -6,7 +6,7 @@ import { UPGRADES, upgradeCost } from './data/upgrades';
 import { profit, settleDay, totalWages } from './economy';
 import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
-import { scoreProgression, type ProgressionResult } from './progression';
+import { grantWeekReward, scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
 import type { DailyReport, GameState, Insights, MenuItemId, Suggestion } from './types';
 import { isLastWeekDay, scoreWeek, summarizeWeek } from './week';
@@ -143,6 +143,8 @@ export function closeDay(state: GameState): DailyReport {
     const summary = result && summarizeWeek(state, result);
     if (result) state.week.result = result;
     if (summary) (state.week.archive ??= []).push(summary);
+    // The week's cup reward lands tonight, so the report shows the money with it.
+    if (result && grantWeekReward(state, result) > 0) report.money = state.money;
   }
   return report;
 }
