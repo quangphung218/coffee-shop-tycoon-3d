@@ -177,7 +177,18 @@ async function checkHud(page, results, viewport, screen, maxRows) {
           if (ra.left < rb.right - eps && rb.left < ra.right - eps && ra.top < rb.bottom - eps && rb.top < ra.bottom - eps) fails.push(`${name(a)} overlaps ${name(b)}`);
         }
       }
-      const rows = new Set(boxes.map(([, r]) => Math.round(r.top))).size;
+      // A cluster starts a new row when it begins below the shortest cluster
+      // of the current row: centred clusters of different heights share a row
+      // with different tops, and Điều khiển spans both grid rows.
+      const spans = boxes.map(([, r]) => [r.top, r.bottom]).sort((a, b) => a[0] - b[0]);
+      let rows = 0;
+      let rowBottom = -Infinity;
+      for (const [top, bottom] of spans) {
+        if (top >= rowBottom - eps) {
+          rows++;
+          rowBottom = bottom;
+        } else rowBottom = Math.min(rowBottom, bottom);
+      }
       const menu = document.querySelector('.hud-menu:not([hidden])');
       if (menu) {
         const r = menu.getBoundingClientRect();
