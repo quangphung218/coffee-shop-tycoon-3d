@@ -9,7 +9,7 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 ![Một ngày ở quán: mở cửa, khách vào, phục vụ, báo cáo cuối ngày](docs/media/demo.gif)
 
 - **Cho ai:** người thích game quản lý nhẹ nhàng, chơi một ngày trong khoảng 7 phút.
-- **Trạng thái:** chơi được trọn một tuần 7 ngày, mỗi ngày có mở khoá, sự kiện và thời tiết riêng, hết ngày 7 có màn kết tuần chấm điểm và nút Chơi lại; có nhân viên, nâng cấp, phố xá và save/load.
+- **Trạng thái:** chơi được trọn một tuần 7 ngày, mỗi ngày có mở khoá, sự kiện và thời tiết riêng, hết mỗi tuần có màn Tổng kết tuần chấm điểm rồi chơi tiếp sang tuần sau; có nhân viên, nâng cấp, phố xá và save/load.
 - **Ngôn ngữ:** chữ trong game là tiếng Việt, tiền tính bằng đồng (vd `25.000đ`).
 
 ## Mục lục
@@ -35,7 +35,7 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | Sự kiện và thời tiết | Mỗi ngày có thời tiết (nắng, mưa, nóng) và sự kiện (khai trương, hội chợ, nhà cung cấp tăng giá, ngày thường), lập sẵn theo seed của ván nên cùng seed ra cùng tuần. Mưa bớt khách, hội chợ đông khách, tăng giá làm nguyên liệu đắt hơn. |
 | Trang trí | Đặt trang trí (Cây xanh, Tranh treo tường, Đèn trang trí…) ở nhóm Trang trí của bảng Nâng cấp để quán hút khách và được thêm sao. Trang trí không kèm chỗ ngồi có nút **Gỡ** (bấm hai lần): gỡ cấp trên cùng, hoàn lại một nửa tiền đã trả. |
 | Mức giá và Mức lương | **Mức giá** (Rẻ / Chuẩn / Cao, bảng Menu): giá bán cao hơn thì sao và lượng khách giảm. **Mức lương** (Thấp / Chuẩn / Cao, bảng Nhân viên): lương cao hơn thì nhân viên làm nhanh hơn. Chỉ đổi được lúc chuẩn bị. |
-| Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó. Hết ngày 7, màn kết tuần so doanh thu và sao với mục tiêu, chấm điểm 0–100 và cúp, có nút **Chơi lại**. |
+| Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó. Hết ngày 7 của tuần, màn Tổng kết tuần so doanh thu và sao với mục tiêu, chấm điểm 0–100 và cúp, so với tuần trước, rồi **Sang tuần N+1**. |
 | Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–6, mỗi cấp mở thêm món, nâng cấp và dụng cụ. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
 | Chỉ số kinh doanh | Daily Report có tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
 | Tự phục vụ | Bấm khách, quầy hay bàn trong cảnh để nhận order, pha, mang đồ, thu tiền, dọn bàn. |
@@ -73,7 +73,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD trên cùng gồm ba cụm: **Hôm nay** (ngày, tuần, thời tiết, sự kiện, giờ, pha), **Tiến độ** (tiền, sao, cấp quán và thanh XP) và **Điều khiển** (Mở cửa hoặc tốc độ, Dừng, menu camera và cài đặt). Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
-5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem kết tuần**: màn kết tuần hiện doanh thu và sao so mục tiêu, điểm 0–100, 0–3 cúp, bảng 7 ngày; **Chơi lại** mở ván mới cùng tên quán và độ khó, **Về menu** (hoặc `Esc`) về Main Menu.
+5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem tổng kết tuần**: màn Tổng kết tuần N hiện điểm 0–100, 0–3 cúp và tiền thưởng, doanh thu và sao so mục tiêu, bảng so với tuần trước (từ tuần 2), cột doanh thu 7 ngày có đánh dấu ngày tốt nhất, mục tiêu tuần tới và cấp quán tiếp theo mở gì. **Sang tuần N+1** mở ngày đầu tuần mới ở pha chuẩn bị; **Chơi lại** mở ván mới cùng tên quán và độ khó; **Về menu** (hoặc `Esc`) về Main Menu.
 
 Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần nhất bất cứ lúc nào.
 
