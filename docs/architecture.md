@@ -421,14 +421,14 @@ Số đo thay đổi giữa các lượt đo; chỉ so các bản trong cùng m�
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `07439cf` | 780 ms | 1165 ms | 3181 ms |
 | Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Mặt tiền, đèn ấm, điều hướng, icon 3D | 476 ms | 669 ms | 2515 ms |
 
-Lượt đo bản có ô chờ icon và atlas @2x sau `cst:world`, so với v0.4.0 `f720b6f`, trung vị 5 lần ([docs/media/p22-perf.txt](media/p22-perf.txt)):
+Lượt đo bản theo thứ tải hiện tại (ô chờ icon, chunk cảnh sau khi menu vẽ, atlas @1x sau chunk cảnh, @2x sau `cst:world`), so với v0.4.0 `f720b6f`, trung vị 9 lần ([p22-review/perf.txt](reports/p22-review/perf.txt)):
 
 | Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu hiện | Cảnh 3D hiện |
 | --- | --- | --- | --- | --- |
-| Máy bàn, không giới hạn | `f720b6f` | 92 ms | 67 ms | 272 ms |
-| Máy bàn, không giới hạn | Ô chờ icon, @2x sau cảnh | 76 ms | 134 ms | 285 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `f720b6f` | 288 ms | 890 ms | 2773 ms |
-| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Ô chờ icon, @2x sau cảnh | 364 ms | 1008 ms | 3050 ms |
+| Máy bàn, không giới hạn | `f720b6f` | 76 ms | 146 ms | 298 ms |
+| Máy bàn, không giới hạn | Thứ tải hiện tại | 112 ms | 122 ms | 365 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | `f720b6f` | 428 ms | 1131 ms | 3177 ms |
+| Di động: 150 ms RTT, 1,6 Mbps, CPU chậm 4 lần | Thứ tải hiện tại | 400 ms | 1185 ms | 2670 ms |
 
 Đo thời gian tới khi Main Menu hiện, so với một commit cũ (cần Chrome; đặt `CHROME_PATH` nếu Chrome không ở chỗ mặc định):
 
