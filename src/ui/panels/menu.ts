@@ -91,14 +91,14 @@ export function missingLabel(state: GameState, item: MenuItemDef): string | null
  * per item (icon | name + price, margin, hot/cold, popularity | one status
  * label | Bán/Không switch). An item the stock cannot make shows "Thiếu Cam"
  * and a "Mở Kho" link (the amounts only in the switch's description); an item not open yet shows
- * "Mở ngày N" or "Mở ở cấp N" (unlockHint) and stays off. An item already on
- * sale can still be switched off.
+ * "Mở ngày N" or "Mở ở cấp N" (unlockHint) and stays off. An item short of
+ * stock can still be switched on or off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
   const intro = h('p', { class: 'intro' });
-  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu không bật được cho tới khi nhập thêm; món mới mở theo cấp quán.`);
+  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu vẫn bật được để Kho gợi ý nhập, khách chỉ gọi khi đã có hàng; món mới mở theo cấp quán.`);
 
   // Mức giá: a trade-off set in place; the hint names what it gains and costs.
   const priceTitleId = uid('price-policy');
@@ -173,7 +173,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         missBadge.hidden = !locked;
         if (locked) setIconText(missBadge, 'i-warning', missingLabel(s, item)!);
         toStock.hidden = !locked;
-        sw.set(enabled, levelLocked || (!!locked && !enabled));
+        // Short stock never locks the switch: on, it puts the item's ingredients in Gợi ý nhập.
+        sw.set(enabled, levelLocked);
         // The amounts stay in the switch's description for screen readers, off screen.
         why.classList.toggle('sr-only', !!locked);
         setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);

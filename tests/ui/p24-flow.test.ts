@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage } from '../../src/save/storage';
 import { getIngredient } from '../../src/sim/data/ingredients';
+import { menuUnlockLevel } from '../../src/sim/data/levels';
 import { dispatch as simDispatch } from '../../src/sim/index';
 import { autoRestockSuggestion, stockOf } from '../../src/sim/inventory';
 import { createNewGame } from '../../src/sim/state';
@@ -132,6 +133,43 @@ describe('P24 Kho: Gợi ý then Nhập hàng', () => {
     expect(stockOf(state, 'orange')).toBeGreaterThan(0);
     expect(s.toasts.count).toBe(1);
     expect(panel.textContent).not.toContain('Đã nhập');
+  });
+
+  it.each([
+    ['orange_juice', ['orange']],
+    ['cake', ['flour', 'butter']],
+  ] as const)('switches %s on in Menu with its stock at zero, then Gợi ý buys %j', (itemId, needs) => {
+    const state = createNewGame('Quán P24', 'normal', 2424);
+    const s = boot(state);
+    for (let day = 1; day <= 2; day++) {
+      simDispatch(state, { type: 'apply_restock' });
+      playDay(state);
+      expect(simDispatch(state, { type: 'next_day' })).toBe(true);
+    }
+    // Cake opens on day 6 of the week; its shop level opens it now.
+    state.shopLevel = Math.max(state.shopLevel, menuUnlockLevel(itemId));
+    for (const id of needs) state.inventory.find((i) => i.id === id)!.qty = 0;
+    state.events.length = 0;
+    s.update();
+
+    q<HTMLButtonElement>(s.hud.el, 'nav.dock [data-panel="menu"]').click();
+    const row = q(s.hud.panelEl, `li[data-item="${itemId}"]`);
+    const sw = q<HTMLButtonElement>(row, '[role="switch"]');
+    expect(sw.getAttribute('aria-disabled')).not.toBe('true');
+    sw.click();
+    expect(state.menu.find((m) => m.id === itemId)!.enabled).toBe(true);
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    // Still short: the warning label and the way to Kho stay on the row.
+    expect(q(row, '[data-lock="stock"]').hidden).toBe(false);
+    expect(q(row, '[data-goto="inventory"]').hidden).toBe(false);
+
+    const panel = openKho(s);
+    q<HTMLButtonElement>(panel, '[data-action="suggest"]').click();
+    for (const id of needs) {
+      const line = q(panel, `li[data-ingredient="${id}"]`);
+      expect(q(line, '.sug').classList.contains('is-off'), id).toBe(false);
+      expect(Number(q<HTMLInputElement>(line, '.step-input').value), id).toBeGreaterThan(0);
+    }
   });
 
   it('says how much is missing and buys nothing when the money is short', () => {
