@@ -1,8 +1,10 @@
 # Tuần 7 ngày
 
-Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày, ngày 7 mở rộng quán, sự kiện và thời tiết theo ngày, mục tiêu và chấm điểm cuối tuần. Lịch nằm trong `src/sim/data/week.ts` (`WEEK_UNLOCKS`).
+Trang này mô tả luật của tuần 7 ngày mà mọi ván mới chơi: món, dụng cụ và khu mở theo ngày, ngày 7 mở rộng quán, sự kiện và thời tiết theo ngày, mục tiêu và chấm điểm cuối tuần. Ván không giới hạn số ngày: hết tuần thì sang tuần tiếp theo (`state.week.index` tăng 1). Lịch nằm trong `src/sim/data/week.ts` (`WEEK_UNLOCKS`).
 
 ## Lịch mở khoá
+
+Lịch chỉ áp cho tuần 1. Từ tuần 2, mọi thứ trong lịch đã mở và không khoá lại; sáng các ngày không còn `week_unlocks` hay tặng mở rộng.
 
 | Ngày | Món | Dụng cụ | Khu, trang trí |
 | --- | --- | --- | --- |
@@ -26,7 +28,7 @@ Sáng mỗi ngày có mở khoá, sim phát sự kiện `week_unlocks` (`day`, `
 Một món hay nâng cấp mở khi một trong hai điều kiện đạt trước:
 
 - cấp quán đạt cấp cần (`LEVELS` trong `src/sim/data/levels.ts`);
-- ván có tuần (`state.week`) và ngày trong tuần đã tới ngày mở theo lịch.
+- ván có tuần (`state.week`) và ngày trong tuần đã tới ngày mở theo lịch (tuần 1), hoặc ván đã sang tuần 2 trở đi.
 
 Ngày trong tuần = `state.day − week.startedDay + 1`. Những gì không có trong lịch (Máy espresso 2 group, Máy espresso cao cấp, Quầy lớn hơn) chỉ mở theo cấp quán.
 
@@ -38,7 +40,7 @@ Sáng ngày 7, nếu quán chưa có Mở rộng diện tích thì được tặ
 
 ## Sự kiện và thời tiết
 
-Mỗi ngày trong tuần có một thời tiết và một sự kiện, lập sẵn khi tạo ván (`state.week.plan`, hàm `rollWeekPlan` trong `src/sim/week.ts`). Hệ số sự kiện nằm trong `DAY_EVENTS` (`src/sim/data/week.ts`).
+Mỗi ngày trong tuần có một thời tiết và một sự kiện, lập sẵn khi tuần bắt đầu (`state.week.plan`, hàm `rollWeekPlan(seed, weekIndex)` trong `src/sim/week.ts`). Hệ số sự kiện nằm trong `DAY_EVENTS` (`src/sim/data/week.ts`).
 
 | Biến số | Khách tới | Giá nguyên liệu |
 | --- | --- | --- |
@@ -54,11 +56,11 @@ Hệ số thời tiết và sự kiện nhân với nhau, rồi nhân vào tốc
 
 Luật sinh lịch:
 
-- Ngày 1 luôn nắng và khai trương.
-- Ngày 2–7 rút thời tiết (nắng 50%, mưa 25%, nóng 25%) và sự kiện (ngày thường 40%, hội chợ 30%, tăng giá 30%); rút lại khi ra nắng và ngày thường.
+- Tuần 1: ngày 1 luôn nắng và khai trương. Từ tuần 2 không có khai trương; ngày 1 rút như các ngày khác.
+- Các ngày còn lại rút thời tiết (nắng 50%, mưa 25%, nóng 25%) và sự kiện (ngày thường 40%, hội chợ 30%, tăng giá 30%); rút lại khi ra nắng và ngày thường.
 - Hai ngày liền nhau không cùng cặp thời tiết và sự kiện.
 - Tuần có ít nhất một ngày mưa, một hội chợ và một ngày tăng giá.
-- Tuần sai luật thì rút lại cả tuần. Mỗi lần rút dùng hash của seed và ngày, không dùng `rngState`, nên cùng seed luôn ra cùng lịch.
+- Tuần sai luật thì rút lại cả tuần. Mỗi lần rút dùng hash của seed, số tuần và ngày, không dùng `rngState`, nên cùng seed luôn ra cùng lịch cho từng tuần.
 
 Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` vẫn rút thời tiết ngẫu nhiên và không có sự kiện.
 
@@ -74,6 +76,8 @@ Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/si
 
 Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001. Doanh thu trung bình: Dễ khoảng 22,6 triệu, Thường 21,2 triệu, Khó 18,2 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
 
+Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 20% mỗi tuần sau tuần 1, tối đa gấp đôi tuần 1 (từ tuần 6), làm tròn tới 100.000; mục tiêu sao giữ nguyên.
+
 ### Chấm điểm
 
 Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết quả vào `state.week.result`:
@@ -84,4 +88,10 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
 - Cúp: điểm ≥ 90 được 3, ≥ 70 được 2, ≥ 40 được 1, còn lại 0.
 - `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
 
-Sim phát `week_ended` (`result`) ngay sau `dayEnded`. Từ đó `next_day` trả `false`; giao diện chuyển sang màn kết tuần, nút Chơi lại tạo ván mới. Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp như trước.
+Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Giao diện chuyển sang màn kết tuần.
+
+### Sang tuần mới
+
+`next_day` từ báo cáo ngày 7 mở tuần tiếp theo: `index` + 1, `startedDay` = ngày mới, `plan` = `rollWeekPlan(seed, index)`, `goal` = `weekGoal(difficulty, index)`, xoá `result`, giữ `archive`. `state.history` chỉ giữ 28 ngày gần nhất; số liệu các tuần cũ đọc từ `archive`.
+
+Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp như trước.
