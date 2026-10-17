@@ -215,10 +215,14 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
+/* Each cell spans four rows of the figures grid (label, value, sub, changes)
+   through subgrid, so the change lines of every cell in a row start level
+   even when a sub line is empty or a change wraps. */
 .rpt-fig {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   min-width: 0;
   padding: var(--space-2) var(--space-3);
   background: var(--surface-sunken);
@@ -259,6 +263,10 @@
 /* The sub line keeps its own row above the changes, never under them. */
 .rpt-fig-sub {
   margin-bottom: var(--space-1);
+}
+.rpt-fig-deltas {
+  display: flex;
+  flex-direction: column;
 }
 .rpt-fig-delta {
   display: flex;
@@ -860,11 +868,27 @@
     margin-left: 0;
     width: 100%;
   }
+  /* One row of buttons: the main one takes the width, Xem đánh giá / Về Tổng
+     kết shrinks to its icon (its aria-label still names it). */
   .rpt-foot-actions {
     width: 100%;
+    flex-wrap: nowrap;
   }
   .rpt-foot .btn {
-    flex: 1 1 10rem;
+    white-space: nowrap;
+  }
+  .rpt-foot-actions > .btn-primary {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .rpt-foot-actions > [data-action='reviews'] {
+    flex: none;
+    min-width: var(--size-target-lg);
+    min-height: var(--size-target-lg);
+    padding: 0;
+  }
+  .rpt-foot-actions > [data-action='reviews'] .rpt-btn-text {
+    display: none;
   }
   .rpt-figs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
