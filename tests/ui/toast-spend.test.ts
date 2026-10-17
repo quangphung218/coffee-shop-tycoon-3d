@@ -67,6 +67,37 @@ describe('spend toasts', () => {
     expect(toasts.count).toBe(0);
   });
 
+  it.each([
+    ['pointerenter', 'pointerleave'],
+    ['focusin', 'focusout'],
+  ])('stops the countdown on %s and starts it again on %s', (holdOn, holdOff) => {
+    spend('restock', 'Cam', 1000, 10_000);
+    const el = toasts.el.querySelector<HTMLElement>('.toast')!;
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS - 500);
+    el.dispatchEvent(new Event(holdOn, { bubbles: true }));
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS * 3);
+    expect(toasts.count).toBe(1);
+    el.dispatchEvent(new Event(holdOff, { bubbles: true }));
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS - 100);
+    expect(toasts.count).toBe(1);
+    vi.advanceTimersByTime(200);
+    expect(toasts.count).toBe(0);
+  });
+
+  it('stays while held even when a new restock merges into it', () => {
+    spend('restock', 'Cam', 1000, 10_000);
+    const el = toasts.el.querySelector<HTMLElement>('.toast')!;
+    el.dispatchEvent(new Event('pointerenter', { bubbles: true }));
+    spend('restock', 'Chanh', 2000, 8_000);
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS * 3);
+    expect(toasts.count).toBe(1);
+    expect(titles()).toEqual(['Đã nhập Cam, Chanh']);
+    expect(texts()).toEqual([`${formatMoney(-3000)} · Còn ${formatMoney(8_000)}`]);
+    el.dispatchEvent(new Event('pointerleave', { bubbles: true }));
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS + 100);
+    expect(toasts.count).toBe(0);
+  });
+
   it('keeps each kind in its own toast, at most 3 at once', () => {
     spend('restock', 'Cam', 1000, 10_000);
     spend('upgrade', 'Thêm bàn lên cấp 1', 2000, 8_000);
