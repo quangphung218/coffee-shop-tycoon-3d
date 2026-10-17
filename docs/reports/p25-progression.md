@@ -44,6 +44,7 @@ Khung trái là P24 `5d33195` (nét đứt cam), các khung phải là P25 (nét
 | --- | --- | --- |
 | Menu, bấm công tắc Nước cam khi thiếu Cam | ![Menu 390](p25-review/menu-390-p25.jpg) | ![Menu 1280](p25-review/menu-1280-p25.jpg) |
 | Nâng cấp: icon bậc 1/2/3 | ![Nâng cấp 390](p25-review/upgrades-390-p25.jpg) | ![Nâng cấp 1280](p25-review/upgrades-1280-p25.jpg) |
+| Icon bậc cạnh máy 3D cùng bậc | ![Icon và máy 390](p25-review/tier-pair-390-p25.jpg) | ![Icon và máy 1280](p25-review/tier-pair-1280-p25.jpg) |
 | Máy espresso bậc 1/2/3 | ![Espresso 390](p25-review/scene-espresso-390-p25.jpg) | ![Espresso 1280](p25-review/scene-espresso-1280-p25.jpg) |
 | Máy xay, tủ bánh bậc 1/2/3 | ![Máy xay 390](p25-review/scene-grinder-390-p25.jpg) | ![Máy xay 1280](p25-review/scene-grinder-1280-p25.jpg) |
 | Bàn ghế bậc 1/2/3 | ![Bàn ghế 390](p25-review/scene-tables-390-p25.jpg) | ![Bàn ghế 1280](p25-review/scene-tables-1280-p25.jpg) |
