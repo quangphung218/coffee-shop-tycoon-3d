@@ -11,8 +11,11 @@
 // restock and hire through the UI, open at 4x and shoot the peak. Day 7 also
 // loads the scored report and the week-end screen.
 //
-// Writes docs/reports/p22-review/<viewport>/*.png|jpg, metrics.json and
-// findings.json. Timeouts: REVIEW_TIMEOUT_MS for the whole run (default 20
+// Writes .review-p22/<viewport>/*.png|jpg, metrics.json and findings.json
+// (git-ignored). --publish then copies the numbers and only the shots
+// docs/reports/p22-review.md links to, as JPEG 75, to docs/reports/p22-review/
+// and drops the other shots there; --publish-only does that from the last
+// run without playing. Timeouts: REVIEW_TIMEOUT_MS for the whole run (default 20
 // minutes), REVIEW_STEP_MS for one step (default 3 minutes; waits for the
 // game clock get PEAK_TIMEOUT_MS and DAY_TIMEOUT_MS). REVIEW_SERIAL=1 plays
 // the two viewports one after the other instead of side by side (cleaner FPS,
@@ -33,7 +36,15 @@ import { chromium } from 'playwright';
 import { FIXED_NOW, freeze, newContext, observeThree, startPreview, thaw, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const OUT = join(ROOT, 'docs', 'reports', 'p22-review');
+/** Raw shots and numbers of every run, kept out of git (.gitignore). */
+const OUT = join(ROOT, '.review-p22');
+/** Where --publish copies to, next to the report that links the shots. */
+const DOCS = join(ROOT, 'docs', 'reports', 'p22-review');
+const REPORT = join(ROOT, 'docs', 'reports', 'p22-review.md');
+const PUBLISH = process.argv.includes('--publish');
+const PUBLISH_ONLY = process.argv.includes('--publish-only');
+/** JPEG quality of the published shots. */
+const PUBLISH_QUALITY = 0.75;
 const TOTAL_MS = Number(process.env.REVIEW_TIMEOUT_MS ?? 20 * 60_000);
 const STEP_MS = Number(process.env.REVIEW_STEP_MS ?? 3 * 60_000);
 /** Open at 4x until the 11:00 peak: about 30 s with a fast renderer. */
@@ -727,10 +738,11 @@ async function playViewport(browser, vp, url, week) {
  * wrote in between are kept).
  */
 function mergedMetrics() {
-  const file = join(OUT, 'metrics.json');
+  // The first run after a clone starts from the published numbers.
+  const file = [join(OUT, 'metrics.json'), join(DOCS, 'metrics.json')].find((f) => existsSync(f));
   let old = {};
   try {
-    if (existsSync(file)) old = JSON.parse(readFileSync(file, 'utf8'));
+    if (file) old = JSON.parse(readFileSync(file, 'utf8'));
   } catch {
     // unreadable: write this run alone
   }
@@ -847,8 +859,81 @@ function writeReport() {
   writeFileSync(join(OUT, 'metrics.json'), `${JSON.stringify(all, null, 2)}\n`);
   writeFileSync(join(OUT, 'findings.json'), `${JSON.stringify(list, null, 2)}\n`);
   const high = list.filter((f) => f.high).length;
-  console.log(`ok docs/reports/p22-review/metrics.json (${Object.keys(all.screens).length} screens)`);
-  console.log(`ok docs/reports/p22-review/findings.json (${list.length} findings, ${high} high)`);
+  console.log(`ok .review-p22/metrics.json (${Object.keys(all.screens).length} screens)`);
+  console.log(`ok .review-p22/findings.json (${list.length} findings, ${high} high)`);
+}
+
+// --- Publish to docs/. ---
+
+/** "<viewport>/<name>" of every shot docs/reports/p22-review.md links to. */
+function linkedShots() {
+  const text = readFileSync(REPORT, 'utf8');
+  return [...new Set([...text.matchAll(/p22-review\/(\d+\/d\d[\w-]*)\.(?:png|jpg)\)/g)].map((m) => m[1]))];
+}
+
+/** The newest bytes of a shot: this run's under OUT, else the one already published. */
+function shotSource(shot) {
+  for (const dir of [OUT, DOCS]) {
+    for (const ext of ['png', 'jpg']) {
+      const file = join(dir, `${shot}.${ext}`);
+      if (existsSync(file)) return { bytes: readFileSync(file), type: ext === 'png' ? 'png' : 'jpeg' };
+    }
+  }
+  return null;
+}
+
+/** Re-encodes an image as JPEG at PUBLISH_QUALITY in the page. */
+async function toJpeg(page, src) {
+  const url = await page.evaluate(
+    async ({ data, quality }) => {
+      const img = new Image();
+      img.src = data;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      return canvas.toDataURL('image/jpeg', quality);
+    },
+    { data: `data:image/${src.type};base64,${src.bytes.toString('base64')}`, quality: PUBLISH_QUALITY },
+  );
+  return Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
+}
+
+/**
+ * Copies metrics.json, findings.json and the linked shots (JPEG) to DOCS,
+ * removes every other shot there, and points `<shot>.png` references in the
+ * report and the JSON files at the `.jpg`.
+ */
+async function publish() {
+  const shots = linkedShots();
+  const sources = new Map(shots.map((s) => [s, shotSource(s)]));
+  const missing = shots.filter((s) => !sources.get(s));
+  if (missing.length > 0) throw new Error(`publish: no shot for ${missing.join(', ')}`);
+  for (const f of ['metrics.json', 'findings.json']) {
+    if (existsSync(join(OUT, f))) writeFileSync(join(DOCS, f), readFileSync(join(OUT, f)));
+  }
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    for (const vp of VIEWPORTS) {
+      const dir = join(DOCS, vp.name);
+      mkdirSync(dir, { recursive: true });
+      for (const f of readdirSync(dir)) rmSync(join(dir, f));
+    }
+    for (const [shot, src] of sources) writeFileSync(join(DOCS, `${shot}.jpg`), await toJpeg(page, src));
+  } finally {
+    await browser.close();
+  }
+  const texts = [REPORT, ...readdirSync(DOCS).filter((f) => f.endsWith('.json')).map((f) => join(DOCS, f))];
+  for (const file of texts) {
+    const text = readFileSync(file, 'utf8');
+    const next = shots.reduce((t, s) => t.replaceAll(`${s}.png`, `${s}.jpg`), text);
+    if (next !== text) writeFileSync(file, next);
+  }
+  let bytes = 0;
+  for (const vp of VIEWPORTS) for (const f of readdirSync(join(DOCS, vp.name))) bytes += readFileSync(join(DOCS, vp.name, f)).length;
+  console.log(`ok docs/reports/p22-review: ${shots.length} shots, ${Math.round(bytes / 1024)} kB of JPEG`);
 }
 
 /** A local TCP port nobody listens on right now. */
@@ -864,6 +949,12 @@ function freePort() {
 }
 
 async function main() {
+  if (PUBLISH_ONLY) return publish();
+  await play();
+  if (PUBLISH && !metrics.error && process.env.REVIEW_SIM_ONLY !== '1') await publish();
+}
+
+async function play() {
   let browser = null;
   let server = null;
   const cleanup = async () => {

@@ -6,9 +6,9 @@
       "id": "layout-blocked-suggest-390",
       "ratio": 3,
       "cause": "At 390x844 with a four-row HUD the Kho body is about 210-270 px and its sticky foot about 190 px, so the foot covers Auto-restock and the top of the stock list.",
-      "fix": "src/ui/panels/panels.css: a .panel-body with a foot is a size container (panel-body); under 30rem tall the foot is position: static and scrolls after the list. Taller bodies (desktop, tablet) keep the sticky foot.",
-      "test": "tests/ui/layout-overflow.test.ts 'panel foot on a short body (P22 layout-blocked-suggest-390)'",
-      "measure": "npm run review:p22 at 390: blocked.390/* empty (was d2, d5, d7 suggest); npm run layout Kho shift check at 390/768/1440",
+      "fix": "src/ui/panels/panels.css: a .panel-body with a foot is a size container (panel-body). The foot stays sticky at every size. Under 30rem tall it packs down (the two totals share one row, the buy button drops to 44 px). Only when the content box is under 8rem (128 px, a phone held landscape) is the foot position: static and scrolls after the list. At 390x844 the Kho content box is 191 px, so the packed foot stays stuck and Nhập hàng is in view on opening.",
+      "test": "tests/ui/layout-overflow.test.ts, tests/ui/p22-review-fixes.test.ts (8rem against the 191 px content box; the old 12rem would unstick it)",
+      "measure": "npm run media:p22: kho-foot-390-p22.png (foot stuck, Nhập hàng reachable on opening); npm run review:p22 at 390: blocked.390/* empty (was d2, d5, d7 suggest); npm run layout Kho shift check at 390/768/1440",
       "scripts": "scripts/check-layout.mjs footBoxes reads a non-sticky foot in content coordinates; scripts/capture-media.mjs inView clamps to the body bottom."
     }
   ],

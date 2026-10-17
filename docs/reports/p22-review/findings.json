@@ -22,7 +22,7 @@
     "area": "ui",
     "title": "5/5 ô icon trống lúc Main Menu hiện (atlas@1x chưa tải)",
     "evidence": [
-      "1440/d0-menu-first.png",
+      "1440/d0-menu-first.jpg",
       "menu.1440.icons"
     ],
     "impact": 2,
@@ -36,7 +36,7 @@
     "area": "ui",
     "title": "5/5 ô icon trống lúc Main Menu hiện (atlas@2x chưa tải)",
     "evidence": [
-      "390/d0-menu-first.png",
+      "390/d0-menu-first.jpg",
       "menu.390.icons"
     ],
     "impact": 2,

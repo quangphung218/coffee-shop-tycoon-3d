@@ -462,6 +462,50 @@ ok high: working tree 3.5% above base
 Reading: high has its 5 runs for the first time in P22: +3.5% against
 base. Medium (-0.8%) and high both stay within 10% of base.
 
+### fix2-3 (boards redrawn on the integration head)
+
+$ npm run media:p22
+Exit code: 1 (one !!: the Kho list board had no reachable row to ring)
+
+Main Menu icons on mobile (390x844, one load per build, ms since navigation):
+
+| Mark | base (f720b6f) | integration head |
+| --- | --- | --- |
+| Main Menu | 996 | 960 |
+| three.js in | 2604 | 2576 |
+| atlas @1x asked / in | 981 / 2553 | 981 / 2525 |
+| cst:icons (@1x handed to CSS) | | 2528 |
+| every icon drawn | 2564 | 2550 |
+| atlas @2x asked | 2872 | 2718 |
+| 3D scene | 2882 | 2852 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Kho at 390, day 2 morning: base body 207 px, foot 202 px sticky,
+Auto-restock covered by .foot-sum, 0/12 rows. Head body 207 px, packed
+foot 144 px sticky, Auto-restock and Nhập hàng reachable on opening,
+0/12 rows in reach when scrolled to the list.
+
+$ npm run media:p22 (after the Kho list ring fix)
+Exit code: 0 (no !!)
+
+| Mark | base (f720b6f) | integration head |
+| --- | --- | --- |
+| Main Menu | 935 | 1019 |
+| three.js in | 2621 | 2647 |
+| atlas @1x asked / in | 920 / 2564 | 1034 / 2594 |
+| cst:icons (@1x handed to CSS) | | 2597 |
+| every icon drawn | 2600 | 2667 |
+| atlas @2x asked | 2903 | 2833 |
+| 3D scene | 2914 | 2972 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Kho at 390: same as the run above (head foot 144 px sticky, Nhập hàng
+reachable on opening, 0/12 rows).
+
+Reading: icons drawn 67 ms after base here, 14 ms before base in the
+run above. Single loads put the head's icons level with base, not
+reliably ahead.
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
