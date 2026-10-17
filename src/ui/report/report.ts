@@ -16,8 +16,11 @@ import { fillReviews } from './reviews';
 /** Newest reviews the summary once listed; reviews now live on the Đánh giá tab only. */
 export const REPORT_RECENT_REVIEWS = 3;
 
-/** Tips shown on the summary; the Chỉ số tab lists the rest. */
-export const REPORT_TIPS = 2;
+/** Tips shown on the summary, one line each; the Chỉ số tab lists the rest. */
+export const REPORT_TIPS = 1;
+
+/** Best sellers named on the summary's goods line. */
+export const REPORT_TOP_SELLERS = 3;
 
 /** Result of a day's autosave, shown in the footer of that day's report. */
 export type SaveStatus = { day: number; ok: true; savedAt: number } | { day: number; ok: false };
@@ -249,12 +252,10 @@ function missionsBlock(r: DailyReport): HTMLElement[] {
   ];
 }
 
-function topSellers(r: DailyReport): HTMLElement {
-  const top = r.topSellers.slice(0, 3);
-  if (top.length === 0) return h('div', { class: 'rpt-line' }, h('b', { text: 'Bán chạy: ' }), h('span', { class: 'rpt-muted', text: 'Chưa bán được món nào.' }));
-  return h(
-    'div',
-    { class: 'rpt-line' },
+function topSellers(r: DailyReport): Child[] {
+  const top = r.topSellers.slice(0, REPORT_TOP_SELLERS);
+  if (top.length === 0) return [h('b', { text: 'Bán chạy: ' }), h('span', { class: 'rpt-muted', text: 'chưa có món nào' })];
+  return [
     h('b', { text: 'Bán chạy: ' }),
     h(
       'ol',
@@ -264,14 +265,14 @@ function topSellers(r: DailyReport): HTMLElement {
         return h('li', { attrs: { 'data-item': t.id } }, icon(MENU_ICONS[t.id], { size: 16 }), `${item.name} `, h('b', { text: `${t.qty} ${item.category === 'food' ? 'cái' : 'ly'}` }));
       }),
     ),
-  );
+  ];
 }
 
 function outOfStock(r: DailyReport): HTMLElement {
-  if (r.outOfStock.length === 0) return h('div', { class: 'rpt-line' }, h('b', { text: 'Hết nguyên liệu: ' }), h('span', { class: 'rpt-muted', text: 'Không món nào hết nguyên liệu.' }));
+  if (r.outOfStock.length === 0) return h('span', { class: 'rpt-goods-out' }, h('b', { text: 'Hết nguyên liệu: ' }), h('span', { class: 'rpt-muted', text: 'không' }));
   return h(
-    'div',
-    { class: 'rpt-line is-warn' },
+    'span',
+    { class: 'rpt-goods-out is-warn' },
     icon('i-error', { size: 16 }),
     h('b', { text: 'Hết nguyên liệu: ' }),
     h(
@@ -282,18 +283,24 @@ function outOfStock(r: DailyReport): HTMLElement {
   );
 }
 
+/** Best sellers and stock-outs as one line of text. */
+function goodsLine(r: DailyReport): HTMLElement {
+  return h('p', { class: 'rpt-line rpt-goods', attrs: { 'data-block': 'goods' } }, ...topSellers(r), h('span', { class: 'rpt-muted', text: '·' }), outOfStock(r));
+}
+
+/** One tip on one line next to its heading; the full text is in the title and on the Chỉ số tab. */
 function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
   const tips = r.suggestions.slice(0, REPORT_TIPS);
   return h(
     'div',
     { class: 'rpt-tips' },
-    cap('i-tip', weekEnded ? 'Gợi ý cho tuần sau' : `Gợi ý cho ngày ${r.day + 1}`),
+    cap('i-tip', weekEnded ? 'Gợi ý cho tuần sau:' : `Gợi ý cho ngày ${r.day + 1}:`),
     tips.length === 0
       ? muted('Hôm nay mọi thứ ổn, cứ giữ nhịp này.')
       : h(
           'ol',
           { class: 'rpt-list', attrs: { 'data-block': 'tips' } },
-          ...tips.map((s) => h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind } }, h('span', { class: 'rpt-tip-icon' }, icon(TIP_ICON[s.kind], { size: 16 })), h('p', { text: s.text }))),
+          ...tips.map((s) => h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind, title: s.text } }, icon(TIP_ICON[s.kind], { size: 16 }), h('p', { text: s.text }))),
         ),
   );
 }
@@ -314,7 +321,7 @@ export function levelUpBand(r: DailyReport): HTMLElement | null {
   return h(
     'div',
     { class: 'rpt-levelup', attrs: { role: 'status', 'data-block': 'level-up' } },
-    icon(LEVEL_ICON, { size: 24, class: 'rpt-levelup-icon' }),
+    icon(LEVEL_ICON, { size: 16, class: 'rpt-levelup-icon' }),
     h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
     lines.length === 0
       ? h('span', { class: 'rpt-muted', text: 'Cấp này chưa mở thêm món hay dụng cụ.' })
@@ -328,8 +335,9 @@ export function levelUpBand(r: DailyReport): HTMLElement | null {
 
 /**
  * The summary tab, rebuilt once per report: figures with their change, the
- * week so far, money | missions and sellers, two tips. After the last week
- * day the tips are for next week.
+ * week so far, money | missions and a goods line, one tip. It fits a
+ * 1280×720 window without scrolling. After the last week day the tip is for
+ * next week.
  */
 export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryStats = NO_STATS): HTMLElement[] {
   const band = levelUpBand(r);
@@ -337,7 +345,7 @@ export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryS
     ...(band ? [band] : []),
     figures(r, stats),
     ...(stats.week ? [weekStrip(stats.week)] : []),
-    h('div', { class: 'rpt-split' }, money(r), h('div', { class: 'rpt-col' }, ...missionsBlock(r), topSellers(r), outOfStock(r))),
+    h('div', { class: 'rpt-split' }, money(r), h('div', { class: 'rpt-col' }, ...missionsBlock(r), goodsLine(r))),
     suggestions(r, weekEnded),
   ];
 }

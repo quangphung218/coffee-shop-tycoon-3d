@@ -20,6 +20,11 @@
   overflow-wrap: break-word;
   animation: rpt-drop var(--duration-pop) var(--easing-bounce);
 }
+/* The Daily Report is wider than other dialogs so its head stays on one row
+   and the summary fits 1280×720 without scrolling. */
+.rpt-layer[data-screen='report'] .rpt-dialog {
+  max-width: calc(var(--size-dialog) + 2 * var(--space-16));
+}
 /* The card drops in from above with a small bounce. */
 @keyframes rpt-drop {
   from {
@@ -33,7 +38,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   background: var(--surface-selected);
   border-bottom: var(--size-outline) solid var(--border-outline);
 }
@@ -106,8 +111,8 @@
   gap: var(--space-4);
 }
 .rpt-body.is-summary {
-  padding: var(--space-4) var(--space-6);
-  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  gap: var(--space-2);
 }
 .rpt-body[hidden] {
   display: none;
@@ -118,7 +123,7 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   border-top: var(--size-outline) solid var(--border-outline);
   background: var(--surface-sunken);
 }
@@ -248,13 +253,19 @@
 .rpt-fig-sub,
 .rpt-fig-delta {
   font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
   color: var(--text-muted);
+}
+/* The sub line keeps its own row above the changes, never under them. */
+.rpt-fig-sub {
+  margin-bottom: var(--space-1);
 }
 .rpt-fig-delta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--space-1);
+  min-height: var(--size-icon-sm);
   font-variant-numeric: tabular-nums;
 }
 .rpt-fig-delta.is-up b {
@@ -276,9 +287,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  white-space: pre;
 }
 .rpt-week-num {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .rpt-week.is-done .rpt-bar-fill {
   background: var(--text-ok);
@@ -301,7 +314,7 @@
   line-height: var(--line-height-tight);
 }
 .rpt-split .rpt-col {
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 .rpt-split .rpt-stat {
   padding: 0;
@@ -320,7 +333,17 @@
   gap: var(--space-1);
   font-size: var(--font-size-sm);
 }
-.rpt-line.is-warn {
+/* Best sellers · stock-outs: one line of text that wraps only when narrow. */
+.rpt-goods {
+  margin-top: var(--space-1);
+}
+.rpt-goods-out {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rpt-goods-out.is-warn {
   color: var(--text-danger);
 }
 .rpt-inline {
@@ -410,20 +433,36 @@
   background: var(--data-bar);
   border-right: var(--size-outline-sm) solid var(--border-outline);
 }
-/* Summary tips: two short lines with a small icon disc. */
-.rpt-tips .rpt-list {
-  gap: var(--space-1);
+/* Summary tip: heading and one tip on a single line, cut with an ellipsis. */
+.rpt-tips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.rpt-tips .rpt-cap {
+  flex: none;
+  margin: 0;
+}
+.rpt-tips .rpt-list,
+.rpt-tips .rpt-muted {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .rpt-tip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2);
+  display: flex;
   align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-sm);
 }
-.rpt-tip .rpt-tip-icon {
-  width: calc(var(--size-target) / 2 + var(--space-2));
-  height: calc(var(--size-target) / 2 + var(--space-2));
+.rpt-tip .ic {
+  flex: none;
+}
+.rpt-tip p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rpt-tip-icon {
   display: grid;
@@ -441,16 +480,20 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1) var(--space-3);
-  padding: var(--space-1) var(--space-3);
+  gap: 0 var(--space-3);
+  padding: var(--space-1) var(--space-2);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
   border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
 }
 .rpt-levelup-title {
-  line-height: var(--line-height-tight);
+  font-size: var(--font-size-sm);
+}
+.rpt-levelup .rpt-unlocks {
+  gap: 0 var(--space-3);
 }
 
 /* Daily missions in the summary: label, name and reward, then the measure. */
@@ -829,13 +872,14 @@
   .rpt-fig-value {
     font-size: var(--font-size-lg);
   }
+  /* Label and bar on the first line, the numbers on the second. */
   .rpt-week {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--space-1) var(--space-3);
   }
-  .rpt-week-track {
+  .rpt-week-num {
     grid-column: 1 / -1;
-    grid-row: 2;
+    white-space: normal;
   }
   .rpt-split {
     grid-template-columns: minmax(0, 1fr);
