@@ -85,12 +85,13 @@ async function retryWorldModule(): Promise<WorldModule> {
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // three.js and the 3D world load as a separate chunk, asked for once the
   // menu has painted so its parse never lands in the menu's first frame.
-  const worldModule = afterPaint().then(() => import('./render/scene'));
-  // Menu icons use the small @1x atlas, fetched only once the scene chunk is
-  // in so it does not share the network with three.js; the boxes show
-  // placeholder tiles until then. The @2x one waits for the scene itself.
-  const loadIcons = (): void => watchIconAtlas();
-  void worldModule.then(loadIcons, loadIcons);
+  const painted = afterPaint();
+  const worldModule = painted.then(() => import('./render/scene'));
+  // Menu icons use the small @1x atlas, asked for right after the scene
+  // chunk at low priority: it must be in before the 3D scene starts drawing,
+  // which leaves the main thread too busy to hand it to the CSS quickly. The
+  // boxes show placeholder tiles until then. The @2x one waits for the scene.
+  void painted.then(() => watchIconAtlas());
   const assets = readAssets();
   const scene = new SceneGate({ status: 'loading', progress: 0, slow: false });
   const storage = defaultStorage();

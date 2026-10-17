@@ -186,13 +186,16 @@ describe('atlas loading order', () => {
     expect(failed.classList.contains(ICONS_HD_CLASS)).toBe(false);
   });
 
-  it('is started by main.ts: @1x once the scene chunk is in (loaded or failed), @2x only after the 3D scene is ready', () => {
+  it('is started by main.ts: @1x after the menu paint, right behind the scene chunk request; @2x only after the 3D scene is ready', () => {
     const start = MAIN_TS.indexOf('function start(');
     const world = MAIN_TS.indexOf("performance.mark('cst:world')");
     expect(MAIN_TS.match(/watchIconAtlas\(\)/g)).toHaveLength(1);
-    expect(MAIN_TS).toContain("const worldModule = afterPaint().then(() => import('./render/scene'));");
-    expect(MAIN_TS.indexOf('watchIconAtlas()', start)).toBeGreaterThan(start);
-    expect(MAIN_TS).toMatch(/const loadIcons = \(\): void => watchIconAtlas\(\);\s*void worldModule\.then\(loadIcons, loadIcons\);/);
+    // Both hang off the same paint promise; the import is registered first, so it is asked for first.
+    const chunk = MAIN_TS.indexOf("const worldModule = painted.then(() => import('./render/scene'));");
+    const atlas = MAIN_TS.indexOf('void painted.then(() => watchIconAtlas());');
+    expect(MAIN_TS).toContain('const painted = afterPaint();');
+    expect(chunk).toBeGreaterThan(start);
+    expect(atlas).toBeGreaterThan(chunk);
     expect(MAIN_TS.indexOf('enableHdIcons()')).toBeGreaterThan(world);
     expect(MAIN_TS.match(/enableHdIcons\(\)/g)).toHaveLength(1);
   });

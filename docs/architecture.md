@@ -62,12 +62,12 @@ Thứ tự tải atlas (`src/main.ts`):
 | Lúc | Việc | Ô `.ic` hiện |
 | --- | --- | --- |
 | Đầu `start()` (Main Menu hiện) | | Ô chờ: nền mờ `--surface-icon-wait`, không viền, bo `--radius-sm`, đứng yên |
-| Chunk `import('./render/scene')` (gọi sau khi menu đã vẽ) tải xong hoặc lỗi | `watchIconAtlas()` fetch `atlas@1x.webp`, `priority: 'low'` | Vẫn ô chờ |
+| Menu đã vẽ (`afterPaint()`) | Xin chunk `import('./render/scene')`, ngay sau đó `watchIconAtlas()` fetch `atlas@1x.webp`, `priority: 'low'` | Vẫn ô chờ |
 | @1x tải xong (`--ic-atlas`, `html.icons-ready`) | | Ô của atlas @1x |
 | Sau `performance.mark('cst:world')`, màn 2x | `enableHdIcons()` fetch `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
 | @2x tải xong (`--ic-atlas`, `html.icons-hd`) | | Ô của atlas @2x |
 
-Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, cũng một lần. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và không atlas nào tranh băng thông với chunk cảnh 3D. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
+Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, cũng một lần. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh. Atlas @1x tải song song với chunk cảnh nhưng ưu tiên thấp hơn, để về trước khi cảnh 3D bắt đầu vẽ; @2x không tranh băng thông với chunk cảnh. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
 
 Thêm icon:
 
