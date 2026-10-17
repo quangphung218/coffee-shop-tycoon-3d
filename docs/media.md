@@ -290,7 +290,7 @@ Lệnh build bản hiện tại, xuất P22 `f9508d8` ra thư mục tạm và bu
 
 1. Sim của mỗi bản chơi ván Vừa của chính nó (seed `MEDIA_SEED >>> 0`, nhập hàng theo gợi ý, tự phục vụ) và in bảng ngày: P23 tới ngày 14, P22 tới ngày 7. Ván lưu ở sáng ngày 2, báo cáo ngày 3, báo cáo ngày 7 và (P23) báo cáo ngày 14, nạp qua **Tiếp tục**.
 2. Sáng ngày 2: chụp HUD pha chuẩn bị ở hai khổ, **Mở cửa** ở 4x tới cao điểm, về 1x rồi chụp HUD ở hai khổ.
-3. Báo cáo ngày 3 vừa mở, cửa sổ không nới thêm: chụp và đo số px phải cuộn.
+3. Báo cáo ngày 3 vừa mở, cuộn về đầu, cửa sổ không nới thêm: chụp và đo số px phải cuộn.
 4. Báo cáo ngày 7 (và ngày 14) → **Xem kết tuần**: chụp tổng kết tuần, cửa sổ nới cao cho vừa cả hộp.
 5. Main Menu tải không cache qua Slow 4G (150 ms RTT, 1,6 Mbps, CPU 4x), `three-*.js` giữ 11 s như `npm run media:loading`, từng bản một: chụp lúc cảnh 3D đang tải.
 

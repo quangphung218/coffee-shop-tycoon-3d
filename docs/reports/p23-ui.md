@@ -10,17 +10,17 @@
 
 | Khổ | Ảnh | Đã sửa |
 | --- | --- | --- |
-| 390 · chuẩn bị | ![HUD pha chuẩn bị 390](p23-review/hud-prep-390-p23.jpg) | Khoảng 12 khung pill rời gộp thành 3 cụm Hôm nay, Tiến độ, Điều khiển; dòng ghi chú "Đồng hồ dừng ở 07:00…" bỏ đi, lời nhắc nằm trong title nút Mở cửa. |
-| 1280 · chuẩn bị | ![HUD pha chuẩn bị 1280](p23-review/hud-prep-1280-p23.jpg) | Cùng thay đổi; ở 1280 px ba cụm nằm trên một hàng thay cho hai hàng pill. |
-| 390 · cao điểm | ![HUD giờ cao điểm 390](p23-review/hud-peak-390-p23.jpg) | 12 pill thành 3 cụm; hai nút Camera và Cài đặt gộp vào một menu sổ xuống. |
-| 1280 · cao điểm | ![HUD giờ cao điểm 1280](p23-review/hud-peak-1280-p23.jpg) | 12 pill thành 3 cụm trên một hàng; tốc độ, Dừng và menu Camera/Cài đặt nằm chung cụm Điều khiển. |
+| 390 · chuẩn bị | ![HUD pha chuẩn bị 390](p23-review/hud-prep-390-p23.jpg) | 11 khung pill rời gộp thành 3 cụm Hôm nay, Tiến độ, Điều khiển; dòng ghi chú "Đồng hồ dừng ở 07:00…" bỏ đi, lời nhắc nằm trong title nút Mở cửa. |
+| 1280 · chuẩn bị | ![HUD pha chuẩn bị 1280](p23-review/hud-prep-1280-p23.jpg) | 11 pill trên 2 hàng thành 3 cụm trên 1 hàng; bỏ dòng ghi chú pha chuẩn bị. |
+| 390 · cao điểm | ![HUD giờ cao điểm 390](p23-review/hud-peak-390-p23.jpg) | 11 pill thành 3 cụm; hai nút Camera và Cài đặt gộp vào một menu sổ xuống. |
+| 1280 · cao điểm | ![HUD giờ cao điểm 1280](p23-review/hud-peak-1280-p23.jpg) | 11 pill thành 3 cụm; tốc độ, Dừng và menu Camera/Cài đặt nằm chung cụm Điều khiển. Ngày có sự kiện "Tăng giá nhập", cụm Điều khiển xuống hàng thứ 2. |
 
 ## 2. Daily Report ngày 3
 
 | Khổ | Ảnh | Đã sửa |
 | --- | --- | --- |
-| 390 | ![Báo cáo ngày 3, 390](p23-review/report-day3-390-p23.jpg) | Ô kết quả và các khung mục lồng nhau thành 4 ô số chính (lãi/lỗ, doanh thu, khách, sao), mỗi ô có Δ so hôm qua và Δ so TB tuần; nhãn ghi số px còn phải cuộn. |
-| 1280 | ![Báo cáo ngày 3, 1280](p23-review/report-day3-1280-p23.jpg) | 4 ô số kèm Δ so hôm qua và so TB tuần, một dòng doanh thu tuần so mục tiêu, Thu chi cạnh nhiệm vụ và bán chạy; nhãn ghi số px còn phải cuộn hoặc "vừa một màn". |
+| 390 | ![Báo cáo ngày 3, 390](p23-review/report-day3-390-p23.jpg) | Ô kết quả và các khung mục lồng nhau thành 4 ô số chính (lãi/lỗ, doanh thu, khách, sao), mỗi ô có Δ so hôm qua và Δ so TB tuần; phần phải cuộn giảm từ 1849 px xuống 602 px. |
+| 1280 | ![Báo cáo ngày 3, 1280](p23-review/report-day3-1280-p23.jpg) | 4 ô số kèm Δ so hôm qua và so TB tuần, một dòng doanh thu tuần so mục tiêu, Thu chi cạnh nhiệm vụ; phần phải cuộn giảm từ 1392 px xuống 213 px. |
 
 ## 3. Tổng kết tuần 1 và tuần 2
 
@@ -36,6 +36,6 @@
 | Khổ | Ảnh | Đã sửa |
 | --- | --- | --- |
 | 390 | ![Main Menu đang tải, 390](p23-review/loading-390-p23.jpg) | Một thanh % chung thành danh sách thành phần (mã cảnh 3D, font, icon, dựng quán, biên dịch shader, nhãn và texture), mỗi dòng % riêng. |
-| 1280 | ![Main Menu đang tải, 1280](p23-review/loading-1280-p23.jpg) | Cùng danh sách ở khổ desktop; nút vào quán chỉ mở khi mọi thành phần xong. |
+| 1280 | ![Main Menu đang tải, 1280](p23-review/loading-1280-p23.jpg) | Cùng danh sách ở khổ desktop: lúc chụp mã cảnh 3D 14%, font và icon 100%, ba bước dựng quán còn 0%; nút vào quán chỉ mở khi mọi thành phần xong. |
 
 Số đo frame time trước/sau warm-up ở [p23-loading-frames.md](p23-loading-frames.md).
