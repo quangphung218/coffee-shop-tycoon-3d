@@ -151,7 +151,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     description: 'Tự làm đá: giảm 45% giá đá mỗi cấp (tối đa 90%), cả khi mua lẫn khi pha chế.',
     category: 'equipment',
     maxLevel: 2,
-    baseCost: 80000,
+    baseCost: 60000,
     costGrowth: 1.6,
     effectPerLevel: { iceCostReduction: 0.45 },
   },
