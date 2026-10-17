@@ -74,17 +74,29 @@ Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` v
 
 ## Mục tiêu tuần
 
-Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/sim/data/week.ts`, lưu ở `state.week.goal`):
+Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu cộng thêm 60% mức tuần 1 mỗi tuần (`WEEK_GOAL_GROWTH` 0,6), tối đa gấp 3 tuần 1 (`WEEK_GOAL_MAX_MULT`, từ tuần 5), làm tròn tới 100.000. Mục tiêu sao giữ nguyên.
 
-| Độ khó | Doanh thu 7 ngày | Số sao cuối tuần |
-| --- | --- | --- |
-| Dễ | 28.000.000 | 3,8 |
-| Thường | 26.500.000 | 4,0 |
-| Khó | 23.200.000 | 4,2 |
+| Độ khó | Sao | Tuần 1 | Tuần 2 | Tuần 3 | Tuần 4 | Từ tuần 5 (trần ×3) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Dễ | 3,8 | 28.000.000 | 44.800.000 | 61.600.000 | 78.400.000 | 84.000.000 |
+| Thường | 4,0 | 26.500.000 | 42.400.000 | 58.300.000 | 74.200.000 | 79.500.000 |
+| Khó | 4,2 | 23.200.000 | 37.100.000 | 51.000.000 | 65.000.000 | 69.600.000 |
 
-Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001 (`tests/integration/p22-strategies.test.ts`, chiến lược `a_basic`). Doanh thu trung bình: Dễ 22,6 triệu (80,6%), Thường 21,0 triệu (79,3%), Khó 18,3 triệu (79,0%). Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75,6–85,7%).
+Các mức trên được chọn bằng các chiến lược sau, chơi có lịch sự kiện:
 
-Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 60% mỗi tuần sau tuần 1 (`WEEK_GOAL_GROWTH` 0,6), tối đa gấp 3 tuần 1 (từ tuần 5), làm tròn tới 100.000; mục tiêu sao giữ nguyên. Với mức này, chiến lược cơ bản có bật món mới được 2 cúp ở tuần 2–3 (điểm 72–87) và 1 cúp ở tuần 4; người mua nâng cấp giữ 3 cúp mọi tuần. Số đo từng seed ở [reports/p24-ui.md](../reports/p24-ui.md#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập).
+| Chiến lược | Mỗi sáng | Test | Seed |
+| --- | --- | --- | --- |
+| Cơ bản | Nhập theo gợi ý, giữ menu ngày 1; tự phục vụ, không thuê, không nâng cấp | `a_basic` của `tests/integration/p22-strategies.test.ts`, 1 tuần | 1, 42, 777, 2024, 31337, 9001 |
+| Cơ bản bật món | Bật mọi món đã mở khoá, rồi làm như Cơ bản | `a_basic` của `tests/integration/p23-long-run.test.ts`, 4 tuần | 1, 42, 777 |
+| Nâng cấp | Như Cơ bản bật món, thêm thuê 1 barista ngày 1 và mua nâng cấp rẻ nhất khi còn đủ tiền | `c_spend` của `tests/integration/p23-long-run.test.ts`, 4 tuần | 1, 42, 777 |
+
+Kết quả:
+
+- Cơ bản đạt khoảng 80% mục tiêu tuần 1: trung bình Dễ 22,54 triệu (80,5%), Thường 21,07 triệu (79,5%), Khó 18,21 triệu (78,5%); từng seed 75,3–83,4%; 2 cúp (điểm 83–89).
+- Cơ bản bật món: 3 cúp ở tuần 1 (điểm 96–100), 2 cúp ở tuần 2 (84–87) và tuần 3 (72–75), 1 cúp ở tuần 4 (64–66).
+- Nâng cấp: 100 điểm, 3 cúp mọi tuần 1–4, mọi seed.
+
+Số đo từng seed ở [reports/p24-ui.md](../reports/p24-ui.md#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập).
 
 ### Chấm điểm
 

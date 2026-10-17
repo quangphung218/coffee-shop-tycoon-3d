@@ -72,7 +72,7 @@ Tuần 1 của ván này theo sim: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.
 
 ### Mục tiêu tuần sau khi sửa gợi ý nhập
 
-Gợi ý đúng nhập cả nguyên liệu của món mới bật, nên quán bán được thêm món và doanh thu tăng. Đo ở `c7c9eca` với mức cũ 0,5/tuần: chiến lược cơ bản có bật món mới ở Khó làm 28,9–29,9 triệu ở tuần 2, seed 1 và 42 được 3 cúp với mục tiêu 34,5 triệu. Mục tiêu đổi như sau, Dễ và Thường giữ mục tiêu tuần 1:
+Gợi ý đúng nhập cả nguyên liệu của món mới bật, nên quán bán được thêm món và doanh thu tăng. Đo ở `c7c9eca` với mức cũ 0,5/tuần: chiến lược Cơ bản bật món (Sửa ở P25: thống nhất tên với [spec](../spec/week-7-days.md#mục-tiêu-tuần)) ở Khó làm 28,9–29,9 triệu ở tuần 2, seed 1 và 42 được 3 cúp với mục tiêu 34,5 triệu. Mục tiêu đổi như sau, Dễ và Thường giữ mục tiêu tuần 1:
 
 | Số | P23 | P24 |
 | --- | --- | --- |
@@ -84,35 +84,42 @@ Gợi ý đúng nhập cả nguyên liệu của món mới bật, nên quán b�
 
 Từ tuần 5 mục tiêu chạm trần ×3: Dễ 84, Thường 79,5, Khó 69,6 triệu.
 
-Tuần 1, chiến lược cơ bản như [spec](../spec/week-7-days.md#mục-tiêu-tuần) (`a_basic` của `tests/integration/p22-strategies.test.ts`: mỗi sáng nhập theo gợi ý, tự phục vụ, không thuê, không nâng cấp, không bật món mới). Doanh thu triệu đồng, trong ngoặc là tỉ lệ so với mục tiêu:
+Tên chiến lược, mục tiêu tuần 1–4 và trần giống bảng trong [spec](../spec/week-7-days.md#mục-tiêu-tuần). Sửa ở P25: các bảng dưới đo lại ở `671d1ef` bằng `npx vitest run tests/integration/p22-strategies.test.ts tests/integration/p23-long-run.test.ts --silent=false`; bản trước ghi 6 seed cho tuần 2–4 trong khi `p23-long-run.test.ts` chạy 3 seed, và số lệch với output của test.
+
+Tuần 1, chiến lược Cơ bản (`a_basic` của `tests/integration/p22-strategies.test.ts`: nhập theo gợi ý, giữ menu ngày 1, tự phục vụ, không thuê, không nâng cấp). Doanh thu triệu đồng, trong ngoặc là tỉ lệ so với mục tiêu (Sửa ở P25):
 
 | Độ khó | Mục tiêu | Seed 1 | 42 | 777 | 2024 | 31337 | 9001 | Trung bình |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dễ | 28,0 | 23,00 (82,2%) | 22,95 (82,0%) | 22,95 (82,0%) | 21,86 (78,1%) | 22,07 (78,8%) | 22,53 (80,5%) | 22,56 (80,6%) |
-| Thường | 26,5 | 21,97 (82,9%) | 20,95 (79,0%) | 21,21 (80,1%) | 20,84 (78,7%) | 20,32 (76,7%) | 20,86 (78,7%) | 21,03 (79,3%) |
-| Khó | 23,2 | 19,88 (85,7%) | 18,14 (78,2%) | 17,79 (76,7%) | 18,82 (81,1%) | 17,55 (75,6%) | 17,81 (76,8%) | 18,33 (79,0%) |
+| Dễ | 28,0 | 22,94 (81,9%) | 22,95 (82,0%) | 22,86 (81,6%) | 22,06 (78,8%) | 21,90 (78,2%) | 22,54 (80,5%) | 22,54 (80,5%) |
+| Thường | 26,5 | 21,60 (81,5%) | 20,95 (79,0%) | 20,99 (79,2%) | 20,85 (78,7%) | 20,90 (78,9%) | 21,17 (79,9%) | 21,07 (79,5%) |
+| Khó | 23,2 | 19,36 (83,4%) | 18,14 (78,2%) | 17,69 (76,2%) | 18,83 (81,1%) | 17,48 (75,3%) | 17,77 (76,6%) | 18,21 (78,5%) |
 
-Tuần 2–4, chiến lược của `tests/integration/p23-long-run.test.ts` (mỗi sáng bật mọi món đã mở khoá rồi nhập theo gợi ý), cùng 6 seed. `a_basic` không thuê, không nâng cấp; điểm theo thứ tự seed 1 / 42 / 777 / 2024 / 31337 / 9001:
+Cả 18 lượt được 2 cúp, điểm 83–89.
+
+Tuần 1–4, chiến lược Cơ bản bật món (`a_basic` của `tests/integration/p23-long-run.test.ts`: mỗi sáng bật mọi món đã mở khoá rồi làm như Cơ bản), seed 1 / 42 / 777 (Sửa ở P25):
 
 | Độ khó | Tuần | Mục tiêu (triệu) | Doanh thu TB (triệu) | Điểm | Cúp |
 | --- | --- | --- | --- | --- | --- |
-| Dễ | 2 | 44,8 | 32,96 | 85 / 85 / 84 / 84 / 84 / 83 | 2 |
-| Dễ | 3 | 61,6 | 33,42 | 73 / 73 / 73 / 72 / 72 / 72 | 2 |
-| Dễ | 4 | 78,4 | 33,05 | 66 / 65 / 65 / 65 / 66 / 65 | 1 |
-| Thường | 2 | 42,4 | 31,99 | 85 / 85 / 85 / 85 / 84 / 86 | 2 |
-| Thường | 3 | 58,3 | 32,52 | 73 / 74 / 74 / 73 / 73 / 72 | 2 |
-| Thường | 4 | 74,2 | 31,90 | 65 / 66 / 65 / 65 / 66 / 65 | 1 |
-| Khó | 2 | 37,1 | 29,47 | 87 / 87 / 86 / 84 / 87 / 85 | 2 |
-| Khó | 3 | 51,0 | 29,52 | 72 / 75 / 72 / 75 / 72 / 72 | 2 |
-| Khó | 4 | 65,0 | 28,73 | 64 / 65 / 66 / 64 / 64 / 65 | 1 |
+| Dễ | 1 | 28,0 | 29,60 | 100 / 100 / 100 | 3 |
+| Dễ | 2 | 44,8 | 32,98 | 85 / 84 / 84 | 2 |
+| Dễ | 3 | 61,6 | 33,30 | 73 / 73 / 72 | 2 |
+| Dễ | 4 | 78,4 | 32,75 | 66 / 65 / 65 | 1 |
+| Thường | 1 | 26,5 | 28,21 | 98 / 99 / 100 | 3 |
+| Thường | 2 | 42,4 | 32,07 | 85 / 85 / 85 | 2 |
+| Thường | 3 | 58,3 | 32,46 | 73 / 73 / 72 | 2 |
+| Thường | 4 | 74,2 | 31,64 | 65 / 65 / 65 | 1 |
+| Khó | 1 | 23,2 | 24,17 | 96 / 99 / 100 | 3 |
+| Khó | 2 | 37,1 | 29,52 | 86 / 87 / 86 | 2 |
+| Khó | 3 | 51,0 | 30,10 | 73 / 75 / 74 | 2 |
+| Khó | 4 | 65,0 | 29,04 | 64 / 66 / 65 | 1 |
 
-`c_spend` (thuê 1 barista, mua nâng cấp rẻ nhất mỗi sáng) và `e_marketing` (thêm chiến dịch rẻ nhất ngày lẻ) được 100 điểm, 3 cúp ở mọi tuần 2–4, mọi seed. Doanh thu trung bình tuần 2 / 3 / 4 (triệu):
+Chiến lược Nâng cấp (`c_spend`: thêm thuê 1 barista ngày 1, mua nâng cấp rẻ nhất mỗi sáng) và `e_marketing` (thêm chiến dịch rẻ nhất ngày lẻ) được 100 điểm, 3 cúp ở mọi tuần 1–4, mọi seed. Doanh thu trung bình tuần 2 / 3 / 4 (triệu, Sửa ở P25):
 
 | Độ khó | `c_spend` | `e_marketing` |
 | --- | --- | --- |
-| Dễ | 93,67 / 93,67 / 94,33 | 94,26 / 94,37 / 95,10 |
-| Thường | 86,99 / 90,91 / 90,53 | 88,67 / 91,81 / 92,75 |
-| Khó | 71,26 / 83,40 / 82,65 | 73,08 / 85,93 / 85,85 |
+| Dễ | 93,63 / 94,05 / 93,72 | 94,04 / 94,33 / 94,65 |
+| Thường | 87,47 / 90,65 / 90,67 | 89,32 / 91,60 / 93,58 |
+| Khó | 71,32 / 83,89 / 83,54 | 72,72 / 85,97 / 87,06 |
 
 ## 2. Các chỗ đã thiết kế lại
 
@@ -137,7 +144,7 @@ Thang chung đặt một lần trong `src/ui/styles/tokens.css` (ghi trong `desi
 | Marketing | Giá vào dòng meta ("Giá … · +N% khách · N ngày"), bỏ dòng mô tả và cột giá; "Đang chạy" là nhãn duy nhất. |
 | Nâng cấp | Một dòng meta "Giá … · Cấp n/max · mỗi cấp …", bỏ dòng mô tả và cột giá; nhãn chỉ còn "Mở ngày N"/"Mở ở cấp N" và "Tối đa"; "Gỡ (+…)" nằm dưới hàng cùng lý do. |
 | Việc | Danh sách việc, nhiệm vụ và mẹo dùng chung mẫu hàng; "Cần chú ý" là nhãn duy nhất; bỏ nền cảnh báo và thẻ nhiệm vụ tô màu; dòng tuần là chữ thường, không khung. |
-| Báo cáo ngày, Tổng kết tuần | Tiêu đề theo `--font-size-screen-title`/`--font-size-panel-title`, số liệu `--font-size-value`; viền 2 px; chỉ hộp còn `--shadow-card`, dải kết quả và ô mẹo bỏ bóng lồng; nút chính 56 px, nút phụ và tab 44 px; chân ở 390 px vẫn một hàng; dòng phụ bỏ giờ "07:00–21:00". |
+| Báo cáo ngày, Tổng kết tuần | Tiêu đề theo `--font-size-screen-title`/`--font-size-panel-title`, số liệu `--font-size-value`; viền 2 px; chỉ hộp còn `--shadow-card`, dải kết quả và ô mẹo bỏ bóng lồng; nút chính 56 px, nút phụ và tab 44 px; chân ở 390 px vẫn một hàng; dòng phụ bỏ giờ "07:00–21:00". Sửa ở P25: ở 390 px chân Tổng kết tuần không còn một hàng ("Sang tuần" bị cắt và đè "Chơi lại"), nay "Về menu" và "Chơi lại" chung hàng đầu, "Sang tuần N" cả hàng dưới; "Điểm tuần" cỡ `--font-size-2xl` như số lãi Báo cáo ngày, số khác `--font-size-value`, nhãn `--font-size-label`. |
 
 ## 3. Ảnh trước/sau
 
