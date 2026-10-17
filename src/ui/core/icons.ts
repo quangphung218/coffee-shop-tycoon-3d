@@ -339,8 +339,11 @@ interface TierManifest {
 
 let tierManifest: TierManifest | null = null;
 let tierLoad: Promise<boolean> | undefined;
-/** Icons drawn with their base look while the load runs; they switch when it lands. */
-const tierWaiting = new Map<HTMLElement, { id: string; size: IconSize }>();
+/**
+ * Icons drawn with their base look while the load runs; they switch when it
+ * lands. Held weakly, so a panel closed meanwhile does not keep its nodes.
+ */
+const tierWaiting = new Set<{ el: WeakRef<HTMLElement>; id: string; size: IconSize }>();
 
 /** Points a drawn icon at tier cell `id`. The box keeps its size, so nothing moves; no cell leaves the base look. */
 function useTierCell(el: HTMLElement, m: TierManifest, id: string, size: IconSize): void {
@@ -365,7 +368,10 @@ export function tierIcon(id: IconId, tier: number, opts: IconOptions = {}): HTML
   const tierId = `${id}-t${Math.min(tier, 3)}`;
   const size = opts.size ?? 24;
   if (tierManifest) useTierCell(el, tierManifest, tierId, size);
-  else if (tierLoad) tierWaiting.set(el, { id: tierId, size });
+  else if (tierLoad) {
+    for (const w of tierWaiting) if (!w.el.deref()) tierWaiting.delete(w);
+    tierWaiting.add({ el: new WeakRef(el), id: tierId, size });
+  }
   return el;
 }
 
@@ -402,7 +408,10 @@ export function loadTierAtlas(root: HTMLElement = document.documentElement): Pro
         }
         root.style.setProperty(TIER_ATLAS_VAR, `url("${url}")`);
         tierManifest = manifest;
-        for (const [el, w] of tierWaiting) useTierCell(el, manifest, w.id, w.size);
+        for (const w of tierWaiting) {
+          const el = w.el.deref();
+          if (el?.isConnected) useTierCell(el, manifest, w.id, w.size);
+        }
         tierWaiting.clear();
         return true;
       })

@@ -168,6 +168,47 @@ describe('row icons', () => {
     expect(rowIcon(body, 'fast_machine').dataset.icon).toBe('i-fast-machine');
   });
 
+  it('hold icons drawn during the load only weakly, and leave ones taken out of the DOM', async () => {
+    const weak: object[] = [];
+    vi.stubGlobal(
+      'WeakRef',
+      class<T extends object> extends WeakRef<T> {
+        constructor(target: T) {
+          super(target);
+          weak.push(target);
+        }
+      },
+    );
+    const body = open(game(MACHINE));
+    const closed = open(game(MACHINE));
+    const gone = rowIcon(closed, 'better_machine');
+    closed.remove();
+    expect(weak).toContain(gone);
+
+    await deliverTiers();
+    expect(gone.dataset.icon).toBe('i-machine');
+    expect(gone.dataset.atlas).toBeUndefined();
+    expect(rowIcon(body, 'better_machine').dataset.icon).toBe('i-machine-t2');
+  });
+
+  it('drop collected icons from the wait list as new ones are drawn', async () => {
+    let collected = false;
+    vi.stubGlobal(
+      'WeakRef',
+      class<T extends object> extends WeakRef<T> {
+        override deref(): T | undefined {
+          return collected ? undefined : super.deref();
+        }
+      },
+    );
+    open(game(MACHINE)).remove();
+    collected = true;
+    const body = open(game(MACHINE));
+    collected = false;
+    await deliverTiers();
+    expect(rowIcon(body, 'better_machine').dataset.icon).toBe('i-machine-t2');
+  });
+
   it('tierIcon draws the 24 px cell from the small grid', async () => {
     void icons.loadTierAtlas();
     await deliverTiers();
