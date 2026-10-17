@@ -71,7 +71,7 @@ v0.4.0 khoanh nét đứt cam, P22 nét liền xanh.
 | actors-impatient-silhouette | Khách sốt ruột khoanh tay, gõ chân 0,5 rad (trước 0,35), mỗi vòng gỡ tay xem đồng hồ. | `tests/render/actors.test.ts` |
 | E5 | Máy làm đá mở ngày 2, giá gốc 80k (trước ngày 6, 200k); máy rửa ly mở ngày 4, giá gốc 400k (trước ngày 7, 800k). Hoàn vốn dụng cụ trong tuần 47/36/19% → 69/51/27%. | `tests/sim/week-tool-payback.test.ts`, `tests/sim/week-unlocks.test.ts` |
 | perf-startup-mobile | Nguyên nhân: `watchIconAtlas()` chạy ngay đầu `start()`, nên `atlas@1x.webp` (116 kB) dùng chung đường 1,6 Mbps với `three-*.js` (126 kB gzip) và chunk cảnh. Giờ `main.ts` chỉ xin chunk cảnh sau khi menu đã vẽ, và chỉ tải atlas @1x (`fetchPriority = 'low'`) khi chunk cảnh đã tải xong hoặc lỗi. Phụ kiện nhân vật không phải nguyên nhân: dùng chung material, không thêm shader. | `tests/ui/icons-loading.test.ts` |
-| Chân bảng Kho 390 (làm lại) | Thêm mức chân gọn: thân dưới 30rem thì chân vẫn dính đáy, chỉ cuộn khi vùng nội dung thân dưới 12rem (192 px). Đo bằng `media:p22` ở 390×844, ván ngày 2: thân 207 px nhưng vùng nội dung (trừ padding `--space-4`) dưới 192 px, nên chân vẫn cuộn sau danh sách và nút Nhập hàng không thấy khi mở Kho. Chưa đạt ở khổ này. | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` (so 12rem với 207 px gồm cả padding) |
+| Chân bảng Kho 390 (làm lại) | Thêm mức chân gọn: thân dưới 30rem thì chân vẫn dính đáy, chỉ cuộn khi vùng nội dung thân dưới 12rem (192 px). Đo bằng `media:p22` ở 390×844, ván ngày 2: thân 207 px nhưng vùng nội dung (trừ padding `--space-4`) 191 px, dưới 192 px, nên chân vẫn cuộn sau danh sách và nút Nhập hàng không thấy khi mở Kho. Chưa đạt ở khổ này. | `tests/ui/layout-overflow.test.ts`, `tests/ui/p22-review-fixes.test.ts` (so 12rem với 207 px gồm cả padding) |
 | Ô chờ icon theo token | Ô chờ lấy nền `--surface-sunken`, viền trong `--size-icon-stroke` màu `--border-outline`, bo `--radius-sm`; không còn mã màu hay px viết tay. | `tests/ui/styles.test.ts` |
 | Bảng kinh tế | [p22-economy.md](p22-economy.md) ghi rõ bảng nào là số trước khi sửa E5, bảng nào sau. | |
 | Lệnh `layout` | Sửa khoảng trắng thiếu ở mục `layout` của `package.json`. | |
@@ -80,7 +80,9 @@ v0.4.0 khoanh nét đứt cam, P22 nét liền xanh.
 Bảng trước/sau:
 
 - Ô icon Main Menu 390: ![Main Menu icon v0.4.0 và P22](../media/main-menu-icons-p22.png)
-- Chân bảng Kho 390: ![Bảng Kho 390 v0.4.0 và P22](../media/layout-blocked-suggest-390-p22.png)
+- Main Menu 390 trên mạng di động, lúc icon hiện: ![Main Menu 390 di động, thời điểm tải atlas](../media/main-menu-atlas-390-p22.png)
+- Nút Gợi ý và danh sách Kho 390: ![Bảng Kho 390 v0.4.0 và P22](../media/layout-blocked-suggest-390-p22.png)
+- Chân bảng Kho 390: ![Chân bảng Kho 390 v0.4.0 và P22](../media/kho-foot-390-p22.png)
 - Dáng chờ theo cá tính: ![Dáng chờ văn phòng và sinh viên](../media/actors-persona-motion-p22.png)
 - Phụ kiện khách quen và gia đình: ![Phụ kiện khách quen và gia đình](../media/actors-persona-accessory-p22.png)
 - Dáng sốt ruột: ![Khách sốt ruột v0.4.0 và P22](../media/actors-impatient-silhouette-p22.png)
@@ -114,6 +116,20 @@ Chênh lệch P22 trừ v0.4.0 trên di động, cùng lượt đo:
 - Cảnh 3D: nhanh hơn v0.4.0 khoảng 500 ms ở ba lượt riêng, đạt ngưỡng 2829 ms.
 - Main Menu: chậm hơn v0.4.0 54 ms, nằm trong khoảng dao động +17 đến +118 ms của cùng một mã game. Ngưỡng 1000 ms không đạt: chính v0.4.0 đo 1083–1163 ms trên máy này.
 
+Icon Main Menu trên di động (`npm run media:p22`, 390×844, tỉ lệ điểm ảnh 1, một lần tải mỗi bản, ms tính từ lúc điều hướng):
+
+| Mốc | v0.4.0 `f720b6f` | P22 |
+| --- | --- | --- |
+| Main Menu hiện | 1108 | 1196 |
+| `three-*.js` tải xong | 2820 | 2215 |
+| Xin atlas @1x | 1096 | 2229 |
+| Atlas @1x tải xong | 2779 | 3413 |
+| Cảnh 3D hiện | 3049 | 2436 |
+| Xin atlas @2x | 3039 | 2425 |
+| Mọi ô vẽ icon | 2808 | 5736 |
+
+- P22 giữ ô chờ khoảng 4,5 s sau khi menu hiện, lâu hơn v0.4.0 (ô trống khoảng 1,7 s). Atlas @1x về lúc 3413 ms nhưng ô chỉ vẽ icon lúc 5736 ms, khi cảnh 3D đang chạy và atlas @2x đang tải.
+
 FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản xen kẽ. Chỉ kết luận từ lượt đo đủ 5 lần:
 
 | Mức đồ họa | Lượt đo | v0.4.0 `f720b6f` | P22 | Ngưỡng | Đạt |
@@ -134,10 +150,12 @@ FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản x
 | 2 | E6 | 3 | Làm giá Cao có cái giá rõ hơn (sao, khách bỏ về) hoặc tính vào điểm tuần. |
 | 3 | E1 | 1,5 | Giãn thang điểm tuần để chơi tốt và chơi tồi khác điểm (`scoreWeek`). |
 | 4 | E4 | 1,5 | Tủ bánh, máy xay sinh tố: hoàn vốn trong tuần, hoặc gợi ý bật món đi kèm. |
-| 5 | perf-fps-1440, perf-fps-390 | 1 | Giảm draw call giờ cao điểm để tiến tới 60 FPS; đo mức Cao đủ 5 lần. |
-| 6 | E7 | 1 | Marketing: hiệu quả khi quán còn chỗ, hoặc báo quán đã đầy. |
-| 7 | E8 | 1 | Áp lực tiền trong tuần (chi phí cố định, giá vốn). |
-| 8 | E9 | 1 | Tính lãi vào điểm tuần. |
+| 5 | Chân bảng Kho 390 | | Hạ ngưỡng cuộn chân `@container panel-body (max-height: 12rem)` dưới vùng nội dung 191 px của Kho ở 390×844, để chân gọn vẫn dính khi mở Kho. |
+| 6 | Icon Main Menu di động | | Rút thời gian ô chờ trên di động (icon vẽ lúc 5736 ms, v0.4.0 2808 ms): tìm vì sao ô vẽ icon sau atlas @1x hơn 2 s. |
+| 7 | perf-fps-1440, perf-fps-390 | 1 | Giảm draw call giờ cao điểm để tiến tới 60 FPS; đo mức Cao đủ 5 lần. |
+| 8 | E7 | 1 | Marketing: hiệu quả khi quán còn chỗ, hoặc báo quán đã đầy. |
+| 9 | E8 | 1 | Áp lực tiền trong tuần (chi phí cố định, giá vốn). |
+| 10 | E9 | 1 | Tính lãi vào điểm tuần. |
 
 ## 6. Kiểm tra
 
