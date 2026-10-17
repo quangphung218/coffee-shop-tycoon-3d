@@ -86,7 +86,10 @@ describe('play log from the shell', () => {
       { type: 'week_ended', result: game.week!.result },
     ]);
     s.report.el.querySelector<HTMLButtonElement>('.rpt-foot .btn-primary')!.click();
-    document.querySelector<HTMLButtonElement>('[data-screen="weekEnd"] [data-action="replay"]')!.click();
+    // "Chơi lại" asks for a second click.
+    const replay = document.querySelector<HTMLButtonElement>('[data-screen="weekEnd"] [data-action="replay"]')!;
+    replay.click();
+    replay.click();
 
     const log = readPlayLog(storage);
     expect(log.map((e) => e.kind)).toEqual(['run_start', 'day_end', 'week_end', 'replay', 'run_start']);
