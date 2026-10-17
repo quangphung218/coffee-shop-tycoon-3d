@@ -15,7 +15,7 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 - Menu: mỗi món một dòng thấp (P24: 150 px, món thiếu hàng 236 px ở 390 px); công tắc nhỏ trên dòng, "Thiếu Cam" là nút mở Kho. Tên món và dòng giá xuống dòng thay vì bị cắt.
 - Lên cấp: thẻ có huy hiệu cấp bật lên, chip icon các mục mở khoá và confetti 1,4 s không chặn bấm.
 - Nâng cấp: máy pha, máy xay, tủ bánh, quầy, bàn ghế, cây, tranh, đèn đổi hình theo 3 bậc; vừa mua thì máy nảy và rắc sao; mỗi bậc có icon riêng và dòng "Bậc n/3".
-- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt; Main Menu di động 1230 ms so với base 1227 ms (+0,2%), JS chính +2,0 kB gzip (sát ngưỡng 2 kB). Khung hình: [mục 4](#4-kết-quả-kiểm).
+- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt; Main Menu di động 1230 ms so với base 1227 ms (+0,2%), JS chính +2,0 kB gzip (sát ngưỡng 2 kB); `perf:frames` thường và `--fx` 0 long task, confetti chạy ở mọi lượt lên cấp ([mục 4](#4-kết-quả-kiểm)).
 
 ## 2. Ý đã làm và để sau
 
@@ -72,9 +72,9 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | Cao một dòng Menu ở 390 px | ≤ 72 px khi không nhãn, ≤ 96 px khi có nhãn ("Thiếu …", "Mở …", "Mới"): đủ chỗ cho tên và "Giá … · lãi …%" xuống dòng mà vẫn đọc trọn | PASS: 56 px không nhãn, 89 px "Thiếu Cam" (P24: 150 / 236 px); 6/11 món thấy trọn (P24: 3) |
 | Main Menu di động so với `5d33195` | ≤ base + 5% | PASS: 1230 ms so với 1227 ms (+0,2%) |
 | JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | PASS, sát ngưỡng: 73,7 → 75,7 kB (+2,0 kB) |
-| Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | Chờ lượt đo |
-| `npm run perf:frames` | 0 long task | Chờ lượt đo |
-| `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | Chờ lượt đo |
+| Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | PASS: không file nào ở cả hai hồ sơ (`perf:frames`, cột cuối) |
+| `npm run perf:frames` | 0 long task | PASS: 0 ở máy bàn và di động |
+| `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | PASS: 0 long task ở mọi hiệu ứng và hồ sơ; 6/6 lượt level-up tải chunk confetti và có canvas; tỉ lệ khung > 50 ms 48–70% so với 63% chế độ thường |
 | 60 FPS máy bàn khi có hiệu ứng (`--fx --headed`) | p95 ≤ 16,7 ms ± nhịp màn hình | PASS: p95 18 ms (bằng chế độ thường), 0 khung > 50 ms ở máy bàn |
 | `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | PASS: 21 bảng, thoát mã 0; `tier-pair` ghép icon và máy espresso cùng save ở mỗi bậc |
 
@@ -100,12 +100,12 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 
 | Chế độ | Hồ sơ | Cửa sổ | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
 | --- | --- | --- | --- | --- | --- |
-| Thường, headless | Máy bàn | 5 s sau `cst:world` | 100 / 133 / 150 ms | 45/65 | 0 |
-| Thường, headless | Di động | 5 s sau `cst:world` | 83 / 133 / 150 ms | 42/63 | 0 |
-| `--fx` upgrade, headless | Máy bàn | 3 s quanh Mua | 83 / 133 / 133 ms | 24/39 | 0 |
-| `--fx` level-up, headless | Máy bàn | 3 s từ Tiếp tục | 83 / 133 / 133 ms | 26/41 | 0 |
-| `--fx` upgrade, headless | Di động | 3 s quanh Mua | 67 / 133 / 133 ms | 27/39 | 0 |
-| `--fx` level-up, headless | Di động | 3 s từ Tiếp tục | 83 / 117 / 133 ms | 28/42 | 0 |
+| Thường, headless | Máy bàn | 5 s sau `cst:world` | 83 / 133 / 133 ms | 45/71 | 0 |
+| Thường, headless | Di động | 5 s sau `cst:world` | 67 / 133 / 150 ms | 46/73 | 0 |
+| `--fx` upgrade, headless | Máy bàn | 3 s quanh Mua | 50 / 133 / 133 ms | 22/46 | 0 |
+| `--fx` level-up, headless | Máy bàn | 3 s từ Tiếp tục | 83 / 133 / 133 ms | 28/40 | 0 |
+| `--fx` upgrade, headless | Di động | 3 s quanh Mua | 83 / 133 / 133 ms | 26/41 | 0 |
+| `--fx` level-up, headless | Di động | 3 s từ Tiếp tục | 67 / 117 / 133 ms | 24/43 | 0 |
 | Thường, headed | Máy bàn | 5 s sau `cst:world` | 17 / 18 / 19 ms | 0 | 0 |
 | `--fx` upgrade, headed | Máy bàn | 3 s quanh Mua | 17 / 18 / 19 ms | 0 | 0 |
 | `--fx` level-up, headed | Máy bàn | 3 s từ Tiếp tục | 17 / 18 / 33 ms | 0 | 0 |
