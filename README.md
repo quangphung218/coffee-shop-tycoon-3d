@@ -51,13 +51,11 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | ![Bảng Menu](docs/media/menu-icons.png)<br>Bảng Menu với icon 3D | ![Hàng chờ](docs/media/queue.png)<br>Hàng chờ đi theo lối trống giữa các bàn |
 | ![Mặt tiền ban ngày](docs/media/facade-day.png)<br>Mặt tiền quán buổi sáng | ![Mặt tiền chiều tối](docs/media/facade-evening.png)<br>Chiều tối: cửa sổ và biển hiệu sáng ấm |
 
-Ba ảnh dưới ghép bản cũ (trái, nét đứt) với giao diện hiện tại (phải, nét liền); chi tiết ở [docs/reports/p23-ui.md](docs/reports/p23-ui.md).
-
 | Màn | Ảnh |
 | --- | --- |
-| HUD 3 cụm: Hôm nay · Tiến độ · Điều khiển | ![HUD giờ cao điểm](docs/media/hud-peak-1280-p23.jpg) |
-| Daily Report: 4 ô số kèm Δ so hôm qua và so trung bình tuần, doanh thu tuần so mục tiêu | ![Daily Report ngày 3](docs/media/report-day3-1280-p23.jpg) |
-| Tổng kết tuần 2: so với tuần 1, doanh thu từng ngày, mục tiêu tuần 3, nút **Sang tuần 3** | ![Tổng kết tuần 2](docs/media/week2-1280-p23.jpg) |
+| HUD 3 cụm: Hôm nay · Tiến độ · Điều khiển | ![HUD giờ cao điểm](docs/media/hud-1280.jpg) |
+| Daily Report: 4 ô số kèm Δ so hôm qua và so trung bình tuần, doanh thu tuần so mục tiêu | ![Daily Report ngày 3](docs/media/report-1280.jpg) |
+| Tổng kết tuần 2: so với tuần 1, doanh thu từng ngày, mục tiêu tuần 3, nút **Sang tuần 3** | ![Tổng kết tuần 2](docs/media/week-summary-1280.jpg) |
 
 ## Cài và chạy
 

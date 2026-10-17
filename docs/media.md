@@ -172,7 +172,7 @@ npm run media:p21
 2. Từ tuần đó dựng hai ván, nạp vào cả hai bản qua **Tiếp tục**: sáng ngày đầu tiên từ ngày 2 có hội chợ (hay sự kiện khác), đã mua Cây xanh cấp 1; và báo cáo cuối ngày 7.
 3. Ở sáng ngày đó, khổ 1280×800: chụp HUD, bảng Việc, bảng Nâng cấp (cuộn tới Cây xanh), bảng Menu.
 4. Bản hiện tại mở cửa ở 4x tới giờ cao điểm rồi về Main Menu, chụp Cài đặt cả form (cách chụp ở [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), và ghi JSON trong Số liệu chơi ra `docs/media/playlog-p21.json`. Bản v0.2.0 chụp Cài đặt từ Main Menu.
-5. Ở 1280 px và 390 px, nạp ván cuối ngày 7: chụp báo cáo ngày 7, rồi (bản hiện tại) bấm **Xem kết tuần** và chụp màn kết tuần. Cửa sổ được kéo cao cho vừa cả hộp thoại.
+5. Ở 1280 px và 390 px, nạp ván cuối ngày 7: chụp báo cáo ngày 7, rồi (bản hiện tại) bấm **Xem tổng kết tuần** và chụp màn kết tuần. Cửa sổ được kéo cao cho vừa cả hộp thoại.
 
 Bảy bảng và một file JSON trong `docs/media/`, ghi đè mỗi lần chạy:
 
@@ -260,7 +260,10 @@ Lệnh build bản hiện tại, xuất v0.4.0 `f720b6f` ra thư mục tạm và
 
 1. Sim dựng ván sáng ngày 2 của tuần review (Vừa, seed của `review:p22`).
 2. Main Menu ở 390×844 lúc `cst:menu`, atlas icon bị giữ lại như mạng chậm: đếm ô trống và ô chờ.
-3. Main Menu ở 390×844, tải không cache trên cấu hình di động của `scripts/measure-startup.mjs` (150 ms RTT, 1,6 Mbps, CPU 4x), từng bản một: chụp lúc mọi ô icon đã vẽ, ghi mốc `cst:menu`, `three-*.js` tải xong, lúc xin và nhận atlas @1x, `cst:world`, lúc xin atlas @2x.
+3. Main Menu ở 390×844, tải không cache trên cấu hình di động của `scripts/measure-startup.mjs` (150 ms RTT, 1,6 Mbps, CPU 4x), từng bản một: chụp lúc mọi ô icon đã vẽ, ghi mốc `cst:menu`, lúc xin và nhận atlas @1x, `three-*.js` tải xong, lúc xin atlas @2x, `cst:world`. Thứ tự ở bản hiện tại (`src/main.ts`, `src/ui/core/icons.ts`):
+   1. Menu vẽ xong (`cst:menu`, `afterPaint()`): xin chunk cảnh `three-*.js`, ngay sau đó `watchIconAtlas()` xin atlas @1x (`priority: 'low'`), không chờ chunk cảnh tải xong.
+   2. Chunk cảnh xong: `world.prepare()` làm sẵn nhãn 3D, nhãn gọi `loadIconAtlas()` nên atlas @2x được xin lúc này, trên mọi màn, trước `cst:world`; cảnh không chờ @2x.
+   3. `cst:world`: trên màn 2x, `enableHdIcons()` dùng lại lần tải @2x đó, giải mã rồi đổi icon UI sang @2x.
 4. Bảng Kho ở 390×844 trên ván ngày 2: chân bảng, nút Gợi ý, nút Nhập hàng, số dòng hàng chạm được.
 5. Mở cửa ở 4x tới cao điểm, tìm khách theo phụ kiện, mặt sốt ruột và lúc đứng yên trong hàng (tối đa 150 s), chụp cận cả người.
 
@@ -291,10 +294,10 @@ Lệnh build bản hiện tại, xuất P22 `f9508d8` ra thư mục tạm và bu
 1. Sim của mỗi bản chơi ván Vừa của chính nó (seed `MEDIA_SEED >>> 0`, nhập hàng theo gợi ý, tự phục vụ) và in bảng ngày: P23 tới ngày 14, P22 tới ngày 7. Ván lưu ở sáng ngày 2, báo cáo ngày 3, báo cáo ngày 7 và (P23) báo cáo ngày 14, nạp qua **Tiếp tục**.
 2. Sáng ngày 2: chụp HUD pha chuẩn bị ở hai khổ, **Mở cửa** ở 4x tới cao điểm, về 1x rồi chụp HUD ở hai khổ.
 3. Báo cáo ngày 3 vừa mở, cuộn về đầu, cửa sổ không nới thêm: chụp và đo số px phải cuộn.
-4. Báo cáo ngày 7 (và ngày 14) → **Xem kết tuần**: chụp tổng kết tuần, cửa sổ nới cao cho vừa cả hộp.
+4. Báo cáo ngày 7 (và ngày 14) → **Xem tổng kết tuần**: chụp tổng kết tuần, cửa sổ nới cao cho vừa cả hộp.
 5. Main Menu tải không cache qua Slow 4G (150 ms RTT, 1,6 Mbps, CPU 4x), `three-*.js` giữ 11 s như `npm run media:loading`, từng bản một: chụp lúc cảnh 3D đang tải.
 
-Mười hai bảng JPEG chất lượng 75, mỗi file ghi vào cả `docs/media/` và `docs/reports/p23-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
+Mười hai bảng JPEG chất lượng 75 trong `docs/reports/p23-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
 
 | File | Nội dung |
 | --- | --- |
@@ -305,7 +308,15 @@ Mười hai bảng JPEG chất lượng 75, mỗi file ghi vào cả `docs/media
 | `week2-<w>-p23.jpg` | Màn kết tuần 1 của P22 (ván dừng sau ngày 7) cạnh tổng kết tuần 2 của P23: bảng so với tuần 1 và nút **Sang tuần 3**. |
 | `loading-<w>-p23.jpg` | Main Menu đang tải: một thanh % (P22) cạnh danh sách thành phần, mỗi dòng % riêng (P23). |
 
-Bảng dùng trong [báo cáo P23 giao diện](reports/p23-ui.md). Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm bảng trên 600 kB. Có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in bảng ngày, không mở server hay trình duyệt:
+Ba ảnh P23 không khoanh, khổ 1280, dùng trong README, ghi vào `docs/media/`:
+
+| File | Nội dung |
+| --- | --- |
+| `hud-1280.jpg` | Giờ cao điểm ngày 2: HUD 3 cụm Hôm nay, Tiến độ, Điều khiển. |
+| `report-1280.jpg` | Báo cáo ngày 3: 4 ô số kèm Δ so hôm qua và so trung bình tuần. |
+| `week-summary-1280.jpg` | Tổng kết tuần 2: so với tuần 1, doanh thu từng ngày, nút **Sang tuần 3**. |
+
+Bảng trước/sau dùng trong [báo cáo P23 giao diện](reports/p23-ui.md). Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm bảng trên 600 kB. Có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in bảng ngày, không mở server hay trình duyệt:
 
 ```sh
 P23_SAVES_ONLY=1 node scripts/capture-p23.mjs

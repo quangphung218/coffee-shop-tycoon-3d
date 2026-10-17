@@ -19,8 +19,10 @@ import {
   walkToward,
   type NavGrid,
 } from '../../src/sim/nav';
+import { FULL_UNLOCK_LEVEL, MAX_SHOP_LEVEL } from '../../src/sim/data/levels';
+import { UPGRADES } from '../../src/sim/data/upgrades';
 import { createNewGame } from '../../src/sim/state';
-import { buyUpgrade, getShopLayout, type ShopLayout } from '../../src/sim/upgrades';
+import { buyUpgrade, getShopLayout, maxUpgradeLevel, upgradeLevel, type ShopLayout } from '../../src/sim/upgrades';
 import type { UpgradeId, Vec2 } from '../../src/sim/types';
 
 type Levels = Partial<Record<UpgradeId, number>>;
@@ -421,5 +423,92 @@ describe('validateLayout', () => {
     // Behind the left wall, off the floor.
     table.pos = { x: -6, z: 0 };
     expect(validateLayout(layout)).toContainEqual({ kind: 'table_unreachable', tableId: table.id });
+  });
+});
+
+/** Upgrade levels of a shop at `shopLevel` that bought every upgrade up to its cap, the maxLevelBonus included. */
+function maxedLevels(shopLevel: number): Levels {
+  const s = createNewGame('Nav', 'normal', 1);
+  s.shopLevel = shopLevel;
+  s.money = 1e15;
+  const levels: Levels = {};
+  for (const u of UPGRADES) {
+    while (upgradeLevel(s, u.id) < maxUpgradeLevel(s, u.id)) expect(buyUpgrade(s, u.id).ok, u.id).toBe(true);
+    levels[u.id] = upgradeLevel(s, u.id);
+  }
+  return levels;
+}
+
+/** layoutWith at `shopLevel`, so levels above an upgrade's base max can be bought. */
+function layoutAt(shopLevel: number, levels: Levels): ShopLayout {
+  const s = createNewGame('Nav', 'normal', 1);
+  s.shopLevel = shopLevel;
+  s.money = 1e15;
+  for (const [id, n] of Object.entries(levels) as [UpgradeId, number][]) {
+    for (let i = 0; i < n; i++) expect(buyUpgrade(s, id).ok).toBe(true);
+  }
+  return getShopLayout(s);
+}
+
+/** The floor of a shop at `shopLevel` with every upgrade at its cap. */
+const maxedLayout = (shopLevel: number): ShopLayout => layoutAt(shopLevel, maxedLevels(shopLevel));
+
+describe('shop levels 7–10', () => {
+  it('raise the caps past the base max: tables 7, lights 3, better_machine 5', () => {
+    const top = maxedLevels(MAX_SHOP_LEVEL);
+    expect(top.tables).toBe(7);
+    expect(top.lights).toBe(3);
+    expect(top.better_machine).toBe(5);
+    const base = maxedLevels(FULL_UNLOCK_LEVEL);
+    const raised = UPGRADES.filter((u) => top[u.id]! > base[u.id]!).map((u) => u.id);
+    expect(raised.sort()).toEqual(['better_machine', 'blender', 'dishwasher', 'grinder', 'lights', 'pastry_case', 'tables']);
+  });
+
+  it('keep the layout valid and every table and the counter reachable from the door at each level', () => {
+    for (let shopLevel = FULL_UNLOCK_LEVEL + 1; shopLevel <= MAX_SHOP_LEVEL; shopLevel++) {
+      clearNavGridCache();
+      clearPathCache();
+      const layout = maxedLayout(shopLevel);
+      const name = `shop level ${shopLevel}`;
+      expect(validateLayout(layout), name).toEqual([]);
+      const grid = buildNavGrid(layout);
+      const front = { x: layout.counter.pos.x, z: layout.counter.pos.z + 1 };
+      const back = { x: layout.counter.pos.x, z: layout.counter.pos.z - 0.75 };
+      expectClearPath(layout, grid, OUTSIDE, front);
+      expectClearPath(layout, grid, OUTSIDE, layout.pickup);
+      expectClearPath(layout, grid, front, back);
+      for (const t of layout.tables) {
+        for (const side of [-1, 1]) {
+          const chair = { x: t.pos.x + side * CHAIR_OFFSET, z: t.pos.z };
+          const seat = nearestFree(grid, chair)!;
+          expect(Math.hypot(seat.x - chair.x, seat.z - chair.z), `${name}, table ${t.id}`).toBeLessThan(1);
+          expectClearPath(layout, grid, OUTSIDE, seat);
+          expect(walkAll(grid, OUTSIDE, seat).at(-1), `${name}, table ${t.id}`).toEqual(seat);
+        }
+      }
+    }
+  });
+
+  it('seat the 7th tables level indoors and keep the main aisle', () => {
+    const at6 = maxedLayout(FULL_UNLOCK_LEVEL);
+    const at10 = maxedLayout(MAX_SHOP_LEVEL);
+    const indoor = (l: ShopLayout): number => l.tables.filter((t) => t.zone === 'indoor').length;
+    expect(at10.tables.length).toBeGreaterThan(at6.tables.length);
+    expect(indoor(at10)).toBeGreaterThan(indoor(at6));
+    // The main aisle stays three cells wide from the door to the counter.
+    const grid = buildNavGrid(at10);
+    for (let z = at10.counter.pos.z + 1; z <= at10.indoor.maxZ - 0.25; z += NAV_CELL) {
+      for (const x of [-1, 0, 1]) expect(isWalkable(grid, { x: at10.door.x + x * NAV_CELL, z }), `${x * NAV_CELL},${z}`).toBe(true);
+    }
+  });
+
+  it('leave the floor alone for the off-floor bonus levels (better_machine 4–5, the third light)', () => {
+    const top = maxedLevels(MAX_SHOP_LEVEL);
+    const floor: Levels = { ...top, better_machine: 3, lights: 2 };
+    const plain = layoutAt(MAX_SHOP_LEVEL, floor);
+    const bonus = maxedLayout(MAX_SHOP_LEVEL);
+    expect(layoutFootprints(bonus)).toEqual(layoutFootprints(plain));
+    expect(createNavGrid(bonus).blocked).toEqual(createNavGrid(plain).blocked);
+    expect(bonus.decor.filter((d) => d.kind === 'light')).toHaveLength(3);
   });
 });
