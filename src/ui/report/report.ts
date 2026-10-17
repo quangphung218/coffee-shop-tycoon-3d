@@ -2,17 +2,22 @@ import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
 import { getUpgrade } from '../../sim/data/upgrades';
-import type { Command, DailyReport, GameState, InsightPanel, Mission, Review, SuggestionKind } from '../../sim/types';
-import { h, setChildren, trapFocus, Watcher } from '../core/dom';
+import { WEEK_LENGTH } from '../../sim/data/week';
+import { dayCompare, weekToDate, type StatDelta, type WeekToDate } from '../../sim/stats';
+import type { Command, DailyReport, GameState, InsightPanel, Mission, SuggestionKind } from '../../sim/types';
+import { h, setChildren, trapFocus, Watcher, type Child } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
 import { LEVEL_ICON, MENU_ICONS, MISSION_ICON } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import { MISSION_META } from '../panels/tasks';
 import { renderInsights } from './insights';
-import { fillReviews, newestFirst, reviewItem, starsEl } from './reviews';
+import { fillReviews } from './reviews';
 
-/** Reviews shown on the summary tab. */
+/** Newest reviews the summary once listed; reviews now live on the Đánh giá tab only. */
 export const REPORT_RECENT_REVIEWS = 3;
+
+/** Tips shown on the summary; the Chỉ số tab lists the rest. */
+export const REPORT_TIPS = 2;
 
 /** Result of a day's autosave, shown in the footer of that day's report. */
 export type SaveStatus = { day: number; ok: true; savedAt: number } | { day: number; ok: false };
@@ -44,11 +49,19 @@ export interface DailyReportView {
   readonly visible: boolean;
 }
 
+/** What the summary compares the day against (src/sim/stats.ts); null draws no comparison. */
+export interface SummaryStats {
+  deltas: readonly StatDelta[] | null;
+  week: WeekToDate | null;
+}
+
+const NO_STATS: SummaryStats = { deltas: null, week: null };
+
 export type ResultKind = 'profit' | 'loss' | 'even' | 'none';
 
 /** Headline of the report: profit, loss, break-even, or no customers at all. */
 export function reportResult(r: DailyReport): { kind: ResultKind; label: string; value: string } {
-  const value = r.profit > 0 ? `+${formatMoney(r.profit)}` : formatMoney(r.profit);
+  const value = signedMoney(r.profit);
   if (r.customersArrived === 0) return { kind: 'none', label: 'Không có khách', value };
   if (r.profit > 0) return { kind: 'profit', label: 'Lãi', value };
   if (r.profit < 0) return { kind: 'loss', label: 'Lỗ', value };
@@ -69,6 +82,10 @@ const TIP_ICON: Record<SuggestionKind, IconId> = {
   upgrade: 'i-upgrades',
 };
 
+function signedMoney(amount: number): string {
+  return amount > 0 ? `+${formatMoney(amount)}` : formatMoney(amount);
+}
+
 function statRow(label: string, value: string, tone: 'pos' | 'neg' | '' = '', total = false): HTMLElement {
   return h('div', { class: `rpt-stat${total ? ' is-total' : ''}` }, h('dt', { text: label }), h('dd', { class: tone, text: value }));
 }
@@ -77,8 +94,9 @@ function cost(amount: number): string {
   return amount > 0 ? formatMoney(-amount) : formatMoney(0);
 }
 
-function section(iconId: IconId, title: string, ...children: (HTMLElement | null)[]): HTMLElement {
-  return h('section', { class: 'rpt-section' }, h('h4', { class: 'rpt-h4' }, icon(iconId), title), ...children);
+/** Small heading of a block in the flat summary. */
+function cap(iconId: IconId, ...title: Child[]): HTMLElement {
+  return h('h4', { class: 'rpt-cap' }, icon(iconId, { size: 16 }), ...title);
 }
 
 function muted(text: string): HTMLElement {
@@ -90,10 +108,101 @@ function labelled(iconId: IconId, text: string): (Node | string)[] {
   return [icon(iconId), text];
 }
 
+// ── Figures: profit, revenue, customers, stars with their change ────────────
+
+type FigureId = 'profit' | 'revenue' | 'customersServed' | 'stars';
+type DeltaDir = 'up' | 'down' | 'flat';
+
+const DELTA_ICON: Record<DeltaDir, IconId> = { up: 'i-trend-up', down: 'i-trend-down', flat: 'i-equal' };
+
+/** A change rounded to what the cell shows (whole đồng and customers, a tenth of a star), signed. */
+function deltaView(id: FigureId, delta: number): { dir: DeltaDir; text: string } {
+  const shown = id === 'stars' ? Math.round(delta * 10) / 10 : Math.round(delta);
+  if (shown === 0) return { dir: 'flat', text: '0' };
+  const dir: DeltaDir = shown > 0 ? 'up' : 'down';
+  const sign = shown > 0 ? '+' : '−';
+  if (id === 'profit' || id === 'revenue') return { dir, text: signedMoney(shown) };
+  if (id === 'stars') return { dir, text: `${sign}${formatRating(Math.abs(shown))}` };
+  return { dir, text: `${sign}${Math.abs(shown)}` };
+}
+
+/** "▲ +120.000đ so hôm qua" as icon + number + label; higher is better for every figure shown. */
+function deltaLine(id: FigureId, delta: number | null, vs: 'yesterday' | 'week'): HTMLElement | null {
+  if (delta === null) return null;
+  const { dir, text } = deltaView(id, delta);
+  return h(
+    'span',
+    { class: `rpt-fig-delta is-${dir}`, attrs: { 'data-vs': vs, 'data-delta': dir } },
+    icon(DELTA_ICON[dir], { size: 16 }),
+    h('b', { text }),
+    vs === 'yesterday' ? ' so hôm qua' : ' so TB tuần',
+  );
+}
+
+function figure(
+  id: FigureId,
+  label: (Node | string)[],
+  value: string,
+  sub: string | null,
+  stats: SummaryStats,
+  attrs: Record<string, string> = {},
+  tone = '',
+): HTMLElement {
+  const d = stats.deltas?.find((s) => s.id === id);
+  return h(
+    'div',
+    { class: `rpt-fig${tone}`, attrs: { 'data-fig': id, ...attrs } },
+    h('span', { class: 'rpt-fig-label' }, ...label),
+    h('span', { class: 'rpt-fig-value', text: value }),
+    sub ? h('span', { class: 'rpt-fig-sub', text: sub }) : null,
+    deltaLine(id, d?.vsYesterday ?? null, 'yesterday'),
+    deltaLine(id, d?.vsWeekAvg ?? null, 'week'),
+  );
+}
+
+function figures(r: DailyReport, stats: SummaryStats): HTMLElement {
+  const result = reportResult(r);
+  const lost = r.customersLost > 0 ? ` · ${r.customersLost} bỏ đi` : '';
+  return h(
+    'div',
+    { class: 'rpt-figs', attrs: { 'data-block': 'figures' } },
+    figure('profit', [icon(RESULT_ICON[result.kind], { size: 16 }), result.label], result.value, null, stats, { 'data-result': result.kind }, ` is-result${RESULT_CLASS[result.kind]}`),
+    figure('revenue', [icon('i-coin', { size: 16 }), 'Doanh thu'], formatMoney(r.revenue), null, stats),
+    figure('customersServed', [icon('i-people', { size: 16 }), 'Khách'], `${r.customersServed}/${r.customersArrived}`, `phục vụ/đến${lost}`, stats, { 'data-block': 'customers' }),
+    figure('stars', [icon('i-star', { size: 16 }), 'Sao'], formatRating(r.ratingEnd), `đầu ngày ${formatRating(r.ratingStart)}`, stats, { 'data-block': 'rating' }),
+  );
+}
+
+// ── Week progress ───────────────────────────────────────────────────────────
+
+/** Week revenue against its goal and the week day, one line with a bar. */
+function weekStrip(w: WeekToDate): HTMLElement {
+  const pct = Math.round(w.revenueProgress * 100);
+  const fill = h('span', { class: 'rpt-bar-fill' });
+  fill.setAttribute('style', `width:${Math.min(100, pct)}%`);
+  return h(
+    'div',
+    { class: `rpt-week${pct >= 100 ? ' is-done' : ''}`, attrs: { 'data-block': 'week' } },
+    h('span', { class: 'rpt-week-label' }, icon('i-trophy', { size: 16 }), h('b', { text: `Tuần ${w.index}` }), ` · ngày ${w.days}/${WEEK_LENGTH}`),
+    h(
+      'span',
+      {
+        class: 'rpt-bar-track rpt-week-track',
+        attrs: { role: 'progressbar', 'aria-label': 'Doanh thu tuần so mục tiêu', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.min(100, pct)) },
+      },
+      fill,
+    ),
+    h('span', { class: 'rpt-week-num' }, h('b', { text: formatMoney(w.totals.revenue) }), ` / ${formatMoney(w.goal.revenue)} · ${pct}%`),
+  );
+}
+
+// ── Money | missions, sellers, stock-outs ───────────────────────────────────
+
 function money(r: DailyReport): HTMLElement {
-  return section(
-    'i-coin',
-    'Thu chi',
+  return h(
+    'div',
+    { class: 'rpt-col' },
+    cap('i-coin', 'Thu chi'),
     h(
       'dl',
       { class: 'rpt-stats', attrs: { 'data-block': 'money' } },
@@ -101,108 +210,9 @@ function money(r: DailyReport): HTMLElement {
       statRow('Nguyên liệu đã dùng', cost(r.ingredientCost), r.ingredientCost > 0 ? 'neg' : ''),
       statRow('Lương nhân viên', cost(r.wages), r.wages > 0 ? 'neg' : ''),
       statRow('Marketing', cost(r.marketingCost), r.marketingCost > 0 ? 'neg' : ''),
-      statRow('Lợi nhuận', r.profit > 0 ? `+${formatMoney(r.profit)}` : formatMoney(r.profit), r.profit > 0 ? 'pos' : r.profit < 0 ? 'neg' : '', true),
+      statRow('Lợi nhuận', signedMoney(r.profit), r.profit > 0 ? 'pos' : r.profit < 0 ? 'neg' : '', true),
     ),
-  );
-}
-
-function customers(r: DailyReport): HTMLElement {
-  return section(
-    'i-people',
-    'Khách',
-    h(
-      'dl',
-      { class: 'rpt-stats', attrs: { 'data-block': 'customers' } },
-      statRow('Khách đến', `${r.customersArrived} khách`),
-      statRow('Được phục vụ', `${r.customersServed} khách`),
-      statRow('Bỏ đi', `${r.customersLost} khách`, r.customersLost > 0 ? 'neg' : ''),
-    ),
-  );
-}
-
-function rating(r: DailyReport): HTMLElement {
-  const delta = Math.round(r.ratingEnd * 10) / 10 - Math.round(r.ratingStart * 10) / 10;
-  const step = Math.round(delta * 10);
-  const badge =
-    step > 0
-      ? h('span', { class: 'badge badge-ok rpt-delta is-up' }, icon('i-trend-up', { size: 16 }), `+${formatRating(delta)}`)
-      : step < 0
-        ? h('span', { class: 'badge badge-danger rpt-delta is-down' }, icon('i-trend-down', { size: 16 }), `−${formatRating(-delta)}`)
-        : h('span', { class: 'badge badge-neutral rpt-delta' }, icon('i-equal', { size: 16 }), 'Không đổi');
-  return section(
-    'i-star',
-    'Đánh giá quán',
-    h(
-      'div',
-      { class: 'rpt-rating', attrs: { 'data-block': 'rating' } },
-      starsEl(r.ratingStart, false, 'Đầu ngày '),
-      icon('i-forward', { class: 'rpt-arrow' }),
-      starsEl(r.ratingEnd, false, 'Cuối ngày '),
-      badge,
-    ),
-  );
-}
-
-function topSellers(r: DailyReport): HTMLElement {
-  const max = Math.max(1, ...r.topSellers.map((t) => t.qty));
-  return section(
-    'i-trophy',
-    'Món bán chạy',
-    r.topSellers.length === 0
-      ? muted('Chưa bán được món nào.')
-      : h(
-          'ol',
-          { class: 'rpt-bars', attrs: { 'data-block': 'top' } },
-          ...r.topSellers.map((t) => {
-            const item = getMenuItem(t.id);
-            const fill = h('span', { class: 'rpt-bar-fill' });
-            fill.setAttribute('style', `width:${Math.round((t.qty / max) * 100)}%`);
-            return h(
-              'li',
-              { class: 'rpt-bar', attrs: { 'data-item': t.id } },
-              h('span', { class: 'rpt-bar-name' }, icon(MENU_ICONS[t.id]), item.name),
-              h('span', { class: 'rpt-bar-track', attrs: { 'aria-hidden': 'true' } }, fill),
-              h('span', { class: 'rpt-bar-num', text: `${t.qty} ${item.category === 'food' ? 'cái' : 'ly'}` }),
-            );
-          }),
-        ),
-  );
-}
-
-function outOfStock(r: DailyReport): HTMLElement {
-  return section(
-    'i-error',
-    'Món hết nguyên liệu',
-    r.outOfStock.length === 0
-      ? muted('Không món nào hết nguyên liệu.')
-      : h(
-          'ul',
-          { class: 'rpt-list', attrs: { 'data-block': 'out' } },
-          ...r.outOfStock.map((id) => h('li', { class: 'rpt-out', attrs: { 'data-item': id } }, icon(MENU_ICONS[id]), h('b', { text: getMenuItem(id).name }), ' · thiếu nguyên liệu')),
-        ),
-  );
-}
-
-function recentReviews(reviews: readonly Review[]): HTMLElement {
-  const recent = newestFirst(reviews, REPORT_RECENT_REVIEWS);
-  return section(
-    'i-reviews',
-    'Đánh giá gần nhất',
-    recent.length === 0 ? muted('Hôm nay chưa có khách nào viết đánh giá.') : h('ul', { class: 'rpt-list', attrs: { 'data-block': 'recent' } }, ...recent.map(reviewItem)),
-  );
-}
-
-function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
-  return section(
-    'i-tip',
-    weekEnded ? 'Gợi ý cho tuần sau' : `Gợi ý cho ngày ${r.day + 1}`,
-    r.suggestions.length === 0
-      ? muted('Hôm nay mọi thứ ổn, cứ giữ nhịp này.')
-      : h(
-          'ol',
-          { class: 'rpt-list', attrs: { 'data-block': 'tips' } },
-          ...r.suggestions.map((s) => h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind } }, h('span', { class: 'rpt-tip-icon' }, icon(TIP_ICON[s.kind])), h('p', { text: s.text }))),
-        ),
+    h('p', { class: 'rpt-muted rpt-cash' }, 'Tiền hiện có: ', h('b', { text: formatMoney(r.money) })),
   );
 }
 
@@ -212,9 +222,85 @@ const MISSION_RESULT: Record<Mission['status'], { label: string; badge: string; 
   active: { label: 'Chưa chấm', badge: 'badge-neutral', icon: 'i-clock' },
 };
 
+/** Today's missions, reached or missed, with their rewards, plus the XP earned. Old saves lack both. */
+function missionsBlock(r: DailyReport): HTMLElement[] {
+  const xp = typeof r.xpGained === 'number' ? h('span', { class: 'rpt-xp', attrs: { 'data-block': 'xp' } }, ' · ', h('b', { text: `+${r.xpGained} KN` })) : null;
+  const missions = r.missions;
+  if (!missions) return [cap(MISSION_ICON, 'Nhiệm vụ ngày', xp), muted('Báo cáo này lưu từ bản cũ, chưa có nhiệm vụ ngày.')];
+  if (missions.length === 0) return [cap(MISSION_ICON, 'Nhiệm vụ ngày', xp), muted('Ngày này chưa có nhiệm vụ.')];
+  return [
+    cap(MISSION_ICON, `Nhiệm vụ · đạt ${missions.filter((m) => m.status === 'completed').length}/${missions.length}`, xp),
+    h(
+      'ul',
+      { class: 'rpt-list rpt-missions', attrs: { 'data-block': 'missions' } },
+      ...missions.map((m) => {
+        const meta = MISSION_META[m.id];
+        const st = MISSION_RESULT[m.status];
+        return h(
+          'li',
+          { class: 'rpt-mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
+          h('span', { class: `badge ${st.badge}` }, icon(st.icon, { size: 16 }), st.label),
+          h('span', { class: 'rpt-strong rpt-mission-name', text: meta.title }),
+          h('span', { class: `rpt-mission-reward${m.status === 'completed' ? '' : ' rpt-muted'}`, text: `+${m.rewardXp} KN · +${formatMoney(m.rewardMoney)}` }),
+          h('span', { class: 'rpt-muted rpt-mission-goal', text: m.status === 'active' ? meta.goal(m.target) : `${meta.measure(m.progress)} · ${meta.goal(m.target)}` }),
+        );
+      }),
+    ),
+  ];
+}
+
+function topSellers(r: DailyReport): HTMLElement {
+  const top = r.topSellers.slice(0, 3);
+  if (top.length === 0) return h('div', { class: 'rpt-line' }, h('b', { text: 'Bán chạy: ' }), h('span', { class: 'rpt-muted', text: 'Chưa bán được món nào.' }));
+  return h(
+    'div',
+    { class: 'rpt-line' },
+    h('b', { text: 'Bán chạy: ' }),
+    h(
+      'ol',
+      { class: 'rpt-inline', attrs: { 'data-block': 'top' } },
+      ...top.map((t) => {
+        const item = getMenuItem(t.id);
+        return h('li', { attrs: { 'data-item': t.id } }, icon(MENU_ICONS[t.id], { size: 16 }), `${item.name} `, h('b', { text: `${t.qty} ${item.category === 'food' ? 'cái' : 'ly'}` }));
+      }),
+    ),
+  );
+}
+
+function outOfStock(r: DailyReport): HTMLElement {
+  if (r.outOfStock.length === 0) return h('div', { class: 'rpt-line' }, h('b', { text: 'Hết nguyên liệu: ' }), h('span', { class: 'rpt-muted', text: 'Không món nào hết nguyên liệu.' }));
+  return h(
+    'div',
+    { class: 'rpt-line is-warn' },
+    icon('i-error', { size: 16 }),
+    h('b', { text: 'Hết nguyên liệu: ' }),
+    h(
+      'ul',
+      { class: 'rpt-inline', attrs: { 'data-block': 'out' } },
+      ...r.outOfStock.map((id) => h('li', { class: 'rpt-out', attrs: { 'data-item': id } }, icon(MENU_ICONS[id], { size: 16 }), getMenuItem(id).name)),
+    ),
+  );
+}
+
+function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
+  const tips = r.suggestions.slice(0, REPORT_TIPS);
+  return h(
+    'div',
+    { class: 'rpt-tips' },
+    cap('i-tip', weekEnded ? 'Gợi ý cho tuần sau' : `Gợi ý cho ngày ${r.day + 1}`),
+    tips.length === 0
+      ? muted('Hôm nay mọi thứ ổn, cứ giữ nhịp này.')
+      : h(
+          'ol',
+          { class: 'rpt-list', attrs: { 'data-block': 'tips' } },
+          ...tips.map((s) => h('li', { class: 'rpt-tip', attrs: { 'data-kind': s.kind } }, h('span', { class: 'rpt-tip-icon' }, icon(TIP_ICON[s.kind], { size: 16 })), h('p', { text: s.text }))),
+        ),
+  );
+}
+
 /**
- * "Lên cấp N" band, in place at the top of the summary (design/p20 §6): the
- * new level's name and what it unlocks. Null when the day brought no level-up.
+ * Thin "Lên cấp N" band at the top of the summary (design/p20 §6): the new
+ * level's name and what it unlocks, on one line. Null when the day brought no level-up.
  */
 export function levelUpBand(r: DailyReport): HTMLElement | null {
   const up = r.levelUp;
@@ -228,79 +314,30 @@ export function levelUpBand(r: DailyReport): HTMLElement | null {
   return h(
     'div',
     { class: 'rpt-levelup', attrs: { role: 'status', 'data-block': 'level-up' } },
-    icon(LEVEL_ICON, { size: 32, class: 'rpt-levelup-icon' }),
-    h(
-      'div',
-      { class: 'rpt-levelup-body' },
-      h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
-      lines.length === 0
-        ? muted('Cấp này chưa mở thêm món hay dụng cụ.')
-        : h(
-            'ul',
-            { class: 'rpt-list rpt-unlocks', attrs: { 'aria-label': 'Mở khóa' } },
-            ...lines.map(([title, names]) => h('li', {}, icon('i-sparkle', { size: 16 }), h('b', { text: `${title}: ` }), names.join(', '))),
-          ),
-    ),
+    icon(LEVEL_ICON, { size: 24, class: 'rpt-levelup-icon' }),
+    h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
+    lines.length === 0
+      ? h('span', { class: 'rpt-muted', text: 'Cấp này chưa mở thêm món hay dụng cụ.' })
+      : h(
+          'ul',
+          { class: 'rpt-inline rpt-unlocks', attrs: { 'aria-label': 'Mở khóa' } },
+          ...lines.map(([title, names]) => h('li', {}, h('b', { text: `${title}: ` }), names.join(', '))),
+        ),
   );
 }
 
-/** Today's missions, reached or missed, with their rewards, plus the XP earned. Old saves lack both. */
-function missionsBlock(r: DailyReport): HTMLElement {
-  const xp = typeof r.xpGained === 'number' ? h('p', { class: 'rpt-xp', attrs: { 'data-block': 'xp' } }, icon('i-sparkle', { size: 16 }), 'Kinh nghiệm hôm nay: ', h('b', { text: `+${r.xpGained} KN` })) : null;
-  const missions = r.missions;
-  if (!missions) return section(MISSION_ICON, 'Nhiệm vụ ngày', muted('Báo cáo này lưu từ bản cũ, chưa có nhiệm vụ ngày.'), xp);
-  if (missions.length === 0) return section(MISSION_ICON, 'Nhiệm vụ ngày', muted('Ngày này chưa có nhiệm vụ.'), xp);
-  return section(
-    MISSION_ICON,
-    `Nhiệm vụ ngày · đạt ${missions.filter((m) => m.status === 'completed').length}/${missions.length}`,
-    h(
-      'ul',
-      { class: 'rpt-list', attrs: { 'data-block': 'missions' } },
-      ...missions.map((m) => {
-        const meta = MISSION_META[m.id];
-        const st = MISSION_RESULT[m.status];
-        const reward = `+${m.rewardXp} KN · +${formatMoney(m.rewardMoney)}`;
-        return h(
-          'li',
-          { class: 'rpt-mission', attrs: { 'data-mission': m.id, 'data-status': m.status } },
-          h('span', { class: `badge ${st.badge}` }, icon(st.icon, { size: 16 }), st.label),
-          h(
-            'div',
-            {},
-            h('p', { class: 'rpt-strong', text: meta.title }),
-            h('p', { class: 'rpt-muted', text: m.status === 'active' ? meta.goal(m.target) : `${meta.measure(m.progress)} · ${meta.goal(m.target)}` }),
-            h('p', { class: 'rpt-muted rpt-mission-reward', text: m.status === 'completed' ? `Đã nhận ${reward}` : `Thưởng ${reward}` }),
-          ),
-        );
-      }),
-    ),
-    xp,
-  );
-}
-
-function resultNote(r: DailyReport, kind: ResultKind): string {
-  const cash = `Tiền hiện có: ${formatMoney(r.money)}.`;
-  if (kind === 'none') return `Chỉ có chi phí cố định trong ngày. ${cash}`;
-  return `Phục vụ ${r.customersServed}/${r.customersArrived} khách. ${cash}`;
-}
-
-/** The summary tab, rebuilt once per report; after the last week day the tips are for next week. */
-export function renderSummary(r: DailyReport, weekEnded = false): HTMLElement[] {
-  const result = reportResult(r);
+/**
+ * The summary tab, rebuilt once per report: figures with their change, the
+ * week so far, money | missions and sellers, two tips. After the last week
+ * day the tips are for next week.
+ */
+export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryStats = NO_STATS): HTMLElement[] {
   const band = levelUpBand(r);
   return [
-    h(
-      'div',
-      { class: `rpt-result${RESULT_CLASS[result.kind]}`, attrs: { 'data-result': result.kind } },
-      icon(RESULT_ICON[result.kind], { size: 48, class: 'rpt-result-icon' }),
-      h('span', { class: 'rpt-result-label', text: result.label }),
-      h('span', { class: 'rpt-result-value', text: result.value }),
-      h('span', { class: 'rpt-result-note', text: resultNote(r, result.kind) }),
-    ),
     ...(band ? [band] : []),
-    missionsBlock(r),
-    h('div', { class: 'rpt-grid' }, money(r), h('div', { class: 'rpt-col' }, customers(r), rating(r))),
-    h('div', { class: 'rpt-grid' }, topSellers(r), h('div', { class: 'rpt-col' }, outOfStock(r), recentReviews(r.reviews))),
+    figures(r, stats),
+    ...(stats.week ? [weekStrip(stats.week)] : []),
+    h('div', { class: 'rpt-split' }, money(r), h('div', { class: 'rpt-col' }, ...missionsBlock(r), topSellers(r), outOfStock(r))),
     suggestions(r, weekEnded),
   ];
 }
@@ -319,8 +356,9 @@ function renderBusy(day: number): HTMLElement {
 
 /**
  * End-of-day overlay after the Daily Report of design/t237-cartoon: tabs
- * "Tổng kết" and "Đánh giá", the autosave status, "Xem đánh giá" and
+ * "Tổng kết", "Chỉ số" and "Đánh giá", the autosave status, "Xem đánh giá" and
  * "Ngày tiếp theo" (next_day), or "Xem kết tuần" once the week is scored.
+ * The footer stays in view; only the tab body scrolls.
  */
 export function createDailyReport(options: DailyReportOptions): DailyReportView {
   const w = new Watcher<GameState>();
@@ -335,7 +373,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   const summaryTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-summary', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-summary', 'data-tab': 'summary' } }, ...labelled('i-chart', 'Tổng kết'));
   const insightsTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-insights', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-insights', 'data-tab': 'insights' } }, ...labelled('i-trend-up', 'Chỉ số'));
   const reviewsTab = h('button', { class: 'rpt-tab', id: 'rpt-tab-reviews', attrs: { type: 'button', role: 'tab', 'aria-controls': 'rpt-reviews', 'data-tab': 'reviews' } });
-  const summary = h('div', { class: 'rpt-body', id: 'rpt-summary', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-summary' } });
+  const summary = h('div', { class: 'rpt-body is-summary', id: 'rpt-summary', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-summary' } });
   const insights = h('div', { class: 'rpt-body', id: 'rpt-insights', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-insights' } });
   const reviews = h('div', { class: 'rpt-body', id: 'rpt-reviews', attrs: { role: 'tabpanel', 'aria-labelledby': 'rpt-tab-reviews' } });
   const tabButtons: Record<ReportTab, HTMLElement> = { summary: summaryTab, insights: insightsTab, reviews: reviewsTab };
@@ -428,7 +466,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function renderBodies(s: GameState): void {
     const r = s.lastReport ?? null;
     const ended = s.week?.result !== undefined;
-    setChildren(summary, ...(r ? renderSummary(r, ended) : [renderBusy(day)]));
+    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s) }) : [renderBusy(day)]));
     setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
   }
 

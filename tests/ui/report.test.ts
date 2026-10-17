@@ -2,8 +2,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
-import { createNewGame } from '../../src/sim/state';
-import type { Command, DailyReport, GameState, Review } from '../../src/sim/types';
+import { WEEK_LENGTH } from '../../src/sim/data/week';
+import { buildDailyReport } from '../../src/sim/report';
+import { createDayStats, createNewGame } from '../../src/sim/state';
+import type { Command, DailyReport, DayStats, GameState, Review } from '../../src/sim/types';
+import { scoreWeek } from '../../src/sim/week';
 import { createHud } from '../../src/ui/hud/hud';
 import { listPanels, type PanelContext } from '../../src/ui/hud/panels';
 import { createDailyReport, registerReviewsPanel, renderReviewsPanel, reportResult, type SaveStatus } from '../../src/ui/report';
@@ -77,18 +80,23 @@ afterEach(() => {
 });
 
 describe('Daily Report', () => {
-  it('shows a profitable day in green with costs, customers, sellers, rating and tips', () => {
+  it('shows a profitable day in green with figures, costs, sellers and tips on one flat page', () => {
     const r = report({ reviews: [review(3, 5, 'tasty', 'A'), review(3, 4, 'fast_service', 'B'), review(3, 1, 'long_wait', 'C'), review(3, 3, 'dirty_table', 'D')] });
     const { el } = mountReport(atReport(r));
 
     expect(el.hidden).toBe(false);
+    const figs = [...el.querySelectorAll<HTMLElement>('[data-block="figures"] [data-fig]')].map((f) => f.dataset.fig);
+    expect(figs).toEqual(['profit', 'revenue', 'customersServed', 'stars']);
+
     const result = q(el, '[data-result]');
+    expect(result.dataset.fig).toBe('profit');
     expect(result.dataset.result).toBe('profit');
     expect(result.className).not.toMatch(/is-loss|is-none/);
     // Not colour alone: triangle icon, word and sign.
-    expect(iconsIn(result)).toEqual(['i-trend-up']);
-    expect(text(result, '.rpt-result-label')).toBe('Lãi');
-    expect(text(result, '.rpt-result-value')).toBe('+600.000đ');
+    expect(iconsIn(q(result, '.rpt-fig-label'))).toEqual(['i-trend-up']);
+    expect(text(result, '.rpt-fig-label')).toBe('Lãi');
+    expect(text(result, '.rpt-fig-value')).toBe('+600.000đ');
+    expect(text(el, '[data-fig="revenue"] .rpt-fig-value')).toBe('1.200.000đ');
 
     const money = text(el, '[data-block="money"]');
     expect(money).toContain('+1.200.000đ');
@@ -96,46 +104,58 @@ describe('Daily Report', () => {
     expect(money).toContain('−200.000đ');
     expect(money).toContain('−100.000đ');
     expect(q(el, '[data-block="money"] .is-total dd').className).toBe('pos');
+    expect(el.textContent).toContain('Tiền hiện có: 2.600.000đ');
 
-    const customers = text(el, '[data-block="customers"]');
-    expect(customers).toContain('50 khách');
-    expect(customers).toContain('45 khách');
-    expect(customers).toContain('5 khách');
+    expect(text(el, '[data-block="customers"] .rpt-fig-value')).toBe('45/50');
+    expect(text(el, '[data-block="customers"] .rpt-fig-sub')).toBe('phục vụ/đến · 5 bỏ đi');
+    expect(text(el, '[data-block="rating"] .rpt-fig-value')).toBe('4,0');
+    expect(text(el, '[data-block="rating"] .rpt-fig-sub')).toBe('đầu ngày 3,8');
 
     expect(q(el, '[data-block="top"] [data-item="latte"]').textContent).toContain('20 ly');
     expect(q(el, '[data-block="top"] [data-item="croissant"]').textContent).toContain('10 cái');
     expect(q(el, '[data-block="out"] [data-item="mocha"]')).toBeTruthy();
-
-    const rating = text(el, '[data-block="rating"]');
-    expect(rating).toContain('3,8');
-    expect(rating).toContain('4,0');
-    expect(text(el, '.rpt-delta')).toBe('+0,2');
-    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['i-trend-up']);
     expect(iconsIn(q(el, '[data-block="top"] [data-item="latte"]'))).toEqual(['i-latte']);
     expect(iconsIn(q(el, '[data-block="tips"] [data-kind="restock"]'))).toEqual(['i-inventory']);
-
-    // The three newest reviews, newest first.
-    const recent = [...el.querySelectorAll('[data-block="recent"] .rpt-review-name')].map((n) => n.textContent);
-    expect(recent).toEqual(['D', 'C', 'B']);
     expect(text(el, '[data-block="tips"]')).toContain('Nhập thêm nguyên liệu');
+
+    // Reviews moved to their own tab; no cards nested in the old two-column grid.
+    const summary = q(el, '#rpt-summary');
+    expect(summary.querySelector('[data-block="recent"]')).toBeNull();
+    expect(summary.querySelector('.rpt-grid')).toBeNull();
+    expect(summary.querySelector('.rpt-section')).toBeNull();
+    expect(q(summary, '.rpt-split [data-block="money"]')).toBeTruthy();
+    expect(q(summary, '.rpt-split [data-block="top"]')).toBeTruthy();
+
     expect(text(el, '.rpt-sub')).toContain('Thường');
     expect(text(el, '#rpt-title')).toContain('Hết ngày 3 · Quán Thử');
   });
 
-  it('shows a losing day in red with a falling rating', () => {
+  it('shows a losing day in red', () => {
     const r = report({ revenue: 100_000, profit: -500_000, ratingStart: 3.8, ratingEnd: 3.6, suggestions: [] });
     const { el } = mountReport(atReport(r));
 
     const result = q(el, '[data-result]');
     expect(result.dataset.result).toBe('loss');
     expect(result.classList.contains('is-loss')).toBe(true);
-    expect(iconsIn(result)).toEqual(['i-trend-down']);
-    expect(text(result, '.rpt-result-label')).toBe('Lỗ');
-    expect(text(result, '.rpt-result-value')).toBe('−500.000đ');
+    expect(iconsIn(q(result, '.rpt-fig-label'))).toEqual(['i-trend-down']);
+    expect(text(result, '.rpt-fig-label')).toBe('Lỗ');
+    expect(text(result, '.rpt-fig-value')).toBe('−500.000đ');
     expect(q(el, '[data-block="money"] .is-total dd').className).toBe('neg');
-    expect(text(el, '.rpt-delta')).toBe('−0,2');
-    expect(iconsIn(q(el, '.rpt-delta'))).toEqual(['i-trend-down']);
+    expect(text(el, '[data-block="rating"] .rpt-fig-value')).toBe('3,6');
     expect(el.textContent).toContain('mọi thứ ổn');
+  });
+
+  it('keeps the summary to two tips', () => {
+    const r = report({
+      suggestions: [
+        { kind: 'restock', text: 'Nhập thêm nguyên liệu' },
+        { kind: 'hire_server', text: 'Tuyển thêm phục vụ' },
+        { kind: 'marketing', text: 'Chạy quảng cáo' },
+      ],
+    });
+    const { el } = mountReport(atReport(r));
+    const tips = [...el.querySelectorAll<HTMLElement>('[data-block="tips"] [data-kind]')].map((t) => t.dataset.kind);
+    expect(tips).toEqual(['restock', 'hire_server']);
   });
 
   it('handles a day without customers: neutral result, no charts, no reviews', () => {
@@ -158,14 +178,14 @@ describe('Daily Report', () => {
     expect(result.dataset.result).toBe('none');
     expect(result.classList.contains('is-none')).toBe(true);
     expect(result.textContent).toContain('Không có khách');
-    expect(iconsIn(result)).toEqual(['i-people']);
+    expect(iconsIn(q(result, '.rpt-fig-label'))).toEqual(['i-people']);
     expect(el.querySelector('[data-block="top"]')).toBeNull();
     expect(el.querySelector('[data-block="out"]')).toBeNull();
     expect(el.querySelector('[data-block="recent"]')).toBeNull();
     expect(el.textContent).toContain('Chưa bán được món nào');
     expect(el.textContent).toContain('Không món nào hết nguyên liệu');
-    expect(text(el, '[data-block="rating"]')).toContain('Không đổi');
-    expect(text(el, '[data-block="customers"]')).toContain('0 khách');
+    expect(text(el, '[data-block="customers"] .rpt-fig-value')).toBe('0/0');
+    expect(text(el, '[data-block="customers"] .rpt-fig-sub')).toBe('phục vụ/đến');
   });
 
   it('labels the result from profit and arrivals', () => {
@@ -224,6 +244,105 @@ describe('Daily Report', () => {
     expect(el.hidden).toBe(true);
     view.update(null, true);
     expect(el.hidden).toBe(true);
+  });
+});
+
+describe('Daily Report against yesterday and the week', () => {
+  /** A closed day: revenue (a quarter of it on ingredients), served/arrived and the close rating. */
+  function day(n: number, revenue: number, served: number, rating: number): DayStats {
+    const d = createDayStats(n, rating);
+    d.revenue = revenue;
+    d.ingredientCost = revenue / 4;
+    d.customersServed = served;
+    d.customersArrived = served;
+    d.ratingEnd = rating;
+    return d;
+  }
+
+  /** The report of the last of `days`, the others in history, like the sim leaves it at closing. */
+  function onReport(days: DayStats[]): GameState {
+    const state = createNewGame('Quán Thử', 'normal', 42);
+    state.history = days.slice(0, -1);
+    state.today = days[days.length - 1]!;
+    state.day = state.today.day;
+    state.rating = state.today.ratingEnd;
+    state.phase = 'report';
+    if (state.day === WEEK_LENGTH) state.week!.result = scoreWeek(state)!;
+    state.lastReport = buildDailyReport(state);
+    return state;
+  }
+
+  function delta(el: HTMLElement, fig: string, vs: 'yesterday' | 'week'): HTMLElement {
+    return q(el, `[data-fig="${fig}"] [data-vs="${vs}"]`);
+  }
+
+  it('shows no change on day 1', () => {
+    const { el } = mountReport(onReport([day(1, 400_000, 40, 3.6)]));
+    expect(el.querySelectorAll('[data-block="figures"] [data-fig]')).toHaveLength(4);
+    expect(el.querySelector('[data-block="figures"] [data-vs]')).toBeNull();
+    expect(el.querySelector('.rpt-fig-delta')).toBeNull();
+  });
+
+  it('signs each change on day 3 against yesterday and the week average', () => {
+    const { el } = mountReport(onReport([day(1, 400_000, 40, 3.8), day(2, 500_000, 50, 4.0), day(3, 700_000, 40, 4.2)]));
+
+    const revenue = delta(el, 'revenue', 'yesterday');
+    expect(revenue.dataset.delta).toBe('up');
+    expect(revenue.textContent).toBe('+200.000đ so hôm qua');
+    expect(iconsIn(revenue)).toEqual(['i-trend-up']);
+    // Week average of days 1–2: 450.000đ.
+    expect(delta(el, 'revenue', 'week').textContent).toBe('+250.000đ so TB tuần');
+    expect(delta(el, 'profit', 'yesterday').dataset.delta).toBe('up');
+
+    const served = delta(el, 'customersServed', 'yesterday');
+    expect(served.dataset.delta).toBe('down');
+    expect(served.textContent).toBe('−10 so hôm qua');
+    expect(iconsIn(served)).toEqual(['i-trend-down']);
+    expect(delta(el, 'customersServed', 'week').dataset.delta).toBe('down');
+
+    expect(delta(el, 'stars', 'yesterday').textContent).toBe('+0,2 so hôm qua');
+    expect(delta(el, 'stars', 'week').textContent).toBe('+0,3 so TB tuần');
+  });
+
+  it('marks an unchanged figure as flat', () => {
+    const { el } = mountReport(onReport([day(1, 500_000, 40, 4.0), day(2, 500_000, 40, 4.0)]));
+    const revenue = delta(el, 'revenue', 'yesterday');
+    expect(revenue.dataset.delta).toBe('flat');
+    expect(iconsIn(revenue)).toEqual(['i-equal']);
+  });
+
+  it('shows the week revenue against its goal and the week day', () => {
+    const state = onReport([day(1, 400_000, 40, 3.8), day(2, 500_000, 50, 4.0), day(3, 700_000, 40, 4.2)]);
+    const { el } = mountReport(state);
+    const week = q(el, '[data-block="week"]');
+    expect(week.textContent).toContain('Tuần 1');
+    expect(week.textContent).toContain('ngày 3/7');
+    expect(week.textContent).toContain('1.600.000đ');
+    const pct = Math.round((1_600_000 / state.week!.goal.revenue) * 100);
+    expect(q(week, '[role="progressbar"]').getAttribute('aria-valuenow')).toBe(String(Math.min(100, pct)));
+  });
+
+  it('turns "Ngày tiếp theo" into "Xem kết tuần" on the last week day', () => {
+    const days = Array.from({ length: WEEK_LENGTH }, (_, i) => day(i + 1, 600_000, 40, 4));
+    const mid = mountReport(onReport(days.slice(0, 3)));
+    const next = q<HTMLButtonElement>(mid.el, '.rpt-foot .btn-primary');
+    expect(next.textContent).toBe('Ngày tiếp theo');
+    expect(next.dataset.action).toBe('next-day');
+    mid.el.remove();
+
+    const sent: Command[] = [];
+    let weekEnds = 0;
+    const view = createDailyReport({ dispatch: (cmd) => (sent.push(cmd), true), onWeekEnd: () => weekEnds++ });
+    document.body.append(view.el);
+    view.update(onReport(days), true);
+    const btn = q<HTMLButtonElement>(view.el, '.rpt-foot .btn-primary');
+    expect(btn.textContent).toBe('Xem kết tuần');
+    expect(btn.dataset.action).toBe('week-end');
+    expect(text(view.el, '[data-block="week"]')).toContain('ngày 7/7');
+    expect(view.el.textContent).toContain('Gợi ý cho tuần sau');
+    btn.click();
+    expect(weekEnds).toBe(1);
+    expect(sent).toEqual([]);
   });
 });
 
@@ -371,6 +490,19 @@ describe('report.css', () => {
     expect(focus).toMatch(/border-color:\s*var\(--focus-ring\)/);
     expect(focus).toMatch(/outline-offset:\s*calc\(-1 \* \(var\(--bw\) \+ var\(--size-focus-width\)\)\)/);
     expect(src).not.toMatch(/\.rpt-tab:focus(?!-visible)/);
+  });
+
+  it('keeps the footer in view and scrolls only the tab body, never sideways', async () => {
+    const src = await css();
+    const dialog = src.match(/\.rpt-dialog\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(dialog).toMatch(/display:\s*flex/);
+    expect(dialog).toMatch(/flex-direction:\s*column/);
+    expect(dialog).toMatch(/max-height:\s*100%/);
+    const body = src.match(/\.rpt-body\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(body).toMatch(/min-height:\s*0/);
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).toMatch(/overflow-x:\s*hidden/);
+    expect(src).toMatch(/\.rpt-foot\s*\{[^}]*flex:\s*none/);
   });
 
   it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {

@@ -1,11 +1,16 @@
 /* Daily Report and Reviews (Daily Report in design/t237-cartoon/index.html;
    tab states per design/p17-states). Shared tokens come from src/ui/styles. */
 .rpt-layer {
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-4);
 }
+/* Head and footer stay in view; only the tab body scrolls, so the main
+   button is always on screen. */
 .rpt-dialog {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: var(--size-dialog);
+  max-height: 100%;
   margin: auto 0;
   background: var(--surface-panel-solid);
   border: var(--size-outline) solid var(--border-outline);
@@ -23,6 +28,7 @@
   }
 }
 .rpt-head {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -90,15 +96,24 @@
 }
 
 .rpt-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
+.rpt-body.is-summary {
+  padding: var(--space-4) var(--space-6);
+  gap: var(--space-3);
+}
 .rpt-body[hidden] {
   display: none;
 }
 .rpt-foot {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -187,9 +202,139 @@
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
 }
-.rpt-result-note {
+
+/* Summary figures: profit, revenue, customers, stars, each with its change
+   against yesterday and the week so far (arrow shape, sign, then colour). */
+.rpt-figs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.rpt-fig {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
+}
+.rpt-fig.is-result {
+  background: var(--surface-ok);
+  color: var(--text-ok);
+}
+.rpt-fig.is-result.is-loss {
+  background: var(--surface-danger);
+  color: var(--text-danger);
+}
+.rpt-fig.is-result.is-none {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.rpt-fig-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+}
+.rpt-fig-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-fig-sub,
+.rpt-fig-delta {
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
+}
+.rpt-fig-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+.rpt-fig-delta.is-up b {
+  color: var(--text-ok);
+}
+.rpt-fig-delta.is-down b {
+  color: var(--text-danger);
+}
+
+/* Week revenue against its goal: label, bar, numbers on one line. */
+.rpt-week {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+.rpt-week-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.rpt-week-num {
+  font-variant-numeric: tabular-nums;
+}
+.rpt-week.is-done .rpt-bar-fill {
+  background: var(--text-ok);
+}
+
+/* Money | missions, sellers and stock-outs: two flat columns, no cards. */
+.rpt-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+}
+.rpt-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+}
+.rpt-split .rpt-col {
+  gap: var(--space-2);
+}
+.rpt-split .rpt-stat {
+  padding: 0;
+  font-size: var(--font-size-sm);
+}
+.rpt-split .rpt-stat.is-total {
+  font-size: var(--font-size-md);
+}
+.rpt-cash {
+  margin-top: var(--space-1);
+}
+.rpt-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+.rpt-line.is-warn {
+  color: var(--text-danger);
+}
+.rpt-inline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+.rpt-inline li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .rpt-grid {
@@ -239,13 +384,7 @@
   color: var(--text-danger);
 }
 
-/* Rating */
-.rpt-rating {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
+/* Stars of a review */
 .rpt-stars {
   display: inline-flex;
   align-items: center;
@@ -256,32 +395,8 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-heavy);
 }
-.rpt-delta {
-  font-weight: var(--font-weight-heavy);
-}
 
-/* Best sellers, out of stock, tips */
-.rpt-bars {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.rpt-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 10rem) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-}
-.rpt-bar-name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+/* Bars (week progress here and on the week-end screen), tips */
 .rpt-bar-track {
   height: var(--size-bar);
   border: var(--size-outline-sm) solid var(--border-outline);
@@ -295,22 +410,20 @@
   background: var(--data-bar);
   border-right: var(--size-outline-sm) solid var(--border-outline);
 }
-.rpt-bar-num {
-  min-width: 6ch;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.rpt-out {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
+/* Summary tips: two short lines with a small icon disc. */
+.rpt-tips .rpt-list {
+  gap: var(--space-1);
 }
 .rpt-tip {
   display: grid;
-  grid-template-columns: var(--size-target) minmax(0, 1fr);
-  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
   align-items: center;
+  font-size: var(--font-size-sm);
+}
+.rpt-tip .rpt-tip-icon {
+  width: calc(var(--size-target) / 2 + var(--space-2));
+  height: calc(var(--size-target) / 2 + var(--space-2));
 }
 .rpt-tip-icon {
   display: grid;
@@ -322,49 +435,46 @@
   border-radius: var(--radius-pill);
 }
 
-/* "Lên cấp N" band (design/p20 §6): in place in the summary, a flat tint with
-   an ink outline, listing what the level unlocks. */
+/* "Lên cấp N" band (design/p20 §6): a thin flat tint with an ink outline,
+   the level and what it unlocks on one line (wraps when narrow). */
 .rpt-levelup {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-3);
-  align-items: start;
-  padding: var(--space-3) var(--space-4);
-  background: var(--level-chip-bg);
-  color: var(--level-chip-text);
-  border: var(--size-outline) solid var(--border-outline);
-  border-radius: var(--radius-lg);
-}
-.rpt-levelup-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-.rpt-levelup-title {
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-tight);
-}
-.rpt-unlocks li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  background: var(--level-chip-bg);
+  color: var(--level-chip-text);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
+.rpt-levelup-title {
+  line-height: var(--line-height-tight);
+}
 
-/* Daily missions in the summary: result label, name, measure and reward. */
+/* Daily missions in the summary: label, name and reward, then the measure. */
+.rpt-missions {
+  gap: var(--space-1);
+}
 .rpt-mission {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-3);
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0 var(--space-2);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+.rpt-mission-goal {
+  grid-column: 2 / -1;
+  font-size: var(--font-size-xs);
+}
+.rpt-mission-reward {
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .rpt-xp {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
+  white-space: pre;
 }
 
 /* "Đang tổng kết": numbers not in yet */
@@ -699,18 +809,37 @@
   .rpt-foot {
     padding: var(--space-3) var(--space-4);
   }
-  .rpt-body {
+  .rpt-body,
+  .rpt-body.is-summary {
     padding: var(--space-4);
   }
   .rpt-tabs {
     margin-left: 0;
     width: 100%;
   }
-  .rpt-foot .btn {
-    flex: 1 1 100%;
+  .rpt-foot-actions {
+    width: 100%;
   }
-  .rpt-bar {
-    grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) auto;
+  .rpt-foot .btn {
+    flex: 1 1 10rem;
+  }
+  .rpt-figs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rpt-fig-value {
+    font-size: var(--font-size-lg);
+  }
+  .rpt-week {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+  }
+  .rpt-week-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .rpt-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
   }
   .rpt-result {
     padding: var(--space-3) var(--space-4);
