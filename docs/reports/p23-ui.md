@@ -19,8 +19,8 @@
 
 | Khổ | Ảnh | Đã sửa |
 | --- | --- | --- |
-| 390 | ![Báo cáo ngày 3, 390](p23-review/report-day3-390-p23.jpg) | Ô kết quả và các khung mục lồng nhau thành 4 ô số chính (lãi/lỗ, doanh thu, khách, sao), mỗi ô có Δ so hôm qua và Δ so TB tuần; phần phải cuộn giảm từ 1849 px xuống 418 px. |
-| 1280 | ![Báo cáo ngày 3, 1280](p23-review/report-day3-1280-p23.jpg) | 4 ô số kèm Δ so hôm qua và so TB tuần, một dòng doanh thu tuần so mục tiêu, Thu chi cạnh nhiệm vụ; phần phải cuộn 1392 px thành vừa một màn. |
+| 390 | ![Báo cáo ngày 3, 390](p23-review/report-day3-390-p23.jpg) | Ô kết quả và các khung mục lồng nhau thành 4 ô số chính (lãi/lỗ, doanh thu, khách, sao), mỗi ô có Δ so hôm qua và Δ so TB tuần, Δ của cả 4 ô cùng hàng (khoanh nét mảnh ngoài vùng chữ); phần phải cuộn ít hơn 1849 px của P22 (số đo trên nhãn ảnh). Chân là một hàng: nút "Ngày tiếp theo" chiếm phần lớn bề ngang, "Xem đánh giá" thu về icon; Dock và huy hiệu ẩn khi báo cáo mở. |
+| 1280 | ![Báo cáo ngày 3, 1280](p23-review/report-day3-1280-p23.jpg) | 4 ô số kèm Δ so hôm qua và so TB tuần cùng hàng, một dòng doanh thu tuần so mục tiêu, Thu chi cạnh nhiệm vụ; phần phải cuộn 1392 px thành vừa một màn. |
 
 ## 3. Tổng kết tuần 1 và tuần 2
 

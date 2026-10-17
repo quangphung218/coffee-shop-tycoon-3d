@@ -350,8 +350,9 @@ const REPORT_SELS = {
   // P22 summary: the result card and every section frame.
   frames: '#rpt-summary > .rpt-result, #rpt-summary .rpt-section',
   figures: '#rpt-summary [data-block="figures"]',
-  vsYesterday: '#rpt-summary .rpt-fig-delta[data-vs="yesterday"]',
-  vsWeek: '#rpt-summary .rpt-fig-delta[data-vs="week"]',
+  // Both change lines of a cell (so hôm qua above, so TB tuần below).
+  deltas: '#rpt-summary .rpt-fig-deltas',
+  foot: '.rpt-layer:not([hidden]) .rpt-foot-actions',
   week: '#rpt-summary [data-block="week"]',
   split: '#rpt-summary .rpt-split',
 };
@@ -502,6 +503,10 @@ const inWindow = (boxes, { width: w, height: h }) =>
     const y = Math.max(0, Math.min(h, b.y + b.h) - Math.max(0, b.y));
     return (x * y) / Math.max(1, b.w * b.h) >= MIN_ON_IMAGE;
   });
+/** CSS px between the change lines and their ring. */
+const DELTA_RING_OFFSET = 4;
+/** Boxes grown by `d` on every side. */
+const grow = (boxes, d) => boxes.map((b) => ({ x: b.x - d, y: b.y - d, w: b.w + 2 * d, h: b.h + 2 * d }));
 /** Marks with nothing to ring are left out when `optional`. */
 const keep = (marks) => marks.filter((m) => !m.optional || m.boxes.some(Boolean));
 
@@ -544,9 +549,10 @@ async function reportBoard(browser, name, viewport, { base, cur }) {
     marks: keep([
       { frame: 0, boxes: inWindow(b.frames, viewport), label: `${b.frames.length} khung lồng nhau, ${fold(base.overflow)}` },
       { frame: 1, boxes: a.figures, label: `4 ô số chính, ${fold(cur.overflow)}` },
-      { frame: 1, boxes: inWindow(a.vsYesterday, viewport), label: 'Δ so hôm qua' },
-      { frame: 1, boxes: inWindow(a.vsWeek, viewport), label: 'Δ so TB tuần' },
+      // A thin ring a few px outside the text, so the numbers stay readable.
+      { frame: 1, boxes: grow(inWindow(a.deltas, viewport), DELTA_RING_OFFSET), thin: true, label: 'Δ so hôm qua (trên), so TB tuần (dưới), cùng hàng ở cả 4 ô' },
       { frame: 1, boxes: inWindow(a.week, viewport), label: 'Doanh thu tuần so mục tiêu', optional: true },
+      { frame: 1, boxes: inWindow(a.foot, viewport), label: 'Chân: mỗi nút một dòng', optional: true },
     ]),
     include: [...b.dialog, ...a.dialog],
     avoid: avoidTexts(base, cur),

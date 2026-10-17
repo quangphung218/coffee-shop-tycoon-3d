@@ -762,10 +762,11 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      ctx.lineWidth = 6;
+      // `thin` marks (rings close around small text) get half the line.
+      ctx.lineWidth = m.thin ? 3 : 6;
       ctx.strokeStyle = INK;
       ctx.stroke();
-      ctx.lineWidth = 3;
+      ctx.lineWidth = m.thin ? 1.5 : 3;
       ctx.strokeStyle = COLOR[p.side];
       ctx.stroke();
     }
