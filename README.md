@@ -186,6 +186,7 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
 | [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần: lịch mở khoá tuần 1, sự kiện, thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, save cũ. |
+| [docs/reports/p24-ui.md](docs/reports/p24-ui.md) | Lỗi gợi ý nhập bỏ sót nguyên liệu của món mới bật, thang cỡ chữ/nút/viền/bóng chung, ảnh trước/sau HUD, dock, các bảng, toast, báo cáo. |
 | [docs/reports/p23-ui.md](docs/reports/p23-ui.md) | Ảnh trước/sau HUD 3 cụm, Daily Report gọn, Tổng kết tuần 1 và 2, danh sách thành phần lúc tải. |
 | [docs/reports/p21-week.md](docs/reports/p21-week.md) | Báo cáo tuần 7 ngày: log mô phỏng 7 ngày cùng seed, ảnh trước/sau màn kết tuần, mẫu JSON Số liệu chơi. |
 | [docs/reports/loading-experience.md](docs/reports/loading-experience.md) | Màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau. |

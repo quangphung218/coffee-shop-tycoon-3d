@@ -1,0 +1,98 @@
+# P24 — Nhập hàng cho món mới bật, thang giao diện chung
+
+Báo cáo P24 so với P23 `3a08fe2`: vì sao Gợi ý nhập tự động bỏ sót Cam, Bột bánh, Bơ và cách sửa; các chỗ đã thiết kế lại theo từng vùng; ảnh trước/sau có khoanh ở 390 và 1280 px; kết quả kiểm layout, khởi động và khung hình.
+
+| Phần | Lệnh |
+| --- | --- |
+| Ảnh trước/sau | `npm run media:p24` ([media.md](../media.md#ảnh-trướcsau-p24)) |
+| Lề, tràn ngang, số hàng HUD | `npm run layout` |
+| Khởi động Main Menu | `npm run build && node scripts/measure-startup.mjs` |
+| Khung hình 5 s đầu | `npm run perf:frames` |
+| Kiểm tra code | `npm run check` |
+
+## 1. Lỗi không tự nhập Cam, Bột bánh, Bơ
+
+### Nguyên nhân gốc
+
+| Chỗ | Hành vi ở P23 | Hệ quả |
+| --- | --- | --- |
+| `expectedDemand` (`src/sim/inventory.ts`) | Nhu cầu mỗi món đang bật = `sold + outOfStock` của ngày tham chiếu (hôm nay sau khi đóng cửa, hoặc ngày gần nhất trong lịch sử); chỉ ngày 1 mới chia theo độ phổ biến. | Món vừa bật (Nước cam ngày 3, Bánh ngọt ngày 6) chưa bán ly nào nên nhu cầu 0. |
+| `autoRestockSuggestion` | Chỉ thêm nguyên liệu khi lượng dùng dự kiến × 1,2 vượt tồn kho. | Nguyên liệu riêng của món có nhu cầu 0 (Cam; Bột bánh, Bơ; Chanh khi Trà chanh bị ẩn) không bao giờ vào gợi ý. |
+| `pickOrder` (`src/sim/customers.ts`) | Chỉ chọn trong các món còn làm được, trừ khi mọi món đều hết. `today.outOfStock` chỉ tăng khi khách bỏ về vì hết hàng. | Món hết nguyên liệu giữa ngày không để lại dấu vết nào, nên hôm sau vẫn nhu cầu 0: vòng lặp tự khoá. |
+
+Không có dụng ý: món đã mở khoá và đã bật thì phải được nhập hàng. Test tái hiện viết trước khi sửa: `tests/sim/restock-demand.test.ts` (commit `0d96625`, đỏ có chủ ý).
+
+### Cách sửa
+
+| Thay đổi | Ở đâu |
+| --- | --- |
+| Món đang bật mà ngày tham chiếu không ghi nhận nhu cầu nhận phần theo độ phổ biến trên tổng số ly của ngày đó (tổng 0 thì dùng mặc định ngày 1). | `expectedDemand` |
+| `pickOrder` cộng phần trọng số của mỗi món đang hết vào `DayStats.missedDemand` (trường tùy chọn, không rút thêm số ngẫu nhiên); nhu cầu hôm sau cộng phần này. Save cũ thiếu trường đọc là `{}`. | `pickOrder`, `DayStats` |
+| Không đủ tiền thì không mua và báo "Thiếu …đ để nhập Cam, Bột bánh"; chân bảng Kho ghi số tiền còn thiếu. | `applyRestockSuggestion`, bảng Kho |
+| Mỗi lần mua thành công phát `GameEvent` `spend`; UI hiện toast, không ghi câu vào bảng. | sim, `src/ui/core/toast.ts` |
+| Mục tiêu tuần Khó và tốc độ tăng mục tiêu tuần đo lại sau khi sửa (`WEEK_GOALS.hard` 23.200.000đ, `WEEK_GOAL_GROWTH` 0,6). | `c7c9eca` |
+
+"Chưa mở nhà cung cấp" không tồn tại trong game: lý do duy nhất không nhập được là thiếu tiền.
+
+### Playtest
+
+Ván Vừa, seed `1760400000000 >>> 0`, tự phục vụ, mỗi sáng bấm Gợi ý rồi Nhập hàng; sáng ngày 3 bật Nước cam, sáng ngày 6 bật Bánh ngọt, đọc gợi ý ngay sau khi bật.
+
+| Sáng | Tồn kho lúc bật | Gợi ý nhập (P24) | Kết quả trong ngày |
+| --- | --- | --- | --- |
+| Ngày 3, bật Nước cam | Cam 0 | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 (895.000đ) | Bán 16 ly Nước cam |
+| Ngày 6, bật Bánh ngọt | Cam 27, Bột bánh 0, Bơ 0 | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 (670.000đ) | Bán 25 bánh, 7 ly Nước cam |
+
+Kết quả: **PASS**, gợi ý có Cam, Bột bánh và Bơ. `npm run media:p24` in gợi ý của cả hai sim trên cùng ván; ở P23, Cam (ngày 3), Bột bánh và Bơ (ngày 6) không có trong gợi ý.
+
+## 2. Các chỗ đã thiết kế lại
+
+Thang chung đặt một lần trong `src/ui/styles/tokens.css` (ghi trong `design/NOTES.md`):
+
+| Token | Giá trị |
+| --- | --- |
+| Cỡ chữ | `--font-size-caption` 12, `--font-size-label` 14, `--font-size-value` 16, `--font-size-panel-title` 20, `--font-size-screen-title` 24 px |
+| Nút, hàng | `--size-control-sm` 32, `--size-control-md` 44, `--size-control-lg` 56, `--size-hud-row` 48 px |
+| Viền | `--size-frame-outline` 2 px cho khung, cụm HUD, dock, bảng, toast và nút (trước là 3 px) |
+| Bóng | Bóng mực giảm một nửa (`--shadow-lg` 6 → 3 px, `--shadow-md` 4 → 2 px, `--shadow-sm` 2 → 1 px), bóng mờ `0 6px 14px` alpha 0,12 (trước `0 12px 24px` alpha 0,18); khung nổi dùng `--frame-shadow` = `--shadow-sm` + bóng mờ |
+
+| Vùng | Đã sửa |
+| --- | --- |
+| HUD | Dải 4 chấm pha thành một pill có icon và tên pha, thêm "tới HH:MM" khi đang mở cửa; danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Các cụm cùng cao `--size-hud-row`, viền 2 px, `--frame-shadow`; tốc độ đang chọn chỉ còn nền mật ong. |
+| Dock | Nút 56 px, nhãn 14 px, viền 2 px, `--frame-shadow`. |
+| Toast | Mỗi sự kiện `spend` thành một toast thành công; các lần mua liền nhau gộp một toast: cộng tiền, tối đa 3 tên, số dư mới, đếm lại 4 s. |
+| Kho | Bỏ câu "Đã nhập … Còn …" và kết quả gợi ý trong bảng; hàng gợi ý có nhãn "gợi ý" (bỏ nền tô); chân bảng ghi khi không cần nhập hoặc còn thiếu bao nhiêu đ; dòng dưới Gợi ý là một câu giới thiệu cố định. |
+| Kho, Menu | Một mẫu hàng: icon 32 \| tên + một dòng meta \| một nhãn trạng thái \| ô nhập hoặc công tắc. Menu ghi "Thiếu Cam" kèm link "Mở Kho" thay cho "Khóa" và chấm độ phổ biến. Ô nhập và nút trong bảng theo `--size-control-md/lg`. |
+| Nhân viên | Ảnh đại diện ở ô icon, lương và tốc độ trên một dòng meta ("Lương …/ngày · tốc độ ×1,15"); bỏ thanh tốc độ và nhãn "Vai"; Bận/Rảnh là nhãn trạng thái; menu vai và "Cho nghỉ" chung ô điều khiển. |
+| Marketing | Giá vào dòng meta ("Giá … · +N% khách · N ngày"), bỏ dòng mô tả và cột giá; "Đang chạy" là nhãn duy nhất. |
+| Nâng cấp | Một dòng meta "Giá … · Cấp n/max · mỗi cấp …", bỏ dòng mô tả và cột giá; nhãn chỉ còn "Mở ngày N"/"Mở ở cấp N" và "Tối đa"; "Gỡ (+…)" nằm dưới hàng cùng lý do. |
+| Việc | Danh sách việc, nhiệm vụ và mẹo dùng chung mẫu hàng; "Cần chú ý" là nhãn duy nhất; bỏ nền cảnh báo và thẻ nhiệm vụ tô màu; dòng tuần là chữ thường, không khung. |
+| Báo cáo ngày, Tổng kết tuần | Tiêu đề theo `--font-size-screen-title`/`--font-size-panel-title`, số liệu `--font-size-value`; viền 2 px; chỉ hộp còn `--shadow-card`, dải kết quả và ô mẹo bỏ bóng lồng; nút chính 56 px, nút phụ và tab 44 px; chân ở 390 px vẫn một hàng; dòng phụ bỏ giờ "07:00–21:00". |
+
+## 3. Ảnh trước/sau
+
+Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (nét liền xanh). Nhãn trên ảnh ghi chỗ đã sửa, số px đọc từ style tính được của mỗi bản lúc chụp. Mọi ảnh chụp ngày 3 tuần 1 (Hội chợ), trừ Tổng kết tuần.
+
+| Cảnh | 390×844 | 1280×800 |
+| --- | --- | --- |
+| HUD pha chuẩn bị | ![HUD chuẩn bị 390](p24-review/hud-prep-390-p24.jpg) | ![HUD chuẩn bị 1280](p24-review/hud-prep-1280-p24.jpg) |
+| HUD giờ cao điểm | ![HUD cao điểm 390](p24-review/hud-peak-390-p24.jpg) | ![HUD cao điểm 1280](p24-review/hud-peak-1280-p24.jpg) |
+| Dock | ![Dock 390](p24-review/dock-390-p24.jpg) | ![Dock 1280](p24-review/dock-1280-p24.jpg) |
+| Kho sau Gợi ý | ![Kho 390](p24-review/kho-390-p24.jpg) | ![Kho 1280](p24-review/kho-1280-p24.jpg) |
+| Sau 2 lần Nhập hàng | ![Toast 390](p24-review/toast-390-p24.jpg) | ![Toast 1280](p24-review/toast-1280-p24.jpg) |
+| Menu, Nước cam thiếu Cam | ![Menu 390](p24-review/menu-390-p24.jpg) | ![Menu 1280](p24-review/menu-1280-p24.jpg) |
+| Nhân viên | ![Nhân viên 390](p24-review/staff-390-p24.jpg) | ![Nhân viên 1280](p24-review/staff-1280-p24.jpg) |
+| Nâng cấp | ![Nâng cấp 390](p24-review/upgrades-390-p24.jpg) | ![Nâng cấp 1280](p24-review/upgrades-1280-p24.jpg) |
+| Báo cáo ngày 3 | ![Báo cáo 390](p24-review/report-390-p24.jpg) | ![Báo cáo 1280](p24-review/report-1280-p24.jpg) |
+| Tổng kết tuần 1 | ![Tuần 1 390](p24-review/week1-390-p24.jpg) | ![Tuần 1 1280](p24-review/week1-1280-p24.jpg) |
+
+## 4. Kết quả kiểm
+
+| Kiểm | Ngưỡng | Kết quả |
+| --- | --- | --- |
+| Playtest Cam, Bột bánh, Bơ trong gợi ý | Có cả ba | PASS (mục 1) |
+| `npm run check` | tsc, test, build xanh | PASS: 80 file, 1117 test |
+| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy |
+| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | Chưa chạy |
+| `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | Chưa chạy |
+| `npm run media:p24` | Không cảnh báo `!!` | Chưa chạy |
