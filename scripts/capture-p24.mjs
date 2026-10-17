@@ -402,11 +402,11 @@ const UPGRADE = `${PANEL} li[data-upgrade]`;
 const UPGRADE_SELS = { panel: PANEL, row: UPGRADE };
 const UPGRADE_STYLES = { row: UPGRADE, meta: `:is(${UPGRADE}) .item-meta`, side: `${PANEL} .item-side` };
 const KHO_ROW = ROW('data-ingredient', 'orange');
-const KHO_SELS = { panel: PANEL, row: KHO_ROW, label: `${PANEL} .stepper-label`, note: `${PANEL} .kho-note`, toast: '.toasts .toast' };
+const KHO_SELS = { panel: PANEL, row: KHO_ROW, label: `${KHO_ROW} .stepper-label`, note: `${PANEL} .kho-note`, toast: '.toasts .toast' };
 const KHO_STYLES = {
   qty: `${KHO_ROW} .step-input`,
   tag: `${KHO_ROW} .sug:not(.is-off)`,
-  label: `${PANEL} .stepper-label`,
+  label: `${KHO_ROW} .stepper-label`,
   note: `${PANEL} .kho-note`,
   toast: '.toasts .toast',
   toastTitle: '.toasts .toast-title',
@@ -428,7 +428,8 @@ async function panelSession(browser, url, save, viewport, who) {
     await scrollPanel(page, MENU_SELS.row);
     const menu = await frame(page, MENU_SELS, MENU_STYLES);
     await openPanel(page, 'staff');
-    await scrollPanel(page, null);
+    // The P23 rows are taller: bring the first one fully into view.
+    await scrollPanel(page, 'li[data-staff], li[data-candidate]');
     const staff = await frame(page, STAFF_SELS, STAFF_STYLES);
     await openPanel(page, 'upgrades');
     await scrollPanel(page, null);
@@ -438,10 +439,19 @@ async function panelSession(browser, url, save, viewport, who) {
     await sleep(400);
     await scrollPanel(page, KHO_ROW);
     const kho = await frame(page, KHO_SELS, KHO_STYLES);
-    await page.locator(`${PANEL} [data-action="buy"]`).click();
-    await sleep(500);
-    await page.locator(`${ROW('data-ingredient', 'cup')} .step-btn[aria-label^="Thêm"]`).click();
-    await page.locator(`${PANEL} [data-action="buy"]`).click();
+    // Both purchases in one page task, well inside the 4 s merge window even
+    // when software WebGL makes Playwright clicks slow.
+    await page.evaluate(
+      async ({ buy, more }) => {
+        const tick = () => new Promise((r) => setTimeout(r, 150));
+        document.querySelector(buy)?.click();
+        await tick();
+        document.querySelector(more)?.click();
+        await tick();
+        document.querySelector(buy)?.click();
+      },
+      { buy: `${PANEL} [data-action="buy"]`, more: `${ROW('data-ingredient', 'cup')} .step-btn[aria-label^="Thêm"]` },
+    );
     await sleep(600);
     await scrollPanel(page, null);
     const toast = await frame(page, KHO_SELS, KHO_STYLES, { toasts: true });
@@ -567,6 +577,8 @@ const change = (a, b, unit = 'px') => (a === b ? `${b}${unit}` : `${a}${unit} �
 const quote = (text, max = 60) => `"${text.length > max ? `${text.slice(0, max - 1)}…` : text}"`;
 /** A desktop HUD is a thin strip: keep some scene under it for the labels. */
 const HUD_LABEL_ROOM = 170;
+/** Scene strip (px) kept above the dock for the same reason. */
+const DOCK_LABEL_ROOM = 120;
 const PHASE_WORD = { prep: 'pha chuẩn bị', peak: 'giờ cao điểm (mở ở 4x, chụp ở 1x)' };
 
 async function hudBoard(browser, name, width, when, { base, cur }) {
@@ -583,7 +595,11 @@ async function hudBoard(browser, name, width, when, { base, cur }) {
       { frame: 0, boxes: base.boxes.progress, label: `Khung cụm: viền ${b.cluster?.outline}px, bóng ${b.cluster?.shadow}px` },
       { frame: 1, boxes: cur.boxes.progress, label: `Viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}, cao ${change(b.cluster?.h, a.cluster?.h)}` },
     ]),
-    include: [...base.boxes.hud, ...cur.boxes.hud].map((r) => (width >= DESK.width ? { ...r, h: r.h + HUD_LABEL_ROOM } : r)),
+    // A desktop HUD spans the window: crop to the phase and Tiến độ, so they stay readable.
+    include:
+      width >= DESK.width
+        ? [...base.boxes.phase, ...base.boxes.progress, ...cur.boxes.phase, ...cur.boxes.progress].map((r) => ({ ...r, h: r.h + HUD_LABEL_ROOM }))
+        : [...base.boxes.hud, ...cur.boxes.hud],
     avoid: avoidTexts(base, cur),
     notes: [
       `Khổ ${width} px, ngày ${SAVE_DAY} tuần 1 (Hội chợ), ${PHASE_WORD[when]}, ván Vừa seed ${SEED}. P23: dải ${b.steps?.count ?? 0} bước pha, chỉ bước hiện tại có chữ, ${dots} bước còn lại là chấm. P24: một pill tên pha${a.next?.text ? ` và giờ đổi pha (${a.next.text})` : ''}, danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Khung cụm: viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}.`,
@@ -597,10 +613,11 @@ async function dockBoard(browser, name, width, { base, cur }) {
   return board(browser, name, {
     frames: [before(base.png, 'Dock'), after(cur.png, 'Dock')],
     marks: [
-      { frame: 0, boxes: base.boxes.dock, label: `Nút ${b.dockBtn?.h}px, chữ ${b.dockLabel?.font}px, bóng ${b.dock?.shadow}px` },
-      { frame: 1, boxes: cur.boxes.dock, label: `Nút ${change(b.dockBtn?.h, a.dockBtn?.h)}, chữ ${change(b.dockLabel?.font, a.dockLabel?.font)}, bóng ${change(b.dock?.shadow, a.dock?.shadow)}, viền ${change(b.dock?.outline, a.dock?.outline)}` },
+      { frame: 0, boxes: base.boxes.dock, label: `Nút ${b.dockBtn?.h}px, bóng ${b.dock?.shadow}px` },
+      { frame: 1, boxes: cur.boxes.dock, label: `Nút ${change(b.dockBtn?.h, a.dockBtn?.h)}, bóng ${change(b.dock?.shadow, a.dock?.shadow)}, viền ${change(b.dock?.outline, a.dock?.outline)}` },
     ],
-    include: [...base.boxes.dock, ...cur.boxes.dock],
+    // The dock is a thin strip at the bottom: keep some scene above it for the labels.
+    include: [...base.boxes.dock, ...cur.boxes.dock].map((r) => ({ ...r, y: r.y - DOCK_LABEL_ROOM, h: r.h + DOCK_LABEL_ROOM })),
     avoid: avoidTexts(base, cur),
     notes: [
       `Khổ ${width} px, sáng ngày ${SAVE_DAY}. Dock ${b.dockBtn?.count ?? 0} nút. P23 → P24: chiều cao nút ${change(b.dockBtn?.h, a.dockBtn?.h)}, cỡ chữ nhãn ${change(b.dockLabel?.font, a.dockLabel?.font)}, bóng dưới khung ${change(b.dock?.shadow, a.dock?.shadow)}, viền ${change(b.dock?.outline, a.dock?.outline)}.`,
@@ -636,13 +653,13 @@ async function toastBoard(browser, name, width, { base, cur }) {
     frames: [before(base.png, 'Sau 2 lần Nhập hàng'), after(cur.png, 'Sau 2 lần Nhập hàng')],
     marks: keep([
       { frame: 0, boxes: base.boxes.note, label: `Câu trong bảng ${quote(note)}` },
-      { frame: 1, boxes: cur.boxes.toast, label: `Câu trong bảng → ${a.toast?.count ?? 0} toast gộp 2 lần nhập ${quote(toastText)}` },
+      { frame: 1, boxes: cur.boxes.toast, label: 'Câu trong bảng → 1 toast gộp 2 lần nhập' },
       { frame: 1, boxes: cur.boxes.note, label: 'Bảng chỉ giữ 1 dòng giới thiệu cố định', optional: true },
     ]),
     include: [...base.boxes.note, ...cur.boxes.note, ...cur.boxes.toast],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}: Gợi ý → Nhập hàng, rồi thêm 1 gói Ly → Nhập hàng lần nữa, chụp ngay sau lần thứ hai. P23 ghi câu mua hàng vào khung trên cùng của Kho, lần sau đè lần trước. P24 báo bằng ${a.toast?.count ?? 0} toast: các lần nhập trong 4 giây cộng dồn tiền, liệt kê tối đa 3 tên và số dư mới; khung Kho không còn câu mua hàng.`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}: Gợi ý → Nhập hàng, rồi thêm 1 gói Ly → Nhập hàng lần nữa, chụp ngay sau lần thứ hai. P23 ghi câu mua hàng vào khung trên cùng của Kho, lần sau đè lần trước. P24 báo bằng ${a.toast?.count ?? 0} toast (${quote(toastText, 90)}): các lần nhập trong 4 giây cộng dồn tiền, liệt kê tối đa 3 tên và số dư mới; khung Kho không còn câu mua hàng.`,
     ],
   });
 }
@@ -650,17 +667,17 @@ async function toastBoard(browser, name, width, { base, cur }) {
 async function menuBoard(browser, name, width, { base, cur }) {
   const b = base.styles;
   const a = cur.styles;
-  const link = a.link?.text ? ` + link "${a.link.text}"` : '';
+  const link = a.link?.text && a.link.text !== b.link?.text ? `; link ${b.link?.text ? `"${b.link.text}" → ` : ''}"${a.link.text}"` : '';
   return board(browser, name, {
     frames: [before(base.png, 'Menu: Nước cam thiếu Cam'), after(cur.png, 'Menu: Nước cam thiếu Cam')],
     marks: [
-      { frame: 0, boxes: base.boxes.row, label: `Nhãn "${b.badge?.text ?? ''}"${b.dots ? ` + ${b.dots.count} chấm phổ biến` : ''}, không nói thiếu gì` },
-      { frame: 1, boxes: cur.boxes.row, label: `Nhãn "${a.badge?.text ?? ''}"${link}` },
+      { frame: 0, boxes: base.boxes.row, label: `Nhãn "${b.badge?.text ?? ''}"${b.dots ? ` + ${b.dots.count} chấm phổ biến` : ''}` },
+      { frame: 1, boxes: cur.boxes.row, label: `"${b.badge?.text ?? ''}" → "${a.badge?.text ?? ''}"${b.dots && !a.dots ? '; chấm → chữ trong dòng meta' : ''}${link}` },
     ],
     include: [...base.boxes.row, ...cur.boxes.row],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, Nước cam đã bật, kho chưa có Cam. P23: nhãn "${b.badge?.text ?? ''}" và chấm độ phổ biến. P24: nhãn nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${a.link?.text ? ` và link "${a.link.text}" mở thẳng bảng Kho` : ''}; hàng dùng chung mẫu item-row với Kho.`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, Nước cam đã bật, kho chưa có Cam. P23: nhãn "${b.badge?.text ?? ''}" cạnh tên và chấm độ phổ biến; nguyên liệu thiếu chỉ ở dòng lý do. P24: nhãn trạng thái nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${a.link?.text ? ` và link "${a.link.text}" mở thẳng bảng Kho` : ''}; hàng dùng chung mẫu item-row với Kho.`,
     ],
   });
 }
@@ -673,12 +690,12 @@ async function staffBoard(browser, name, width, { base, cur }) {
     frames: [before(base.png, 'Nhân viên'), after(cur.png, 'Nhân viên')],
     marks: [
       { frame: 0, boxes: first(base.boxes.row), label: `Khung riêng, cao ${b.row?.h}px${extra ? `: ${extra}` : ''}` },
-      { frame: 1, boxes: first(cur.boxes.row), label: `Hàng chung item-row, cao ${change(b.row?.h, a.row?.h)}: ${quote(a.meta?.text ?? '', 44)}` },
+      { frame: 1, boxes: first(cur.boxes.row), label: `Hàng chung, 1 dòng meta, cao ${change(b.row?.h, a.row?.h)}` },
     ],
     include: [...first(base.boxes.row), ...first(cur.boxes.row)],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}. Hàng nhân viên và ứng viên theo mẫu Kho/Menu: ảnh đại diện ở ô icon, lương và tốc độ trên một dòng meta, Bận/Rảnh là nhãn trạng thái; bỏ thanh tốc độ và nhãn "Vai".`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}. Dòng meta P24: ${quote(a.meta?.text ?? '', 60)}. Hàng nhân viên và ứng viên theo mẫu Kho/Menu: ảnh đại diện ở ô icon, lương và tốc độ trên một dòng meta, Bận/Rảnh là nhãn trạng thái; bỏ thanh tốc độ và nhãn "Vai".`,
     ],
   });
 }

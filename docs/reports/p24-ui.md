@@ -38,12 +38,12 @@ Không có dụng ý: món đã mở khoá và đã bật thì phải được n
 
 Ván Vừa, seed `1760400000000 >>> 0`, tự phục vụ, mỗi sáng bấm Gợi ý rồi Nhập hàng; sáng ngày 3 bật Nước cam, sáng ngày 6 bật Bánh ngọt, đọc gợi ý ngay sau khi bật.
 
-| Sáng | Tồn kho lúc bật | Gợi ý nhập (P24) | Kết quả trong ngày |
+| Sáng | Gợi ý nhập P23 `3a08fe2` | Gợi ý nhập P24 | P24 trong ngày |
 | --- | --- | --- | --- |
-| Ngày 3, bật Nước cam | Cam 0 | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 (895.000đ) | Bán 16 ly Nước cam |
-| Ngày 6, bật Bánh ngọt | Cam 27, Bột bánh 0, Bơ 0 | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 (670.000đ) | Bán 25 bánh, 7 ly Nước cam |
+| Ngày 3, bật Nước cam (Cam 0) | Cà phê hạt 1000, Sữa tươi 8000, Ly 50; thiếu Cam | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 | Bán 16 ly Nước cam |
+| Ngày 6, bật Bánh ngọt (Bột bánh 0, Bơ 0) | Cà phê hạt 1000, Sữa tươi 5000, Ly 50; thiếu Cam, Bột bánh, Bơ | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 | Bán 25 bánh, 7 ly Nước cam |
 
-Kết quả: **PASS**, gợi ý có Cam, Bột bánh và Bơ. `npm run media:p24` in gợi ý của cả hai sim trên cùng ván; ở P23, Cam (ngày 3), Bột bánh và Bơ (ngày 6) không có trong gợi ý.
+Kết quả: **PASS**, gợi ý P24 có Cam, Bột bánh và Bơ. Cột P23 lấy từ `npm run media:p24`, sim mỗi bản chơi cùng ván; P23 không nhập Cam lần nào nên ngày 6 kho vẫn hết Cam. Tuần 1 của ván này: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.605.000đ, 91 điểm, 3 cúp.
 
 ## 2. Các chỗ đã thiết kế lại
 
@@ -95,4 +95,4 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy |
 | Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | Chưa chạy |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | Chưa chạy |
-| `npm run media:p24` | Không cảnh báo `!!` | Chưa chạy |
+| `npm run media:p24` | Không cảnh báo `!!` | FAIL: 9 cảnh báo (nhãn đè chữ ở dock, toast, Nhân viên; vòng khoanh ngoài khung ở Kho, Nhân viên) |
