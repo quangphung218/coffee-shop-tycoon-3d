@@ -92,9 +92,9 @@ describe('registration', () => {
 });
 
 describe('menu panel', () => {
-  it('lists the 11 items and locks one that lacks an ingredient, with the reason', () => {
+  it('lists the 11 items and blocks one that lacks an ingredient with one warning label', () => {
     const state = game();
-    // Mocha opens at a later shop level; reach it so only the ingredient locks it.
+    // Mocha opens at a later shop level; reach it so only the ingredient blocks it.
     state.shopLevel = 6;
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
     const { body, sent } = mount(renderMenuPanel, state);
@@ -102,17 +102,22 @@ describe('menu panel', () => {
 
     const mocha = q(body, '[data-item="mocha"]');
     const sw = q<HTMLButtonElement>(mocha, '[role="switch"]');
-    expect(mocha.classList.contains('is-locked')).toBe(true);
+    // Not the "not open yet" look: no dashed frame, no lock icon anywhere in the row.
+    expect(mocha.classList.contains('is-locked')).toBe(false);
+    expect(mocha.querySelector('[data-icon="i-lock"]')).toBeNull();
     expect(sw.getAttribute('aria-disabled')).toBe('true');
+    // The amounts stay in the switch's description, off screen.
     const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
     expect(why.textContent).toContain(getIngredient('cacao').name);
-    expect(useOf(why)).toBe('i-lock');
+    expect(why.classList.contains('sr-only')).toBe(true);
+    expect(why.querySelector('.ic')).toBeNull();
     expect(useOf(q(mocha, '.item-icon'))).toBe('i-mocha');
 
     // One status label names the missing ingredient; the link opens Kho in place, no modal.
     const label = q(mocha, '[data-lock="stock"]');
     expect(label.hidden).toBe(false);
     expect(label.textContent).toBe(`Thiếu ${getIngredient('cacao').name}`);
+    expect(useOf(label)).toBe('i-warning');
     expect(q(mocha, '[data-lock="level"]').hidden).toBe(true);
     const link = q<HTMLButtonElement>(mocha, '[data-goto="inventory"]');
     expect(link.hidden).toBe(false);
