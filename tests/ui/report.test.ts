@@ -322,7 +322,7 @@ describe('Daily Report against yesterday and the week', () => {
     expect(q(week, '[role="progressbar"]').getAttribute('aria-valuenow')).toBe(String(Math.min(100, pct)));
   });
 
-  it('turns "Ngày tiếp theo" into "Xem kết tuần" on the last week day', () => {
+  it('turns "Ngày tiếp theo" into "Xem tổng kết tuần" on the last week day', () => {
     const days = Array.from({ length: WEEK_LENGTH }, (_, i) => day(i + 1, 600_000, 40, 4));
     const mid = mountReport(onReport(days.slice(0, 3)));
     const next = q<HTMLButtonElement>(mid.el, '.rpt-foot .btn-primary');
@@ -336,7 +336,7 @@ describe('Daily Report against yesterday and the week', () => {
     document.body.append(view.el);
     view.update(onReport(days), true);
     const btn = q<HTMLButtonElement>(view.el, '.rpt-foot .btn-primary');
-    expect(btn.textContent).toBe('Xem kết tuần');
+    expect(btn.textContent).toBe('Xem tổng kết tuần');
     expect(btn.dataset.action).toBe('week-end');
     expect(text(view.el, '[data-block="week"]')).toContain('ngày 7/7');
     expect(view.el.textContent).toContain('Gợi ý cho tuần sau');
