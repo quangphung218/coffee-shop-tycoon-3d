@@ -82,9 +82,9 @@ Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/si
 | Thường | 26.500.000 | 4,0 |
 | Khó | 23.200.000 | 4,2 |
 
-Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001 (`tests/integration/p22-strategies.test.ts`, chiến lược `a_basic`). Doanh thu trung bình: Dễ khoảng 22,6 triệu, Thường 21,0 triệu, Khó 18,3 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
+Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001 (`tests/integration/p22-strategies.test.ts`, chiến lược `a_basic`). Doanh thu trung bình: Dễ 22,6 triệu (80,6%), Thường 21,0 triệu (79,3%), Khó 18,3 triệu (79,0%). Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75,6–85,7%).
 
-Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 60% mỗi tuần sau tuần 1, tối đa gấp 3 tuần 1 (từ tuần 5), làm tròn tới 100.000; mục tiêu sao giữ nguyên. Số đo 4 tuần ở [reports/p23-long-economy.md](../reports/p23-long-economy.md).
+Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 60% mỗi tuần sau tuần 1 (`WEEK_GOAL_GROWTH` 0,6), tối đa gấp 3 tuần 1 (từ tuần 5), làm tròn tới 100.000; mục tiêu sao giữ nguyên. Với mức này, chiến lược cơ bản có bật món mới được 2 cúp ở tuần 2–3 (điểm 72–87) và 1 cúp ở tuần 4; người mua nâng cấp giữ 3 cúp mọi tuần. Số đo từng seed ở [reports/p24-ui.md](../reports/p24-ui.md#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập).
 
 ### Chấm điểm
 
