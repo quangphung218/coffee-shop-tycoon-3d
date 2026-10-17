@@ -1,10 +1,10 @@
 {
-  "source": "docs/reports/p22-review/findings.json has no 'characters' entry; picked from the peak shots (390/d4-peak.jpg, 1440/d4-peak.png) and metrics.json peaks.*",
+  "source": "docs/reports/p22-review/findings.json has no 'characters' entry; picked from the peak shots (390/d4-peak.jpg, 1440/d4-peak.jpg) and metrics.json peaks.*",
   "fixed": [
     {
       "id": "actors-persona-motion",
       "title": "Personas only differed by one accessory; now each walks and waits in its own way",
-      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.png"],
+      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.jpg"],
       "impact": 3,
       "effort": 1,
       "change": "animations.ts PERSONA_GAITS + stylePose: office short quick steps, head down, reads a phone in the queue; student bouncy hop, leans back with hands in pockets and nods; connoisseur slow upright stroll, chin up, hands clasped behind the back; family ambles and looks all around. Render only: walking speed and path are unchanged.",
@@ -14,7 +14,7 @@
     {
       "id": "actors-persona-accessory",
       "title": "Regular and family customers had no accessory and looked like each other",
-      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.png"],
+      "evidence": ["390/d4-peak.jpg", "1440/d4-peak.jpg"],
       "impact": 2,
       "effort": 1,
       "change": "rig.ts ACCESSORIES: regular wears a plum beanie (on the head, hides the hair mesh), family carries a mustard tote at the left hand; both reuse the one accessory mesh slot.",

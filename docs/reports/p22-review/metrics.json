@@ -189,7 +189,7 @@
     "390/d0-menu-first": {
       "viewport": "390",
       "name": "d0-menu-first",
-      "file": "390/d0-menu-first.png",
+      "file": "390/d0-menu-first.jpg",
       "bytes": 283994,
       "oversize": false,
       "clock": "",
@@ -204,7 +204,7 @@
     "1440/d0-menu-first": {
       "viewport": "1440",
       "name": "d0-menu-first",
-      "file": "1440/d0-menu-first.png",
+      "file": "1440/d0-menu-first.jpg",
       "bytes": 224678,
       "oversize": false,
       "clock": "",
@@ -1153,7 +1153,7 @@
     "1440/d4-peak": {
       "viewport": "1440",
       "name": "d4-peak",
-      "file": "1440/d4-peak.png",
+      "file": "1440/d4-peak.jpg",
       "bytes": 279527,
       "oversize": false,
       "clock": "11:03",
