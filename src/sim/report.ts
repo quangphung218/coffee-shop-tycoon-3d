@@ -9,7 +9,7 @@ import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
 import type { DailyReport, GameState, Insights, MenuItemId, Suggestion } from './types';
-import { isLastWeekDay, scoreWeek } from './week';
+import { isLastWeekDay, scoreWeek, summarizeWeek } from './week';
 
 export const TOP_SELLERS = 3;
 export const REPORT_REVIEWS = 5;
@@ -130,7 +130,7 @@ export function buildDailyReport(state: GameState, prog?: ProgressionResult): Da
 /**
  * End-of-day bookkeeping: pay costs, update the rating, score progression and
  * store the report. On the last week day it also scores the week into
- * `state.week.result` (endOfDay announces it).
+ * `state.week.result` and adds its row to `state.week.archive` (endOfDay announces it).
  */
 export function closeDay(state: GameState): DailyReport {
   settleDay(state);
@@ -139,7 +139,10 @@ export function closeDay(state: GameState): DailyReport {
   const report = buildDailyReport(state, prog);
   state.lastReport = report;
   if (state.week && !state.week.result && isLastWeekDay(state)) {
-    state.week.result = scoreWeek(state) ?? undefined;
+    const result = scoreWeek(state);
+    const summary = result && summarizeWeek(state, result);
+    if (result) state.week.result = result;
+    if (summary) (state.week.archive ??= []).push(summary);
   }
   return report;
 }

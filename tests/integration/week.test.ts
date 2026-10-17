@@ -7,7 +7,8 @@ import { isUnlocked } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
 import type { DayEventId, GameEvent, GameState, Weather } from '../../src/sim/types';
 import { getShopLayout } from '../../src/sim/upgrades';
-import { todayPlan } from '../../src/sim/week';
+import { HISTORY_DAYS } from '../../src/sim/clock';
+import { rollWeekPlan, todayPlan } from '../../src/sim/week';
 import { playDay } from './helpers';
 
 const SEED = 12345;
@@ -150,14 +151,96 @@ describe('a 7-day week on one seed', { timeout: 120_000 }, () => {
     }
   });
 
-  it('ends the week once, on day 7, and then refuses next_day', () => {
+  it('ends the week once, on day 7, and then lets next_day open week 2', () => {
     const ended = run.events.map((day) => day.filter((e) => e.type === 'week_ended').length);
     expect(ended).toEqual([0, 0, 0, 0, 0, 0, 1]);
     expect(run.state.week!.result).toBeTruthy();
+    expect(run.state.week!.archive).toHaveLength(1);
     expect(run.state.phase).toBe('report');
-    expect(dispatch(run.state, { type: 'next_day' })).toBe(false);
-    expect(run.state.day).toBe(WEEK_LENGTH);
-    expect(run.state.phase).toBe('report');
+    const next = structuredClone(run.state);
+    expect(dispatch(next, { type: 'next_day' })).toBe(true);
+    expect(next.day).toBe(WEEK_LENGTH + 1);
+    expect(next.week!.index).toBe(2);
+    expect(next.phase).toBe('preparation');
+  });
+});
+
+/** Days played back to back in the rolling-weeks run: two full weeks and one day of the third. */
+const ROLLING_DAYS = 2 * WEEK_LENGTH + 1;
+
+describe(`${ROLLING_DAYS} days in a row over rolling weeks`, { timeout: 180_000 }, () => {
+  const state = createNewGame('Quán Cuốn Chiếu', 'normal', SEED);
+  const plans: GameState['week'][] = [structuredClone(state.week)];
+  const unlocked: Set<string>[] = [];
+  const events: GameEvent[][] = [];
+  const nextDay: boolean[] = [];
+  for (let day = 1; day <= ROLLING_DAYS; day++) {
+    if (day > 1) {
+      expect(state.phase).toBe('report');
+      state.events = [];
+      nextDay.push(dispatch(state, { type: 'next_day' }));
+      if (state.week!.startedDay === state.day) plans.push(structuredClone(state.week));
+    }
+    const morning = state.events;
+    state.events = [];
+    unlocked.push(unlockedIds(state));
+    dispatch(state, { type: 'apply_restock' });
+    events.push([...morning, ...playDay(state)]);
+  }
+
+  it('never refuses next_day from the report', () => {
+    expect(nextDay).toHaveLength(ROLLING_DAYS - 1);
+    expect(nextDay.every(Boolean)).toBe(true);
+    expect(state.day).toBe(ROLLING_DAYS);
+  });
+
+  it('ends a week on days 7 and 14 and reaches week 3', () => {
+    const ended = events.map((day, i) => (day.some((e) => e.type === 'week_ended') ? i + 1 : 0)).filter(Boolean);
+    expect(ended).toEqual([WEEK_LENGTH, 2 * WEEK_LENGTH]);
+    expect(state.week!.index).toBe(3);
+    expect(state.week!.startedDay).toBe(2 * WEEK_LENGTH + 1);
+    expect(state.week!.result).toBeUndefined();
+    expect(state.week!.archive!.map((w) => [w.index, w.startedDay])).toEqual([
+      [1, 1],
+      [2, WEEK_LENGTH + 1],
+    ]);
+    for (const w of state.week!.archive!) {
+      expect(w.revenue, `week ${w.index}`).toBeGreaterThan(0);
+      expect(w.customersServed, `week ${w.index}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('plays a new plan each week, with the grand opening in week 1 only', () => {
+    expect(plans.map((w) => w!.index)).toEqual([1, 2, 3]);
+    expect(plans[1]!.plan).not.toEqual(plans[0]!.plan);
+    expect(plans[2]!.plan).not.toEqual(plans[1]!.plan);
+    expect(plans[0]!.plan).toEqual(rollWeekPlan(SEED, 1));
+    expect(plans[1]!.plan).toEqual(rollWeekPlan(SEED, 2));
+    for (const w of plans.slice(1)) expect(w!.plan.some((p) => p.event === 'grand_opening')).toBe(false);
+    expect(plans[1]!.goal.revenue).toBeGreaterThan(plans[0]!.goal.revenue);
+  });
+
+  it('never locks again what week 1 opened, and does not replay its calendar', () => {
+    for (let d = 1; d < ROLLING_DAYS; d++) {
+      for (const id of unlocked[d - 1]!) expect(unlocked[d]!.has(id), `day ${d + 1} keeps ${id}`).toBe(true);
+    }
+    for (const day of events.slice(WEEK_LENGTH)) {
+      expect(day.some((e) => e.type === 'week_unlocks')).toBe(false);
+      expect(day.some((e) => e.type === 'notify' && e.text === 'Quán mở rộng!')).toBe(false);
+    }
+  });
+});
+
+describe('history over a long game', () => {
+  it(`keeps the last ${HISTORY_DAYS} days only`, () => {
+    const state = createNewGame('Quán Dài', 'normal', SEED);
+    for (let day = 1; day <= HISTORY_DAYS + 5; day++) {
+      if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
+      playDay(state, { play: false });
+    }
+    expect(state.history).toHaveLength(HISTORY_DAYS);
+    expect(state.history.map((d) => d.day)).toEqual(Array.from({ length: HISTORY_DAYS }, (_, i) => i + 5));
+    expect(state.week!.archive).toHaveLength(4);
   });
 });
 

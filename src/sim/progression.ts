@@ -26,14 +26,22 @@ export function weekDay(state: GameState): number {
   return state.week ? state.day - state.week.startedDay + 1 : 0;
 }
 
+/** Which week the game is in, from 1; saves made before weeks were counted are in week 1. */
+export function weekIndex(state: GameState): number {
+  return state.week?.index ?? 1;
+}
+
 /**
  * Whether a menu item or upgrade is available: the shop level reaches it, or
- * the game plays a week and the calendar has opened it, whichever comes first.
+ * the game plays weeks and the week-1 calendar has opened it, whichever comes
+ * first. Week 1 always plays all 7 days, so from week 2 the whole calendar is open.
  */
 export function isUnlocked(state: GameState, kind: 'menu' | 'upgrade', id: MenuItemId | UpgradeId): boolean {
   const need = kind === 'menu' ? menuUnlockLevel(id as MenuItemId) : upgradeUnlockLevel(id as UpgradeId);
   if (state.shopLevel >= need) return true;
-  return state.week !== undefined && weekDay(state) >= dayUnlockDay(kind, id);
+  if (state.week === undefined) return false;
+  const day = dayUnlockDay(kind, id);
+  return weekIndex(state) > 1 ? day !== Infinity : weekDay(state) >= day;
 }
 
 interface MissionSpec {

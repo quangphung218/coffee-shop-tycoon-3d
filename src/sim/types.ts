@@ -485,17 +485,37 @@ export interface DayPlan {
   event: DayEventId;
 }
 
-/** A 7-day week of play; menu items and upgrades also open by its calendar (src/sim/data/week.ts). */
+/**
+ * The current 7-day week of play. The game goes on week after week; in week 1
+ * menu items and upgrades also open by its calendar (src/sim/data/week.ts).
+ */
 export interface WeekState {
   length: 7;
+  /** Which week this is, from 1. */
+  index: number;
   /** Game day the week began on; week day 1 is this day. */
   startedDay: number;
-  /** Weather and event of each week day, rolled from the seed (rollWeekPlan). */
+  /** Weather and event of each week day, rolled from the seed and the index (rollWeekPlan). */
   plan: DayPlan[];
-  /** What the week is scored against (WEEK_GOALS by difficulty). */
+  /** What the week is scored against (weekGoal by difficulty and index). */
   goal: WeekGoal;
-  /** Score of the finished week; set when week day 7 closes, after which next_day is refused. */
+  /** Score of the week just finished; set when week day 7 closes, cleared when next_day starts the next week. */
   result?: WeekResult;
+  /** One row per finished week, oldest first. */
+  archive?: WeekSummary[];
+}
+
+/** Totals of a finished week, kept in `WeekState.archive` for week-over-week stats. */
+export interface WeekSummary {
+  index: number;
+  startedDay: number;
+  revenue: number;
+  /** Sum of the daily profits (revenue less ingredients, wages and marketing). */
+  profit: number;
+  customersServed: number;
+  stars: number;
+  score: number;
+  cups: number;
 }
 
 /** Targets of a week: total revenue over its 7 days and the rating at the end. */
@@ -574,11 +594,12 @@ export interface GameState {
   /** Fractional customers accumulated toward the next arrival. */
   spawnAccumulator: number;
   today: DayStats;
+  /** Finished days, oldest first; only the last HISTORY_DAYS are kept (older weeks live in `week.archive`). */
   history: DayStats[];
   reviews: Review[];
   /** Report of the last finished day; absent before the first day ends. */
   lastReport?: DailyReport | null;
-  /** The 7-day week a new game plays; absent in older saves, which unlock by shop level only. */
+  /** The current week of a new game; absent in older saves, which unlock by shop level only. */
   week?: WeekState;
   /** Price and wage decisions; absent (older saves) = standard. */
   policies?: Policies;
@@ -628,5 +649,5 @@ export type GameEvent =
   | { type: 'week_unlocks'; day: number; unlocks: Unlocks }
   /** The daily report is in `state.lastReport`; the UI autosaves on this. */
   | { type: 'dayEnded'; day: number }
-  /** Week day 7 closed; the score is also in `state.week.result`. Comes after 'dayEnded'. */
+  /** Week day 7 closed; the score is also in `state.week.result` and the week's row in `archive`. Comes after 'dayEnded'. */
   | { type: 'week_ended'; result: WeekResult };

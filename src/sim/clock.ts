@@ -1,12 +1,15 @@
 import { rollWeather } from './customers';
-import { weekUnlockDay } from './data/week';
+import { weekGoal, weekUnlockDay } from './data/week';
 import { recordRevenue } from './economy';
-import { rollMissions, weekDay } from './progression';
+import { rollMissions, weekDay, weekIndex } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
 import { grantUpgradeLevel, upgradeLevel } from './upgrades';
-import type { GameState, Phase } from './types';
-import { todayPlan } from './week';
+import type { GameState, Phase, WeekState } from './types';
+import { rollWeekPlan, todayPlan } from './week';
+
+/** Finished days kept in `state.history`; older weeks are summed up in `state.week.archive`. */
+export const HISTORY_DAYS = 28;
 
 /** Peak windows [start, end) in game minutes: 11:00–13:00 and 17:00–19:00. */
 export const PEAK_WINDOWS: readonly (readonly [number, number])[] = [
@@ -88,14 +91,15 @@ export function endOfDay(state: GameState): void {
 }
 
 /**
- * Leaves the report and starts the next day in preparation. Returns false
- * outside 'report' and once the week is scored (the UI shows the week's end).
+ * Leaves the report and starts the next day in preparation; after a scored
+ * week the new day opens the next week. Returns false outside 'report'.
  */
 export function startNextDay(state: GameState): boolean {
   if (state.phase !== 'report') return false;
-  if (state.week?.result) return false;
   state.history.push(state.today);
+  if (state.history.length > HISTORY_DAYS) state.history.splice(0, state.history.length - HISTORY_DAYS);
   state.day += 1;
+  if (state.week?.result) startNextWeek(state, state.week);
   state.minute = DAY_START_MINUTE;
   state.tickAccumulator = 0;
   // Always roll, so the RNG sequence stays the same; the week plan then sets the weather.
@@ -110,11 +114,27 @@ export function startNextDay(state: GameState): boolean {
 }
 
 /**
- * Morning of a week day: announces what the calendar opens today and, on the
+ * Replaces the scored week with the next one, starting today: plan and goal
+ * come from the seed, the difficulty and the new index; the archive carries over.
+ */
+function startNextWeek(state: GameState, week: WeekState): void {
+  const index = weekIndex(state) + 1;
+  state.week = {
+    length: week.length,
+    index,
+    startedDay: state.day,
+    plan: rollWeekPlan(state.seed, index),
+    goal: weekGoal(state.difficulty, index),
+    ...(week.archive ? { archive: week.archive } : {}),
+  };
+}
+
+/**
+ * Morning of a week-1 day: announces what the calendar opens today and, on the
  * expansion day, gives the shop its side room (expand_area level 1) for free.
  */
 function openWeekDay(state: GameState): void {
-  if (!state.week) return;
+  if (!state.week || weekIndex(state) !== 1) return;
   const entry = weekUnlockDay(weekDay(state));
   if (!entry) return;
   const { menu, upgrades, tools } = entry.unlocks;
