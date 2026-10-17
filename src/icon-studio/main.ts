@@ -5,7 +5,7 @@
  * window.iconStudio. Opened by hand (npm run dev, /src/icon-studio/), it shows
  * every model at 96 px next to its small cell at 48 px.
  */
-import { NoToneMapping, SRGBColorSpace, WebGLRenderer } from 'three';
+import { NoToneMapping, type Object3D, SRGBColorSpace, WebGLRenderer } from 'three';
 import { AVATAR_LOOKS } from '../ui/core/iconMap';
 import { isIconId } from '../ui/core/icons';
 import { iconSvgMarkup } from '../ui/core/iconSvg';
@@ -22,9 +22,26 @@ import {
   packAtlas,
   SHEET_IDS,
   SMALL_CELL,
+  TIER_BUDGET,
+  TIER_IDS,
 } from './atlas';
 import { MODELS, SMALL_MODELS } from './models';
+import { TIER_MODELS } from './models/tiers';
 import { createStage, inkRing, type Look, LOOKS, PALETTE } from './style';
+
+type Builders = Readonly<Record<string, () => Object3D>>;
+
+/**
+ * The atlases the studio builds. `main`: public/icons3d/atlas*, loaded at
+ * start-up. `tiers`: public/icons3d/tiers*, the upgrade tier looks, loaded
+ * when needed; its 24 px cells use the same models as its 48 px ones.
+ */
+const SETS = {
+  main: { ids: ATLAS_IDS, models: MODELS, small: SMALL_MODELS, budget: BUDGET },
+  tiers: { ids: TIER_IDS, models: TIER_MODELS, small: {} as Builders, budget: TIER_BUDGET },
+} as const satisfies Record<string, { ids: readonly string[]; models: Builders; small: Builders; budget: { 1: number; 2: number } }>;
+
+export type AtlasSet = keyof typeof SETS;
 
 /** Each icon is drawn this many times larger than its @2x cell, then halved step by step. */
 const SUPERSAMPLE = 4;
@@ -80,15 +97,16 @@ function shrink(src: HTMLCanvasElement, px: number): HTMLCanvasElement {
   return out;
 }
 
-function hasModel(id: string): boolean {
-  return ATLAS_IDS.includes(id) && Object.hasOwn(MODELS, id);
+function hasModel(id: string, set: AtlasSet = 'main'): boolean {
+  return SETS[set].ids.includes(id) && Object.hasOwn(SETS[set].models, id);
 }
 
 type Scaled = { 1: HTMLCanvasElement; 2: HTMLCanvasElement };
 
-/** The icon drawn in `look` at @2x and @1x of `cell` px; the small look takes the SMALL_MODELS model when there is one. */
-function renderLook(id: string, look: Look, cell: number): Scaled {
-  const build = (look === 'small' ? SMALL_MODELS[id] : undefined) ?? MODELS[id];
+/** The icon drawn in `look` at @2x and @1x of `cell` px; the small look takes the set's small model when there is one. */
+function renderLook(id: string, look: Look, cell: number, set: AtlasSet): Scaled {
+  const { models, small } = SETS[set];
+  const build = (look === 'small' ? small[id] : undefined) ?? models[id];
   if (!build) throw new Error(`No model for ${id}`);
   stage.show(build(), look);
   const size = cell * 2 * SUPERSAMPLE;
@@ -105,8 +123,8 @@ function renderLook(id: string, look: Look, cell: number): Scaled {
 }
 
 /** The icon's large (48 px) and small (24 px) cells. */
-function renderIcon(id: string): { large: Scaled; small: Scaled } {
-  return { large: renderLook(id, 'regular', CELL), small: renderLook(id, 'small', SMALL_CELL) };
+function renderIcon(id: string, set: AtlasSet = 'main'): { large: Scaled; small: Scaled } {
+  return { large: renderLook(id, 'regular', CELL, set), small: renderLook(id, 'small', SMALL_CELL, set) };
 }
 
 /** Byte length of a base64 data URL's payload. */
@@ -161,6 +179,8 @@ export interface BuildInput {
   render: string[];
   /** Current atlas; its other icons are copied over unchanged (--only). */
   previous?: { manifest: AtlasManifest; images: { 1: string; 2: string } };
+  /** Atlas to build; `main` when left out. */
+  set?: AtlasSet;
 }
 
 export interface BuildOutput {
@@ -172,15 +192,17 @@ export interface BuildOutput {
 }
 
 async function build(input: BuildInput): Promise<BuildOutput> {
-  const missing = input.render.filter((id) => !hasModel(id));
+  const set = input.set ?? 'main';
+  const order = SETS[set].ids;
+  const missing = input.render.filter((id) => !hasModel(id, set));
   if (missing.length) throw new Error(`No model for: ${missing.join(', ')}`);
   // --only keeps cells from the current atlas only when it has the same layout (both cell sizes).
   const prevManifest = input.previous?.manifest;
   const prev = prevManifest?.version === 2 && prevManifest.cell === CELL && prevManifest.small?.cell === SMALL_CELL ? input.previous : undefined;
-  const keep = prev ? Object.keys(prev.manifest.icons).filter((id) => hasModel(id) && !input.render.includes(id)) : [];
-  const ids = orderIds([...keep, ...input.render], ATLAS_IDS);
+  const keep = prev ? Object.keys(prev.manifest.icons).filter((id) => hasModel(id, set) && !input.render.includes(id)) : [];
+  const ids = orderIds([...keep, ...input.render], order);
   const manifest = packAtlas(ids);
-  const rendered = new Map(orderIds(input.render, ATLAS_IDS).map((id) => [id, renderIcon(id)]));
+  const rendered = new Map(orderIds(input.render, order).map((id) => [id, renderIcon(id, set)]));
   const images = { 1: '', 2: '' };
   const encodings = {} as BuildOutput['encodings'];
   for (const scale of [1, 2] as const) {
@@ -199,7 +221,7 @@ async function build(input: BuildInput): Promise<BuildOutput> {
       put(manifest.icons[id]!, fresh?.large[scale], prev?.manifest.icons[id]);
       put(manifest.smallIcons[id]!, fresh?.small[scale], prev?.manifest.smallIcons[id]);
     }
-    const { url, ...used } = encode(atlas, BUDGET[scale]);
+    const { url, ...used } = encode(atlas, SETS[set].budget[scale]);
     images[scale] = url;
     encodings[scale] = used;
   }
@@ -266,25 +288,29 @@ async function showSheet(out: BuildOutput): Promise<void> {
   }
 }
 
-/** Every model at 96 px, and its small cell at 48 px, for working on models by hand. */
+/** Every model of both atlases at 96 px, and its small cell at 48 px, for working on models by hand. */
 function showPreview(): void {
   const preview = document.getElementById('preview')!;
-  for (const id of ATLAS_IDS) {
-    if (!hasModel(id)) continue;
-    const fig = document.createElement('figure');
-    const cap = document.createElement('figcaption');
-    cap.textContent = id;
-    const { large, small } = renderIcon(id);
-    fig.append(large[2], small[2], cap);
-    preview.append(fig);
+  for (const set of Object.keys(SETS) as AtlasSet[]) {
+    for (const id of SETS[set].ids) {
+      if (!hasModel(id, set)) continue;
+      const fig = document.createElement('figure');
+      const cap = document.createElement('figcaption');
+      cap.textContent = id;
+      const { large, small } = renderIcon(id, set);
+      fig.append(large[2], small[2], cap);
+      preview.append(fig);
+    }
   }
 }
 
 declare global {
   interface Window {
     iconStudio: {
-      /** Ids that have a model, in app order. */
+      /** Ids of the main atlas that have a model, in app order. */
       ids: string[];
+      /** Same for each atlas. */
+      setIds: Record<AtlasSet, string[]>;
       build(input: BuildInput): Promise<BuildOutput>;
       showSheet(out: BuildOutput): Promise<void>;
       flatSvgs(): Record<string, string>;
@@ -292,5 +318,6 @@ declare global {
   }
 }
 
-window.iconStudio = { ids: ATLAS_IDS.filter(hasModel), build, showSheet, flatSvgs };
+const setIds = (set: AtlasSet) => SETS[set].ids.filter((id) => hasModel(id, set));
+window.iconStudio = { ids: setIds('main'), setIds: { main: setIds('main'), tiers: setIds('tiers') }, build, showSheet, flatSvgs };
 if (!new URLSearchParams(location.search).has('headless')) showPreview();

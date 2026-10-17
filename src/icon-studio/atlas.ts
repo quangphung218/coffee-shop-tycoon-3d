@@ -3,14 +3,24 @@
  * the page) and public/icons3d/index.html (which reads atlas.json).
  * Pure: no DOM, no three.js.
  */
-import { ICON_IDS } from '../ui/core/icons';
-import { AVATAR_LOOKS } from '../ui/core/iconMap';
+import { ICON_IDS, type IconId } from '../ui/core/icons';
+import { AVATAR_LOOKS, UPGRADE_ICONS } from '../ui/core/iconMap';
 
 /** One atlas cell per AVATAR_LOOKS entry, same index: `i-avatar-0` is AVATAR_LOOKS[0]. */
 export const AVATAR_IDS: readonly string[] = AVATAR_LOOKS.map((_, i) => `i-avatar-${i}`);
 
 /** Every cell of the full atlas, in atlas order: the icons, then the avatar looks. */
 export const ATLAS_IDS: readonly string[] = [...ICON_IDS, ...AVATAR_IDS];
+
+/** Upgrade tiers with an icon of their own; tier 1 is the UPGRADE_ICONS icon in the main atlas. */
+export const UPGRADE_TIERS = [2, 3] as const;
+export type UpgradeTier = (typeof UPGRADE_TIERS)[number];
+
+/** Id of an upgrade icon's tier look in the tiers atlas: `i-machine` → `i-machine-t2`. */
+export const tierIconId = (id: IconId, tier: UpgradeTier): string => `${id}-t${tier}`;
+
+/** Every cell of the tiers atlas (public/icons3d/tiers*), loaded lazily: tiers 2 and 3 of each UPGRADE_ICONS icon, in its order. */
+export const TIER_IDS: readonly string[] = Object.values(UPGRADE_ICONS).flatMap((id) => UPGRADE_TIERS.map((tier) => tierIconId(id, tier)));
 
 /** Icons that sit alone in a button, with only an aria-label: HUD camera, settings, pause, speeds, the reset tick, close. */
 export const ICON_ONLY_IDS: readonly string[] = ['i-camera', 'i-settings', 'i-pause', 'i-speed-1', 'i-speed-2', 'i-speed-4', 'i-check', 'i-close'];
@@ -25,6 +35,8 @@ export const SHEET_IDS: readonly string[] = [
 
 /** Size limits of the committed atlas images, small cells included, in bytes (120 kB and 300 kB). */
 export const BUDGET = { 1: 120_000, 2: 300_000 } as const;
+/** Size limits of the tiers atlas images, in bytes (60 kB and 150 kB). */
+export const TIER_BUDGET = { 1: 60_000, 2: 150_000 } as const;
 
 /** Cell size in px of atlas@1x.webp; atlas@2x.webp doubles every number. Shown at 32 and 48 px. */
 export const CELL = 48;
