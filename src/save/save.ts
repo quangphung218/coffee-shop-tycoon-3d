@@ -1,13 +1,15 @@
+import { HISTORY_DAYS } from '../sim/clock';
 import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
+import { WEEK_LENGTH } from '../sim/data/week';
 import { settleActors } from '../sim/index';
 import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progression';
 import { createDayStats } from '../sim/state';
-import type { GameState, MenuEntry, UpgradeId } from '../sim/types';
+import type { GameState, MenuEntry, UpgradeId, WeekSummary } from '../sim/types';
 import { relayoutTables } from '../sim/upgrades';
 import { defaultStorage, type StorageLike } from './storage';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY_PREFIX = 'cst3d:save:';
 export const SAVE_SLOTS = ['auto', '1', '2', '3'] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -103,7 +105,55 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     }
     return { version: 2, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // Weeks roll on instead of stopping after day 7. A week gets its index and
+  // an archive; a week 1 that v2 already scored gets its archive row now (its
+  // result stays, so the week summary still shows and next_day opens week 2).
+  // Saves without a week keep none. History is cut like the sim does.
+  2: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    if (isObject(state.week)) {
+      const week: Raw = { ...state.week };
+      if (typeof week.index !== 'number') week.index = 1;
+      const archive: unknown[] = Array.isArray(week.archive) ? [...week.archive] : [];
+      if (isObject(week.result) && !archive.some((row) => isObject(row) && row.index === week.index)) {
+        archive.push(archivedWeek(state, week, week.result));
+      }
+      week.archive = archive;
+      state.week = week;
+    }
+    if (Array.isArray(state.history) && state.history.length > HISTORY_DAYS) {
+      state.history = state.history.slice(-HISTORY_DAYS);
+    }
+    return { version: 3, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
+  },
 };
+
+function num(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * Archive row of a week a v2 save already scored: revenue, stars, score and
+ * cups from the result; profit and customers summed over the week's days in
+ * history and today (0 when the save has none of them).
+ */
+function archivedWeek(state: Raw, week: Raw, result: Raw): WeekSummary {
+  const startedDay = num(week.startedDay) || 1;
+  const length = num(week.length) || WEEK_LENGTH;
+  const days = [...(Array.isArray(state.history) ? state.history : []), state.today].filter(
+    (d): d is Raw => isObject(d) && num(d.day) >= startedDay && num(d.day) <= startedDay + length - 1,
+  );
+  return {
+    index: week.index as number,
+    startedDay,
+    revenue: num(result.revenue),
+    profit: days.reduce((s, d) => s + num(d.revenue) - num(d.ingredientCost) - num(d.wages) - num(d.marketingCost), 0),
+    customersServed: days.reduce((s, d) => s + num(d.customersServed), 0),
+    stars: num(result.stars),
+    score: num(result.score),
+    cups: num(result.cups),
+  };
+}
 
 /** Brings a parsed save of any known version up to SAVE_VERSION. */
 export function migrate(raw: unknown): Result<SaveFile> {
