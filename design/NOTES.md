@@ -66,6 +66,36 @@ Repo chưa có token trong code, nên đây là bộ đầu tiên. Tên CSS vari
 
 Bảng màu: cà phê (thương hiệu, nút chính), kem (nền), mint (hành động tích cực, trạng thái đang chọn trên HUD), cùng ok/cảnh báo/lỗi. `color.scene.*` chỉ để vẽ cảnh minh họa trong mockup; cảnh 3D thật tự quản màu.
 
+### Thang P24
+
+Mọi khung, nút và chữ trong game lấy cỡ từ bảng dưới. Tên biến cũ vẫn dùng được; `--size-outline` nay bằng `--size-frame-outline` (2 px).
+
+| Nhóm | Token CSS | Giá trị | Dùng cho |
+|---|---|---|---|
+| Chữ | `--font-size-caption` | 12 px | chú thích |
+| | `--font-size-label` | 14 px | nhãn, meta |
+| | `--font-size-value` | 16 px | giá trị, nội dung |
+| | `--font-size-panel-title` | 20 px | tiêu đề bảng (bậc lớn nhất trong UI game) |
+| | `--font-size-screen-title` và `--font-size-xl` trở lên | 24 px+ | chỉ tiêu đề màn hình và báo cáo |
+| Điều khiển | `--size-control-sm` | 32 px | nút gọn đặt trong vùng chạm lớn hơn |
+| | `--size-control-md` | 44 px | nút, tab, stepper mặc định |
+| | `--size-control-lg` | 56 px | nút hành động chính |
+| | `--size-hud-row` | 48 px | chiều cao mọi cụm HUD |
+| Viền | `--size-frame-outline` | 2 px | khung, cụm HUD, dock, panel, toast, nút |
+| Bóng | `--shadow-sm` | `0 1px 0` mực | nút đang nhấn |
+| | `--shadow-md` | `0 2px 0` mực | nút nghỉ |
+| | `--shadow-lg` | `0 3px 0` mực | nút hover |
+| | `--shadow-soft` | `0 6px 14px rgba(58,34,22,.12)` | quầng mờ dưới khung nổi |
+| | `--shadow-card` | `shadow-md` + `shadow-soft` | thẻ, báo cáo |
+| | `--frame-shadow` | `shadow-sm` + `shadow-soft` | khung nổi: cụm HUD, dock, panel |
+
+Quy tắc:
+
+- **Nút có bóng, nhãn phẳng.** Nút giữ ba mức nghỉ/hover/nhấn (`--btn-shadow-rest/hover/press`), chỉ đổi độ nổi. Nhãn, badge, chip không có bóng và không có con trỏ tay.
+- **Mỗi trạng thái đổi một tín hiệu.** Hover đổi độ nổi, nhấn đổi độ nổi, đang chọn đổi nền, focus đổi viền + vòng trong; không trạng thái nào đổi cùng lúc cỡ, viền và bóng.
+- **Chỉ báo pha không dùng chấm.** Pha trong ngày luôn hiện bằng chữ (Chuẩn bị, Mở cửa, Cao điểm, Đóng cửa); chấm không nhãn không được dùng làm chỉ báo.
+- **Thông báo giao dịch chỉ qua toast.** Nhập hàng, mua nâng cấp, chạy marketing báo số tiền và số dư bằng toast; không chèn câu giao dịch vào thân bảng.
+
 Thời lượng animation: `fast` 120 ms (hover, nhấn, công tắc), `base` 200 ms (đổi tab, mở menu sổ, toast vào), `slow` 320 ms (panel trượt, báo cáo hiện), `toast-visible` 4 s (chỉ toast thông tin/thành công; cảnh báo/lỗi ở lại tới khi đóng). Tôn trọng `prefers-reduced-motion`: bỏ trượt, chỉ đổi độ mờ.
 
 ## Danh sách component

@@ -127,6 +127,13 @@
   --font-size-2xl: 32px;
   --font-size-3xl: 40px;
   --font-size-4xl: 48px;
+  /* P24 type scale: four steps inside the game UI; xl and up only for screen
+     and report titles. */
+  --font-size-caption: var(--font-size-xs);
+  --font-size-label: var(--font-size-sm);
+  --font-size-value: var(--font-size-md);
+  --font-size-panel-title: var(--font-size-lg);
+  --font-size-screen-title: var(--font-size-xl);
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -149,11 +156,14 @@
   --radius-xl: 28px;
   --radius-pill: 999px;
 
-  --shadow-sm: 0 2px 0 0 var(--color-neutral-900);
-  --shadow-md: 0 4px 0 0 var(--color-neutral-900);
-  --shadow-lg: 0 6px 0 0 var(--color-neutral-900);
-  --shadow-soft: 0 12px 24px 0 rgba(58, 34, 22, 0.18);
-  --shadow-card: var(--shadow-lg), var(--shadow-soft);
+  /* P24 light shadows: half the old ink depth, softer haze. */
+  --shadow-sm: 0 1px 0 0 var(--color-neutral-900);
+  --shadow-md: 0 2px 0 0 var(--color-neutral-900);
+  --shadow-lg: 0 3px 0 0 var(--color-neutral-900);
+  --shadow-soft: 0 6px 14px 0 rgba(58, 34, 22, 0.12);
+  --shadow-card: var(--shadow-md), var(--shadow-soft);
+  /* Floating frames (HUD cluster, dock, panel): sit below the buttons they hold. */
+  --frame-shadow: var(--shadow-sm), var(--shadow-soft);
 
   /* Buttons vs labels (design/p20 §4): a button has a bottom (elevation) shadow
      that deepens on hover and shallows on press; a label is flat with none.
@@ -188,9 +198,16 @@
   --size-target: 44px;
   --size-target-lg: 56px;
   --size-hud-pill: 48px;
+  /* P24 control and row heights. */
+  --size-control-sm: 32px;
+  --size-control-md: 44px;
+  --size-control-lg: 56px;
+  --size-hud-row: 48px;
   --size-panel: 380px;
   --size-dialog: 760px;
-  --size-outline: 3px;
+  /* P24: one 2px outline for frames, HUD clusters, dock, panel, toast and buttons. */
+  --size-frame-outline: 2px;
+  --size-outline: var(--size-frame-outline);
   --size-outline-sm: 2px;
   --size-border-thin: 2px;
   --size-border-thick: 4px;

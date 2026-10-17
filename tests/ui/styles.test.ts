@@ -140,11 +140,35 @@ describe('tokens.css', () => {
   });
 
   it('adds the cartoon outline, shadow and group tokens', () => {
-    expect(token('--size-outline')).toBe('3px');
     expect(token('--border-outline')).toBe('var(--color-neutral-900)');
-    expect(token('--shadow-md')).toBe('0 4px 0 0 var(--color-neutral-900)');
     expect(token('--size-focus-clearance')).toBe('4px');
     expect(token('--size-group-gap')).toBe('var(--space-1)');
+  });
+
+  it('draws every frame and button with the one 2px P24 outline', () => {
+    expect(token('--size-frame-outline')).toBe('2px');
+    expect(token('--size-outline')).toBe('var(--size-frame-outline)');
+  });
+
+  it('uses the light P24 shadows: 1/2/3px ink and a soft haze', () => {
+    expect(token('--shadow-sm')).toBe('0 1px 0 0 var(--color-neutral-900)');
+    expect(token('--shadow-md')).toBe('0 2px 0 0 var(--color-neutral-900)');
+    expect(token('--shadow-lg')).toBe('0 3px 0 0 var(--color-neutral-900)');
+    expect(token('--shadow-soft')).toBe('0 6px 14px 0 rgba(58, 34, 22, 0.12)');
+    expect(token('--shadow-card')).toBe('var(--shadow-md), var(--shadow-soft)');
+    expect(token('--frame-shadow')).toBe('var(--shadow-sm), var(--shadow-soft)');
+  });
+
+  it('sets the P24 type steps and control sizes', () => {
+    expect(token('--font-size-caption')).toBe('var(--font-size-xs)');
+    expect(token('--font-size-label')).toBe('var(--font-size-sm)');
+    expect(token('--font-size-value')).toBe('var(--font-size-md)');
+    expect(token('--font-size-panel-title')).toBe('var(--font-size-lg)');
+    expect(['xs', 'sm', 'md', 'lg'].map((s) => token(`--font-size-${s}`))).toEqual(['12px', '14px', '16px', '20px']);
+    expect(token('--size-control-sm')).toBe('32px');
+    expect(token('--size-control-md')).toBe('44px');
+    expect(token('--size-control-lg')).toBe('56px');
+    expect(token('--size-hud-row')).toBe('48px');
   });
 
   it('puts Nunito first in the base font stack', () => {
