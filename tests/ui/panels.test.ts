@@ -106,8 +106,8 @@ describe('menu panel', () => {
     expect(mocha.classList.contains('is-locked')).toBe(false);
     expect(mocha.querySelector('[data-icon="i-lock"]')).toBeNull();
     expect(sw.getAttribute('aria-disabled')).not.toBe('true');
-    // The amounts stay in the switch's description, off screen.
-    const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
+    // The amounts stay in the switch's description (after the full line), off screen.
+    const why = q(document, `#${sw.getAttribute('aria-describedby')!.split(' ').pop()}`);
     expect(why.textContent).toContain(getIngredient('cacao').name);
     expect(why.classList.contains('sr-only')).toBe(true);
     expect(why.querySelector('.ic')).toBeNull();
@@ -144,7 +144,7 @@ describe('menu panel', () => {
     state.inventory.find((i) => i.id === 'tea')!.qty = 0;
     (handle as PanelHandle).update!(state);
     expect(q(row, '[data-lock="stock"]').textContent).toBe(`Thiếu ${getIngredient('tea').name} +1`);
-    const why = q(document, `#${q(row, '[role="switch"]').getAttribute('aria-describedby')}`);
+    const why = q(document, `#${q(row, '[role="switch"]').getAttribute('aria-describedby')!.split(' ').pop()}`);
     expect(why.textContent).toContain(getIngredient('tea').name);
     expect(why.textContent).toContain(getIngredient('lemon').name);
 
@@ -153,7 +153,7 @@ describe('menu panel', () => {
     (handle as PanelHandle).update!(state);
     expect(q(row, '[data-lock="stock"]').hidden).toBe(true);
     expect(row.classList.contains('is-locked')).toBe(false);
-    // Nothing blocks it: the switch is described by the full line instead.
+    // Nothing blocks it: the full line alone describes the switch.
     expect(q(document, `#${q(row, '[role="switch"]').getAttribute('aria-describedby')}`).textContent).toContain('phổ biến');
   });
 

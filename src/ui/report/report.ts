@@ -347,7 +347,10 @@ export function levelUpBand(r: DailyReport): HTMLElement | null {
         'li',
         { class: 'rpt-unlock-group', attrs: { 'data-group': group } },
         h('b', { text: title }),
-        ...shown.map((c) => h('span', { class: 'rpt-unlock', attrs: { 'data-unlock': c.id } }, icon(c.icon, { size: 24 }), c.name)),
+        // A long name ends in "…" on screen; the title and the text node keep it whole.
+        ...shown.map((c) =>
+          h('span', { class: 'rpt-unlock', attrs: { 'data-unlock': c.id, title: c.name } }, icon(c.icon, { size: 24 }), h('span', { class: 'rpt-unlock-name', text: c.name })),
+        ),
       ),
     );
   }
