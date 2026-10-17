@@ -4,8 +4,8 @@
 // Needs Playwright with Chromium and the git history back to P23_BASE; see
 // docs/media.md.
 //
-// Boards (JPEG quality 75, in docs/media and docs/reports/p23-review), one per
-// width <w> of 390 and 1280:
+// Boards (JPEG quality 75, in docs/reports/p23-review only), one per width
+// <w> of 390 and 1280:
 //   hud-prep-<w>-p23.jpg    HUD on the morning of SAVE_DAY, in preparation
 //   hud-peak-<w>-p23.jpg    the same day at the peak (opened at 4x, then 1x)
 //   report-day3-<w>-p23.jpg Daily Report of day 3, the window not grown
@@ -14,6 +14,10 @@
 //                           f9508d8 week-end screen (that build stops at day 7)
 //   loading-<w>-p23.jpg     Main Menu while the 3D scene loads over Slow 4G,
 //                           three.js held back as in capture-loading.mjs
+//
+// Plain P23 shots for the README (JPEG quality 75, in docs/media only), at
+// 1280: hud-1280.jpg (the peak HUD), report-1280.jpg (the day-3 report) and
+// week-summary-1280.jpg (the week 2 summary).
 //
 // Each build plays its own saves with its own sim (Normal, the same seed, the
 // basic strategy of tests/integration/helpers.ts), so a save always matches
@@ -24,7 +28,7 @@
 // mostly off the frame, a label that covers text, and a board over MAX_BYTES;
 // any `!!` ends the run with exit code 1.
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -449,19 +453,17 @@ async function loadingSession(browser, url, viewport, who) {
 
 // --- Boards. ---
 
-/** Writes docs/media/<name> and docs/reports/p23-review/<name> as JPEG from the PNG board docs/media/<png>. */
-async function writeJpeg(browser, png, name) {
-  const file = join(OUT, png);
+/** Writes the PNG `png` (Buffer) to `dir`/<name> as JPEG; warns `!!` over MAX_BYTES. Returns the path from the repo root. */
+async function writeJpeg(browser, png, dir, name) {
   const page = await browser.newPage();
   try {
-    const jpg = Buffer.from(await page.evaluate(toJpeg, { png: readFileSync(file).toString('base64'), quality: JPEG_QUALITY }), 'base64');
-    writeFileSync(join(OUT, name), jpg);
-    writeFileSync(join(REVIEW, name), jpg);
+    const jpg = Buffer.from(await page.evaluate(toJpeg, { png: png.toString('base64'), quality: JPEG_QUALITY }), 'base64');
+    writeFileSync(join(dir, name), jpg);
     if (jpg.length > MAX_BYTES) console.warn(`!! ${name}: ${Math.round(jpg.length / 1024)} kB, over ${MAX_BYTES / 1024} kB`);
   } finally {
     await page.close();
-    rmSync(file, { force: true });
   }
+  return relative(ROOT, join(dir, name));
 }
 
 /** makeBoard with the P23 legend, after warning `!!` for every ring around a flat or off-frame area; then saved as JPEG. */
@@ -480,10 +482,14 @@ async function board(browser, name, opts) {
   } finally {
     await page.close();
   }
-  const png = name.replace(/\.jpg$/, '.tmp.png');
-  await makeBoard(browser, png, { names: NAMES, pad: 16, maxScale: 1.5, gutter: GUTTER, ...opts });
-  await writeJpeg(browser, png, name);
-  return name;
+  // makeBoard writes to docs/media; the PNG is only a step to the JPEG in docs/reports/p23-review.
+  const png = join(OUT, name.replace(/\.jpg$/, '.tmp.png'));
+  try {
+    await makeBoard(browser, basename(png), { names: NAMES, pad: 16, maxScale: 1.5, gutter: GUTTER, ...opts });
+    return await writeJpeg(browser, readFileSync(png), REVIEW, name);
+  } finally {
+    rmSync(png, { force: true });
+  }
 }
 
 const avoidTexts = (...frames) => frames.map((f, frame) => ({ frame, boxes: f.texts ?? [] }));
@@ -566,7 +572,7 @@ async function week1Board(browser, name, width, { base, cur }) {
     include: [...b.dialog, ...a.dialog],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, cửa sổ nới cao cho vừa cả hộp. Mở từ nút "Xem kết tuần" của báo cáo ngày 7. P22: điểm, cúp, bảng 7 ngày, nút chính Chơi lại vì ván dừng sau ngày 7. P23: thêm thưởng cúp, biểu đồ cột doanh thu từng ngày, khối tuần sau (mục tiêu, cấp kế tiếp) và nút chính "${cur.next ?? 'Sang tuần 2'}"; Chơi lại thành nút phụ.`,
+      `Khổ ${width} px, cửa sổ nới cao cho vừa cả hộp. Mở từ nút "Xem tổng kết tuần" của báo cáo ngày 7. P22: điểm, cúp, bảng 7 ngày, nút chính Chơi lại vì ván dừng sau ngày 7. P23: thêm thưởng cúp, biểu đồ cột doanh thu từng ngày, khối tuần sau (mục tiêu, cấp kế tiếp) và nút chính "${cur.next ?? 'Sang tuần 2'}"; Chơi lại thành nút phụ.`,
     ],
   });
 }
@@ -664,13 +670,18 @@ async function main() {
       files.push(await week2Board(browser, `week2-${w}-p23.jpg`, w, { base: s.baseWeek1, cur: s.curWeek2 }));
       files.push(await loadingBoard(browser, `loading-${w}-p23.jpg`, w, { base: s.baseLoad, cur: s.curLoad }));
     }
+    progress('P23', 'plain shots for the README');
+    const desk = shots[DESK.width];
+    files.push(await writeJpeg(browser, curHud.peak[DESK.width].png, OUT, 'hud-1280.jpg'));
+    files.push(await writeJpeg(browser, desk.curReport.png, OUT, 'report-1280.jpg'));
+    files.push(await writeJpeg(browser, desk.curWeek2.png, OUT, 'week-summary-1280.jpg'));
   } finally {
     if (browser) await browser.close();
     for (const s of servers) s.kill();
     for (const t of temps) rmSync(t, { recursive: true, force: true });
   }
 
-  for (const f of files) console.log(`ok docs/media/${f} ${Math.round(statSync(join(OUT, f)).size / 1024)} kB (also docs/reports/p23-review/${f})`);
+  for (const f of files) console.log(`ok ${f} ${Math.round(statSync(join(ROOT, f)).size / 1024)} kB`);
   if (warnings > 0) {
     console.error(`${warnings} !! warning(s): fix them before using the boards`);
     process.exitCode = 1;
