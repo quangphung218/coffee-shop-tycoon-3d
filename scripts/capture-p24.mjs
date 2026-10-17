@@ -600,6 +600,8 @@ async function hudBoard(browser, name, width, when, { base, cur }) {
       width >= DESK.width
         ? [...base.boxes.phase, ...base.boxes.progress, ...cur.boxes.phase, ...cur.boxes.progress].map((r) => ({ ...r, h: r.h + HUD_LABEL_ROOM }))
         : [...base.boxes.hud, ...cur.boxes.hud],
+    // Leaders to a side gutter would cross the Tiến độ text: on desktop the labels sit in the scene below.
+    ...(width >= DESK.width ? { gutter: 0 } : {}),
     avoid: avoidTexts(base, cur),
     notes: [
       `Khổ ${width} px, ngày ${SAVE_DAY} tuần 1 (Hội chợ), ${PHASE_WORD[when]}, ván Vừa seed ${SEED}. P23: dải ${b.steps?.count ?? 0} bước pha, chỉ bước hiện tại có chữ, ${dots} bước còn lại là chấm. P24: một pill tên pha${a.next?.text ? ` và giờ đổi pha (${a.next.text})` : ''}, danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Khung cụm: viền ${change(b.cluster?.outline, a.cluster?.outline)}, bóng ${change(b.cluster?.shadow, a.cluster?.shadow)}.`,
@@ -672,12 +674,12 @@ async function menuBoard(browser, name, width, { base, cur }) {
     frames: [before(base.png, 'Menu: Nước cam thiếu Cam'), after(cur.png, 'Menu: Nước cam thiếu Cam')],
     marks: [
       { frame: 0, boxes: base.boxes.row, label: `Nhãn "${b.badge?.text ?? ''}"${b.dots ? ` + ${b.dots.count} chấm phổ biến` : ''}` },
-      { frame: 1, boxes: cur.boxes.row, label: `"${b.badge?.text ?? ''}" → "${a.badge?.text ?? ''}"${b.dots && !a.dots ? '; chấm → chữ trong dòng meta' : ''}${link}` },
+      { frame: 1, boxes: cur.boxes.row, label: `"${b.badge?.text ?? ''}" → "${a.badge?.text ?? ''}"` },
     ],
     include: [...base.boxes.row, ...cur.boxes.row],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, Nước cam đã bật, kho chưa có Cam. P23: nhãn "${b.badge?.text ?? ''}" cạnh tên và chấm độ phổ biến; nguyên liệu thiếu chỉ ở dòng lý do. P24: nhãn trạng thái nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${a.link?.text ? ` và link "${a.link.text}" mở thẳng bảng Kho` : ''}; hàng dùng chung mẫu item-row với Kho.`,
+      `Khổ ${width} px, sáng ngày ${SAVE_DAY}, Nước cam đã bật, kho chưa có Cam. P23: nhãn "${b.badge?.text ?? ''}" cạnh tên và chấm độ phổ biến; nguyên liệu thiếu chỉ ở dòng lý do. P24: nhãn trạng thái nêu nguyên liệu thiếu ("${a.badge?.text ?? ''}")${b.dots && !a.dots ? ', độ phổ biến thành chữ trong dòng meta' : ''}${link}; hàng dùng chung mẫu item-row với Kho.`,
     ],
   });
 }
