@@ -66,24 +66,21 @@ interface Request {
 }
 
 let requests: Request[] = [];
-/** Every Image created by the code under test, so a test can fire its load or error. */
-let images: HTMLImageElement[] = [];
+/** Every bitmap decoded by the code under test. */
+let bitmaps: ImageBitmap[] = [];
 let blobs = 0;
 /** The module under test, fresh per test: its per-atlas cache starts empty. */
 let mod: Icons;
-const RealImage = globalThis.Image;
 const html = document.documentElement;
 
-/** Lets the fetch → blob → Image chain move on. */
+/** Lets the fetch → blob → bitmap chain move on. */
 const settle = async (): Promise<void> => {
   for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r));
 };
 
-/** Answers request `i` with 200 and loads the image made from it. */
+/** Answers request `i` with 200. */
 async function deliver(i: number): Promise<void> {
   requests[i]!.answer();
-  await settle();
-  images.at(-1)!.onload?.(new Event('load'));
   await settle();
 }
 
@@ -91,7 +88,7 @@ const count = (url: string): number => requests.filter((r) => r.url === url).len
 
 beforeEach(async () => {
   requests = [];
-  images = [];
+  bitmaps = [];
   blobs = 0;
   vi.stubGlobal(
     'fetch',
@@ -108,12 +105,11 @@ beforeEach(async () => {
     ),
   );
   URL.createObjectURL = () => `blob:atlas-${++blobs}`;
-  globalThis.Image = class extends RealImage {
-    constructor() {
-      super();
-      images.push(this);
-    }
-  } as typeof Image;
+  vi.stubGlobal('createImageBitmap', (blob: Blob) => {
+    const bitmap = { width: 0, height: 0, source: blob } as unknown as ImageBitmap;
+    bitmaps.push(bitmap);
+    return Promise.resolve(bitmap);
+  });
   html.classList.remove(ICONS_READY_CLASS, ICONS_HD_CLASS);
   html.style.removeProperty(ICON_ATLAS_VAR);
   vi.resetModules();
@@ -122,7 +118,6 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  globalThis.Image = RealImage;
   html.classList.remove(ICONS_READY_CLASS, ICONS_HD_CLASS);
   html.style.removeProperty(ICON_ATLAS_VAR);
   document.body.replaceChildren();
@@ -144,7 +139,9 @@ describe('html.icons-ready (@1x atlas)', () => {
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(true);
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
     expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:atlas-1")');
-    expect(images[0]!.getAttribute('src')).toBe('blob:atlas-1');
+    // Straight to ui.css: no extra decode or load step before the swap.
+    expect(bitmaps).toHaveLength(0);
+    expect(performance.getEntriesByName(mod.ICONS_MARK)).not.toHaveLength(0);
   });
 
   it('sets --ic-atlas before or with icons-ready, never after', async () => {
@@ -192,7 +189,7 @@ describe('a failed @1x load', () => {
     mod.watchIconAtlas(html, new EventTarget() as Window);
     requests[0]!.answer(404);
     await settle();
-    expect(images).toHaveLength(0);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('');
     expect(html.classList.contains(ICONS_READY_CLASS)).toBe(false);
   });
 
@@ -231,13 +228,11 @@ describe('html.icons-hd (@2x atlas)', () => {
   const screen2x = { devicePixelRatio: 2 };
 
   it('waits for the @2x load and is added only when it succeeds', async () => {
-    let done!: (img: HTMLImageElement) => void;
-    const img = new RealImage();
-    img.src = 'blob:hd';
+    let done!: (url: string) => void;
     const pending = mod.enableHdIcons(html, screen2x, () => new Promise((resolve) => (done = resolve)));
     await settle();
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(false);
-    done(img);
+    done('blob:hd');
     await pending;
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(true);
     expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:hd")');
@@ -262,7 +257,9 @@ describe('html.icons-hd (@2x atlas)', () => {
     const [a, b] = await Promise.all([labels, mod.loadIconAtlas()]);
     expect(count(ICON_ATLAS_URLS[2])).toBe(1);
     expect(a).toBe(b);
-    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe(`url("${a.src}")`);
+    // One decode, and the DOM uses the URL of the same blob.
+    expect(bitmaps).toEqual([a]);
+    expect(html.style.getPropertyValue(ICON_ATLAS_VAR)).toBe('url("blob:atlas-1")');
     expect(html.classList.contains(ICONS_HD_CLASS)).toBe(true);
   });
 
@@ -283,7 +280,7 @@ describe('html.icons-hd (@2x atlas)', () => {
     await expect(first).rejects.toThrow();
     const second = mod.loadIconAtlas();
     await deliver(1);
-    await expect(second).resolves.toBe(images.at(-1));
+    await expect(second).resolves.toBe(bitmaps.at(-1));
     expect(count(ICON_ATLAS_URLS[2])).toBe(2);
   });
 

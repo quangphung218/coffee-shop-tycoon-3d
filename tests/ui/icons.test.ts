@@ -134,7 +134,7 @@ describe('drawIcon()', () => {
   it('copies the cell from the atlas, scaled to the image it was given', () => {
     const calls: number[][] = [];
     const ctx = { drawImage: (_img: unknown, ...args: number[]) => calls.push(args) } as unknown as CanvasRenderingContext2D;
-    const atlas = { naturalWidth: ATLAS.width * 2 } as HTMLImageElement;
+    const atlas = { width: ATLAS.width * 2 } as ImageBitmap;
     const c = iconCell('i-latte')!;
     expect(drawIcon(ctx, atlas, 'i-latte', 10, 20, 64)).toBe(true);
     expect(calls).toEqual([[c.x * 2, c.y * 2, c.w * 2, c.h * 2, 10, 20, 64, 64]]);
@@ -173,11 +173,11 @@ describe('atlas loading order', () => {
 
   it('adds icons-hd only after the @2x atlas has loaded, and never on a failed load', async () => {
     const root = freshRoot();
-    let done!: (img: HTMLImageElement) => void;
+    let done!: (url: string) => void;
     const pending = enableHdIcons(root, { devicePixelRatio: 2 }, () => new Promise((resolve) => (done = resolve)));
     await Promise.resolve();
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
-    done(new Image());
+    done('blob:hd');
     await pending;
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(true);
 

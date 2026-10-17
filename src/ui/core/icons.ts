@@ -152,17 +152,23 @@ export function icon(id: IconCellId, opts: IconOptions = {}): HTMLElement {
 
 type AtlasScale = keyof typeof ICON_ATLAS_URLS;
 
-/** One decoded image per atlas, from a single fetch; a failed load is forgotten so it can be retried. */
-const atlasImages = new Map<AtlasScale, Promise<HTMLImageElement>>();
+/** An atlas file in memory: the bytes, and an object URL ui.css can draw from. */
+interface AtlasFile {
+  blob: Blob;
+  url: string;
+}
+
+/** One fetch per atlas; a failed load is forgotten so it can be retried. */
+const atlasFiles = new Map<AtlasScale, Promise<AtlasFile>>();
 
 /**
- * Fetches an atlas file once and decodes it from an object URL. The DOM
- * (`--ic-atlas`) and the canvas both use that URL, so the file is never
- * asked for twice, even with the HTTP cache off: an Image() and a CSS
- * background are separate requests then.
+ * Fetches an atlas file once into an object URL. The DOM (`--ic-atlas`) and
+ * the canvas both draw from it, so the file is never asked for twice, even
+ * with the HTTP cache off. No Image() load in between: the CSS can use the
+ * URL as soon as the bytes are in.
  */
-function atlasImage(scale: AtlasScale, priority: RequestPriority): Promise<HTMLImageElement> {
-  let pending = atlasImages.get(scale);
+function atlasFile(scale: AtlasScale, priority: RequestPriority): Promise<AtlasFile> {
+  let pending = atlasFiles.get(scale);
   if (!pending) {
     const url = ICON_ATLAS_URLS[scale];
     pending = fetch(url, { priority })
@@ -170,26 +176,32 @@ function atlasImage(scale: AtlasScale, priority: RequestPriority): Promise<HTMLI
         if (!res.ok) throw new Error(`icon atlas: ${url} answered ${res.status}`);
         return res.blob();
       })
-      .then(
-        (blob) =>
-          new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            img.decoding = 'async';
-            img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error(`icon atlas: cannot decode ${url}`));
-            img.src = URL.createObjectURL(blob);
-          }),
-      );
-    pending.catch(() => atlasImages.delete(scale));
-    atlasImages.set(scale, pending);
+      .then((blob) => ({ blob, url: URL.createObjectURL(blob) }));
+    pending.catch(() => atlasFiles.delete(scale));
+    atlasFiles.set(scale, pending);
   }
   return pending;
 }
 
-/** The @2x atlas as an image, for canvas drawing; loaded once and shared with the DOM. A failed load can be retried. */
-export function loadIconAtlas(): Promise<HTMLImageElement> {
-  return atlasImage(2, 'auto');
+let hdBitmap: Promise<ImageBitmap> | undefined;
+
+/** The @2x atlas decoded for canvas drawing; fetched once and shared with the DOM. A failed load can be retried. */
+export function loadIconAtlas(): Promise<ImageBitmap> {
+  if (!hdBitmap) {
+    const pending = atlasFile(2, 'auto').then((file) => createImageBitmap(file.blob));
+    pending.catch(() => (hdBitmap = undefined));
+    hdBitmap = pending;
+  }
+  return hdBitmap;
 }
+
+/** Object URL of the @2x atlas once it is fetched and decoded, so switching to it never shows an empty box. */
+function hdAtlasUrl(): Promise<string> {
+  return loadIconAtlas().then(() => atlasFile(2, 'auto').then((file) => file.url));
+}
+
+/** performance mark set when the @1x atlas reaches ui.css; startup measurements read it. */
+export const ICONS_MARK = 'cst:icons';
 
 /** Custom property on <html> holding `url(…)` of the loaded atlas; ui.css draws `.ic` with it. */
 export const ICON_ATLAS_VAR = '--ic-atlas';
@@ -199,8 +211,8 @@ export const ICONS_READY_CLASS = 'icons-ready';
 export const ICONS_HD_CLASS = 'icons-hd';
 
 /** Points ui.css at a loaded atlas, then adds `cls`: the image is set before the placeholder goes. */
-function useAtlas(root: HTMLElement, img: HTMLImageElement, cls: string): void {
-  root.style.setProperty(ICON_ATLAS_VAR, `url("${img.src}")`);
+function useAtlas(root: HTMLElement, url: string, cls: string): void {
+  root.style.setProperty(ICON_ATLAS_VAR, `url("${url}")`);
   root.classList.add(cls);
 }
 
@@ -213,11 +225,12 @@ export function watchIconAtlas(root: HTMLElement = document.documentElement, win
   let retried = false;
   const load = (): void => {
     // Below the scripts and fonts the page is still loading.
-    atlasImage(1, 'low').then(
-      (img) => {
+    atlasFile(1, 'low').then(
+      (file) => {
         // A 2x screen may already draw the @2x one.
-        if (!root.classList.contains(ICONS_HD_CLASS)) useAtlas(root, img, ICONS_READY_CLASS);
+        if (!root.classList.contains(ICONS_HD_CLASS)) useAtlas(root, file.url, ICONS_READY_CLASS);
         else root.classList.add(ICONS_READY_CLASS);
+        performance.mark(ICONS_MARK);
       },
       () => {
         if (retried) return;
@@ -238,20 +251,20 @@ export function watchIconAtlas(root: HTMLElement = document.documentElement, win
 export function enableHdIcons(
   root: HTMLElement = document.documentElement,
   win: Pick<Window, 'devicePixelRatio'> = window,
-  load: () => Promise<HTMLImageElement> = loadIconAtlas,
+  load: () => Promise<string> = hdAtlasUrl,
 ): Promise<void> {
   if (win.devicePixelRatio <= 1) return Promise.resolve();
   return load().then(
-    (img) => useAtlas(root, img, ICONS_HD_CLASS),
+    (url) => useAtlas(root, url, ICONS_HD_CLASS),
     () => {},
   );
 }
 
 /** Copies the cell of `id` from a loaded atlas image into a `size` px square at (x, y). False when there is no cell. */
-export function drawIcon(ctx: CanvasRenderingContext2D, atlas: HTMLImageElement, id: IconCellId, x: number, y: number, size: number): boolean {
+export function drawIcon(ctx: CanvasRenderingContext2D, atlas: ImageBitmap, id: IconCellId, x: number, y: number, size: number): boolean {
   const c = iconCell(id);
   if (!c) return false;
-  const k = atlas.naturalWidth / width;
+  const k = atlas.width / width;
   ctx.drawImage(atlas, c.x * k, c.y * k, c.w * k, c.h * k, x, y, size, size);
   return true;
 }
