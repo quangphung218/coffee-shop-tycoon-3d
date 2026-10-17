@@ -644,7 +644,7 @@ export type Command =
 
 export type NotifyLevel = 'info' | 'success' | 'warning' | 'error';
 
-export type SpendKind = 'restock' | 'upgrade' | 'hire' | 'campaign';
+export type SpendKind = 'restock' | 'upgrade' | 'campaign';
 
 export type GameEvent =
   | { type: 'doorbell'; customerId: number }

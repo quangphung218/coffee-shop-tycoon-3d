@@ -128,7 +128,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | --- | --- |
 | `doorbell`, `brew`, `cash`, `angry`, `served`, `cleaned` | Âm thanh, hiệu ứng trong cảnh; `served`/`angry` còn sinh review. |
 | `notify`, `low_stock`, `review` | Toast. |
-| `spend` | Toast. Phát mỗi lần trừ tiền thành công khi nhập một nguyên liệu (`restock`), mua nâng cấp (`upgrade`) hay chạy marketing (`campaign`); kèm `label` (tên), `amount` và `moneyLeft` (tiền còn lại). Giao dịch bị từ chối không phát. |
+| `spend` | Toast. Phát mỗi lần trừ tiền thành công khi nhập một nguyên liệu (`restock`), mua nâng cấp (`upgrade`) hay chạy marketing (`campaign`); kèm `label` (tên; nâng cấp ghi thêm cấp mới, ví dụ "Máy pha lên cấp 2"), `amount` và `moneyLeft` (tiền còn lại). Đây là thông báo duy nhất của giao dịch, không kèm `notify` thành công. Giao dịch bị từ chối không phát. |
 | `level_up` | Quán lên cấp lúc `closeDay`; kèm `level` mới và `unlocks` (món, nâng cấp, dụng cụ mới mở). |
 | `week_unlocks` | Sáng ngày trong tuần có mở khóa theo lịch; kèm `day` (ngày trong tuần) và `unlocks`. |
 | `phase` | Đổi pha trong ngày. |
