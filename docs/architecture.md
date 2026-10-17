@@ -69,6 +69,15 @@ Thứ tự tải atlas (`src/main.ts`):
 
 Mỗi atlas qua `atlasFile()`: một `fetch`, rồi blob và `URL.createObjectURL`; `--ic-atlas` nhận thẳng object URL đó (không tải qua `Image()`), nhãn 3D giải mã cùng blob bằng `createImageBitmap`. Fetch lỗi thì bỏ khỏi bộ nhớ đệm để lần sau xin lại. Nếu @2x về trước @1x (`html.icons-hd` đã có), @1x chỉ thêm `html.icons-ready`, không ghi đè `--ic-atlas`. Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, dùng chung lần fetch với UI. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh. Atlas @1x tải song song với chunk cảnh nhưng ưu tiên thấp hơn, để về trước khi cảnh 3D bắt đầu vẽ; @2x không tranh băng thông với chunk cảnh. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
 
+Atlas bậc nâng cấp (`tiers`) là atlas thứ hai, chỉ bảng Nâng cấp dùng:
+
+| Phần | Chi tiết |
+| --- | --- |
+| File | `public/icons3d/tiers@1x.webp`, `tiers@2x.webp`, `tiers.json` (`TIER_ATLAS_URLS`). Dựng bằng `npm run icons -- --set tiers`; lệnh luôn vẽ lại cả atlas này, không nhận `--only` hay `--sheet`, không đụng atlas chính. |
+| Ô | Bậc 2 và 3 của mỗi icon trong `UPGRADE_ICONS`, id `<id>-t2`, `<id>-t3` (`TIER_IDS`, `tierIconId` trong `src/icon-studio/atlas.ts`; mô hình ở `src/icon-studio/models/tiers.ts`). Bậc 1 là icon của atlas chính. |
+| `loadTierAtlas()` | `renderUpgradesPanel` gọi khi mở bảng Nâng cấp. Lần đầu `fetch` `tiers.json` và ảnh @1x (@2x khi `<html>` đã có `icons-hd`), giải mã, gán `--ic-tiers` (`TIER_ATLAS_VAR`) lên `<html>`. Lỗi thì giữ icon bậc 1 và thử lại ở lần gọi sau. `tiers.json` được `fetch`, không import, nên chunk chính không chứa nó. |
+| `tierIcon(id, tier, opts)` | Như `icon()`; bậc 2–3 khi atlas `tiers` đã tải thì đổi ô sang `<id>-t<n>` và gắn `data-atlas="tiers"` (`ui.css` vẽ bằng `--ic-tiers`). Icon vẽ lúc atlas đang tải hiện bậc 1 rồi tự đổi khi tải xong, kích thước ô không đổi. |
+
 Thêm icon:
 
 1. Thêm id vào `ICON_IDS` trong `src/ui/core/icons.ts`.
@@ -91,7 +100,7 @@ Font chữ:
 2. Sim chạy tick cố định 1 phút game; tối đa `MAX_TICKS_PER_STEP` = 240 tick mỗi lần gọi. Phần lẻ còn lại nằm trong `state.tickAccumulator`.
 3. `world.update(game, game.tickAccumulator)`: render nội suy vị trí giữa hai tick bằng `alpha`.
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
-5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` (`src/ui/core/fresh.ts`) giữ id món và nâng cấp vừa mở (`level_up`, `week_unlocks`) cho chấm "Mới" trên dock và nhãn "Mới" trên hàng; chỉ sống trong phiên, không vào save, xóa khi bắt đầu hay tải ván và khi đóng bảng Menu/Nâng cấp.
+5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` giữ id món và nâng cấp vừa mở ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên → khách → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
@@ -128,9 +137,9 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | --- | --- |
 | `doorbell`, `brew`, `cash`, `angry`, `served`, `cleaned` | Âm thanh, hiệu ứng trong cảnh; `served`/`angry` còn sinh review. |
 | `notify`, `low_stock`, `review` | Toast. |
-| `spend` | Toast. Phát mỗi lần trừ tiền thành công khi nhập một nguyên liệu (`restock`), mua nâng cấp (`upgrade`) hay chạy marketing (`campaign`); kèm `label` (tên; nâng cấp ghi thêm cấp mới, ví dụ "Máy pha lên cấp 2"), `amount` và `moneyLeft` (tiền còn lại). Đây là thông báo duy nhất của giao dịch, không kèm `notify` thành công. Giao dịch bị từ chối không phát. |
-| `level_up` | Quán lên cấp lúc `closeDay`; kèm `level` mới và `unlocks` (món, nâng cấp, dụng cụ mới mở). |
-| `week_unlocks` | Sáng ngày trong tuần có mở khóa theo lịch; kèm `day` (ngày trong tuần) và `unlocks`. |
+| `spend` | Toast; `kind: 'upgrade'` còn phát âm `upgrade`. Phát mỗi lần trừ tiền thành công khi nhập một nguyên liệu (`restock`), mua nâng cấp (`upgrade`) hay chạy marketing (`campaign`); kèm `label` (tên; nâng cấp ghi thêm cấp mới, ví dụ "Máy pha lên cấp 2"), `amount` và `moneyLeft` (tiền còn lại). Đây là thông báo duy nhất của giao dịch, không kèm `notify` thành công. Giao dịch bị từ chối không phát. |
+| `level_up` | Quán lên cấp lúc `closeDay`; kèm `level` mới và `unlocks` (món, nâng cấp, dụng cụ mới mở). Toast, âm `levelup`, `fresh`. |
+| `week_unlocks` | Sáng ngày trong tuần có mở khóa theo lịch; kèm `day` (ngày trong tuần) và `unlocks`. Toast, `fresh`. |
 | `phase` | Đổi pha trong ngày. |
 | `dayEnded` | Báo cáo đã nằm trong `state.lastReport`; shell tự lưu vào slot `auto` và chuyển kết quả cho Daily Report. |
 | `week_ended` | Ngày 7 của tuần vừa đóng, ngay sau `dayEnded`; kèm `result` (cũng nằm trong `state.week.result`). |
@@ -210,6 +219,33 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 60k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
 
 Gỡ trang trí (`removeDecor`) chỉ áp cho `plants`, `paintings`, `lights` (`isRemovableDecor`: `decor` không có `capacity`): giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% giá của cấp đó theo `priceMult`. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
+
+### Lên cấp, bậc nâng cấp và mục mới
+
+Phản hồi khi quán tiến bộ nằm ở render và UI, sim không đổi; save giữ `SAVE_VERSION` 3 vì bậc tính lại từ `state.upgrades`, còn mục "Mới" không vào save.
+
+`upgradeTier(id, level)` (`src/sim/data/upgrades.ts`) là bậc hình 0–3 của một nâng cấp: 0 khi chưa mua, còn lại `min(UPGRADE_TIERS, ceil(level / ceil(maxLevel / UPGRADE_TIERS)))` với `UPGRADE_TIERS` = 3; cấp vượt `maxLevel` (thưởng cấp quán) giữ bậc 3. `getShopLayout` ghi bậc vào `ShopLayout`:
+
+| Trường | Bậc của |
+| --- | --- |
+| `machines[].tier` | `better_machine` cho máy `espresso` và `fast`; nâng cấp của chính nó cho 5 dụng cụ |
+| `counter.tier` | `big_counter` |
+| `furnitureTier` | `tables` (bàn, ghế) |
+| `outdoorTier` | `outdoor_seating` (dù) |
+| `decorTier` | `plants`, `paintings`, `lights` theo `plant`, `painting`, `light` |
+| `windowBarTier` | `window_bar`; cảnh 3D không có vật thể riêng cho nâng cấp này |
+
+| Phần | Module | Cách chạy |
+| --- | --- | --- |
+| Máy và quầy theo bậc | `src/render/scene/equipment.ts` | `machineGeometry(m)` và `counterGeometry(width, level, tier)` dựng một mesh gộp theo bậc: bậc 0 vẽ như bậc 1 (hình gốc), bậc 2 thêm chi tiết chức năng và đế thép, bậc 3 đế vàng và huy hiệu sao vàng. Màu máy pha vẫn theo `quality`. `ShopView` dựng lại khi chữ ký máy hay quầy (có bậc) đổi. |
+| Bàn ghế, dù, trang trí theo bậc | `src/render/scene/shop.ts` | `TIERED_GEOMETRY` (`table`, `chair`, `parasol`, `plant`, `painting`, `lamp`, `bulb`) có hình cho từng bậc 1–3, cùng ngôn ngữ thép/vàng. Mỗi (vật, bậc) dựng một lần khi cần và giữ tới khi `ShopView` hủy; đổi bậc chỉ trỏ `InstancedMesh` sẵn có sang geometry khác (`setTier`), số mesh và draw call không đổi. Mỗi bậc không quá 1,6 lần số tam giác của bậc 1. |
+| Lấp lánh và nảy khi mua | `src/render/scene/upgradeFx.ts` | `UpgradeFx.update(state, time)` chạy sau `ShopView.update` mỗi khung. Lần gọi đầu, và lần đầu sau khi đổi sang object state khác (tải save, ván mới), chỉ ghi mốc cấp của mọi nâng cấp; sau đó chỉ cấp tăng mới bắn. Mỗi lần bắn: `SPARKLES` (32, mức Thấp `SPARKLES_LOW` = 12) hạt sao vàng trong `SPARKLE_SECONDS` (0,9 s) tại `ShopView.upgradeAnchor(id)`; máy và quầy còn nảy (`bounceScale`, `BOUNCE_SECONDS` = 0,45 s), đồ instanced chỉ lấp lánh. Mọi lần bắn dùng chung một `Points` và `Pool` tối đa `MAX_BURSTS` (3); lần thứ 4 lấy lại lần cũ nhất, khung hình không cấp phát. Giảm chuyển động (cài đặt hay `prefers-reduced-motion`) thì không bắn. |
+| Icon theo bậc | `src/ui/core/icons.ts`, `src/ui/panels/upgrades.ts` | Mỗi hàng Nâng cấp vẽ `tierIcon(UPGRADE_ICONS[id], upgradeTier(...))` từ atlas `tiers` ([Icon và font](#icon-và-font)). Dòng phụ thêm `tierText`: "Bậc n/3", và "mua để lên bậc n+1" khi cấp kế tiếp đổi bậc. |
+| Thẻ lên cấp | `src/ui/report/report.ts` | `levelUpBand` ở đầu tab Tổng kết: huy hiệu cấp bật lên (CSS, tắt khi giảm chuyển động), tên cấp, tối đa `LEVELUP_CHIPS` (6) chip icon chia nhóm Món mới / Nâng cấp / Dụng cụ, phần dư ghi "+N". Thẻ là `role="status"` tại chỗ, không chặn thao tác. |
+| Confetti | `src/ui/fx/confetti.ts` | Báo cáo có `levelUp` thì Daily Report nạp module bằng `import('../fx/confetti')` ở lần đầu cần (chunk riêng), rồi `burst(el)` một lần cho mỗi báo cáo. Canvas 2D phủ lên, `pointer-events: none`, `aria-hidden`; tối đa `CONFETTI_MAX` (90) mảnh trong một buffer cấp sẵn, `CONFETTI_MS` (1,4 s) rồi tự gỡ; đóng báo cáo thì dừng ngay. Giảm chuyển động thì không nạp, không bắn. |
+| Mục "Mới" | `src/ui/core/fresh.ts` | Store `fresh` gom id món và nâng cấp trong `unlocks` của `level_up` và `week_unlocks`. Dock hiện chấm "Mới" (`.dock-new`) trên Menu/Nâng cấp khi bảng đó có id mới và đang đóng; hàng có id mới hiện nhãn "Mới" (`freshBadge`, `setFresh`) khi ô nhãn còn trống. Đóng hay chuyển khỏi bảng thì xóa id của bảng đó (`clearTab`); bắt đầu hay tải ván thì xóa hết (`onGameStart`). Chỉ sống trong phiên. |
+| Âm thanh | `src/audio/index.ts` | `level_up` → `levelup` (arpeggio Đô–Mi–Sol–Đô), `spend` có `kind: 'upgrade'` → `upgrade` (hai tiếng chuông); tổng hợp Web Audio, không có file. `soundsForEvents` bỏ `notify` cùng khung với `levelup`. Khoảng lặp tối thiểu (`MIN_GAP_S`): `levelup` 1 s, `upgrade` 0,2 s. |
+| Công tắc Menu gọn | `src/ui/panels/widgets.ts`, `menu.ts` | `toggle(..., { compact: true })` (class `toggle-compact`) bỏ chữ Bán/Không, vẽ track 40 × 24 trong vùng chạm 44 × 44; trình đọc màn hình đọc trạng thái từ `aria-checked`, tên từ `aria-label` "Bán <món>". Chỉ bảng Menu dùng bản gọn: mỗi món một dòng (`.menu-row`); nhãn "Thiếu <nguyên liệu>" là nút mở Kho; dòng đủ (giá, lãi mỗi ly, nóng/lạnh, phổ biến) nằm trong `title` của hàng và là mô tả của công tắc khi không có lý do khóa hay thiếu hàng. Công tắc ở bảng khác giữ bản có chữ. |
 
 ### Quyết định giá và lương
 
@@ -372,6 +408,7 @@ Mỗi slot là JSON:
 - Tiếp đó `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - `week` và `policies` là trường tùy chọn: save không có `week` chơi không lịch tuần, không màn kết tuần ([Tuần 7 ngày](#tuần-7-ngày)); thiếu `policies` thì cả giá và lương là `standard`.
+- Bậc hình nâng cấp (`upgradeTier`) tính lại từ `state.upgrades` mỗi lần dựng bố cục, mục "Mới" (`fresh`) chỉ sống trong phiên: không trường nào được lưu, save vẫn là phiên bản 3 và save cũ hiện đúng bậc theo cấp đã mua.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
 
 ### Số liệu chơi
@@ -419,19 +456,22 @@ Tiến độ cảnh 3D là danh sách thành phần (`LOAD_COMPONENTS` trong `sr
 - Cảnh sẵn sàng (100%, mở nút vào quán) chỉ khi mọi mục đã xong.
 - Sau 8 s chưa xong: dòng chữ đổi thành "Mạng đang chậm, game vẫn đang tải…".
 - Một mục lỗi: dòng tiến độ báo lỗi, mục đó có nút **Thử lại**. Font và Icon tải lại riêng mục đó. Bốn mục còn lại tải lại cùng nhau: gọi lại `import()`; trình duyệt có thể giữ lỗi của module cũ, nên nếu vẫn lỗi mà trang trả lời được thì tải lại trang. Lỗi khi dựng quán hay biên dịch shader (WebGL) báo riêng.
-- Khi đang chơi không tải thêm file nào: quán, mở rộng và khu mới đều dựng bằng code, nên không có chỉ báo tải giữa game.
+- Khi đang chơi, quán, mở rộng, khu mới và hình theo bậc đều dựng bằng code. Chỉ hai thứ tải giữa game, không có chỉ báo tải: chunk confetti khi Daily Report đầu tiên có lên cấp, và atlas `tiers` khi mở bảng Nâng cấp lần đầu. Cả hai lỗi thì bỏ qua: không confetti, icon giữ bậc 1.
+- Main Menu không tải thêm file nào cho phần lên cấp và bậc: `equipment.ts`, `upgradeFx.ts` nằm trong chunk `src/render`; confetti và atlas `tiers` chỉ tải như trên. `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải gì khi menu hiện.
 
 Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`, `src/save`: làm vậy kéo three.js trở lại chunk chính.
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 210,2 kB | 72,7 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 78,4 kB | 12,6 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 88,5 kB | 32,8 kB | Sau khi Main Menu đã vẽ |
-| `three-*.js` | 502,0 kB | 126,1 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 218,9 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 83,2 kB | 13,6 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 98,7 kB | 36,3 kB | Sau khi Main Menu đã vẽ |
+| `three-*.js` | 504,5 kB | 126,5 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
+| `confetti-*.js` (`src/ui/fx/confetti.ts`) | 2,1 kB | 1,1 kB | Daily Report đầu tiên có lên cấp, khi không giảm chuyển động |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
 | `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
+| `icons3d/tiers.json` + `tiers@1x.webp` hoặc `tiers@2x.webp` | 8,8 kB + 39,3 kB hoặc 93,4 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
@@ -495,7 +535,7 @@ Chất lượng đồ họa:
 - Chiếu sáng gồm `HemisphereLight` + `DirectionalLight` tông ấm, cộng `scene.environment` lấy từ `RoomEnvironment` của three qua `PMREMGenerator` (0 byte tải). Env map dựng một lần, dùng lại qua các lần đổi mức; mức Thấp tắt env để bớt một lần lấy mẫu mỗi điểm ảnh.
 - Đồ trong quán và ngoài phố dùng chung một `MeshStandardMaterial` phẳng (flatShading, roughness cao) để bắt ánh sáng môi trường mà vẫn giữ nét hoạt hình; một `CanvasTexture` vân nhỏ (≤ 128 px) vẽ lúc chạy, lát lên mọi mặt làm map màu.
 - Mỗi máy và dụng cụ (`espresso`, `fast`, `grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là một mesh gộp (`machineGeometry` trong `equipment.ts`), một draw call. Quầy (`counterGeometry`) cũng vậy.
-- Máy và quầy đổi hình theo bậc `upgradeTier` (0..3, `getShopLayout` ghi vào `tier`): bậc 0 và 1 là hình gốc; bậc 2 thêm chi tiết chức năng và đế thép; bậc 3 có đế vàng và huy hiệu sao vàng. Số tam giác bậc 3 không quá 1,6 lần bậc 1.
+- Máy và quầy đổi hình theo bậc `upgradeTier` (0..3, `getShopLayout` ghi vào `tier`): bậc 0 và 1 là hình gốc; bậc 2 thêm chi tiết chức năng và đế thép; bậc 3 có đế vàng và huy hiệu sao vàng. Số tam giác bậc 3 không quá 1,6 lần bậc 1. Bàn ghế, dù và trang trí cũng đổi hình theo bậc ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
 Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 
