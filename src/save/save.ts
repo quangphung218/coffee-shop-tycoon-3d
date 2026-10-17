@@ -109,6 +109,9 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
   // an archive; a week 1 that v2 already scored gets its archive row now (its
   // result stays, so the week summary still shows and next_day opens week 2).
   // Saves without a week keep none. History is cut like the sim does.
+  // That v2 result gets no `reward`: v2 never paid the cup reward, and paying
+  // it now would hand out cash for a week already closed, so the week summary
+  // hides the reward line instead of showing money that never landed.
   2: (file) => {
     const state: Raw = isObject(file.state) ? { ...file.state } : {};
     if (isObject(state.week)) {

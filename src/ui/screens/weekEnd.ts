@@ -1,7 +1,7 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { LEVELS, MAX_SHOP_LEVEL, unlocksBetween, xpToReach } from '../../sim/data/levels';
 import { getUpgrade } from '../../sim/data/upgrades';
-import { weekGoal, weekReward } from '../../sim/data/week';
+import { weekGoal } from '../../sim/data/week';
 import { weekIndex } from '../../sim/progression';
 import { bestDay, weekCompare, type StatId, type WeekCompare } from '../../sim/stats';
 import type { GameState, UpgradeId, WeekResult } from '../../sim/types';
@@ -392,7 +392,8 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
         const compare = weekCompare(state);
         setChildren(
           body,
-          scoreBlock(result, weekReward(state.difficulty, result.cups)),
+          // Only what closeDay actually paid; v2 weeks have no reward and show none.
+          scoreBlock(result, result.reward ?? 0),
           h('div', { class: 'rpt-grid' }, revenueBlock(result), starsBlock(result)),
           compare && compare.current.index === index ? compareBlock(compare) : null,
           daysBlock(result, bestDay(state)?.weekDay ?? null),

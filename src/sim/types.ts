@@ -535,6 +535,11 @@ export interface WeekResult {
   score: number;
   /** 0..3 cups from the score. */
   cups: number;
+  /**
+   * Cash the cups paid into `money` when the week closed (0 when too few cups).
+   * Absent on weeks scored before the reward was paid (v2 saves): nothing was paid.
+   */
+  reward?: number;
   /** One row per week day, day 1 first (`day` is the week day). */
   days: { day: number; revenue: number; customersServed: number; weather: Weather; event: DayEventId }[];
 }
