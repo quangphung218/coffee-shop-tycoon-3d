@@ -15,6 +15,7 @@
     "media:p21": "npm run build && node scripts/capture-p21.mjs",
     "media:p22": "npm run build && node scripts/capture-p22.mjs",
     "media:p23": "npm run build && node scripts/capture-p23.mjs",
+    "media:p24": "npm run build && node scripts/capture-p24.mjs",
     "media:loading": "npm run build && node scripts/capture-loading.mjs",
     "review:p22": "npm run build && node scripts/review-p22.mjs",
     "layout": "npm run build && node scripts/check-layout.mjs",
