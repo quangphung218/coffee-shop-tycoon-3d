@@ -813,24 +813,28 @@ const after = (png, title) => ({ png, title: `${title} · ${NAMES.after}`, side:
 /** A screen box grown by `pad` px on every side; null stays null. */
 const grow = (b, pad) => (b ? { x: b.x - pad, y: b.y - pad, w: b.w + 2 * pad, h: b.h + 2 * pad } : null);
 
-async function menuBoard(browser, { base, cur }) {
+/** `base`, `cur`: menuSession (atlas held); `atlas`: menuAtlasSession of each build, for the ms on the mobile profile. */
+async function menuBoard(browser, { base, cur, atlas }) {
   const count = (m) => `${m.icons.blank}/${m.icons.visible} ô icon trống`;
+  const t0 = atlas.base;
+  const t1 = atlas.cur;
   await board(browser, 'main-menu-icons-p22.png', {
     frames: [before(base.png, 'Main Menu 390'), after(cur.png, 'Main Menu 390')],
+    // Short labels on the same rings, as on main-menu-atlas-390-p22.png.
     marks: [
-      { frame: 0, boxes: base.buttons, label: `${count(base)} (${base.icons.size} px) lúc menu hiện, ${base.menuMs} ms` },
-      {
-        frame: 1,
-        boxes: cur.buttons,
-        label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ, ${count(cur)}, lúc menu hiện, ${cur.menuMs} ms`,
-      },
+      { frame: 0, boxes: base.buttons, label: `${count(base)} lúc menu hiện` },
+      { frame: 0, boxes: base.buttons, label: `Di động: ô trống ${t0.times.menu} ms` },
+      { frame: 0, boxes: base.buttons, label: `Di động: icon ${t0.drawnMs} ms` },
+      { frame: 1, boxes: cur.buttons, label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ, ${count(cur)}` },
+      { frame: 1, boxes: cur.buttons, label: `Di động: ô chờ ${t1.times.menu} ms` },
+      { frame: 1, boxes: cur.buttons, label: `Di động: icon ${t1.drawnMs} ms` },
     ],
     pad: 24,
     maxScale: 1.5,
     avoid: avoidTexts(base, cur),
     gutter: GUTTER,
     notes: [
-      `Khổ 390×844, Main Menu ngay lúc main.ts đánh dấu cst:menu; atlas icon bị giữ lại (như mạng chậm, menu hiện trước khi atlas tải xong) để thấy đúng trạng thái lần tải đầu. Đếm ô .ic hiện trên màn lúc cst:menu: v0.4.0 ${base.icons.blank} trống / ${base.icons.placeholder} ô chờ; P22 ${cur.icons.blank} trống / ${cur.icons.placeholder} ô chờ. P22 chỉ xin atlas @1x khi chunk cảnh 3D đã tải xong, atlas @2x sau khi cảnh 3D hiện (cst:world); thời điểm thật trên mạng di động ở main-menu-atlas-390-p22.png.`,
+      `Khổ 390×844, Main Menu ngay lúc main.ts đánh dấu cst:menu; atlas icon bị giữ lại (như mạng chậm, menu hiện trước khi atlas tải xong) để thấy đúng trạng thái lần tải đầu. Đếm ô .ic hiện trên màn lúc cst:menu: v0.4.0 ${base.icons.blank} trống / ${base.icons.placeholder} ô chờ; P22 ${cur.icons.blank} trống / ${cur.icons.placeholder} ô chờ. Mốc "Di động" lấy từ một lần tải không cache trên cấu hình di động của measure-startup.mjs (main-menu-atlas-390-p22.png): menu hiện (ô trống hoặc ô chờ) và lúc mọi ô đã vẽ icon. P22 xin atlas @1x ngay sau khi menu vẽ, sau lệnh xin chunk cảnh 3D, ưu tiên thấp; atlas @2x sau khi cảnh 3D hiện (cst:world).`,
     ],
   });
 }
@@ -882,7 +886,7 @@ async function khoBoard(browser, out, { base, cur }) {
     avoid: avoidTexts(base, cur, cur.list),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng gọn (hai tổng một hàng, nút Nhập hàng 44 px), vùng nội dung dưới 12rem thì chân cuộn sau danh sách; ở đây chân ${a.sticky ? 'vẫn dính' : 'cuộn sau danh sách'}. Desktop và tablet giữ chân đầy đủ. Chân bảng ở kho-foot-390-p22.png.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng gọn (hai tổng một hàng, nút Nhập hàng 44 px), chỉ khi vùng nội dung dưới 8rem chân mới cuộn sau danh sách; ở đây chân ${a.sticky ? 'vẫn dính' : 'cuộn sau danh sách'}. Desktop và tablet giữ chân đầy đủ. Chân bảng ở kho-foot-390-p22.png.`,
     ],
   });
 }
@@ -893,6 +897,8 @@ async function khoFootBoard(browser, { base, cur }) {
   const px = (n) => Math.round(n ?? 0);
   const buy = (k) => (k.buyCover ? `ngoài tầm chạm (${k.buyCover})` : 'chạm được');
   const e = cur.end.kho;
+  // The fix is that Nhập hàng is in view and in reach the moment Kho opens.
+  if (!a.sticky || a.buyCover) console.warn(`!! kho-foot-390-p22.png: P22 Nhập hàng is not in reach on opening (foot ${a.sticky ? 'sticky' : 'static'}, ${a.buyCover ?? 'reachable'})`);
   // A P22 foot that scrolls with the list is off screen on opening: ring the bottom of the body there, and the foot at the end of the body.
   const bodyEnd = a.body ? { x: a.body.x, y: a.body.y + a.body.h - 60, w: a.body.w, h: 60 } : null;
   const frames = a.sticky
@@ -902,7 +908,7 @@ async function khoFootBoard(browser, { base, cur }) {
   const marks = a.sticky
     ? [
         { frame: 1, boxes: [a.foot], label: `Chân gọn ${px(a.foot?.h)} px, vẫn dính` },
-        { frame: 1, boxes: [a.buy], label: `Nhập hàng ${px(a.buy?.h)} px, ${a.buyCover ? 'bị che' : 'chạm được'}` },
+        { frame: 1, boxes: [a.buy], label: `Nhập hàng ${px(a.buy?.h)} px, ${a.buyCover ? 'bị che' : 'thấy ngay khi mở'}` },
       ]
     : [
         { frame: 1, boxes: [bodyEnd], label: 'Đáy thân: chưa thấy Nhập hàng' },
@@ -918,7 +924,7 @@ async function khoFootBoard(browser, { base, cur }) {
     avoid: avoidTexts(base, cur, ...(a.sticky ? [] : [cur.end])),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED}, bảng Kho vừa mở. v0.4.0: chân ${px(b.foot?.h)} px, nút Nhập hàng ${px(b.buy?.h)} px ${buy(b)}. P22: thân ${px(a.body?.h)} px, vùng nội dung (trừ padding) ${px(a.bodyContent)} px; dưới 30rem chân gọn (hai tổng một hàng, nút Nhập hàng 44 px), dưới 12rem (192 px) chân cuộn sau danh sách. ${a.sticky ? `Chân vẫn dính đáy, nút Nhập hàng ${buy(a)} khi mở Kho.` : `Chân cuộn sau danh sách: khi mở Kho nút Nhập hàng ${buy(a)}, phải cuộn tới cuối mới thấy.`}`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED}, bảng Kho vừa mở. v0.4.0: chân ${px(b.foot?.h)} px, nút Nhập hàng ${px(b.buy?.h)} px ${buy(b)}. P22: thân ${px(a.body?.h)} px, vùng nội dung (trừ padding) ${px(a.bodyContent)} px; dưới 30rem chân gọn (hai tổng một hàng, nút Nhập hàng 44 px) và vẫn dính đáy; chỉ khi vùng nội dung dưới 8rem (128 px) chân mới cuộn sau danh sách. ${a.sticky ? `Chân vẫn dính đáy, nút Nhập hàng ${buy(a)} khi mở Kho.` : `Chân cuộn sau danh sách: khi mở Kho nút Nhập hàng ${buy(a)}, phải cuộn tới cuối mới thấy.`}`,
     ],
   });
 }
@@ -1084,7 +1090,7 @@ async function main() {
     ]);
 
     progress('both', 'drawing boards');
-    await menuBoard(browser, { base: baseMenu, cur: curMenu });
+    await menuBoard(browser, { base: baseMenu, cur: curMenu, atlas: { base: baseAtlas, cur: curAtlas } });
     files.push('main-menu-icons-p22.png');
     await menuAtlasBoard(browser, { base: baseAtlas, cur: curAtlas });
     files.push('main-menu-atlas-390-p22.png');
