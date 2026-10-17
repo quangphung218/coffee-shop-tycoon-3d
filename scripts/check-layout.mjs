@@ -11,7 +11,11 @@
 // input, as web-vitals counts it) must be 0, the foot and its rows (totals,
 // buy button, hint) must keep their place and size, and the stock list must
 // not move. Shifts that follow a click
-// are listed per step as notes. Prints PASS/FAIL tables; exits 1 on any FAIL.
+// are listed per step as notes. The HUD is checked before opening, with the
+// camera menu open and while open: three clusters inside the viewport, not
+// overlapping, content inside each frame, one row from 1280 px up and at
+// most two below (1280×800 runs this HUD check only).
+// Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -138,6 +142,116 @@ async function checkScreen(page, results, viewport, screen, opts) {
     detail: m.error ?? `${m.scrollChecked} scroll box, ${m.checked} phần tử; ${m.wide.length} tràn scroll, ${m.outside.length} lệch khung`,
     fails,
   });
+}
+
+/**
+ * HUD (P23): the three clusters must sit inside the viewport, not overlap,
+ * hold their content inside their frame and take at most `maxRows` rows;
+ * an open camera menu must stay inside the viewport.
+ */
+async function checkHud(page, results, viewport, screen, maxRows) {
+  await settle(page);
+  const m = await page.evaluate(
+    ({ eps }) => {
+      const fails = [];
+      const name = (el) => el.dataset.cluster ?? el.className;
+      const clusters = [...document.querySelectorAll('.hud > .hud-cluster')];
+      if (clusters.length !== 3) fails.push(`${clusters.length} clusters, expected 3`);
+      const doc = document.documentElement;
+      if (doc.scrollWidth > doc.clientWidth) fails.push(`html scrollWidth ${doc.scrollWidth} > clientWidth ${doc.clientWidth}`);
+      const boxes = clusters.map((c) => [c, c.getBoundingClientRect()]);
+      for (const [c, r] of boxes) {
+        if (r.left < -eps || r.right > innerWidth + eps) fails.push(`${name(c)} ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside 0..${innerWidth}`);
+        if (c.scrollWidth > c.clientWidth + 1) fails.push(`${name(c)} scrollWidth ${c.scrollWidth} > clientWidth ${c.clientWidth}`);
+        for (const el of c.querySelectorAll('*')) {
+          if (el.closest('.hud-menu') || (el.closest('svg') && el.tagName.toLowerCase() !== 'svg')) continue;
+          const e = el.getBoundingClientRect();
+          if (e.width <= 1 || e.height <= 1) continue;
+          if (e.left < r.left - eps || e.right > r.right + eps) fails.push(`${name(c)}: ${el.tagName.toLowerCase()}.${[...el.classList].join('.')} ${e.left.toFixed(1)}..${e.right.toFixed(1)} outside ${r.left.toFixed(1)}..${r.right.toFixed(1)}`);
+        }
+      }
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const [a, ra] = boxes[i];
+          const [b, rb] = boxes[j];
+          if (ra.left < rb.right - eps && rb.left < ra.right - eps && ra.top < rb.bottom - eps && rb.top < ra.bottom - eps) fails.push(`${name(a)} overlaps ${name(b)}`);
+        }
+      }
+      // A cluster starts a new row when it begins below the shortest cluster
+      // of the current row: centred clusters of different heights share a row
+      // with different tops, and Điều khiển spans both grid rows.
+      const spans = boxes.map(([, r]) => [r.top, r.bottom]).sort((a, b) => a[0] - b[0]);
+      let rows = 0;
+      let rowBottom = -Infinity;
+      for (const [top, bottom] of spans) {
+        if (top >= rowBottom - eps) {
+          rows++;
+          rowBottom = bottom;
+        } else rowBottom = Math.min(rowBottom, bottom);
+      }
+      const menu = document.querySelector('.hud-menu:not([hidden])');
+      if (menu) {
+        const r = menu.getBoundingClientRect();
+        if (r.left < -eps || r.right > innerWidth + eps) fails.push(`menu ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside 0..${innerWidth}`);
+      }
+      const bar = document.querySelector('.hud').getBoundingClientRect();
+      return { fails, rows, height: Math.round(bar.height), widths: boxes.map(([c, r]) => `${name(c)} ${Math.round(r.width)}`).join(', ') };
+    },
+    { eps: EPS },
+  );
+  const fails = [...m.fails];
+  if (m.rows > maxRows) fails.push(`${m.rows} rows, at most ${maxRows}`);
+  results.push({ viewport, screen, pass: fails.length === 0, detail: `${m.rows} hàng, cao ${m.height} px; ${m.widths}`, fails });
+}
+
+/** Rows the HUD may take: one on a wide screen, two from 1279 px down. */
+const hudRows = (viewport) => (viewport.width >= 1280 ? 1 : 2);
+
+/** New game on Easy up to the HUD of day 1. */
+async function startDayOne(page) {
+  await page.goto(URL_BASE);
+  const newGame = page.getByRole('button', { name: 'Ván mới', exact: true });
+  await newGame.waitFor();
+  await page.locator('#boot').waitFor({ state: 'detached' });
+  await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
+  await newGame.click();
+  await page.locator('label.choice', { has: page.locator('input[value="easy"]') }).click();
+  await page.getByRole('button', { name: 'Bắt đầu ngày 1', exact: true }).click();
+  await page.locator('.hud [data-action="open"]').waitFor();
+}
+
+/** HUD before opening, with the camera menu open, and while open at 4x. */
+async function checkHudPhases(page, results, viewport) {
+  const size = `${viewport.width}×${viewport.height}`;
+  await checkHud(page, results, size, 'HUD: chuẩn bị', hudRows(viewport));
+  await page.locator('.hud [data-action="more"]').click();
+  await checkHud(page, results, size, 'HUD: menu camera', hudRows(viewport));
+  await page.keyboard.press('Escape');
+  await page.locator('.hud-menu').waitFor({ state: 'hidden' });
+}
+
+/** Viewports where only the HUD is checked (no panels or day). */
+const HUD_ONLY = [{ width: 1280, height: 800 }];
+
+async function runHudOnly(browser, viewport, results) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    ({ now, settings }) => {
+      Date.now = () => now;
+      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
+    },
+    { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'low', gameSpeed: 1, cameraKeys: 'qe-wasd' } },
+  );
+  const page = await context.newPage();
+  try {
+    await startDayOne(page);
+    await checkHudPhases(page, results, viewport);
+    await page.locator('.hud [data-action="open"]').click();
+    await page.locator('[data-speed="4"]').click();
+    await checkHud(page, results, `${viewport.width}×${viewport.height}`, 'HUD: mở cửa', hudRows(viewport));
+  } finally {
+    await context.close();
+  }
 }
 
 const PANEL_FRAME = { frame: '#ui > .panel:not([hidden]) .panel-body', scrollers: ['#ui > .panel:not([hidden])', '#ui > .panel:not([hidden]) .panel-body'] };
@@ -293,15 +407,8 @@ async function runViewport(browser, viewport, overflow, shift) {
   );
   const page = await context.newPage();
   try {
-    await page.goto(URL_BASE);
-    const newGame = page.getByRole('button', { name: 'Ván mới', exact: true });
-    await newGame.waitFor();
-    await page.locator('#boot').waitFor({ state: 'detached' });
-    await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
-    await newGame.click();
-    await page.locator('label.choice', { has: page.locator('input[value="easy"]') }).click();
-    await page.getByRole('button', { name: 'Bắt đầu ngày 1', exact: true }).click();
-    await page.locator('.hud [data-action="open"]').waitFor();
+    await startDayOne(page);
+    await checkHudPhases(page, overflow, viewport);
 
     for (const [id, label] of PANELS) {
       await openPanel(page, id);
@@ -324,6 +431,7 @@ async function runViewport(browser, viewport, overflow, shift) {
 
     await page.locator('.hud [data-action="open"]').click();
     await page.locator('[data-speed="4"]').click();
+    await checkHud(page, overflow, size, 'HUD: mở cửa', hudRows(viewport));
     await page.waitForFunction(
       () => document.querySelector('.rpt-layer:not([hidden]) [data-block="money"]') && !document.querySelector('.rpt-layer:not([hidden]) [data-block="busy"]'),
       null,
@@ -369,6 +477,15 @@ async function main() {
         // The screens measured so far keep their rows; the run still fails.
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'chạy kịch bản', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    for (const viewport of HUD_ONLY) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await runHudOnly(browser, viewport, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'HUD', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {

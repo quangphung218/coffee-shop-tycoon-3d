@@ -1149,56 +1149,57 @@ legend {
   flex-basis: 100%;
   order: 1;
 }
-.hud-left,
-.hud-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  pointer-events: none;
-}
-.hud-right {
-  justify-content: flex-end;
-  margin-left: auto;
-}
-.hud-left > *,
-.hud-right > *,
-.hud-note {
-  pointer-events: auto;
-}
-.hud-stat,
-.phases,
+/* Three clusters (P23): Hôm nay | Tiến độ | Điều khiển. Each is one cream
+   frame; the values inside sit on it with no frame of their own. */
+.hud-cluster,
 .hud-note {
   background: var(--surface-hud-solid);
   color: var(--text-primary);
   border: var(--size-outline) solid var(--border-outline);
   border-radius: var(--radius-pill);
+  pointer-events: auto;
 }
-.hud-stat {
-  display: inline-flex;
+.hud-cluster {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   min-height: var(--size-hud-pill);
   padding: var(--space-1) var(--space-4);
   box-shadow: var(--shadow-md);
   line-height: var(--line-height-tight);
+  white-space: nowrap;
 }
-.hud-stat small {
+.hud-controls {
+  gap: var(--space-1);
+  margin-left: auto;
+  padding: var(--space-1);
+}
+.hud-cluster b {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+/* "Ngày 12" over "Tuần 2 · 5/7". */
+.hud-day {
+  display: flex;
+  flex-direction: column;
+}
+.hud-day small {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
-.hud-stat b {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-heavy);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-/* Today's weather and event during a week: small icon + word pairs in one pill. */
+.hud-val,
+.hud-time,
 .hud-week {
-  gap: var(--space-3);
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
+/* Today's weather (icon) and event (icon + word) during a week. */
 .week-chip {
   display: inline-flex;
   align-items: center;
@@ -1206,11 +1207,14 @@ legend {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
 }
-/* Shop-level chip on one row: "Cấp N", the XP bar and its "320/500" count,
-   sharing the day pill's row (design/p20 .xp-wrap). The level name sits in
-   the title. A label, so it keeps the HUD pill frame on a tint. */
+/* Shop level on one row: "Cấp N", a thin XP bar and its "320/500" count
+   (design/p20 .xp-wrap) on a tint. The level name sits in the title. */
 .hud-level {
-  padding-right: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
   white-space: nowrap;
@@ -1222,7 +1226,7 @@ legend {
 }
 .xp {
   flex: none;
-  width: calc(var(--space-16) + var(--space-8));
+  width: var(--space-16);
   max-width: 24vw;
   height: var(--space-2);
   border-radius: var(--radius-pill);
@@ -1249,52 +1253,63 @@ legend {
 @keyframes level-up-flash {
   0%,
   100% {
-    box-shadow: var(--shadow-md);
+    box-shadow: none;
   }
   40% {
-    box-shadow:
-      0 0 0 var(--space-1) var(--accent-primary),
-      var(--shadow-md);
+    box-shadow: 0 0 0 var(--space-1) var(--accent-primary);
   }
 }
+/* Phase strip: the current phase as a honey sticker with its icon and name,
+   the others as dots, filled once done. Names of the dots stay in the list
+   for a screen reader. */
 .phases {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-1);
   list-style: none;
   margin: 0;
-  padding: var(--space-1);
-  box-shadow: var(--shadow-md);
+  padding: 0;
 }
 .phases li {
+  position: relative;
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  border: var(--size-outline-sm) solid transparent;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-muted);
+  font-weight: var(--font-weight-heavy);
   white-space: nowrap;
 }
-.phases li.is-done {
-  color: var(--text-primary);
+.phases li:not([aria-current]) {
+  width: var(--space-2);
+  height: var(--space-2);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  background: var(--surface-hud-solid);
+}
+.phases li.is-done:not([aria-current]) {
+  background: var(--border-outline);
+}
+.phases li:not([aria-current]) .ph-icon {
+  display: none;
+}
+.phases li:not([aria-current]) .ph-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 .phases li[aria-current='step'] {
+  padding: 0 var(--space-2) 0 var(--space-1);
+  min-height: var(--space-8);
   background: var(--accent-primary);
-  border-color: var(--border-outline);
+  border: var(--size-outline-sm) solid var(--border-outline);
   color: var(--text-primary);
-  font-weight: var(--font-weight-heavy);
   box-shadow: var(--shadow-sm);
 }
 .ph-icon {
   display: inline-flex;
-}
-.phase-count {
-  display: none;
-  font-size: var(--font-size-xs);
 }
 .hud-btn {
   min-width: var(--size-hud-pill);
@@ -1388,6 +1403,85 @@ legend {
   border-color: var(--border-outline);
   box-shadow: var(--shadow-sm);
 }
+/* Inside the Điều khiển frame the speed group, pause and the menu button are
+   ghost buttons like the speed options; the phase action stays a sticker. */
+.hud-controls .seg {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.hud-controls .seg button {
+  padding: 0 var(--space-2);
+}
+.hud-controls .hud-btn:not(.hud-btn-cta) {
+  --bw: var(--size-outline-sm);
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  border: var(--size-outline-sm) solid transparent;
+  background: transparent;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  .hud-controls .hud-btn:not(.hud-btn-cta):hover {
+    transform: none;
+    box-shadow: none;
+    background: var(--surface-sunken);
+  }
+}
+.hud-controls .hud-btn:not(.hud-btn-cta):active {
+  transform: translateY(1px) scale(0.96);
+  box-shadow: none;
+}
+.hud-controls .hud-btn-cta {
+  min-height: var(--size-target);
+}
+.hud-controls .hud-btn[aria-expanded='true'] {
+  background: var(--surface-selected);
+  border-color: var(--border-outline);
+}
+/* Camera and settings: a menu dropping down in place under its button. */
+.hud-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.hud-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-group-gap);
+  min-width: max-content;
+  padding: var(--space-1);
+  background: var(--surface-panel-solid);
+  border: var(--size-outline) solid var(--border-outline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.hud-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-target);
+  padding: 0 var(--space-3);
+  border: var(--size-outline-sm) solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .hud-menu-item:hover {
+    background: var(--surface-sunken);
+  }
+}
 .hud-note {
   order: 2;
   display: inline-flex;
@@ -1398,6 +1492,64 @@ legend {
   box-shadow: var(--shadow-sm);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
+}
+
+/* Below 1440 px the XP count and the pause word live in the bar's title and
+   the button's aria-label, so the three clusters keep one row at 1280 px. */
+@media (max-width: 1439px) {
+  .hud-level .xp-num,
+  .hud-btn .lbl-long {
+    display: none;
+  }
+}
+/* Tablet and phone: Hôm nay over Tiến độ on the left, Điều khiển on the
+   right across both rows (the phase action or speed group on top, pause and
+   the menu below), so the HUD takes two rows. */
+@media (max-width: 1023px) {
+  .hud {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'today controls'
+      'progress controls';
+    align-items: center;
+    justify-items: start;
+  }
+  .hud::after {
+    display: none;
+  }
+  .hud-today {
+    grid-area: today;
+  }
+  .hud-progress {
+    grid-area: progress;
+  }
+  .hud-note {
+    grid-column: 1 / -1;
+  }
+  .hud-controls {
+    grid-area: controls;
+    align-self: stretch;
+    display: grid;
+    grid-template-areas:
+      'main main'
+      'pause menu';
+    align-content: center;
+    justify-content: center;
+    justify-items: center;
+    margin-left: 0;
+    border-radius: var(--radius-xl);
+  }
+  .hud-controls > .hud-btn-cta,
+  .hud-controls > .speed {
+    grid-area: main;
+  }
+  .hud-controls > [data-action='pause'] {
+    grid-area: pause;
+  }
+  .hud-controls > .hud-menu-wrap {
+    grid-area: menu;
+  }
 }
 
 /* Dock: the seven panel buttons, bottom centre. Ghost buttons in one frame. */
@@ -1682,13 +1834,15 @@ legend {
 }
 .icon-btn,
 .seg-opt span,
-.seg button {
+.seg button,
+.hud-menu-item {
   --bw: var(--size-outline-sm);
 }
 .btn:focus-visible,
 .input:focus-visible,
 .icon-btn:focus-visible,
 .hud-btn:focus-visible,
+.hud-menu-item:focus-visible,
 .seg button:focus-visible,
 .dock-btn:focus-visible,
 .choice:has(input:focus-visible),
@@ -1746,42 +1900,80 @@ legend {
     justify-content: center;
     padding-left: var(--space-3);
   }
-  .phases li:not([aria-current]) {
-    display: none;
+  /* HUD in two rows of 390 px: smaller type and gaps; the event and the
+     current phase keep their icon (names in the title and the list), the
+     clock sits over the phase dots, the level shows its number with the XP
+     bar as a thin line along the bottom of the Tiến độ frame, and the speed
+     options show their icon only (each keeps its aria-label). */
+  .hud-cluster {
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
   }
-  .phase-count {
-    display: inline;
+  .hud-controls {
+    gap: var(--size-group-gap);
+    padding: var(--space-1);
   }
-  .hud-stat {
-    padding: var(--space-1) var(--space-3);
-  }
-  .hud-stat small {
-    display: none;
-  }
-  .hud-stat b {
-    font-size: var(--font-size-md);
-  }
-  /* Level chip as narrow as the other pills: a short bar, the count left to
-     the progressbar and the chip's title, so the HUD row does not wrap. */
-  .hud-level {
-    gap: var(--space-1);
-    padding-right: var(--space-3);
-  }
+  .hud-cluster b,
   .hud-level .level-name {
     font-size: var(--font-size-sm);
   }
-  .hud-level .xp {
-    width: var(--space-8);
+  .hud-time {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-group-gap);
   }
-  .hud-level .xp-num {
+  .hud-time .hud-val > .ic,
+  .week-chip-label,
+  .phases li .ph-label,
+  .hud-level .level-word,
+  .hud-level .xp-num,
+  .speed button > span,
+  .hud-menu-btn > .ic + .ic {
     display: none;
   }
-  /* Weather as an icon only (its name stays in the title); the event keeps its word. */
+  .phases li[aria-current='step'] {
+    min-height: 0;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  .phases li[aria-current='step'] .ic,
+  .hud-val > .ic,
+  .week-chip > .ic,
+  .hud-level > .ic {
+    width: var(--size-icon-sm);
+    height: var(--size-icon-sm);
+  }
+  .hud-val,
   .hud-week {
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
-  .week-chip[data-chip='weather'] .week-chip-label {
-    display: none;
+  .hud-level {
+    gap: var(--space-1);
+    padding: var(--size-group-gap) var(--space-1);
+  }
+  .hud-level .xp {
+    position: absolute;
+    left: var(--space-6);
+    right: var(--space-6);
+    bottom: var(--size-group-gap);
+    width: auto;
+    max-width: none;
+    height: var(--space-1);
+    border-width: 0;
+  }
+  .hud-controls .hud-btn:not(.hud-btn-cta),
+  .hud-controls .seg button {
+    min-width: calc(var(--space-8) + var(--space-1));
+    min-height: calc(var(--space-8) + var(--space-1));
+    padding: 0 var(--space-1);
+    justify-content: center;
+  }
+  .hud-controls .hud-btn-cta {
+    min-height: calc(var(--space-8) + var(--space-1));
+    padding: 0 var(--space-3);
+    font-size: var(--font-size-sm);
   }
   .hud-btn .lbl-long {
     display: none;

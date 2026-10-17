@@ -187,7 +187,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 | Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc trong tuần 1 `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`, hoặc từ tuần 2 món có trong lịch. Sáng ngày tuần 1 có mở khóa, `next_day` phát `week_unlocks`. |
 | Mở rộng ngày 7 | Sáng ngày 7 tuần 1 (`expandShop`) mà `expand_area` còn cấp 0: `grantUpgradeLevel` lên cấp 1 không trừ tiền, phát `notify` "Quán mở rộng!". |
 | Chấm điểm | Tối ngày cuối (`isLastWeekDay`), `closeDay` gọi `scoreWeek` lưu vào `state.week.result` và `summarizeWeek` thêm dòng vào `state.week.archive`; `endOfDay` phát `week_ended` sau `dayEnded`. Điểm = `weekScore` (60 phần doanh thu + 40 phần sao, mỗi phần chặn ở mục tiêu); cúp = `weekCups` (≥ 90 → 3, ≥ 70 → 2, ≥ 40 → 1). |
-| UI | HUD ghi "Ngày N/7" và chip thời tiết, sự kiện (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, ghi "Gợi ý cho tuần sau" và bỏ link mở bảng ở tab Chỉ số; nút chính mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
+| UI | Cụm Hôm nay của HUD ghi "Ngày N" (`state.day`) trên dòng "Tuần T · d/7" (`weekLineLabel`; save không có `week` chỉ hiện "Ngày N"), icon thời tiết và chip sự kiện khi khác Ngày thường (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, ghi "Gợi ý cho tuần sau" và bỏ link mở bảng ở tab Chỉ số; nút chính mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
 
 ### Nâng cấp và dụng cụ
 

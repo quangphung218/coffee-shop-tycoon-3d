@@ -165,6 +165,51 @@ describe('panel foot on a short body (P22 layout-blocked-suggest-390)', () => {
   });
 });
 
+// P23: the HUD is three clusters; at ≤ 1023 px a two-row grid (Hôm nay over
+// Tiến độ, Điều khiển across both rows) so 390 px never needs a third row.
+describe('HUD clusters fit in two rows', () => {
+  const UI = rules(UI_CSS);
+  const src = UI_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  /** Body of the first `@media (max-width: <w>px)` block that lays out `.hud`. */
+  function mediaBlock(width: number): string {
+    for (let i = src.indexOf(`@media (max-width: ${width}px)`); i >= 0; i = src.indexOf(`@media (max-width: ${width}px)`, i + 1)) {
+      const start = src.indexOf('{', i);
+      let depth = 0;
+      let end = start;
+      for (; end < src.length; end++) {
+        if (src[end] === '{') depth++;
+        else if (src[end] === '}' && --depth === 0) break;
+      }
+      const body = src.slice(start + 1, end);
+      if (/(^|\})\s*\.hud\s*\{/.test(body)) return body;
+    }
+    return '';
+  }
+
+  it('keeps each cluster on one line and lets it shrink in its grid cell', () => {
+    const cluster = UI.find((r) => r.selector === '.hud-cluster');
+    expect(decl(cluster!.body, 'flex-wrap')).toBe('nowrap');
+    expect(decl(cluster!.body, 'min-width')).toBe('0');
+  });
+
+  it('lays the clusters out in two grid rows at ≤ 1023 px', () => {
+    const block = mediaBlock(1023);
+    const hud = rules(block).find((r) => r.selector === '.hud');
+    expect(decl(hud!.body, 'display')).toBe('grid');
+    expect(decl(hud!.body, 'grid-template-columns')).toBe('minmax(0, 1fr) auto');
+    const areas = decl(hud!.body, 'grid-template-areas')!.match(/'[^']+'/g);
+    expect(areas).toEqual(["'today controls'", "'progress controls'"]);
+    const controls = rules(block).find((r) => r.selector === '.hud-controls');
+    expect(decl(controls!.body, 'grid-template-areas')!.match(/'[^']+'/g)).toEqual(["'main main'", "'pause menu'"]);
+  });
+
+  it('opens the camera and settings menu downwards inside the right edge', () => {
+    const menu = UI.find((r) => r.selector === '.hud-menu');
+    expect(decl(menu!.body, 'position')).toBe('absolute');
+    expect(decl(menu!.body, 'right')).toBe('0');
+  });
+});
+
 describe('padding uses the spacing tokens', () => {
   it.each([
     ['panels.css', PANELS_CSS],

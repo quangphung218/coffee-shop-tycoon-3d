@@ -1,10 +1,10 @@
 import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
 import { DAY_EVENTS } from '../../sim/data/week';
-import { weekDay } from '../../sim/progression';
+import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
-import { h, setChildren, Watcher } from '../core/dom';
+import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId, type IconSize } from '../core/icons';
@@ -97,15 +97,23 @@ export function weekDayLabel(state: GameState): string | null {
   return `${day}/${state.week.length}`;
 }
 
+/** "Tuần 2 · 5/7" under the day number; null for older saves without a week. */
+export function weekLineLabel(state: GameState): string | null {
+  const day = weekDayLabel(state);
+  return day ? `Tuần ${weekIndex(state)} · ${day}` : null;
+}
+
+/** The "Mở cửa" button's title: why the clock stands still before it. */
+const OPEN_HINT = 'Đồng hồ dừng ở 07:00 cho tới khi bấm "Mở cửa".';
+
 interface Note {
   icon: IconId;
   text: string;
 }
 
 function noteFor(state: GameState): Note | null {
+  // Preparation has no note: the clock at 07:00 and "Mở cửa" (its title says why) tell it.
   switch (state.phase) {
-    case 'preparation':
-      return { icon: 'i-clock', text: 'Đồng hồ dừng ở 07:00 cho tới khi bấm "Mở cửa".' };
     case 'closing':
       return { icon: 'i-error', text: `Không nhận khách mới. Còn ${state.customers.length} khách trong quán; ngày kết thúc khi khách cuối rời đi.` };
     case 'report': {
@@ -133,28 +141,39 @@ function countDuration(el: Element): number {
 }
 
 /**
- * HUD after design/t237-cartoon (HUD cao điểm) and design/p17-states: cream
- * pills over the scene. Left: day, time, the four phases. Right: money, rating,
- * the phase action ("Mở cửa" / "Sang ngày mới") or the speed group, pause,
- * camera, settings. The panel buttons sit in a dock at the bottom centre.
+ * HUD in three clusters over the scene (P23), each one cream frame:
+ * Hôm nay (day, week line, weather and event, clock, phase strip), Tiến độ
+ * (money, rating, level with its XP bar) and Điều khiển (the phase action
+ * "Mở cửa" / "Sang ngày mới" or the speed group, pause, and a menu with the
+ * camera reset and settings). Values carry icons; their names are read from
+ * sr-only words and titles. The panel buttons sit in a dock at the bottom centre.
  */
 export function createHud(actions: HudActions): Hud {
   const w = new Watcher<GameState>();
 
-  const day = h('b');
-  const clock = h('b');
-  w.text(day, (s) => weekDayLabel(s) ?? String(s.day)).text(clock, (s) => formatClock(s.minute));
+  // "Ngày 12" over "Tuần 2 · 5/7"; older saves without a week show the day alone.
+  const day = h('b', { attrs: { 'data-stat': 'day' } });
+  const weekLine = h('small', { attrs: { 'data-stat': 'week' } });
+  const clock = h('b', { attrs: { 'data-stat': 'clock' } });
+  w.text(day, (s) => `Ngày ${s.day}`).text(clock, (s) => formatClock(s.minute));
+  w.watch(
+    (s) => weekLineLabel(s) ?? '',
+    (line) => {
+      weekLine.textContent = line;
+      weekLine.hidden = !line;
+    },
+  );
 
-  // Today's weather and event chips next to the day, during a week. The words
-  // are on screen; the title and accessible name add what they do to the day.
-  const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'weather' } });
+  // Today's weather (an icon) and event (icon and word, only on a special
+  // day), during a week. The title and accessible name say what they do.
+  const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'img', 'data-chip': 'weather' } });
   const eventChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'event' } });
-  const weekChips = h('div', { class: 'hud-stat hud-week', hidden: true, attrs: { role: 'group', 'aria-label': 'Hôm nay' } }, weatherChip, eventChip);
-  const fillChip = (chip: HTMLElement, id: IconId, label: string, effect: string): void => {
+  const weekChips = h('span', { class: 'hud-week', hidden: true }, weatherChip, eventChip);
+  const fillChip = (chip: HTMLElement, id: IconId, label: string, effect: string, word: boolean): void => {
     const desc = effect ? `${label}: ${effect}` : label;
     chip.title = desc;
     chip.setAttribute('aria-label', desc);
-    setChildren(chip, icon(id, { size: 16 }), h('span', { class: 'week-chip-label', text: label }));
+    setChildren(chip, icon(id), word ? h('span', { class: 'week-chip-label', text: label }) : null);
   };
   w.watch(
     (s) => {
@@ -165,17 +184,17 @@ export function createHud(actions: HudActions): Hud {
       const plan = todayPlan(s);
       weekChips.hidden = !key || !plan;
       if (!key || !plan) return;
-      fillChip(weatherChip, WEATHER_ICONS[s.weather], WEATHER_LABELS[s.weather], weatherEffect(s.weather));
+      fillChip(weatherChip, WEATHER_ICONS[s.weather], WEATHER_LABELS[s.weather], weatherEffect(s.weather), false);
       eventChip.hidden = plan.event === 'none';
-      if (plan.event !== 'none') fillChip(eventChip, DAY_EVENT_ICONS[plan.event], DAY_EVENT_LABELS[plan.event], dayEventEffect(plan.event));
+      if (plan.event !== 'none') fillChip(eventChip, DAY_EVENT_ICONS[plan.event], DAY_EVENT_LABELS[plan.event], dayEventEffect(plan.event), true);
     },
   );
 
-  // Shop level chip on one row, next to the day (design/p20 §5): "Cấp N", the
-  // XP bar and its count. The level's name ("Quán nhỏ") lives only in the
-  // chip's title and accessible name, so the chip stays short. The bar is a
-  // progressbar reporting XP earned toward the next level; the chip flashes
-  // on a level-up (muted when motion is reduced).
+  // Shop level in the Tiến độ cluster (design/p20 §5): "Cấp N", a thin XP
+  // bar and its count. The level's name ("Quán nhỏ") lives only in the
+  // title and accessible name, so it stays short. The bar is a progressbar
+  // reporting XP earned toward the next level; it flashes on a level-up
+  // (muted when motion is reduced). Phones keep the number, not "Cấp".
   const levelName = h('b', { class: 'level-name' });
   const xpFill = h('span', { class: 'xp-fill' });
   const xpBar = h(
@@ -187,7 +206,7 @@ export function createHud(actions: HudActions): Hud {
   const xpNum = h('span', { class: 'xp-num', attrs: { 'aria-hidden': 'true', 'data-stat': 'xp' } });
   const levelChip = h(
     'div',
-    { class: 'hud-stat hud-level', attrs: { 'data-stat': 'level', role: 'group' } },
+    { class: 'hud-level', attrs: { 'data-stat': 'level', role: 'group' } },
     icon(LEVEL_ICON),
     levelName,
     xpBar,
@@ -208,7 +227,7 @@ export function createHud(actions: HudActions): Hud {
     (_, s) => {
       const level = s.shopLevel;
       const def = levelDef(level);
-      levelName.textContent = `Cấp ${level}`;
+      setChildren(levelName, h('span', { class: 'level-word', text: 'Cấp ' }), String(level));
       const fullName = `Cấp ${level} · ${def.name}`;
       levelChip.title = fullName;
       levelChip.setAttribute('aria-label', fullName);
@@ -220,17 +239,20 @@ export function createHud(actions: HudActions): Hud {
       xpFill.style.width = `${Math.round(frac * 100)}%`;
       xpBar.setAttribute('aria-valuemax', String(atMax ? 1 : span));
       xpBar.setAttribute('aria-valuenow', String(atMax ? 1 : into));
-      xpBar.setAttribute('aria-valuetext', atMax ? 'Cấp tối đa' : `${into}/${span} KN tới Cấp ${level + 1}`);
+      const xpText = atMax ? 'Cấp tối đa' : `${into}/${span} KN tới Cấp ${level + 1}`;
+      xpBar.setAttribute('aria-valuetext', xpText);
+      xpBar.title = xpText;
       xpNum.textContent = atMax ? 'Tối đa' : `${into}/${span}`;
       if (shownLevel !== null && level > shownLevel) flashLevel();
       shownLevel = level;
     },
   );
 
-  const phaseItems = PHASE_STEPS.map((step, i) => {
+  // The four phases as a strip: the current one shows its icon and name, the
+  // others are dots (filled once done); every name stays readable in the list.
+  const phaseItems = PHASE_STEPS.map((step) => {
     const mark = h('span', { class: 'ph-icon' });
-    const count = h('span', { class: 'phase-count', text: `${i + 1}/${PHASE_STEPS.length}` });
-    const li = h('li', { attrs: { 'data-phase': step.phase } }, mark, h('span', { class: 'ph-label', text: step.label }), count);
+    const li = h('li', { attrs: { 'data-phase': step.phase } }, mark, h('span', { class: 'ph-label', text: step.label }));
     return { step, li, mark };
   });
   w.watch(
@@ -309,7 +331,11 @@ export function createHud(actions: HudActions): Hud {
   );
   const openBtn = h(
     'button',
-    { class: 'hud-btn hud-btn-cta is-mint', attrs: { type: 'button', 'data-action': 'open' }, on: { click: () => actions.dispatch({ type: 'start_day' }) } },
+    {
+      class: 'hud-btn hud-btn-cta is-mint',
+      attrs: { type: 'button', 'data-action': 'open', title: OPEN_HINT },
+      on: { click: () => actions.dispatch({ type: 'start_day' }) },
+    },
     icon('i-open'),
     'Mở cửa',
   );
@@ -317,7 +343,8 @@ export function createHud(actions: HudActions): Hud {
     'button',
     { class: 'hud-btn hud-btn-cta is-honey', attrs: { type: 'button', 'data-action': 'next-day' }, on: { click: () => actions.dispatch({ type: 'next_day' }) } },
     icon('i-next-day'),
-    'Sang ngày mới',
+    h('span', { text: 'Sang ngày' }),
+    h('span', { class: 'lbl-long', text: ' mới' }),
   );
   w.watch(
     (s) => s.phase,
@@ -329,32 +356,116 @@ export function createHud(actions: HudActions): Hud {
     },
   );
 
-  // After a reset the button shows a tick and "Đã đặt lại" for a moment, and a
-  // polite live region says it in words; both go back afterwards.
-  let resetTimer: ReturnType<typeof setTimeout> | null = null;
-  const resetLive = h('span', { class: 'sr-only', attrs: { 'aria-live': 'polite', 'data-live': 'camera' } });
-  const resetBtn = h('button', {
-    class: 'hud-btn',
-    attrs: { type: 'button', 'aria-label': 'Đặt lại camera (Home)' },
-    on: {
-      click: () => {
-        actions.onResetCamera();
-        setChildren(resetBtn, icon('i-check'), h('span', { text: 'Đã đặt lại', attrs: { 'aria-hidden': 'true' } }));
-        resetLive.textContent = 'Đã đặt lại camera.';
-        if (resetTimer) clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => {
-          setChildren(resetBtn, icon('i-camera'));
-          resetLive.textContent = '';
-        }, 1500);
+  // Camera reset and settings share one menu button (APG menu button): the
+  // menu drops down in place, ↑ ↓ Home End move, Esc or a click outside
+  // closes it and focus goes back to the button.
+  const MENU_ID = uid('hud-menu');
+  const menuBtn = h(
+    'button',
+    {
+      class: 'hud-btn hud-menu-btn',
+      attrs: {
+        type: 'button',
+        'aria-label': 'Camera và cài đặt',
+        'aria-haspopup': 'menu',
+        'aria-expanded': 'false',
+        'aria-controls': MENU_ID,
+        'data-action': 'more',
       },
     },
-  });
-  setChildren(resetBtn, icon('i-camera'));
-  const settingsBtn = h(
-    'button',
-    { class: 'hud-btn', attrs: { type: 'button', 'aria-label': 'Cài đặt' }, on: { click: () => actions.onSettings() } },
     icon('i-settings'),
+    icon('i-chevron-down', { size: 16 }),
   );
+  const menuItem = (label: string, ariaLabel: string, id: IconId, run: () => void): HTMLButtonElement => {
+    const item = h('button', {
+      class: 'hud-menu-item',
+      attrs: { type: 'button', role: 'menuitem', tabindex: '-1', 'aria-label': ariaLabel },
+      on: { click: run },
+    });
+    setChildren(item, icon(id), h('span', { text: label }));
+    return item;
+  };
+
+  // After a reset the item shows a tick and "Đã đặt lại" for a moment (the
+  // menu stays open so it can be seen), and a polite live region says it in
+  // words; both go back afterwards.
+  let resetTimer: ReturnType<typeof setTimeout> | null = null;
+  const resetLive = h('span', { class: 'sr-only', attrs: { 'aria-live': 'polite', 'data-live': 'camera' } });
+  const resetBtn = menuItem('Đặt lại camera', 'Đặt lại camera (Home)', 'i-camera', () => {
+    actions.onResetCamera();
+    setChildren(resetBtn, icon('i-check'), h('span', { text: 'Đã đặt lại', attrs: { 'aria-hidden': 'true' } }));
+    resetLive.textContent = 'Đã đặt lại camera.';
+    if (resetTimer) clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => {
+      setChildren(resetBtn, icon('i-camera'), h('span', { text: 'Đặt lại camera' }));
+      resetLive.textContent = '';
+    }, 1500);
+  });
+  const settingsBtn = menuItem('Cài đặt', 'Cài đặt', 'i-settings', () => {
+    closeMenu(false);
+    actions.onSettings();
+  });
+  const menuItems = [resetBtn, settingsBtn];
+  const menu = h('div', { class: 'hud-menu', id: MENU_ID, hidden: true, attrs: { role: 'menu', 'aria-label': 'Camera và cài đặt' } }, ...menuItems);
+  const menuWrap = h('div', { class: 'hud-menu-wrap' }, menuBtn, menu);
+
+  function onOutside(e: PointerEvent): void {
+    if (!(e.target instanceof Node) || !menuWrap.contains(e.target)) closeMenu(false);
+  }
+  function openMenu(focusIndex = 0): void {
+    if (menu.hidden) {
+      menu.hidden = false;
+      menuBtn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('pointerdown', onOutside, true);
+    }
+    menuItems[(focusIndex + menuItems.length) % menuItems.length]!.focus();
+  }
+  function closeMenu(refocus = true): void {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    menuBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', onOutside, true);
+    if (refocus) menuBtn.focus();
+  }
+  menuBtn.addEventListener('click', () => (menu.hidden ? openMenu() : closeMenu()));
+  menuBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      openMenu(e.key === 'ArrowUp' ? -1 : 0);
+    }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const at = menuItems.indexOf(document.activeElement as HTMLButtonElement);
+    switch (e.key) {
+      case 'ArrowDown':
+        openMenu(at + 1);
+        break;
+      case 'ArrowUp':
+        openMenu(at - 1);
+        break;
+      case 'Home':
+        openMenu(0);
+        break;
+      case 'End':
+        openMenu(-1);
+        break;
+      case 'Escape':
+        // Close only the menu; the shell would open the pause screen.
+        e.stopPropagation();
+        closeMenu();
+        break;
+      case 'Tab':
+        closeMenu(false);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+  });
+  menuWrap.addEventListener('focusout', (e) => {
+    const next = (e as FocusEvent).relatedTarget;
+    if (next instanceof Node && !menuWrap.contains(next)) closeMenu(false);
+  });
 
   const note = h('p', { class: 'hud-note', attrs: { 'aria-live': 'polite' } });
   w.watch(
@@ -489,31 +600,28 @@ export function createHud(actions: HudActions): Hud {
   });
   renderDock();
 
-  const pill = (...children: (Node | string)[]): HTMLElement => h('div', { class: 'hud-stat' }, ...children);
+  // An icon and a value; the sr-only word names the value for a screen reader.
+  const value = (id: IconId, word: string, b: HTMLElement): HTMLElement =>
+    h('span', { class: 'hud-val', attrs: { title: word } }, icon(id), h('span', { class: 'sr-only', text: `${word} ` }), b);
+  const cluster = (name: string, label: string, ...children: Child[]): HTMLElement =>
+    h('div', { class: `hud-cluster hud-${name}`, attrs: { role: 'group', 'aria-label': label, 'data-cluster': name } }, ...children);
   const bar = h(
     'header',
     { class: 'hud', attrs: { 'aria-label': 'Thanh trạng thái' } },
-    h(
-      'div',
-      { class: 'hud-left' },
-      pill(h('small', { text: 'Ngày' }), day),
+    cluster(
+      'today',
+      'Hôm nay',
+      h('span', { class: 'hud-day' }, day, weekLine),
       weekChips,
-      levelChip,
-      pill(icon('i-clock'), h('small', { text: 'Giờ' }), clock),
-      h('ol', { class: 'phases', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li)),
+      h(
+        'span',
+        { class: 'hud-time' },
+        value('i-clock', 'Giờ', clock),
+        h('ol', { class: 'phases', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li)),
+      ),
     ),
-    h(
-      'div',
-      { class: 'hud-right' },
-      pill(icon('i-coin'), h('small', { text: 'Tiền' }), money),
-      pill(icon('i-star'), ratingValue),
-      openBtn,
-      nextDayBtn,
-      speedGroup,
-      pauseBtn,
-      resetBtn,
-      settingsBtn,
-    ),
+    cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-star', 'Đánh giá', ratingValue), levelChip),
+    cluster('controls', 'Điều khiển', openBtn, nextDayBtn, speedGroup, pauseBtn, menuWrap),
     note,
     resetLive,
   );
@@ -551,6 +659,7 @@ export function createHud(actions: HudActions): Hud {
     dispose() {
       offPanels();
       edges?.disconnect();
+      closeMenu(false);
       closePanel();
       if (resetTimer) clearTimeout(resetTimer);
       if (levelTimer) clearTimeout(levelTimer);

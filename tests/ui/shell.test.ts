@@ -377,7 +377,7 @@ describe('HUD', () => {
     vi.advanceTimersByTime(1000);
     expect(text()).toContain('11:42');
     expect(text()).toContain('2.465.000đ');
-    expect(q(hud.el, '[role="img"]').getAttribute('aria-label')).toBe('3,8 trên 5 sao');
+    expect(q(hud.el, '[data-cluster="progress"] [role="img"]').getAttribute('aria-label')).toBe('3,8 trên 5 sao');
     const peak = q(hud.el, '[aria-current="step"]');
     expect(peak.dataset.phase).toBe('peak');
     expect(peak.classList.contains('is-peak')).toBe(true);
@@ -428,8 +428,9 @@ describe('HUD', () => {
     check();
     expect([...hud.el.querySelectorAll<HTMLElement>('[data-speed] .ic')].map((u) => u.dataset.icon)).toEqual(['i-speed-1', 'i-speed-2', 'i-speed-4']);
     expect(hud.el.querySelector('[data-action="pause"]')).toBeTruthy();
-    const clockPill = [...hud.el.querySelectorAll<HTMLElement>('.hud .hud-stat')].find((p) => p.querySelector('[data-icon="i-clock"]'));
-    expect(clockPill?.querySelector('b')?.textContent).toBe('07:00');
+    const clock = q(hud.el, '.hud [data-stat="clock"]');
+    expect(clock.textContent).toBe('07:00');
+    expect(clock.parentElement?.querySelector<HTMLElement>('.ic')?.dataset.icon).toBe('i-clock');
     state.phase = 'report';
     hud.update(state);
     check();

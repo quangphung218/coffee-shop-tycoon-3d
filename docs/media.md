@@ -325,7 +325,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 npm run layout
 ```
 
-Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p19-layout-check.md](reports/p19-layout-check.md).
+Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. HUD được đo lúc Chuẩn bị, lúc mở menu camera và lúc mở cửa (thêm khổ 1280×800 chỉ đo HUD): đủ 3 cụm, nằm trong màn, không chồng nhau, nội dung không lòi khỏi khung, 1 hàng từ 1280 px trở lên và tối đa 2 hàng ở khổ hẹp hơn. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p19-layout-check.md](reports/p19-layout-check.md).
 
 ## Icon 3D
 

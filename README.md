@@ -70,7 +70,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **Ván mới**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD hiện cấp quán và thanh XP cạnh ngày. Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD trên cùng gồm ba cụm: **Hôm nay** (ngày, tuần, thời tiết, sự kiện, giờ, pha), **Tiến độ** (tiền, sao, cấp quán và thanh XP) và **Điều khiển** (Mở cửa hoặc tốc độ, Dừng, menu camera và cài đặt). Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá): Tổng kết xem lãi/lỗ, khách, món bán chạy; Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Tổng kết còn hiện nhiệm vụ đạt/hụt kèm thưởng, KN nhận trong ngày và băng "Lên cấp N" với danh sách mở khóa. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới. Hết ngày 7 của tuần, nút này thành **Xem kết tuần**: màn kết tuần hiện doanh thu và sao so mục tiêu, điểm 0–100, 0–3 cúp, bảng 7 ngày; **Chơi lại** mở ván mới cùng tên quán và độ khó, **Về menu** (hoặc `Esc`) về Main Menu.
@@ -84,7 +84,7 @@ Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần n
 | Xoay camera | Kéo chuột trái; giữ `Q` / `E` |
 | Zoom | Cuộn chuột |
 | Di chuyển (pan) | `W` `A` `S` `D`, phím mũi tên, hoặc đưa chuột sát mép màn hình |
-| Đặt lại camera | Nút camera trên HUD hoặc `Home` |
+| Đặt lại camera | **Đặt lại camera** trong menu bánh răng trên HUD, hoặc `Home` |
 | Tạm dừng / tiếp tục | `Space` hoặc nút **Dừng** trên HUD |
 | Mở bảng quản lý | Nút ở dock giữa đáy màn hình; bấm lại để đóng |
 | Tốc độ 1x / 2x / 4x | `1` / `2` / `3` |
@@ -141,7 +141,7 @@ Chi tiết các lớp: [docs/architecture.md](docs/architecture.md).
 | `npm run build` | Kiểm tra kiểu và build ra `dist/`. |
 | `npm run preview` | Mở bản build. |
 | `npm run media` | Build rồi chụp lại ảnh, GIF, mp4 và ảnh trước/sau vào `docs/media/` ([docs/media.md](docs/media.md)). |
-| `npm run layout` | Build rồi kiểm tràn ngang và CLS bảng Kho ở 390/768/1440 px. |
+| `npm run layout` | Build rồi kiểm tràn ngang, CLS bảng Kho ở 390/768/1440 px và số hàng HUD ở 390/768/1280/1440 px. |
 | `npm run icons` | Dựng lại atlas icon 3D trong `public/icons3d/`. |
 
 - `npm run media` và `npm run layout` cần Chromium của Playwright: `npx playwright install chromium`.
