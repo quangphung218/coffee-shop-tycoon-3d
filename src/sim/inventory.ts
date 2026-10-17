@@ -1,3 +1,5 @@
+// Pure string formatting with no imports, so the sim stays free of DOM.
+import { formatMoney } from '../ui/core/format';
 import { CLOSING_MINUTE } from './clock';
 import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS, getIngredient } from './data/ingredients';
@@ -297,8 +299,8 @@ export function applyRestockSuggestion(state: GameState): RestockResult {
   }
   if (result.skipped.length > 0) {
     const names = result.skipped.map((id) => getIngredient(id).name).join(', ');
-    const short = String(Math.max(0, skippedCost - state.money)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short}đ để nhập ${names}` });
+    const short = formatMoney(Math.max(0, skippedCost - state.money));
+    state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short} để nhập ${names}` });
   }
   return result;
 }
