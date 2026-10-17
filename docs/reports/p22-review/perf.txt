@@ -271,6 +271,34 @@ No FPS table: the run lines above are copied from the command output.
 Medium medians: base 12.9 FPS, working tree 13.1 FPS (+1.6%). High, one
 run each: base 12.6 FPS, working tree 13.7 FPS.
 
+$ node scripts/measure-startup.mjs --base f720b6f --runs 3 --fps-only
+Exit code: 0
+
+(Chunk tables as in the fix 2 run above.)
+
+FPS at the peak of day 1 (Easy, 4x), 10 s × 3 runs per cell, builds taking turns, 1280×800 @2x
+
+  base (f720b6f) medium run 1: 13.0 FPS
+  working tree medium run 1: 13.2 FPS
+  base (f720b6f) medium run 2: 12.9 FPS
+  working tree medium run 2: 13.2 FPS
+  base (f720b6f) medium run 3: 12.1 FPS
+  working tree medium run 3: 12.9 FPS
+  base (f720b6f) high run 1: 13.2 FPS
+  working tree high run 1: 12.2 FPS
+  base (f720b6f) high run 2: 13.2 FPS
+  working tree high run 2: 12.9 FPS
+  base (f720b6f) high run 3: 13.0 FPS
+  working tree high run 3: 13.7 FPS
+| Build | Quality | Average FPS (median of runs) | Runs | p5 FPS | Frames |
+| --- | --- | --- | --- | --- | --- |
+| base (f720b6f) | medium | 12.9 | 13.0 / 12.9 / 12.1 | 7.5 | 378 |
+| working tree | medium | 13.2 | 13.2 / 13.2 / 12.9 | 7.5 | 393 |
+| base (f720b6f) | high | 13.2 | 13.2 / 13.2 / 13.0 | 7.5 | 394 |
+| working tree | high | 12.9 | 12.2 / 12.9 / 13.7 | 7.5 | 390 |
+ok medium: working tree 2.3% above base
+ok high: working tree 1.8% below base
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
@@ -291,5 +319,6 @@ Same-run gaps on mobile (state minus base):
 - The menu gap moves between +17 and +118 ms for the same app code
   (integration head vs f289da8), so +54 ms is inside the spread of this
   setup. Desktop fix 2 shows the menu 24 ms ahead of base.
+- FPS: no !! line (medium +2.3%, high -1.8% against base).
 - Absolute Main Menu < 1000 ms: base itself measures 1083-1163 ms on this
   machine, so no build meets it here.
