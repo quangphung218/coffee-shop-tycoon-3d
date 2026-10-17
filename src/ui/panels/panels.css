@@ -103,10 +103,12 @@
     line-height: var(--line-height-tight);
   }
 }
-/* Body under 12rem (a low landscape screen): even the packed foot (~145px)
+/* Content box under 8rem (a phone held landscape): even the packed foot
    would leave no room for the list, so it scrolls with the list instead,
-   still last and still on the bottom border when the list is short. */
-@container panel-body (max-height: 12rem) {
+   still last and still on the bottom border when the list is short. The
+   query sees the content box: the 207px Kho body at 390 minus its
+   --space-4 top padding is 191px, which must keep the foot stuck. */
+@container panel-body (max-height: 8rem) {
   .prep .panel-foot {
     position: static;
   }

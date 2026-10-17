@@ -142,13 +142,49 @@ describe('layout-blocked-suggest-390: Kho foot does not cover Auto-restock on a 
     expect(decl(btn.body, 'min-height')).toBe('var(--size-target)');
   });
 
-  it('unsticks the foot only on a very low body, below the 207 px Kho body at 390', () => {
-    const px = maxPx(blocks[1]!.query);
-    expect(px).toBeLessThan(207);
+  // The Kho body measured at 390x844 is 207 px tall. A size container query
+  // sees its content box, so the top padding of the foot body comes off.
+  const KHO_BODY_390_PX = 207;
+  const TOKENS_CSS = strip(readFileSync('src/ui/styles/tokens.css', 'utf8'));
+  /** px of a `0`, `Npx` or `var(--space-N)` length, from tokens.css. */
+  const lengthPx = (v: string): number => {
+    if (v === '0') return 0;
+    const token = v.match(/^var\((--space-\d+)\)$/)?.[1];
+    const raw = token ? TOKENS_CSS.match(new RegExp(`${token}:\\s*([^;]+);`))?.[1]?.trim() : v;
+    const px = raw?.match(/^([\d.]+)px$/);
+    expect(px, `length ${v}`).not.toBeNull();
+    return Number(px![1]);
+  };
+  /** Content-box height of the 390 Kho body under the padding in `css`. */
+  const khoContentPx = (css: string): number => {
+    const body = rules(css).find((r) => r.selector === '.panel-body:has(> .prep > .panel-foot)')!;
+    const pad = decl(body.body, 'padding')!.split(/\s+/);
+    // padding shorthand: top first; bottom third, else the same as top.
+    return KHO_BODY_390_PX - lengthPx(pad[0]!) - lengthPx(pad[2] ?? pad[0]!);
+  };
+  /** Threshold (px) of the block that unsticks the foot in `css`. */
+  const unstickPx = (css: string): number => {
+    const block = containerBlocks(css)
+      .filter((b) => b.name === 'panel-body')
+      .find((b) => b.rules.some((r) => r.selector === '.prep .panel-foot' && decl(r.body, 'position') === 'static'));
+    expect(block).toBeDefined();
+    return maxPx(block!.query);
+  };
+
+  it('unsticks the foot only on a very low body, below the 191 px Kho content box at 390', () => {
+    const content = khoContentPx(PANELS_CSS);
+    expect(content).toBe(191);
+    const px = unstickPx(PANELS_CSS);
+    expect(px).toBeLessThan(content);
     expect(px).toBeGreaterThan(0);
-    const foot = blocks[1]!.rules.find((r) => r.selector === '.prep .panel-foot');
-    expect(foot).toBeDefined();
-    expect(decl(foot!.body, 'position')).toBe('static');
+    expect(blocks[1]!.query).toBe(`max-height: ${px / ROOT_FONT_PX}rem`);
+  });
+
+  it('would fail with the old 12rem threshold, which matched the 191 px content box', () => {
+    const query = blocks[1]!.query;
+    const old = PANELS_CSS.replace(`@container panel-body (${query})`, '@container panel-body (max-height: 12rem)');
+    expect(old).toContain('@container panel-body (max-height: 12rem)');
+    expect(unstickPx(old)).toBeGreaterThanOrEqual(khoContentPx(old));
   });
 
   it('keeps the sticky foot by default, before the container rule so the short-body rule wins', () => {
