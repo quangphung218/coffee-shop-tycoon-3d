@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SAVE_VERSION, migrate } from '../../src/save/save';
 import { pickOrder } from '../../src/sim/customers';
 import { getIngredient } from '../../src/sim/data/ingredients';
 import { applyRestockSuggestion, autoRestockSuggestion, expectedDemand } from '../../src/sim/inventory';
@@ -73,6 +74,19 @@ describe('demand missed while an item is out of stock', () => {
     expect(missed).toBeGreaterThan(0);
     expect(missed).toBeLessThan(20);
     expect(s.today.outOfStock.lemon_tea).toBeUndefined();
+  });
+
+  it('loads a save written before missed demand was tracked and plans from its history', () => {
+    const s = dayTwo(['lemon']);
+    delete s.history[0]!.missedDemand;
+    delete s.today.missedDemand;
+    const loaded = migrate(JSON.parse(JSON.stringify({ version: SAVE_VERSION, savedAt: 0, state: s })));
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    const state = loaded.value.state;
+    expect(suggested(state)).toContain('lemon');
+    expect(pickOrder(state)).not.toBe('lemon_tea');
+    expect(state.today.missedDemand?.lemon_tea).toBeGreaterThan(0);
   });
 
   it('adds the missed share to the next day demand', () => {

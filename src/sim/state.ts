@@ -45,6 +45,7 @@ export function createDayStats(day: number, rating: number): DayStats {
     customersLost: 0,
     sold: {},
     outOfStock: {},
+    missedDemand: {},
     ratingStart: rating,
     ratingEnd: rating,
     arrivalsByHour: new Array(24).fill(0),

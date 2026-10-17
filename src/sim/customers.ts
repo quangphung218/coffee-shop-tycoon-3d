@@ -237,20 +237,37 @@ export function arrivalRate(state: GameState): number {
  * Picks an item weighted by popularity and weather, among enabled items that
  * are in stock. When every enabled item is out of stock the customer still
  * wants one of them and will leave angry at the counter. Null if the menu is empty.
+ * Items left out for empty stock add their share of the full weight to
+ * today's missed demand, so restocking still plans for them.
  */
 export function pickOrder(state: GameState, persona?: Persona): MenuItemId | null {
   const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
   if (enabled.length === 0) return null;
   const inStock = enabled.filter((id) => canMake(state, id));
-  const pool = inStock.length > 0 ? inStock : enabled;
   const foodBoost = 1 + totalUpgradeEffect(state.upgrades).foodAppeal;
-  const weights = pool.map((id) => {
+  const weightOf = (id: MenuItemId): number => {
     const def = getMenuItem(id);
     const boost = def.category === 'food' ? foodBoost : 1;
     const taste = persona?.itemWeights[id] ?? 1;
     return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature] * boost * taste;
-  });
-  return pool[weightedIndex(state, weights)] ?? null;
+  };
+  if (inStock.length > 0 && inStock.length < enabled.length) recordMissed(state, enabled, inStock, weightOf);
+  const pool = inStock.length > 0 ? inStock : enabled;
+  return pool[weightedIndex(state, pool.map(weightOf))] ?? null;
+}
+
+function recordMissed(
+  state: GameState,
+  enabled: readonly MenuItemId[],
+  inStock: readonly MenuItemId[],
+  weightOf: (id: MenuItemId) => number,
+): void {
+  const total = enabled.reduce((s, id) => s + weightOf(id), 0);
+  if (total <= 0) return;
+  const missed = (state.today.missedDemand ??= {});
+  for (const id of enabled) {
+    if (!inStock.includes(id)) missed[id] = (missed[id] ?? 0) + weightOf(id) / total;
+  }
 }
 
 /**

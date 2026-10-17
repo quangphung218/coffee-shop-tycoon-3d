@@ -116,7 +116,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `start_day` | Chuẩn bị → mở cửa. |
 | `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). Tuần đã chấm điểm (`week.result`) thì mở luôn tuần tiếp theo. |
 | `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu; bật món chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
-| `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. |
+| `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. `apply_restock` mua từng dòng gợi ý theo thứ tự danh mục, bỏ dòng không đủ tiền và gửi `notify` "Thiếu X đ để nhập …" kèm tên các nguyên liệu bị bỏ. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `remove_decor` | Gỡ 1 cấp cây, tranh hay đèn, hoàn 50% giá cấp đó; cấp 0 hay món không gỡ được trả `false`. |
@@ -227,6 +227,18 @@ Tổng `ratingBonus` + sao của giá âm thì mỗi review có cơ hội bị t
 Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, giữ 2 chữ số thập phân. Người chơi và nhân viên làm theo ngân sách phút (`workMinute` trong `orders.ts`): việc xong giữa phút thì phần còn lại chuyển sang việc kế tiếp, nên mọi mức tăng tốc, kể cả cấp 1, đều rút ngắn thời gian thật.
 
 ### Trạng thái kho
+
+`expectedDemand(state)` (`src/sim/inventory.ts`) ước số ly mỗi món đang bật cho ngày tới, từ ngày tham chiếu (hôm nay khi đã đóng cửa, còn lại là ngày gần nhất trong `history`):
+
+| Trường hợp | Nhu cầu |
+| --- | --- |
+| Món có nhu cầu quan sát > 0 | `sold` + `outOfStock` + `missedDemand` của món. |
+| Món đang bật mà nhu cầu quan sát = 0 (mới bật, hay bị ẩn vì hết hàng) | Mức nền: tổng nhu cầu quan sát của ngày tham chiếu × `popularity` món / tổng `popularity` các món đang bật. |
+| Chưa có ngày tham chiếu, hoặc ngày đó tổng nhu cầu = 0 | Như mức nền, với tổng là `DAY_ONE_SERVINGS` theo độ khó. |
+
+`DayStats.missedDemand` ghi nhu cầu bị bỏ lỡ: khi `pickOrder` chỉ chọn trong các món còn làm được, mỗi món đang bật bị loại vì hết hàng được cộng trọng số của nó / tổng trọng số mọi món đang bật. Không rút thêm số ngẫu nhiên. Save cũ thiếu trường này coi như `{}`.
+
+`autoRestockSuggestion` lấy nhu cầu này nhân lượng nguyên liệu mỗi ly, cộng `RESTOCK_BUFFER` (20%), trừ tồn kho, làm tròn lên theo gói.
 
 `stockOutlook(state)` (`src/sim/inventory.ts`) trả cho mỗi nguyên liệu `{ qty, need, level, cups }`:
 
