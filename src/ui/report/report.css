@@ -582,6 +582,12 @@
   padding-left: var(--space-2);
   font-weight: var(--font-weight-heavy);
 }
+/* The chip is one 24 px line: a long name ends in "…" (full name in title). */
+.rpt-unlock-name {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 @media (min-width: 1024px) {
   .rpt-unlocks,
   .rpt-unlock-group {

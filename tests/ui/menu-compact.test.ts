@@ -98,6 +98,10 @@ describe('compact Menu rows', () => {
       const why = q(document, `#${short.getAttribute('aria-describedby')}`);
       expect(why.classList.contains('sr-only')).toBe(true);
       expect(why.textContent).toContain(getIngredient('lemon').name);
+      // The switch keeps the full line (price, margin, popularity) and adds the reason after it.
+      const detail = q(row, '[id^="menu-detail"]');
+      expect(q(row, '[role="switch"]').getAttribute('aria-describedby')).toBe(`${detail.id} ${why.id}`);
+      expect(detail.textContent).toContain('phổ biến');
 
       short.click();
       expect(hud.openPanelId).toBe('inventory');
@@ -120,7 +124,12 @@ describe('compact Menu rows', () => {
     sw.click();
     expect(sent).toHaveLength(0);
     expect(row.querySelector('.item-actions')).toBeNull();
-    expect(q(document, `#${sw.getAttribute('aria-describedby')}`).classList.contains('sr-only')).toBe(true);
+    // The full line first, then the unlock reason; both off screen.
+    const ids = sw.getAttribute('aria-describedby')!.split(' ');
+    expect(ids).toHaveLength(2);
+    expect(q(document, `#${ids[0]}`).textContent).toContain('phổ biến');
+    expect(q(document, `#${ids[1]}`).textContent).toMatch(/Mở khóa/);
+    for (const id of ids) expect(q(document, `#${id}`).classList.contains('sr-only')).toBe(true);
   });
 
   it('leaves the default switch with its text state', () => {

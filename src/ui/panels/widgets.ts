@@ -340,13 +340,16 @@ export function reasonLine(danger = true): HTMLElement {
 /**
  * Shows or hides a reason line and points `control` at it. The icon defaults
  * to i-lock while the control is aria-disabled, so call this after
- * setAriaDisabled; pass `ic` for other lines (info, done).
+ * setAriaDisabled; pass `ic` for other lines (info, done). Other ids already
+ * in aria-describedby stay, ahead of the reason.
  */
 export function setReason(line: HTMLElement, control: HTMLElement, text: string | null, ic: IconId | null = isAriaDisabled(control) ? 'i-lock' : null): void {
   line.hidden = !text;
   setIconText(line, text ? ic : null, text ?? '');
-  if (text) control.setAttribute('aria-describedby', line.id);
-  else if (control.getAttribute('aria-describedby') === line.id) control.removeAttribute('aria-describedby');
+  const ids = (control.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((id) => id && id !== line.id);
+  if (text) ids.push(line.id);
+  if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
+  else control.removeAttribute('aria-describedby');
 }
 
 /** Dispatch that refreshes the panel right away instead of waiting for the next frame. */

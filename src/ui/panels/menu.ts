@@ -208,10 +208,9 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
           missBadge.setAttribute('aria-label', `${label}, mở Kho`);
         }
         // Short stock never locks the switch: on, it puts the item's ingredients in Gợi ý nhập.
-        sw.set(enabled, levelLocked);
-        // The label says it on the row; the reason (amounts, unlock day or level) is the switch's description, off screen.
+        // The switch's description, off screen: the full line, then the reason (amounts, unlock day or level) when one applies.
+        sw.set(enabled, levelLocked, detail.id);
         setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);
-        if (!sw.el.hasAttribute('aria-describedby')) sw.el.setAttribute('aria-describedby', detail.id);
       },
     );
     // "Mới" only in an empty label slot; runs after the labels above are set.

@@ -291,7 +291,7 @@ describe('menu level locks', () => {
     expect(label.tagName).toBe('SPAN');
     const sw = q<HTMLButtonElement>(row, '[role="switch"]');
     expect(sw.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${sw.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa ở Cấp 2');
+    expect(q(document, `#${sw.getAttribute('aria-describedby')!.split(' ').pop()}`).textContent).toContain('Mở khóa ở Cấp 2');
     sw.click();
     expect(sent).toHaveLength(0);
 
@@ -396,6 +396,15 @@ describe('daily report: missions, XP and level-up', () => {
       ['fast_machine', UPGRADE_ICONS.fast_machine, getUpgrade('fast_machine').name],
       ['grinder', UPGRADE_ICONS.grinder, getUpgrade('grinder').name],
     ]);
+    // A long name may end in "…" on screen; the title and the text keep it whole.
+    for (const c of band.querySelectorAll<HTMLElement>('.rpt-unlock')) {
+      expect(c.title).toBe(c.textContent);
+      expect(q(c, '.rpt-unlock-name').textContent).toBe(c.textContent);
+    }
+    const name = /\.rpt-unlock-name\s*\{([^}]*)\}/.exec(readFileSync('src/ui/report/report.css', 'utf8'))?.[1] ?? '';
+    expect(name).toMatch(/text-overflow:\s*ellipsis/);
+    expect(name).toMatch(/overflow:\s*hidden/);
+    expect(name).toMatch(/max-width:/);
     // 24 px is the default size: no size class.
     for (const c of band.querySelectorAll('.rpt-unlock .ic')) expect(c.className).toBe('ic');
     expect(band.querySelector('[data-block="unlocks-more"]')).toBeNull();
