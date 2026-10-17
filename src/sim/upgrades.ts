@@ -235,6 +235,7 @@ export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   state.money -= cost;
   state.today.upgradeCost += cost;
   const level = grantUpgradeLevel(state, id);
+  state.events.push({ type: 'spend', kind: 'upgrade', label: def.name, amount: cost, moneyLeft: state.money });
   state.events.push({ type: 'notify', level: 'success', text: `Đã nâng cấp ${def.name} lên cấp ${level}` });
   return { ok: true, cost, level };
 }

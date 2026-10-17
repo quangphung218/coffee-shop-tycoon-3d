@@ -644,11 +644,15 @@ export type Command =
 
 export type NotifyLevel = 'info' | 'success' | 'warning' | 'error';
 
+export type SpendKind = 'restock' | 'upgrade' | 'hire' | 'campaign';
+
 export type GameEvent =
   | { type: 'doorbell'; customerId: number }
   | { type: 'brew'; staffId: number | null; itemId: MenuItemId }
   | { type: 'cash'; amount: number; pos: Vec2 }
   | { type: 'notify'; level: NotifyLevel; text: string }
+  /** Money left the till for a purchase; `moneyLeft` is the balance after it. */
+  | { type: 'spend'; kind: SpendKind; label: string; amount: number; moneyLeft: number }
   | { type: 'angry'; customerId: number }
   | { type: 'served'; customerId: number; itemId: MenuItemId }
   | { type: 'cleaned'; tableId: number }
