@@ -244,20 +244,25 @@ Lệnh build bản hiện tại, xuất v0.4.0 `f720b6f` ra thư mục tạm và
 
 1. Sim dựng ván sáng ngày 2 của tuần review (Vừa, seed của `review:p22`).
 2. Main Menu ở 390×844 lúc `cst:menu`, atlas icon bị giữ lại như mạng chậm: đếm ô trống và ô chờ.
-3. Bảng Kho ở 390×844 trên ván ngày 2: chân bảng, nút Gợi ý, số dòng hàng chạm được.
-4. Mở cửa ở 4x tới cao điểm, tìm khách theo phụ kiện, mặt sốt ruột và lúc đứng yên trong hàng (tối đa 150 s), chụp cận cả người.
+3. Main Menu ở 390×844, tải không cache trên cấu hình di động của `scripts/measure-startup.mjs` (150 ms RTT, 1,6 Mbps, CPU 4x), từng bản một: chụp lúc mọi ô icon đã vẽ, ghi mốc `cst:menu`, `three-*.js` tải xong, lúc xin và nhận atlas @1x, `cst:world`, lúc xin atlas @2x.
+4. Bảng Kho ở 390×844 trên ván ngày 2: chân bảng, nút Gợi ý, nút Nhập hàng, số dòng hàng chạm được.
+5. Mở cửa ở 4x tới cao điểm, tìm khách theo phụ kiện, mặt sốt ruột và lúc đứng yên trong hàng (tối đa 150 s), chụp cận cả người.
 
 Mỗi mục `fixed` trong `docs/reports/p22-review/fixed-ui.json` và `fixed-actors.json` có một bảng; mục không có hàm dựng bảng trong `scripts/capture-p22.mjs` thì lệnh dừng trước khi chụp. Các bảng trong `docs/media/`, ghi đè mỗi lần chạy:
 
 | File | Nội dung |
 | --- | --- |
-| `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ màu kem. |
-| `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, chân bảng cuộn sau danh sách. |
+| `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ. |
+| `main-menu-atlas-390-p22.png` | Main Menu 390 trên mạng di động, lúc icon hiện: nhãn ghi mốc menu hiện, `three-*.js` xong, xin atlas @1x, icon hiện; chú thích thêm `cst:world` và atlas @2x. P22 chỉ xin @1x sau khi chunk cảnh tải xong. Một lần đo; số trung vị ở [perf.txt](reports/p22-review/perf.txt). |
+| `kho-foot-390-p22.png` | Chân bảng Kho 390 lúc vừa mở: chiều cao chân và thân ở v0.4.0; P22 chân gọn và nút Nhập hàng. Chân P22 cuộn sau danh sách thì thêm khung cuộn tới cuối thân bảng. |
+| `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, số dòng hàng chạm được khi cuộn. |
 | `actors-persona-motion-p22.png` | Khách văn phòng và sinh viên đứng chờ: dáng chờ chung ở v0.4.0, cầm điện thoại và tay đút túi ở P22; nhãn ghi góc tay, đầu, thân. |
 | `actors-persona-accessory-p22.png` | Khách quen và gia đình: không phụ kiện ở v0.4.0, mũ len và túi vải ở P22; nhãn ghi cỡ phụ kiện. |
 | `actors-impatient-silhouette-p22.png` | Khách sốt ruột: tay buông ở v0.4.0, khoanh tay ở P22; nhãn ghi góc tay và nhịp chân. |
 
-Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm `no subject within 150 s` (không tìm được khách cho cận cảnh; khung đó bị bỏ) và bảng trên 600 kB sau 4 lần thu nhỏ.
+Nhãn trên ba bảng nhân vật cao 2,2% bề rộng bảng (tối thiểu 15 px), để đọc được trên điện thoại.
+
+Cảnh báo `!!` giống [Ảnh trước/sau P20](#ảnh-trướcsau-p20), thêm `no subject within 150 s` (không tìm được khách cho cận cảnh; khung đó bị bỏ) và bảng trên 600 kB sau 4 lần thu nhỏ. Có `!!` thì lệnh kết thúc với mã 1: sửa rồi chạy lại trước khi dùng bảng.
 
 ## Tùy chọn
 

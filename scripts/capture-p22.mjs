@@ -7,16 +7,22 @@
 //
 // Boards: main-menu-icons-p22.png (Main Menu at 390 px when main.ts marks
 // cst:menu, the icon atlas held back so the shot shows what a cold load
-// shows), then one board per entry of docs/reports/p22-review/fixed-ui.json
-// and fixed-actors.json, named <id>-p22.png. The save is the morning of day 2
-// of the review week (Normal, seed of review:p22) from the working tree's sim.
+// shows), main-menu-atlas-390-p22.png (Main Menu at 390 px on the mobile
+// profile of measure-startup.mjs, shot when the icons are drawn, with when
+// each atlas was asked for), kho-foot-390-p22.png (the Kho foot on opening,
+// and at the end of the body when the foot scrolls with the list),
+// then one board per entry of docs/reports/p22-review/fixed-ui.json and
+// fixed-actors.json, named <id>-p22.png. The save is the morning of day 2 of
+// the review week (Normal, seed of review:p22) from the working tree's sim.
 // The actor close-ups aim the camera like capture-p20's aimAt and pick the
 // customer by what can be seen: the persona accessory (colour and size of the
 // mesh), the face (the impatient brows) and standing still in the queue.
+// Their labels are LABEL_SHARE of the board width, to read on a phone.
 //
 // Prints `!!` for a label with nothing to ring, a ring around a flat (empty)
 // area or mostly off the frame, a label that covers text, a close-up whose
-// subject never showed up and a board over MAX_BYTES.
+// subject never showed up and a board over MAX_BYTES; any `!!` ends the run
+// with exit code 1.
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -88,6 +94,12 @@ const FLAT_SPREAD = 8;
 const MIN_ON_IMAGE = 0.6;
 /** Largest board file; bigger ones are drawn again smaller. */
 const MAX_BYTES = 600 * 1024;
+/** Label text on the actor boards, as a share of the board width (the board is shrunk whole, so the share holds). */
+const LABEL_SHARE = 0.022;
+/** Lighthouse's mobile preset, the mobile profile of scripts/measure-startup.mjs. */
+const MOBILE = { latency: 150, down: (1.6 * 1024 * 1024) / 8, up: (750 * 1024) / 8, cpu: 4 };
+/** How long a load on MOBILE may take to draw the icons and to show the 3D scene. */
+const MOBILE_TIMEOUT_MS = 60_000;
 /**
  * The persona accessories of src/render/actors/rig.ts ACCESSORIES: colour and
  * geometry size (x, y, z). v0.4.0 has the first three and the scarf.
@@ -197,6 +209,38 @@ function iconProbe() {
   };
 }
 
+/** True once the @1x atlas is in and every visible .ic draws its cell instead of a blank box or a placeholder tile. */
+function iconsDrawn() {
+  const boxes = [...document.querySelectorAll('.ic')].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && el.checkVisibility();
+  });
+  const loaded = performance.getEntriesByType('resource').some((e) => e.name.includes('/icons3d/atlas@1x') && e.responseEnd > 0);
+  const drawn = (el) => {
+    const cs = getComputedStyle(el);
+    return /^(transparent|rgba\(0, 0, 0, 0\))$/.test(cs.backgroundColor) && cs.backgroundImage !== 'none';
+  };
+  return loaded && boxes.length > 0 && boxes.every(drawn);
+}
+
+/** Startup times (ms since navigation): the cst marks, the three.js chunk, and when each icon atlas was asked for and came in. */
+function atlasTimeline() {
+  const ms = (v) => (v === undefined ? null : Math.round(v));
+  const res = (re) => performance.getEntriesByType('resource').find((e) => re.test(e.name));
+  const mark = (name) => performance.getEntriesByName(name)[0]?.startTime;
+  const a1 = res(/\/icons3d\/atlas@1x/);
+  const a2 = res(/\/icons3d\/atlas@2x/);
+  const three = res(/\/three-[^/]*\.js/);
+  return {
+    menu: ms(mark('cst:menu')),
+    world: ms(mark('cst:world')),
+    threeEnd: ms(three?.responseEnd),
+    atlas1Start: ms(a1?.startTime),
+    atlas1End: ms(a1?.responseEnd),
+    atlas2Start: ms(a2?.startTime),
+  };
+}
+
 /** Every visible run of text on screen, as boxes. Labels must not cover these. */
 function measureTexts() {
   const out = [];
@@ -228,9 +272,10 @@ function measureMenu() {
 }
 
 /**
- * The open Kho panel: body, foot and Auto-restock boxes, whether the foot
- * sticks, what a tap on the middle of Auto-restock hits, and the stock rows
- * a tap can reach (their middle is the row itself, not the foot).
+ * The open Kho panel: body, foot, Auto-restock and Nhập hàng boxes, whether
+ * the foot sticks, what a tap on the middle of Auto-restock and Nhập hàng
+ * hits, and the stock rows a tap can reach (their middle is the row itself,
+ * not the foot).
  */
 function measureKho() {
   const box = (el) => {
@@ -240,7 +285,8 @@ function measureKho() {
   const panel = document.querySelector('#ui-panel:not([hidden])');
   const foot = panel?.querySelector('.panel-foot');
   const suggest = panel?.querySelector('[data-action="suggest"]');
-  const reach = (el) => {
+  const buy = panel?.querySelector('[data-action="buy"]');
+  const reach =(el) => {
     const b = box(el);
     if (!b) return null;
     const hit = document.elementFromPoint(b.x + b.w / 2, b.y + b.h / 2);
@@ -252,10 +298,19 @@ function measureKho() {
   return {
     panel: box(panel),
     body: box(panel?.querySelector('.panel-body')),
+    // Height the panel-body container query sees: the content box, without padding.
+    bodyContent: (() => {
+      const el = panel?.querySelector('.panel-body');
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    })(),
     foot: box(foot),
     sticky: foot ? getComputedStyle(foot).position === 'sticky' : false,
     suggest: box(suggest),
     suggestCover: suggest ? reach(suggest) : 'missing',
+    buy: box(buy),
+    buyCover: buy ? reach(buy) : 'missing',
     rows: rows.length,
     rowsSeen: seen.length,
     list: union,
@@ -614,6 +669,36 @@ async function menuSession(browser, url, who) {
   }
 }
 
+/**
+ * A cold load of the Main Menu at 390 px on MOBILE (network and CPU, no
+ * cache), nothing held back: the shot once the icons are drawn, when that
+ * was, the icon buttons, and the atlasTimeline once the 3D scene is in.
+ */
+async function menuAtlasSession(browser, url, who) {
+  const context = await newContext(browser, { viewport: PHONE });
+  const page = await context.newPage();
+  try {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Network.enable');
+    await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: MOBILE.latency, downloadThroughput: MOBILE.down, uploadThroughput: MOBILE.up });
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: MOBILE.cpu });
+    await page.goto(url, { waitUntil: 'commit' });
+    await page.waitForFunction(iconsDrawn, null, { timeout: MOBILE_TIMEOUT_MS, polling: 'raf' });
+    const drawnMs = await page.evaluate(() => Math.round(performance.now()));
+    const out = { png: await shot(page), buttons: await page.evaluate(measureMenu), texts: await page.evaluate(measureTexts), drawnMs };
+    await page.waitForFunction(() => performance.getEntriesByName('cst:world').length > 0, null, { timeout: MOBILE_TIMEOUT_MS, polling: 250 });
+    // The @2x atlas is asked for right after cst:world in P22.
+    await sleep(500);
+    out.times = await page.evaluate(atlasTimeline);
+    const t = out.times;
+    progress(who, `Main Menu on mobile: menu ${t.menu} ms, three.js in ${t.threeEnd} ms, atlas @1x ${t.atlas1Start}-${t.atlas1End} ms, icons drawn ${drawnMs} ms, 3D scene ${t.world} ms, atlas @2x ${t.atlas2Start ?? 'not asked'} ms`);
+    return out;
+  } finally {
+    await context.close();
+  }
+}
+
 /** Kho at 390 px on the SAVE_DAY morning, as the player opens it: shot, boxes and what covers what. */
 async function khoSession(browser, url, save, who) {
   const context = await gameContext(browser, PHONE, save);
@@ -631,7 +716,14 @@ async function khoSession(browser, url, save, who) {
     await sleep(400);
     const listKho = await page.evaluate(measureKho);
     out.list = { png: await shot(page), texts: await page.evaluate(measureTexts), kho: listKho };
-    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows; scrolled to the list ${listKho.rowsSeen}/${listKho.rows} rows`);
+    // Then scrolled to the end of the body, where a foot that scrolls with the list comes into view.
+    await page.evaluate(() => {
+      const body = document.querySelector('#ui-panel .panel-body');
+      if (body) body.scrollTop = body.scrollHeight;
+    });
+    await sleep(400);
+    out.end = { png: await shot(page), texts: await page.evaluate(measureTexts), kho: await page.evaluate(measureKho) };
+    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, Nhập hàng ${kho.buyCover ? `out of reach (${kho.buyCover})` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows; scrolled to the list ${listKho.rowsSeen}/${listKho.rows} rows`);
     return out;
   } finally {
     await context.close();
@@ -726,7 +818,7 @@ async function menuBoard(browser, { base, cur }) {
       {
         frame: 1,
         boxes: cur.buttons,
-        label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ màu kem, ${count(cur)}, lúc menu hiện, ${cur.menuMs} ms`,
+        label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ, ${count(cur)}, lúc menu hiện, ${cur.menuMs} ms`,
       },
     ],
     pad: 24,
@@ -734,7 +826,32 @@ async function menuBoard(browser, { base, cur }) {
     avoid: avoidTexts(base, cur),
     gutter: GUTTER,
     notes: [
-      `Khổ 390×844, Main Menu ngay lúc main.ts đánh dấu cst:menu; atlas icon bị giữ lại (như mạng chậm, menu hiện trước khi atlas tải xong) để thấy đúng trạng thái lần tải đầu. Đếm ô .ic hiện trên màn lúc cst:menu: v0.4.0 ${base.icons.blank} trống / ${base.icons.placeholder} ô chờ; P22 ${cur.icons.blank} trống / ${cur.icons.placeholder} ô chờ. P22 tải atlas @1x trước, atlas @2x chỉ tải sau khi cảnh 3D hiện (cst:world).`,
+      `Khổ 390×844, Main Menu ngay lúc main.ts đánh dấu cst:menu; atlas icon bị giữ lại (như mạng chậm, menu hiện trước khi atlas tải xong) để thấy đúng trạng thái lần tải đầu. Đếm ô .ic hiện trên màn lúc cst:menu: v0.4.0 ${base.icons.blank} trống / ${base.icons.placeholder} ô chờ; P22 ${cur.icons.blank} trống / ${cur.icons.placeholder} ô chờ. P22 chỉ xin atlas @1x khi chunk cảnh 3D đã tải xong, atlas @2x sau khi cảnh 3D hiện (cst:world); thời điểm thật trên mạng di động ở main-menu-atlas-390-p22.png.`,
+    ],
+  });
+}
+
+async function menuAtlasBoard(browser, { base, cur }) {
+  const t0 = base.times;
+  const t1 = cur.times;
+  await board(browser, 'main-menu-atlas-390-p22.png', {
+    frames: [before(base.png, 'Main Menu 390 · icon hiện'), after(cur.png, 'Main Menu 390 · icon hiện')],
+    // Short labels on the same rings: a label wider than the gutter hangs into the frame and covers its text.
+    marks: [
+      { frame: 0, boxes: base.buttons, label: `Menu ${t0.menu} ms, ô trống` },
+      { frame: 0, boxes: base.buttons, label: `Atlas @1x xin lúc ${t0.atlas1Start} ms` },
+      { frame: 0, boxes: base.buttons, label: `Icon hiện lúc ${base.drawnMs} ms` },
+      { frame: 1, boxes: cur.buttons, label: `Menu ${t1.menu} ms, ô chờ` },
+      { frame: 1, boxes: cur.buttons, label: `three.js xong ${t1.threeEnd} ms` },
+      { frame: 1, boxes: cur.buttons, label: `Atlas @1x xin lúc ${t1.atlas1Start} ms` },
+      { frame: 1, boxes: cur.buttons, label: `Icon hiện lúc ${cur.drawnMs} ms` },
+    ],
+    pad: 24,
+    maxScale: 1.5,
+    avoid: avoidTexts(base, cur),
+    gutter: GUTTER,
+    notes: [
+      `Khổ 390×844, tỉ lệ điểm ảnh 1, một lần tải không cache trên cấu hình di động của measure-startup.mjs (150 ms RTT, 1,6 Mbps, CPU 4x); khung chụp lúc mọi ô .ic đã vẽ icon. Mốc tính từ lúc điều hướng: v0.4.0 menu ${t0.menu} ms, three.js tải xong ${t0.threeEnd} ms, atlas @1x ${t0.atlas1Start}–${t0.atlas1End} ms, cảnh 3D ${t0.world} ms. P22 menu ${t1.menu} ms, three.js tải xong ${t1.threeEnd} ms, atlas @1x ${t1.atlas1Start}–${t1.atlas1End} ms, cảnh 3D ${t1.world} ms, atlas @2x xin lúc ${t1.atlas2Start ?? 'chưa'} ms. Một lần đo, chỉ để thấy thứ tự; số trung vị ở docs/reports/p22-review/perf.txt.`,
     ],
   });
 }
@@ -761,7 +878,43 @@ async function khoBoard(browser, out, { base, cur }) {
     avoid: avoidTexts(base, cur, cur.list),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng không dính mà cuộn sau danh sách; desktop và tablet vẫn dính.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng gọn (hai tổng một hàng, nút Nhập hàng 44 px), vùng nội dung dưới 12rem thì chân cuộn sau danh sách; ở đây chân ${a.sticky ? 'vẫn dính' : 'cuộn sau danh sách'}. Desktop và tablet giữ chân đầy đủ. Chân bảng ở kho-foot-390-p22.png.`,
+    ],
+  });
+}
+
+async function khoFootBoard(browser, { base, cur }) {
+  const b = base.kho;
+  const a = cur.kho;
+  const px = (n) => Math.round(n ?? 0);
+  const buy = (k) => (k.buyCover ? `ngoài tầm chạm (${k.buyCover})` : 'chạm được');
+  const e = cur.end.kho;
+  // A P22 foot that scrolls with the list is off screen on opening: ring the bottom of the body there, and the foot at the end of the body.
+  const bodyEnd = a.body ? { x: a.body.x, y: a.body.y + a.body.h - 60, w: a.body.w, h: 60 } : null;
+  const frames = a.sticky
+    ? [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở')]
+    : [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở'), after(cur.end.png, 'Kho 390 · cuộn tới cuối')];
+  // Short labels, as on the Kho board: the gutter is KHO_GUTTER wide.
+  const marks = a.sticky
+    ? [
+        { frame: 1, boxes: [a.foot], label: `Chân gọn ${px(a.foot?.h)} px, vẫn dính` },
+        { frame: 1, boxes: [a.buy], label: `Nhập hàng ${px(a.buy?.h)} px, ${a.buyCover ? 'bị che' : 'chạm được'}` },
+      ]
+    : [
+        { frame: 1, boxes: [bodyEnd], label: 'Đáy thân: chưa thấy Nhập hàng' },
+        { frame: 2, boxes: [e.foot], label: `Chân gọn ${px(e.foot?.h)} px, cuộn sau` },
+        { frame: 2, boxes: [e.buy], label: `Nhập hàng ${px(e.buy?.h)} px` },
+      ];
+  await board(browser, 'kho-foot-390-p22.png', {
+    frames,
+    marks: [{ frame: 0, boxes: [b.foot], label: `Chân ${b.sticky ? 'dính' : 'cuộn'} ${px(b.foot?.h)} px / thân ${px(b.body?.h)} px` }, ...marks],
+    include: [b.panel, a.panel],
+    pad: 16,
+    maxScale: 1.5,
+    avoid: avoidTexts(base, cur, ...(a.sticky ? [] : [cur.end])),
+    gutter: KHO_GUTTER,
+    notes: [
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED}, bảng Kho vừa mở. v0.4.0: chân ${px(b.foot?.h)} px, nút Nhập hàng ${px(b.buy?.h)} px ${buy(b)}. P22: thân ${px(a.body?.h)} px, vùng nội dung (trừ padding) ${px(a.bodyContent)} px; dưới 30rem chân gọn (hai tổng một hàng, nút Nhập hàng 44 px), dưới 12rem (192 px) chân cuộn sau danh sách. ${a.sticky ? `Chân vẫn dính đáy, nút Nhập hàng ${buy(a)} khi mở Kho.` : `Chân cuộn sau danh sách: khi mở Kho nút Nhập hàng ${buy(a)}, phải cuộn tới cuối mới thấy.`}`,
     ],
   });
 }
@@ -781,6 +934,7 @@ async function actorBoard(browser, out, frames, notes) {
     include: frames.map((f) => f.shot.subject.body),
     pad: 24,
     maxScale: 2,
+    labelShare: LABEL_SHARE,
     notes,
   });
   return true;
@@ -913,6 +1067,10 @@ async function main() {
 
     progress('both', 'Main Menu at 390');
     const [curMenu, baseMenu] = await Promise.all([menuSession(browser, cur, 'P22'), menuSession(browser, base, 'v0.4.0')]);
+    // One build at a time, so the two throttled loads do not share the CPU.
+    progress('both', 'Main Menu at 390 on mobile');
+    const curAtlas = await menuAtlasSession(browser, cur, 'P22');
+    const baseAtlas = await menuAtlasSession(browser, base, 'v0.4.0');
     progress('both', `Kho at 390, day ${SAVE_DAY}`);
     const [curKho, baseKho] = await Promise.all([khoSession(browser, cur, save, 'P22'), khoSession(browser, base, save, 'v0.4.0')]);
     progress('both', `day ${SAVE_DAY} peak close-ups`);
@@ -924,6 +1082,10 @@ async function main() {
     progress('both', 'drawing boards');
     await menuBoard(browser, { base: baseMenu, cur: curMenu });
     files.push('main-menu-icons-p22.png');
+    await menuAtlasBoard(browser, { base: baseAtlas, cur: curAtlas });
+    files.push('main-menu-atlas-390-p22.png');
+    await khoFootBoard(browser, { base: baseKho, cur: curKho });
+    files.push('kho-foot-390-p22.png');
     files.push(...(await fixedBoards(browser, fixed, { kho: { base: baseKho, cur: curKho }, actors: { base: baseActors, cur: curActors } })));
   } finally {
     if (browser) await browser.close();
@@ -932,7 +1094,19 @@ async function main() {
   }
 
   for (const f of files) console.log(`ok docs/media/${f} ${Math.round(statSync(join(OUT, f)).size / 1024)} kB`);
+  if (warnings > 0) {
+    console.error(`${warnings} !! warning(s): fix them before using the boards`);
+    process.exitCode = 1;
+  }
 }
+
+/** `!!` lines printed so far (here and by makeBoard); any of them fails the run. */
+let warnings = 0;
+const warn = console.warn;
+console.warn = (...args) => {
+  if (String(args[0]).startsWith('!!')) warnings++;
+  warn(...args);
+};
 
 main().catch((err) => {
   console.error(err);
