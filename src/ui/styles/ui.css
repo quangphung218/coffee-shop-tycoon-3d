@@ -377,7 +377,7 @@ kbd {
 }
 .scene-load-item {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--space-2);
   min-height: 24px;
@@ -390,6 +390,13 @@ kbd {
 }
 .scene-load-mark {
   display: inline-flex;
+}
+/* Percent and Thử lại share the last column: a row shows one or the other. */
+.scene-load-item-pct,
+.scene-load-retry {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
 }
 .scene-load-item-pct {
   font-variant-numeric: tabular-nums;
