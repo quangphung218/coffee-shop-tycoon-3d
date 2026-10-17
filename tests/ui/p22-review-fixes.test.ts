@@ -139,7 +139,8 @@ describe('layout-blocked-suggest-390: Kho foot does not cover Auto-restock on a 
       }
     }
     const btn = blocks[0]!.rules.find((r) => r.selector === '.prep .panel-foot > .btn-lg')!;
-    expect(decl(btn.body, 'min-height')).toBe('var(--size-target)');
+    // P24 scale: the packed buy button is a 44 px --size-control-md.
+    expect(decl(btn.body, 'min-height')).toBe('var(--size-control-md)');
   });
 
   // The Kho body measured at 390x844 is 207 px tall. A size container query

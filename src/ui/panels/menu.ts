@@ -59,9 +59,14 @@ export function unlockHint(state: GameState, kind: 'menu' | 'upgrade', id: MenuI
   return { badge: `Mở ở cấp ${level}`, reason: `Mở khóa ở Cấp ${level}.` };
 }
 
+/** Ingredients the stock lacks for one cup of `item`. */
+function missingFor(state: GameState, item: MenuItemDef): MenuItemDef['ingredients'] {
+  return item.ingredients.filter((need) => stockOf(state, need.id) < need.qty);
+}
+
 /** Why an item cannot be made from the stock, or null when it can. */
 export function lockReason(state: GameState, item: MenuItemDef): string | null {
-  const missing = item.ingredients.filter((need) => stockOf(state, need.id) < need.qty);
+  const missing = missingFor(state, item);
   if (missing.length === 0) return null;
   const parts = missing.map((need) => {
     const def = getIngredient(need.id);
@@ -70,19 +75,24 @@ export function lockReason(state: GameState, item: MenuItemDef): string | null {
   return `Thiếu ${parts.join('; ')}.`;
 }
 
-/** 0..1 popularity as five dot icons, filled then empty. */
-function popularityDots(p: number): HTMLElement {
-  const n = Math.max(1, Math.min(5, Math.round(p * 5)));
-  return h('span', { class: 'dots', attrs: { 'aria-hidden': 'true' } }, ...[0, 1, 2, 3, 4].map((i) => icon(i < n ? 'i-dot' : 'i-dot-empty', { size: 16 })));
+/**
+ * Short status label for an item the stock cannot make: "Thiếu Cam", or
+ * "Thiếu Sữa tươi +1" so a long list never squeezes the row; the reason line
+ * under it names every ingredient.
+ */
+export function missingLabel(state: GameState, item: MenuItemDef): string | null {
+  const [first, ...rest] = missingFor(state, item);
+  if (!first) return null;
+  return `Thiếu ${getIngredient(first.id).name}${rest.length > 0 ? ` +${rest.length}` : ''}`;
 }
 
 /**
- * Menu hôm nay: the Mức giá choice (locked outside preparation), then every
- * item with the price at that level, cost, hot/cold, popularity and a
- * Bán/Không switch. Items the stock cannot make are locked with the missing
- * ingredient; items not open yet show "Mở ngày N" or "Mở ở cấp N" (unlockHint)
- * and stay off. An
- * item already on sale can still be switched off.
+ * Menu hôm nay: the Mức giá choice (locked outside preparation), then one row
+ * per item (icon | name + price, margin, hot/cold, popularity | one status
+ * label | Bán/Không switch). An item the stock cannot make shows "Thiếu Cam"
+ * with the amounts and a "Mở Kho" link under it; an item not open yet shows
+ * "Mở ngày N" or "Mở ở cấp N" (unlockHint) and stays off. An item already on
+ * sale can still be switched off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -123,30 +133,20 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   const rows = MENU.map((item) => {
     const why = reasonLine();
     const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }));
-    const lockBadge = h('span', { class: 'badge badge-danger', hidden: true }, ...withIcon('i-lock', 'Khóa'));
-    // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label (design/p20 §5), not a button.
+    // One flat label slot (design/p20 §5): "Thiếu Cam" or "Mở ngày N" / "Mở ở cấp N", never both; empty while sellable.
+    const missBadge = h('span', { class: 'badge badge-danger', hidden: true, attrs: { 'data-lock': 'stock' } });
     const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
     const meta = h('p', { class: 'item-meta' });
-    const toStock = linkBtn('Nhập ở Kho', 'inventory');
+    const toStock = linkBtn('Mở Kho', 'inventory');
     toStock.hidden = true;
+    const temp = item.temperature === 'hot' ? 'Nóng' : 'Lạnh';
+    const popular = Math.max(1, Math.min(5, Math.round(item.popularity * 5)));
     const li = h(
       'li',
-      { class: 'item', attrs: { 'data-item': item.id } },
+      { class: 'item item-row', attrs: { 'data-item': item.id } },
       h('span', { class: 'item-icon' }, icon(MENU_ICONS[item.id], { size: 32 })),
-      h(
-        'div',
-        {},
-        h('p', { class: 'item-title' }, item.name, ' ', lockBadge, levelBadge),
-        meta,
-        h(
-          'p',
-          { class: 'item-meta item-tags' },
-          ...withIcon(item.temperature === 'hot' ? 'i-cup-hot' : 'i-cold', item.temperature === 'hot' ? 'Nóng' : 'Lạnh'),
-          ' · Phổ biến ',
-          popularityDots(item.popularity),
-          h('span', { class: 'sr-only', text: `${Math.round(item.popularity * 5)}/5` }),
-        ),
-      ),
+      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: item.name }), meta),
+      h('span', { class: 'item-status' }, missBadge, levelBadge),
       sw.el,
       h('div', { class: 'item-actions' }, why, toStock),
     );
@@ -164,12 +164,13 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
         const locked = levelLocked ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
-        meta.textContent = `Giá ${formatMoney(price)} · vốn ${formatMoney(item.cost)} · lãi ${formatMoney(price - item.cost)}/ly · biên ${margin}%`;
+        meta.textContent = `Giá ${formatMoney(price)} · lãi ${formatMoney(price - item.cost)}/ly (${margin}%) · ${temp} · phổ biến ${popular}/5`;
         li.classList.toggle('is-locked', levelLocked || !!locked);
         const opens = levelLocked ? unlockHint(s, 'menu', item.id) : null;
         levelBadge.hidden = !opens;
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
-        lockBadge.hidden = !locked;
+        missBadge.hidden = !locked;
+        if (locked) setIconText(missBadge, 'i-warning', missingLabel(s, item)!);
         toStock.hidden = !locked;
         sw.set(enabled, levelLocked || (!!locked && !enabled));
         setReason(why, sw.el, opens ? opens.reason : locked, 'i-lock');
