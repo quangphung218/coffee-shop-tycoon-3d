@@ -28,9 +28,9 @@ import {
   backCounterSpan,
   wallSpans,
 } from '../../sim/nav/footprints';
-import { getShopLayout, type Area, type ShopLayout } from '../../sim/upgrades';
+import { getShopLayout, type Area, type DecorKind, type MachineKind, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
-import { BACK_COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
+import { BACK_COUNTER_HEIGHT, COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
 import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
 import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part } from './parts';
 
@@ -277,6 +277,30 @@ export type SceneHit =
   | { kind: 'trash'; tableId: number }
   | { kind: 'machine' };
 
+/** Where an upgrade's sparkle goes and which mesh (if a single one) bounces about its base at `pivotY`. */
+export interface UpgradeAnchor {
+  x: number;
+  y: number;
+  z: number;
+  object: Object3D | null;
+  pivotY: number;
+}
+
+const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
+  better_machine: 'espresso',
+  fast_machine: 'fast',
+  grinder: 'grinder',
+  pastry_case: 'pastry_case',
+  blender: 'blender',
+  ice_maker: 'ice_maker',
+  dishwasher: 'dishwasher',
+};
+
+const DECOR_FOR_UPGRADE = { plants: 'plant', paintings: 'painting', lights: 'light' } as const satisfies Partial<Record<UpgradeId, DecorKind>>;
+
+/** Sparkle height over each decor kind: the foliage, the painting hook, the bulb. */
+const DECOR_SPARKLE_Y: Record<DecorKind, number> = { plant: 1, painting: 1.45, light: 2.28 };
+
 interface Wall {
   mesh: Mesh;
   /** Outward normal on the ground plane. */
@@ -441,6 +465,54 @@ export class ShopView {
   /** Layout of the current build (a new object after every rebuild), or null before the first update. */
   get current(): ShopLayout | null {
     return this.layout;
+  }
+
+  /**
+   * Where the piece an upgrade changed stands, for the purchase sparkle: the
+   * machine of that kind, the counter, the newest table or decor slot, or the
+   * middle of the side room. `object` is the single mesh to bounce (machines
+   * and the counter); instanced pieces only get the position. Null before
+   * the first update or when the piece is not drawn (window_bar).
+   */
+  upgradeAnchor(id: UpgradeId): UpgradeAnchor | null {
+    const layout = this.layout;
+    if (!layout) return null;
+    const kind = MACHINE_FOR_UPGRADE[id];
+    if (kind) {
+      const i = layout.machines.findIndex((m) => m.kind === kind);
+      if (i < 0) return null;
+      const m = layout.machines[i]!;
+      return { x: m.pos.x, y: BACK_COUNTER_HEIGHT + 0.5, z: m.pos.z, object: this.machines.children[i] ?? null, pivotY: BACK_COUNTER_HEIGHT };
+    }
+    switch (id) {
+      case 'big_counter': {
+        const { pos } = layout.counter;
+        return { x: pos.x, y: COUNTER_HEIGHT + 0.3, z: pos.z, object: this.counter, pivotY: 0 };
+      }
+      case 'tables':
+      case 'outdoor_seating': {
+        const outdoor = id === 'outdoor_seating';
+        let newest: ShopLayout['tables'][number] | null = null;
+        for (const t of layout.tables) {
+          if ((t.zone === 'outdoor') === outdoor && (!newest || t.id > newest.id)) newest = t;
+        }
+        return newest ? { x: newest.pos.x, y: TABLE_TOP_Y + 0.3, z: newest.pos.z, object: null, pivotY: 0 } : null;
+      }
+      case 'plants':
+      case 'paintings':
+      case 'lights': {
+        const decor = DECOR_FOR_UPGRADE[id];
+        const items = layout.decor.filter((d) => d.kind === decor).slice(0, DECOR_CAPACITY);
+        const last = items[items.length - 1];
+        return last ? { x: last.pos.x, y: DECOR_SPARKLE_Y[decor], z: last.pos.z, object: null, pivotY: 0 } : null;
+      }
+      case 'expand_area': {
+        const e = layout.expansion;
+        return e ? { x: (e.minX + e.maxX) / 2, y: 1, z: (e.minZ + e.maxZ) / 2, object: null, pivotY: 0 } : null;
+      }
+      default:
+        return null;
+    }
   }
 
   /** Rebuilds the facade details for a graphics quality (low drops the small ones). */
