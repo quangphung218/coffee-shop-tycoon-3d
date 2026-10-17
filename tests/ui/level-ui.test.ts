@@ -194,19 +194,24 @@ describe('daily missions in the Task Board', () => {
     { id: 'sell_food', target: 3, progress: 0, rewardXp: 25, rewardMoney: 40000, status: 'active' },
   ];
 
-  it('renders a card per mission in its state, with a goal, a bar and the reward', () => {
+  it('renders a row per mission in its state, with a goal, a bar and the reward', () => {
     const { body } = mount(renderTasksPanel, withMissions(game(), sample.map((m) => ({ ...m }))));
-    const cards = [...body.querySelectorAll('.mission')];
+    const cards = [...body.querySelectorAll('li[data-mission]')];
     expect(cards.map((c) => c.getAttribute('data-status'))).toEqual(['completed', 'failed', 'active']);
+    // Same row template as Kho: icon | title + one meta line | one status label.
+    for (const c of cards) {
+      expect(c.classList.contains('item-row')).toBe(true);
+      expect(c.querySelectorAll('.item-status .badge')).toHaveLength(1);
+    }
 
-    const done = q(body, '.mission[data-status="completed"]');
+    const done = q(body, 'li[data-mission][data-status="completed"]');
     expect(q(done, '.badge').textContent).toContain('Xong');
     expect(q(done, '[role="progressbar"]').getAttribute('aria-valuenow')).toBe('100');
 
-    const failed = q(body, '.mission[data-status="failed"]');
+    const failed = q(body, 'li[data-mission][data-status="failed"]');
     expect(q(failed, '.badge').textContent).toContain('Hụt');
 
-    const active = q(body, '.mission[data-status="active"]');
+    const active = q(body, 'li[data-mission][data-status="active"]');
     expect(q(active, '.badge').textContent).toContain('Đang');
     const bar = q(active, '[role="progressbar"]');
     expect(bar.getAttribute('aria-valuenow')).toBe('0');
@@ -218,7 +223,7 @@ describe('daily missions in the Task Board', () => {
   it('fills the bar of an active mission from today\'s live progress', () => {
     const state = withMissions(game(), [{ id: 'serve_customers', target: 20, progress: 0, rewardXp: 60, rewardMoney: 100000, status: 'active' }]);
     const { body, handle } = mount(renderTasksPanel, state);
-    const bar = (): HTMLElement => q(body, '.mission[data-mission="serve_customers"] [role="progressbar"]');
+    const bar = (): HTMLElement => q(body, 'li[data-mission="serve_customers"] [role="progressbar"]');
     expect(bar().getAttribute('aria-valuenow')).toBe('0');
     state.today.customersArrived = 12;
     state.today.customersServed = 10;
@@ -229,25 +234,25 @@ describe('daily missions in the Task Board', () => {
 
   it('labels an active mission with a clock icon on a flat badge', () => {
     const { body } = mount(renderTasksPanel, withMissions(game(), sample.map((m) => ({ ...m }))));
-    const badge = q(body, '.mission[data-status="active"] .badge');
+    const badge = q(body, 'li[data-mission][data-status="active"] .badge');
     expect(badge.classList.contains('badge-neutral')).toBe(true);
     expect(q(badge, '.ic').dataset.icon).toBe('i-clock');
   });
 
   it('shows a note instead of cards when an old save has no missions', () => {
     const { body } = mount(renderTasksPanel, withMissions(game(), []));
-    expect(body.querySelectorAll('.mission')).toHaveLength(0);
+    expect(body.querySelectorAll('li[data-mission]')).toHaveLength(0);
     expect(q(body, '.mission-empty').hidden).toBe(false);
   });
 
   it('refreshes mission state in place on later frames', () => {
     const state = withMissions(game(), sample.map((m) => ({ ...m })));
     const { body, handle } = mount(renderTasksPanel, state);
-    expect(q(body, '.mission[data-mission="sell_food"]').getAttribute('data-status')).toBe('active');
+    expect(q(body, 'li[data-mission="sell_food"]').getAttribute('data-status')).toBe('active');
     state.missions[2]!.status = 'completed';
     state.missions[2]!.progress = 4;
     (handle as PanelHandle).update!(state);
-    expect(q(body, '.mission[data-mission="sell_food"]').getAttribute('data-status')).toBe('completed');
+    expect(q(body, 'li[data-mission="sell_food"]').getAttribute('data-status')).toBe('completed');
   });
 });
 

@@ -170,7 +170,7 @@
   outline-offset: calc(-1 * var(--size-focus-width));
 }
 
-/* Item card: menu, stock, marketing, upgrades. A flat frame: no shadow. */
+/* Item card: every list row of the prep panels. A flat frame: no shadow. */
 .item {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
@@ -203,11 +203,6 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.item-side {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-heavy);
-}
 .item-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -223,16 +218,26 @@
 .item-actions .reason {
   flex-basis: 100%;
 }
+.item-actions > .progress {
+  flex: 1 1 100%;
+}
 .item.is-locked {
   background: var(--surface-sunken);
   border-style: dashed;
   border-color: var(--border-disabled);
 }
+/* A finished task: the tick icon plus a muted, struck title. */
+.item.is-done .item-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
 
-/* Kho and Menu row (P24), one template for both: icon 32 | name (16) + meta
-   (14) | one status label | stepper or switch. The side panel is at most
-   380 px wide, so the control takes a second line, right-aligned under the
-   label, and the reason or "Mở Kho" link a third line under the text. */
+/* Prep panel row (P24), one template for Kho, Menu, Nhân viên, Marketing,
+   Nâng cấp and Việc: icon 32 | name (16) + meta (14) | one status label |
+   one control (stepper, switch, button, link, or the role menu with its
+   button). The side panel is at most 380 px wide, so the control takes a
+   second line, right-aligned under the label, and the reason, link or bar a
+   third line under the text. */
 .item.item-row {
   grid-template-columns: 32px minmax(0, 1fr) auto;
   grid-template-areas:
@@ -263,9 +268,22 @@
   grid-area: status;
 }
 .item-row > .stepper,
-.item-row > .toggle {
+.item-row > .toggle,
+.item-row > .btn,
+.item-row > .link-btn,
+.item-row > .item-control {
   grid-area: control;
   justify-self: end;
+}
+.item-row > .link-btn {
+  margin-left: 0;
+}
+/* Nhân viên: the role menu and "Cho nghỉ" side by side, wrapping on a phone. */
+.item-control {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 .item-row > .item-actions {
   grid-area: more;
@@ -304,48 +322,12 @@
   flex: 1 1 160px;
   font-size: var(--font-size-sm);
 }
-/* Kho and Menu rows (.item-row) keep their own template at every width. */
-@media (max-width: 640px) {
-  .item:not(.item-row) {
-    grid-template-columns: 48px minmax(0, 1fr);
-  }
-  .item:not(.item-row) > .badge,
-  .item:not(.item-row) > .item-side,
-  .item:not(.item-row) > .toggle {
-    grid-column: 2;
-    justify-self: start;
-  }
+/* Task Board: the week lines are plain text under the title, not rows. */
+.week-today > li {
+  align-items: flex-start;
 }
-
-/* Task Board */
-.task {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 var(--space-3);
-  padding: var(--space-3);
-  background: var(--surface-panel-solid);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: var(--radius-lg);
-}
-.task-icon {
-  display: grid;
-  place-items: start center;
-  padding-top: 2px;
-}
-.task-title {
-  font-weight: var(--font-weight-heavy);
-  line-height: var(--line-height-tight);
-}
-.task.is-done .task-title {
-  color: var(--text-muted);
-  text-decoration: line-through;
-}
-.task.is-warn {
-  background: var(--surface-warning);
-}
-.task-flag {
-  margin-left: var(--space-2);
-  vertical-align: middle;
+.week-today .ic {
+  flex: none;
 }
 .progress {
   display: block;
@@ -360,43 +342,8 @@
   height: 100%;
   background: var(--data-bar);
 }
-.meter {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-variant-numeric: tabular-nums;
-}
-.meter .progress {
-  width: var(--space-16);
-}
-
-/* Daily missions (Việc panel): one card each with a status badge, a goal, an
-   XP bar and the reward. The won card tints to read apart from the rest. */
-.mission {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--surface-panel-solid);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: var(--radius-lg);
-}
-.mission[data-status='completed'] {
-  background: var(--surface-selected);
-}
-.mission-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.mission-title {
-  flex: 1 1 auto;
-  font-weight: var(--font-weight-heavy);
-  line-height: var(--line-height-tight);
-}
-.mission-head .badge {
-  flex: 0 0 auto;
-}
+/* Daily missions (Việc panel): an .item-row with the XP bar and the reward
+   on the third line. */
 .mission-reward .ic {
   margin-right: var(--space-1);
 }
@@ -406,12 +353,6 @@
 
 /* Stepper: three separate controls in a group with a 4px gap, so each one
    owns its border and the focus ring stays inside it. */
-.stepper-label {
-  flex: 1 1 100%;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-muted);
-}
 .stepper {
   display: inline-flex;
   align-items: center;
@@ -515,7 +456,7 @@
 }
 .dd-btn {
   --bw: var(--size-outline);
-  min-height: var(--size-target);
+  min-height: var(--size-control-md);
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -626,43 +567,7 @@
   outline-offset: calc(-1 * var(--size-focus-width));
 }
 
-/* Staff */
-.staff {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-3);
-  background: var(--surface-panel-solid);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: var(--radius-lg);
-}
-.staff-av {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  background: var(--surface-sunken);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: 50%;
-}
-.staff-name {
-  font-weight: var(--font-weight-heavy);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-.staff-row {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  align-items: center;
-  justify-content: space-between;
-}
-.staff-row .reason {
-  flex-basis: 100%;
-}
+/* Staff: no staff yet */
 .empty {
   display: flex;
   flex-direction: column;
