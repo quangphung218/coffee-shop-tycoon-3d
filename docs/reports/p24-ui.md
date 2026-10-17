@@ -48,16 +48,27 @@ Lần đo trước ghi **PASS là sai**. `scripts/capture-p24.mjs` bật Nước
 
 Đạt khi bản P24 bật được cả hai công tắc, Gợi ý gắn nhãn Cam (ngày 3), Bột bánh và Bơ (ngày 6) với số gói > 0, và mỗi lượt nhập hiện đúng 1 toast gộp; sai một điều thì script in `!!` và thoát mã 1.
 
-Kết quả qua giao diện: **chưa có**. Lượt `npm run media:p24` theo các bước trên chưa chạy; mục này và [mục 4](#4-kết-quả-kiểm) chỉ ghi PASS khi lượt đó in dòng `playtest` của P24 không kèm `!!`.
+Kết quả: **PASS** ở cả 390 và 1280, `npm run media:p24` thoát mã 0, không có `!!`. Hai khổ cho cùng kết quả:
 
-Gợi ý do sim tính khi món đã bật (`P24_SAVES_ONLY=1 node scripts/capture-p24.mjs`, cùng ván), đo ở `f4d81bc`, trước `c8796a7` (nhu cầu món thay thế) và `a754d0f` (giá máy đá), nên số có thể đổi khi chạy lại:
+| Bước | P23 `3a08fe2` | P24 |
+| --- | --- | --- |
+| Ngày 3, bấm công tắc Nước cam | Khóa, vẫn "Không" | Bật, "Bán"; nhãn "Thiếu Cam", link "Mở Kho" |
+| Ngày 3, Gợi ý | Cam 0 gói | **Cam 4 gói**, nhãn "gợi ý" |
+| Ngày 3, 2 lần Nhập hàng | Câu trong bảng, 0 toast | 1 toast: "Đã nhập Cà phê hạt, Sữa tươi, Cam và 1 mặt hàng khác · −970.000đ · Còn 4.165.000đ" |
+| Ngày 6, bấm công tắc Bánh ngọt | Khóa, vẫn "Không" | Bật, "Bán" |
+| Ngày 6, Gợi ý | Bột bánh 0, Bơ 0 gói | **Bột bánh 1 gói**, **Bơ 2 gói**, nhãn "gợi ý" |
+| Ngày 6, Nhập hàng | 0 toast | 1 toast: "Đã nhập Cà phê hạt, Sữa tươi, Đường và 7 mặt hàng khác · −930.000đ · Còn 10.487.500đ" |
 
-| Sáng | Gợi ý nhập P23 `3a08fe2` | Gợi ý nhập P24 | P24 trong ngày |
-| --- | --- | --- | --- |
-| Ngày 3, bật Nước cam (Cam 0) | Cà phê hạt 1000, Sữa tươi 8000, Ly 50; thiếu Cam | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 | Bán 16 ly Nước cam |
-| Ngày 6, bật Bánh ngọt (Bột bánh 0, Bơ 0) | Cà phê hạt 1000, Sữa tươi 5000, Ly 50; thiếu Cam, Bột bánh, Bơ | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 | Bán 25 bánh, 7 ly Nước cam |
+Ngày 6 Cam 0 gói ở P24 vì kho còn đủ Cam đã nhập từ ngày 3. Ảnh: [Menu](p24-review/menu-1280-p24.jpg), [Kho](p24-review/kho-1280-p24.jpg), [toast](p24-review/toast-1280-p24.jpg).
 
-Tuần 1 của ván này theo sim: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.605.000đ, 91 điểm, 3 cúp.
+Gợi ý do sim tính ngay sau khi món được bật, cùng ván, trong cùng lượt chạy, dùng để đối chiếu:
+
+| Sáng | Gợi ý nhập P23 `3a08fe2` | Gợi ý nhập P24 |
+| --- | --- | --- |
+| Ngày 3, bật Nước cam (Cam 0) | Cà phê hạt 1000, Sữa tươi 8000, Ly 50; thiếu Cam | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 |
+| Ngày 6, bật Bánh ngọt (Bột bánh 0, Bơ 0) | Cà phê hạt 1000, Sữa tươi 5000, Ly 50; thiếu Cam, Bột bánh, Bơ | Cà phê hạt 1000, Sữa tươi 5000, Đường 1000, Bột cacao 200, Trà 100, Chanh 10, **Bột bánh 1000**, **Bơ 500**, Đá viên 5000, Ly 50 |
+
+Tuần 1 của ván này theo sim: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.130.000đ, 90 điểm, 3 cúp.
 
 ### Mục tiêu tuần sau khi sửa gợi ý nhập
 
@@ -151,12 +162,12 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| Playtest qua giao diện: bật bằng công tắc, Cam, Bột bánh, Bơ trong gợi ý, 1 toast mỗi lượt nhập | Cả ba có nhãn "gợi ý", 1 toast | Chưa có kết quả. Lần ghi PASS trước sai: script bật món qua sim, công tắc trên giao diện còn khóa (mục 1) |
+| Playtest qua giao diện: bật bằng công tắc, Cam, Bột bánh, Bơ trong gợi ý, 1 toast mỗi lượt nhập | Cả ba có nhãn "gợi ý", 1 toast | PASS ở 390 và 1280: Cam 4 gói, Bột bánh 1 gói, Bơ 2 gói, mỗi lượt 1 toast (mục 1). Lần ghi PASS trước sai: script bật món qua sim, công tắc trên giao diện còn khóa |
 | `npm run check` | tsc, test, build xanh | PASS: 81 file, 1172 test |
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy lại sau `b3c55d9` (công tắc) và `2392932` (pill pha, bóng bảng bên). Lượt trước ở `4d90c20`: PASS, 48/48 |
 | Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL, nợ từ P23: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
-| `npm run media:p24` | Không cảnh báo `!!`, playtest P24 đạt | Chưa chạy lại với script mới (24 bảng, có playtest qua giao diện). Lượt trước: 20 bảng, không cảnh báo |
+| `npm run media:p24` | Không cảnh báo `!!`, playtest P24 đạt | PASS: 24 bảng, không cảnh báo, thoát mã 0 |
 
 Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple M2), trung vị 3 lần, chỉ đo bản hiện tại.
 
