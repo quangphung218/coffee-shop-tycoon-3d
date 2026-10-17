@@ -93,6 +93,20 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | Playtest Cam, Bột bánh, Bơ trong gợi ý | Có cả ba | PASS (mục 1) |
 | `npm run check` | tsc, test, build xanh | PASS: 80 file, 1117 test |
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | PASS, 48/48: 6 bảng, Daily Report, Đánh giá không tràn ở 390/768/1440; CLS Kho 0,000000 ở cả ba khổ; HUD 2 hàng cao 104 px ở 390 và 768, 1 hàng cao 56 px ở 1280 và 1440, kể cả ngày "Tăng giá nhập"; mọi nút HUD ≥ 44 px |
-| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | Chưa chạy |
-| `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | Chưa chạy |
+| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL: 1107 ms (cảnh 3D 3077 ms); máy bàn 140 ms |
+| `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
+
+Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple M2), trung vị 3 lần, chỉ đo bản hiện tại.
+
+| Số đo | Máy bàn | Di động, CPU 4x |
+| --- | --- | --- |
+| Nội dung đầu tiên hiện | 128 ms | 364 ms |
+| Main Menu | 140 ms | 1107 ms |
+| Cảnh 3D (`measure-startup.mjs`) | 336 ms | 3077 ms |
+| Khung p50 / p95 / dài nhất, 5 s sau `cst:world` | 50 / 133 / 133 ms | 100 / 133 / 133 ms |
+| Khung > 50 ms (3 lần) | 34 (42/34/33) | 49 (49/45/56) |
+| Long task | 0 | 0 |
+
+- Main Menu di động đã trên 1 s từ trước P24: [p23-loading-frames.md](p23-loading-frames.md) đo 1067 ms ở `f9508d8` và 1045 ms ở `0205afe`. Lượt này không đo `3a08fe2` cùng lúc, nên chưa tách được phần P24 thêm vào.
+- Headless khoá nhịp khung, nên số khung > 50 ms chỉ dùng để so khoảng (P23: 39–44 máy bàn, 40–45 di động), không cho biết có giật.
 | `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |
