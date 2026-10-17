@@ -170,4 +170,4 @@ FPS cao điểm ngày 1 (Dễ, 4x), 1280×800 @2x, 10 s mỗi lần, hai bản x
 | Lệnh | Kiểm gì | Kết quả |
 | --- | --- | --- |
 | `npm run check` | `tsc --noEmit`, `vitest run`, `vite build` | Pass: 66 file test, 920 test; build xong |
-| `npm run layout` | Tràn ngang ở 390×844, 768×1024, 1440×900; CLS = 0 ở bảng Kho khi đổi số gói ([media.md](../media.md#kiểm-lề-và-cls)) | Pass ở `8839800`, trước ngưỡng chân bảng 8rem: 27/27 kiểm (24 màn × khổ không tràn ngang, không lệch khung; CLS bảng Kho 0,000000 ở cả 3 khổ, khung tổng và danh sách lệch 0,0 px) |
+| `npm run layout` | Tràn ngang ở 390×844, 768×1024, 1440×900; CLS = 0 ở bảng Kho khi đổi số gói ([media.md](../media.md#kiểm-lề-và-cls)) | Pass: 27/27 kiểm (24 màn × khổ không tràn ngang, không lệch khung; CLS bảng Kho 0,000000 ở cả 3 khổ, chân và danh sách lệch 0,0 px; chân bảng Kho cao 143,5 px ở 390, 202 px ở 768 và 1440) |
