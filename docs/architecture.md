@@ -179,7 +179,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 | --- | --- |
 | `state.week` (`WeekState`) | `length` (7), `index` (tuần thứ mấy, từ 1; `weekIndex(state)` coi thiếu là 1), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult` của tuần vừa xong), `archive?` (`WeekSummary[]`, một dòng mỗi tuần đã xong). `createNewGame` điền tuần 1, chưa có `result` và `archive`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
 | Lịch sự kiện | `rollWeekPlan(seed, weekIndex)` rút từng ngày từ hash(`seed`, tuần, ngày, lần rút), không đọc hay đổi `state.rngState`: cùng seed luôn ra cùng lịch cho từng tuần, dù người chơi làm gì. Tuần 1 dùng thẳng `seed` nên giữ lịch cũ. Tuần sai luật (`isValidWeekPlan(plan, weekIndex)`) rút lại; 64 lần không được thì dùng `FALLBACK_PLAN`. |
-| Mục tiêu | `weekGoal(difficulty, index)`: tuần 1 là `WEEK_GOALS`, sau đó doanh thu +50%/tuần, trần ×3. |
+| Mục tiêu | `weekGoal(difficulty, index)`: tuần 1 là `WEEK_GOALS`, sau đó doanh thu +60%/tuần, trần ×3. |
 | Thưởng cúp | Tuần được ≥ 2 cúp: `closeDay` gọi `grantWeekReward` cộng `weekReward(difficulty, cups)` (`WEEK_REWARDS`) vào tiền, phát `notify` và ghi lại `money` của báo cáo ngày. |
 | Sang tuần mới | `next_day` khi có `result`: tạo tuần `index + 1` bắt đầu từ ngày mới, `plan` và `goal` theo index mới, giữ `archive`. |
 | Thời tiết | `startNextDay` vẫn gọi `rollWeather` (giữ nguyên chuỗi RNG), rồi ghi đè `state.weather` bằng thời tiết của `plan`. |

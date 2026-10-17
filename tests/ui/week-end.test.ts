@@ -208,7 +208,7 @@ describe('week summary', () => {
     expect(r.revenue).toBe(20_000_000);
     const revenue = block(el, 'revenue');
     expect(revenue.textContent).toContain('20.000.000đ');
-    expect(revenue.textContent).toContain(`mục tiêu 23.000.000đ`);
+    expect(revenue.textContent).toContain(`mục tiêu 23.200.000đ`);
     const bar = revenue.querySelector<HTMLElement>('[role="progressbar"]')!;
     expect(bar.getAttribute('aria-valuenow')).toBe(String(Math.round((r.revenue / r.revenueTarget) * 100)));
     expect(revenue.textContent).toContain('Chưa đạt');
@@ -296,7 +296,7 @@ describe('week summary', () => {
 
     const next = block(el, 'next-week');
     expect(next.closest('section')?.textContent).toContain('Tuần 2');
-    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('34.500.000đ');
+    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('37.100.000đ');
     expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('4,2 sao');
     const levelEl = next.querySelector<HTMLElement>('[data-next="level"]')!;
     const level = levelEl.textContent ?? '';

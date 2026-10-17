@@ -12,7 +12,7 @@ export const WEEK_LENGTH = 7;
 export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
   easy: { revenue: 28_000_000, stars: 3.8 },
   normal: { revenue: 26_500_000, stars: 4 },
-  hard: { revenue: 23_000_000, stars: 4.2 },
+  hard: { revenue: 23_200_000, stars: 4.2 },
 };
 
 /**
@@ -21,7 +21,7 @@ export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
  * one that never buys anything stays near 1.1× and drops to 2 cups from week 2.
  * Measured in docs/reports/p23-long-economy.md.
  */
-export const WEEK_GOAL_GROWTH = 0.5;
+export const WEEK_GOAL_GROWTH = 0.6;
 export const WEEK_GOAL_MAX_MULT = 3;
 
 /**

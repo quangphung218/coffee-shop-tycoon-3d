@@ -117,10 +117,10 @@ describe('end of the week', { timeout: 30_000 }, () => {
 });
 
 describe('weekGoal', () => {
-  it('is WEEK_GOALS in week 1, then grows 50% a week up to 3 times, stars unchanged', () => {
+  it('is WEEK_GOALS in week 1, then grows 60% a week up to 3 times, stars unchanged', () => {
     for (const d of ['easy', 'normal', 'hard'] as const) {
       expect(weekGoal(d, 1)).toEqual(WEEK_GOALS[d]);
-      expect(weekGoal(d, 2).revenue).toBe(Math.round((WEEK_GOALS[d].revenue * 1.5) / 100_000) * 100_000);
+      expect(weekGoal(d, 2).revenue).toBe(Math.round((WEEK_GOALS[d].revenue * 1.6) / 100_000) * 100_000);
       expect(weekGoal(d, 5).revenue).toBe(WEEK_GOALS[d].revenue * 3);
       expect(weekGoal(d, 30).revenue).toBe(WEEK_GOALS[d].revenue * 3);
       for (let i = 2; i <= 8; i++) {
