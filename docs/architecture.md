@@ -75,7 +75,7 @@ Atlas bậc nâng cấp (`tiers`) là atlas thứ hai, chỉ bảng Nâng cấp 
 | --- | --- |
 | File | `public/icons3d/tiers@1x.webp`, `public/icons3d/tiers@2x.webp`, `public/icons3d/tiers.json` (`TIER_ATLAS_URLS`). Dựng bằng `npm run icons -- --set tiers`; lệnh luôn vẽ lại cả atlas này, không nhận `--only` hay `--sheet`, không đụng atlas chính. |
 | Ô | Bậc 2 và 3 của mỗi icon trong `UPGRADE_ICONS`, id `<id>-t2`, `<id>-t3` (`TIER_IDS`, `tierIconId` trong `src/icon-studio/atlas.ts`; mô hình ở `src/icon-studio/models/tiers.ts`). Bậc 1 là icon của atlas chính. |
-| `loadTierAtlas()` | `renderUpgradesPanel` gọi khi mở bảng Nâng cấp. Lần đầu `fetch` `tiers.json` và ảnh @1x (@2x khi `<html>` đã có `icons-hd`), giải mã, gán `--ic-tiers` (`TIER_ATLAS_VAR`) lên `<html>`. Lỗi thì giữ icon bậc 1 và thử lại ở lần gọi sau. `tiers.json` được `fetch`, không import, nên chunk chính không chứa nó. |
+| `loadTierAtlas()` | `renderUpgradesPanel` gọi khi mở bảng Nâng cấp. Lần đầu `fetch` `tiers.json` và ảnh @1x (@2x khi `<html>` đã có `icons-hd`), giải mã, gán `--ic-tiers` (`TIER_ATLAS_VAR`) lên `<html>`. Đã tải @1x mà sau đó `enableHdIcons` thêm `icons-hd` thì tải @2x đúng một lần rồi đổi `--ic-tiers` (`upgradeTierAtlas`); @2x lỗi thì giữ @1x. Lỗi thì giữ icon bậc 1 và thử lại ở lần gọi sau. `tiers.json` được `fetch`, không import, nên chunk chính không chứa nó. |
 | `tierIcon(id, tier, opts)` | Như `icon()`; bậc 2–3 khi atlas `tiers` đã tải thì đổi ô sang `<id>-t<n>` và gắn `data-atlas="tiers"` (`ui.css` vẽ bằng `--ic-tiers`). Icon vẽ lúc atlas đang tải hiện bậc 1 rồi tự đổi khi tải xong, kích thước ô không đổi. |
 
 Thêm icon:
@@ -473,7 +473,7 @@ Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon 
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `public/icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
 | `public/icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
-| `public/icons3d/tiers.json` + `public/icons3d/tiers@1x.webp` hoặc `public/icons3d/tiers@2x.webp` (tải từ `TIER_ATLAS_URLS`) | 8,8 kB + 40,8 kB hoặc 96,2 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có |
+| `public/icons3d/tiers.json` + `public/icons3d/tiers@1x.webp` hoặc `public/icons3d/tiers@2x.webp` (tải từ `TIER_ATLAS_URLS`) | 8,8 kB + 40,8 kB hoặc 96,2 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có, hoặc thêm @2x khi `icons-hd` bật sau |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
