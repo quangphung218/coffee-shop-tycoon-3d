@@ -8,6 +8,8 @@
   font-size: var(--font-size-md);
   line-height: var(--line-height-base);
   color: var(--text-primary);
+  /* Panel head: 48px icon tile plus padding and bottom outline. */
+  --panel-head-h: calc(48px + 2 * var(--space-3) + var(--size-outline));
 }
 #ui *,
 #ui *::before,
@@ -1672,6 +1674,8 @@ legend {
 /* Head after the Kho mockup: icon tile, title, level-4 close button. */
 .panel-head {
   flex: none;
+  /* Fixed, so a phone toast can sit just below it (toasts rule). */
+  height: var(--panel-head-h);
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -1693,7 +1697,7 @@ legend {
 .panel-head h2 {
   flex: 1;
   min-width: 0;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-panel-title);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
@@ -1718,11 +1722,12 @@ legend {
   pointer-events: none;
 }
 /* Phone, panel open (its dock button is pressed) across the whole width
-   between HUD and dock: the stack moves to the top of the panel
-   (design/p17-states, WCAG 2.4.11) so it stays clear of the panel foot. */
+   between HUD and dock: the stack moves up under the HUD (design/p17-states,
+   WCAG 2.4.11), clear of the panel foot and just below the panel head, so it
+   never covers the title or the Đóng button. Position only, no layout shift. */
 @media (max-width: 640px) {
   #ui:has(.dock-btn[aria-pressed='true']) > .toasts {
-    top: calc(var(--hud-h, 72px) + var(--space-2));
+    top: calc(var(--hud-h, 72px) + var(--space-2) + var(--size-outline) + var(--panel-head-h) + var(--space-2));
     bottom: auto;
   }
 }

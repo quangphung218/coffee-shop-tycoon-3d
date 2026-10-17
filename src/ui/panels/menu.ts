@@ -77,8 +77,8 @@ export function lockReason(state: GameState, item: MenuItemDef): string | null {
 
 /**
  * Short status label for an item the stock cannot make: "Thiếu Cam", or
- * "Thiếu Sữa tươi +1" so a long list never squeezes the row; the reason line
- * under it names every ingredient.
+ * "Thiếu Sữa tươi +1" so a long list never squeezes the row; the switch's
+ * description (lockReason) names every ingredient.
  */
 export function missingLabel(state: GameState, item: MenuItemDef): string | null {
   const [first, ...rest] = missingFor(state, item);
@@ -90,7 +90,7 @@ export function missingLabel(state: GameState, item: MenuItemDef): string | null
  * Menu hôm nay: the Mức giá choice (locked outside preparation), then one row
  * per item (icon | name + price, margin, hot/cold, popularity | one status
  * label | Bán/Không switch). An item the stock cannot make shows "Thiếu Cam"
- * with the amounts and a "Mở Kho" link under it; an item not open yet shows
+ * and a "Mở Kho" link (the amounts only in the switch's description); an item not open yet shows
  * "Mở ngày N" or "Mở ở cấp N" (unlockHint) and stays off. An item already on
  * sale can still be switched off.
  */
@@ -98,7 +98,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
   const intro = h('p', { class: 'intro' });
-  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu bị khóa cho tới khi nhập thêm; món mới mở theo cấp quán.`);
+  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu không bật được cho tới khi nhập thêm; món mới mở theo cấp quán.`);
 
   // Mức giá: a trade-off set in place; the hint names what it gains and costs.
   const priceTitleId = uid('price-policy');
@@ -165,7 +165,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const locked = levelLocked ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
         meta.textContent = `Giá ${formatMoney(price)} · lãi ${formatMoney(price - item.cost)}/ly (${margin}%) · ${temp} · phổ biến ${popular}/5`;
-        li.classList.toggle('is-locked', levelLocked || !!locked);
+        // Dashed frame and lock icon mean "not open yet" only; missing stock is one warning label.
+        li.classList.toggle('is-locked', levelLocked);
         const opens = levelLocked ? unlockHint(s, 'menu', item.id) : null;
         levelBadge.hidden = !opens;
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
@@ -173,7 +174,9 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         if (locked) setIconText(missBadge, 'i-warning', missingLabel(s, item)!);
         toStock.hidden = !locked;
         sw.set(enabled, levelLocked || (!!locked && !enabled));
-        setReason(why, sw.el, opens ? opens.reason : locked, 'i-lock');
+        // The amounts stay in the switch's description for screen readers, off screen.
+        why.classList.toggle('sr-only', !!locked);
+        setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);
       },
     );
     return li;
