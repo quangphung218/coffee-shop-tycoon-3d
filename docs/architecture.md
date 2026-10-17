@@ -42,7 +42,7 @@ flowchart LR
 
 ### Icon và font
 
-UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D low-poly lấy từ atlas `public/icons3d/atlas@1x.webp`, `atlas@2x.webp` (vị trí từng ô trong `atlas.json`), do `npm run icons` dựng (xem [media.md](media.md#icon-3d)). Mỗi icon có hai ô trong cùng atlas:
+UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D low-poly lấy từ atlas `public/icons3d/atlas@1x.webp`, `public/icons3d/atlas@2x.webp` (vị trí từng ô trong `public/icons3d/atlas.json`), do `npm run icons` dựng (xem [media.md](media.md#icon-3d)). Mỗi icon có hai ô trong cùng atlas:
 
 | Ô | Dùng cho cỡ | Cách vẽ |
 | --- | --- | --- |
@@ -73,7 +73,7 @@ Atlas bậc nâng cấp (`tiers`) là atlas thứ hai, chỉ bảng Nâng cấp 
 
 | Phần | Chi tiết |
 | --- | --- |
-| File | `public/icons3d/tiers@1x.webp`, `tiers@2x.webp`, `tiers.json` (`TIER_ATLAS_URLS`). Dựng bằng `npm run icons -- --set tiers`; lệnh luôn vẽ lại cả atlas này, không nhận `--only` hay `--sheet`, không đụng atlas chính. |
+| File | `public/icons3d/tiers@1x.webp`, `public/icons3d/tiers@2x.webp`, `public/icons3d/tiers.json` (`TIER_ATLAS_URLS`). Dựng bằng `npm run icons -- --set tiers`; lệnh luôn vẽ lại cả atlas này, không nhận `--only` hay `--sheet`, không đụng atlas chính. |
 | Ô | Bậc 2 và 3 của mỗi icon trong `UPGRADE_ICONS`, id `<id>-t2`, `<id>-t3` (`TIER_IDS`, `tierIconId` trong `src/icon-studio/atlas.ts`; mô hình ở `src/icon-studio/models/tiers.ts`). Bậc 1 là icon của atlas chính. |
 | `loadTierAtlas()` | `renderUpgradesPanel` gọi khi mở bảng Nâng cấp. Lần đầu `fetch` `tiers.json` và ảnh @1x (@2x khi `<html>` đã có `icons-hd`), giải mã, gán `--ic-tiers` (`TIER_ATLAS_VAR`) lên `<html>`. Lỗi thì giữ icon bậc 1 và thử lại ở lần gọi sau. `tiers.json` được `fetch`, không import, nên chunk chính không chứa nó. |
 | `tierIcon(id, tier, opts)` | Như `icon()`; bậc 2–3 khi atlas `tiers` đã tải thì đổi ô sang `<id>-t<n>` và gắn `data-atlas="tiers"` (`ui.css` vẽ bằng `--ic-tiers`). Icon vẽ lúc atlas đang tải hiện bậc 1 rồi tự đổi khi tải xong, kích thước ô không đổi. |
@@ -463,15 +463,15 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 218,9 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 218,9 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
 | `index-*.css` | 83,2 kB | 13,6 kB | Ngay khi mở trang |
 | `index-*.js` (`src/render`) | 98,7 kB | 36,3 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 504,5 kB | 126,5 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `confetti-*.js` (`src/ui/fx/confetti.ts`) | 2,1 kB | 1,1 kB | Daily Report đầu tiên có lên cấp, khi không giảm chuyển động |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
-| `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
-| `icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
-| `icons3d/tiers.json` + `tiers@1x.webp` hoặc `tiers@2x.webp` | 8,8 kB + 39,3 kB hoặc 93,4 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có |
+| `public/icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
+| `public/icons3d/atlas@2x.webp` | 288,7 kB | (đã nén) | Sau `cst:world` trên màn 2x, hoặc khi nhãn 3D cần; một lần cho cả hai |
+| `public/icons3d/tiers.json` + `public/icons3d/tiers@1x.webp` hoặc `public/icons3d/tiers@2x.webp` (tải từ `TIER_ATLAS_URLS`) | 8,8 kB + 39,3 kB hoặc 93,4 kB | (ảnh đã nén) | Lần đầu mở bảng Nâng cấp; @2x khi `html.icons-hd` đã có |
 
 Trước khi tách, mọi thứ nằm trong một file `index-*.js` 653,1 kB (180,3 kB gzip), và menu chỉ hiện sau khi dựng cảnh và vẽ xong khung hình 3D đầu tiên. JS cần trước khi thấy menu giảm từ 180,3 kB xuống 44,8 kB gzip.
 
