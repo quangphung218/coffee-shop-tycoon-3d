@@ -299,6 +299,60 @@ FPS at the peak of day 1 (Easy, 4x), 10 s × 3 runs per cell, builds taking turn
 ok medium: working tree 2.3% above base
 ok high: working tree 1.8% below base
 
+### fix2-2 (one fetch per atlas, object URL in --ic-atlas)
+
+$ node scripts/measure-startup.mjs --base f720b6f --runs 9
+Exit code: 0
+
+Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)
+Runs per cell: 9 (median)
+
+## base (f720b6f)
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-CFZSipkd.js | 194.2 kB | 66.9 kB |
+| index-Bt4HydkD.js | 85.5 kB | 31.8 kB |
+| index-BeuQBB1w.css | 69.9 kB | 11.2 kB |
+
+## working tree
+
+| Chunk | Raw | Gzip |
+| --- | --- | --- |
+| three-xffqyR5G.js | 502.0 kB | 125.7 kB |
+| index-C_fZeehp.js | 195.0 kB | 67.3 kB |
+| index-jf_PINTv.js | 87.3 kB | 32.3 kB |
+| index-BUhNX6QB.css | 70.7 kB | 11.4 kB |
+
+| Build | Profile | First paint | Main Menu | 3D scene |
+| --- | --- | --- | --- | --- |
+| base (f720b6f) | Desktop, no throttling | 88 ms | 177 ms | 327 ms |
+| working tree | Desktop, no throttling | 96 ms | 113 ms | 326 ms |
+| base (f720b6f) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 324 ms | 1018 ms | 3031 ms |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 344 ms | 1018 ms | 2522 ms |
+
+Main Menu icons on mobile (npm run media:p22, 390x844, one load per build,
+ms since navigation):
+
+| Mark | base (f720b6f) | fix2-2 |
+| --- | --- | --- |
+| Main Menu | 1029 | 1004 |
+| three.js in | 2643 | 2015 |
+| atlas @1x asked / in | 1005 / 2600 | 2039 / 3193 |
+| cst:icons (@1x handed to CSS) | | 6910 |
+| every icon drawn | 2626 | 7702 |
+| 3D scene | 3012 | 2472 |
+| requests @1x / @2x | 1 / 1 | 1 / 1 |
+
+Reading: Main Menu equal to base, 3D scene 509 ms ahead. One request per
+atlas. The icons are drawn 4.5 s after atlas@1x is in: the fetch body
+(cst:icons 3.7 s after responseEnd) and the CSS load of the blob URL
+(0.8 s) wait on a main thread busy with the 3D scene, which is up before
+the atlas arrives. Base draws at once because its atlas is in before its
+scene. Target (drawn within 300 ms of atlas@1x) not met.
+
 ## Summary
 
 Same-run gaps on mobile (state minus base):
@@ -311,6 +365,7 @@ Same-run gaps on mobile (state minus base):
 | atlas fix, --runs 9 | +85 ms | -486 ms |
 | atlas fix again, --runs 9 | +84 ms | -512 ms |
 | fix 2, --runs 9 | +54 ms | -507 ms |
+| fix2-2 (one fetch per atlas), --runs 9 | +0 ms | -509 ms |
 
 - f5 is not the cause: f289da8 is within 53 ms of base on the scene.
 - The @1x atlas competing with the scene chunks was the scene cost: with
