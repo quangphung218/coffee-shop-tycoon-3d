@@ -94,7 +94,7 @@
     line-height: var(--line-height-tight);
   }
   .prep .panel-foot > .btn-lg {
-    min-height: var(--size-target);
+    min-height: var(--size-control-md);
     padding: 0 var(--space-3);
     font-size: var(--font-size-md);
   }
@@ -125,10 +125,18 @@
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-heavy);
 }
+/* P24 scale: a panel button is --size-control-md, the main action (.btn-lg)
+   --size-control-lg. */
+.prep .btn {
+  min-height: var(--size-control-md);
+}
+.prep .btn-lg {
+  min-height: var(--size-control-lg);
+}
 .btn-sm {
-  min-height: var(--size-target);
+  min-height: var(--size-control-md);
   padding: 0 var(--space-3);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 
 /* Link to another panel: ghost text, level 4. Hover thickens the underline;
@@ -137,7 +145,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--size-target);
+  min-height: var(--size-control-md);
   padding: 0 var(--space-2);
   margin-left: calc(-1 * var(--space-2));
   border: 0;
@@ -162,20 +170,7 @@
   outline-offset: calc(-1 * var(--size-focus-width));
 }
 
-.status-ok {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  background: var(--surface-info);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-}
-
-/* Item card: menu, stock, marketing, upgrades */
+/* Item card: menu, stock, marketing, upgrades. A flat frame: no shadow. */
 .item {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
@@ -183,7 +178,7 @@
   align-items: center;
   padding: var(--space-3);
   background: var(--surface-panel-solid);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-lg);
 }
 .item-icon {
@@ -192,7 +187,7 @@
   width: 48px;
   height: 48px;
   background: var(--surface-sunken);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
 }
 .item-title {
@@ -208,25 +203,10 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.item-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-}
-.dots {
-  display: inline-flex;
-  gap: 2px;
-}
 .item-side {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-heavy);
-}
-.item-cost {
-  margin-left: auto;
-  font-weight: var(--font-weight-heavy);
-  font-variant-numeric: tabular-nums;
 }
 .item-actions {
   grid-column: 1 / -1;
@@ -235,7 +215,9 @@
   gap: var(--space-2) var(--space-3);
   align-items: center;
 }
-.item-actions:empty {
+/* No visible child (Menu row with nothing to explain): no empty grid row and gap. */
+.item-actions:empty,
+.item-actions:not(:has(> :not([hidden]))) {
   display: none;
 }
 .item-actions .reason {
@@ -246,14 +228,53 @@
   border-style: dashed;
   border-color: var(--border-disabled);
 }
-.item.is-suggested {
-  background: var(--surface-selected);
+
+/* Kho and Menu row (P24), one template for both: icon 32 | name (16) + meta
+   (14) | one status label | stepper or switch. The side panel is at most
+   380 px wide, so the control takes a second line, right-aligned under the
+   label, and the reason or "Mở Kho" link a third line under the text. */
+.item.item-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon text status'
+    '. control control'
+    '. more more';
+  align-items: start;
+}
+.item-row > .item-icon {
+  grid-area: icon;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 0;
+}
+.item-row > .item-text {
+  grid-area: text;
+  min-width: 0;
+}
+.item-row .item-title {
+  font-size: var(--font-size-value);
+}
+.item-row .item-meta {
+  font-size: var(--font-size-label);
+}
+.item-row > .badge,
+.item-row > .item-status {
+  grid-area: status;
+}
+.item-row > .stepper,
+.item-row > .toggle {
+  grid-area: control;
+  justify-self: end;
+}
+.item-row > .item-actions {
+  grid-area: more;
 }
 .sug {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-heavy);
   color: var(--text-warning);
 }
@@ -268,7 +289,7 @@
   color: var(--text-warning);
 }
 .prep .badge {
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
 }
 .prep .reason {
   align-items: center;
@@ -283,13 +304,14 @@
   flex: 1 1 160px;
   font-size: var(--font-size-sm);
 }
+/* Kho and Menu rows (.item-row) keep their own template at every width. */
 @media (max-width: 640px) {
-  .item {
+  .item:not(.item-row) {
     grid-template-columns: 48px minmax(0, 1fr);
   }
-  .item > .badge,
-  .item > .item-side,
-  .item > .toggle {
+  .item:not(.item-row) > .badge,
+  .item:not(.item-row) > .item-side,
+  .item:not(.item-row) > .toggle {
     grid-column: 2;
     justify-self: start;
   }
@@ -397,38 +419,43 @@
 }
 .step-btn,
 .step-input {
-  --bw: var(--size-outline);
-  height: var(--size-target);
+  --bw: var(--size-frame-outline);
+  height: var(--size-control-md);
   font: inherit;
   font-weight: var(--font-weight-heavy);
   color: var(--text-primary);
   background: var(--surface-panel-solid);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
 }
+/* A button: rest, hover and press change only the lift (design/NOTES.md, P24). */
 .step-btn {
   display: grid;
   place-items: center;
-  width: var(--size-target);
+  width: var(--size-control-md);
   padding: 0;
-  font-size: var(--font-size-lg);
-  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-panel-title);
+  box-shadow: var(--btn-shadow-rest);
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--easing-bounce);
+  transition:
+    transform var(--duration-fast) var(--easing-bounce),
+    box-shadow var(--duration-fast) var(--easing-bounce);
 }
 .step-input {
   width: 56px;
+  font-size: var(--font-size-value);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 @media (hover: hover) {
-  .step-btn:not([aria-disabled='true']):hover {
-    background: var(--surface-sunken);
+  .step-btn:not([aria-disabled='true'], :active):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--btn-shadow-hover);
   }
 }
 .step-btn:not([aria-disabled='true']):active {
   transform: translateY(2px);
-  box-shadow: none;
+  box-shadow: var(--btn-shadow-press);
   transition-duration: var(--duration-instant);
 }
 .step-btn[aria-disabled='true'] {
@@ -668,30 +695,16 @@
   }
 }
 
-/* Kho foot hint: one slot for "pick packs" (info) and the money shortfall
-   (danger). Always shown and two lines tall, so swapping text never moves
-   the total or the buy button. */
+/* Kho foot hint: one slot for "pick packs", "nothing to buy" (info) and the
+   money shortfall (danger). Always shown and exactly two lines tall (every
+   message fits in two at 390 px), so swapping text never moves the total or
+   the buy button. */
 .prep .foot-hint {
   align-items: flex-start;
-  min-height: 2lh;
+  height: 2lh;
 }
 .foot-hint .ic {
   flex: none;
-}
-/* Kho note under "Gợi ý": the intro first (muted, plain), then the result of
-   Gợi ý / Nhập hàng (info fill) in the same box. Three lines tall either way,
-   so the stock list under it never moves. */
-.kho-note {
-  min-height: calc(3lh + 2 * var(--space-2) + 2 * var(--size-outline-sm));
-}
-.kho-note .ic {
-  flex: none;
-}
-.kho-note.is-idle {
-  font-weight: var(--font-weight-regular);
-  color: var(--text-muted);
-  background: transparent;
-  border-color: transparent;
 }
 /* Kho badge: a short pop when the level changes (Đủ → Sắp hết → Hết). */
 .badge.is-level-changed {

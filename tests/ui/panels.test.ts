@@ -3,19 +3,27 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { getIngredient } from '../../src/sim/data/ingredients';
 import { getUpgrade } from '../../src/sim/data/upgrades';
-import { autoRestockSuggestion } from '../../src/sim/inventory';
+import { autoRestockSuggestion, ingredientPrice } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { Command, GameState } from '../../src/sim/types';
+import { formatMoney } from '../../src/ui/core/format';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createHud } from '../../src/ui/hud/hud';
 import { listPanels, type PanelContext, type PanelHandle, type PanelRender } from '../../src/ui/hud/panels';
 import { PREP_PANELS, lowStockCount, registerPrepPanels } from '../../src/ui/panels';
-import { PICK_HINT, renderInventoryPanel } from '../../src/ui/panels/inventory';
+import { NOTHING_TO_BUY, PICK_HINT, renderInventoryPanel } from '../../src/ui/panels/inventory';
 import { renderMarketingPanel } from '../../src/ui/panels/marketing';
 import { renderMenuPanel } from '../../src/ui/panels/menu';
 import { renderStaffPanel } from '../../src/ui/panels/staff';
 import { renderTasksPanel } from '../../src/ui/panels/tasks';
 import { renderUpgradesPanel } from '../../src/ui/panels/upgrades';
+
+// The project has no Node types: read panels.css through a dynamically named
+// node:fs import, from the project root (jsdom's URL is rejected by node:fs).
+const FS_MODULE = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
 
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
@@ -101,9 +109,54 @@ describe('menu panel', () => {
     expect(useOf(why)).toBe('i-lock');
     expect(useOf(q(mocha, '.item-icon'))).toBe('i-mocha');
 
+    // One status label names the missing ingredient; the link opens Kho in place, no modal.
+    const label = q(mocha, '[data-lock="stock"]');
+    expect(label.hidden).toBe(false);
+    expect(label.textContent).toBe(`Thiếu ${getIngredient('cacao').name}`);
+    expect(q(mocha, '[data-lock="level"]').hidden).toBe(true);
+    const link = q<HTMLButtonElement>(mocha, '[data-goto="inventory"]');
+    expect(link.hidden).toBe(false);
+    expect(link.textContent).toBe('Mở Kho');
+
     sw.click();
     expect(sent).toHaveLength(0);
     expect(state.menu.find((m) => m.id === 'mocha')!.enabled).toBe(false);
+  });
+
+  it('names the missing ingredient on an item already on sale, and drops it once stocked', () => {
+    const state = game();
+    state.inventory.find((i) => i.id === 'lemon')!.qty = 0;
+    const { body, handle } = mount(renderMenuPanel, state);
+    const row = q(body, '[data-item="lemon_tea"]');
+    expect(q(row, '[role="switch"]').getAttribute('aria-checked')).toBe('true');
+    expect(q(row, '[data-lock="stock"]').textContent).toBe(`Thiếu ${getIngredient('lemon').name}`);
+    expect(q(row, '[data-goto="inventory"]').hidden).toBe(false);
+
+    // Two missing: the label stays short, the reason line names both.
+    state.inventory.find((i) => i.id === 'tea')!.qty = 0;
+    (handle as PanelHandle).update!(state);
+    expect(q(row, '[data-lock="stock"]').textContent).toBe(`Thiếu ${getIngredient('tea').name} +1`);
+    const why = q(document, `#${q(row, '[role="switch"]').getAttribute('aria-describedby')}`);
+    expect(why.textContent).toContain(getIngredient('tea').name);
+    expect(why.textContent).toContain(getIngredient('lemon').name);
+
+    state.inventory.find((i) => i.id === 'lemon')!.qty = 1000;
+    state.inventory.find((i) => i.id === 'tea')!.qty = 1000;
+    (handle as PanelHandle).update!(state);
+    expect(q(row, '[data-lock="stock"]').hidden).toBe(true);
+    expect(q(row, '[data-goto="inventory"]').hidden).toBe(true);
+    expect(row.classList.contains('is-locked')).toBe(false);
+  });
+
+  it('puts every item on one row template with a single meta line and no popularity dots', () => {
+    const { body } = mount(renderMenuPanel, game());
+    for (const row of body.querySelectorAll('li.item')) {
+      expect(row.classList.contains('item-row')).toBe(true);
+      expect(row.querySelectorAll('.item-meta')).toHaveLength(1);
+      expect(row.querySelectorAll('.item-status')).toHaveLength(1);
+    }
+    expect(body.querySelector('.dots')).toBeNull();
+    expect(q(body, '[data-item="espresso"] .item-meta').textContent).toMatch(/^Giá [\d.]+đ · lãi [\d.]+đ\/ly \(\d+%\) · Nóng · phổ biến \d\/5$/);
   });
 
   it('toggles an available item through set_menu_item', () => {
@@ -130,9 +183,10 @@ describe('inventory panel', () => {
     for (const line of suggestion.items) {
       const packs = line.qty / getIngredient(line.id).packSize;
       expect(q<HTMLInputElement>(body, `.stepper[data-ingredient="${line.id}"] input`).value).toBe(String(packs));
-      expect(q(body, `li[data-ingredient="${line.id}"]`).classList.contains('is-suggested')).toBe(true);
-      // The tag is switched on in place; it is never removed from layout.
-      const tag = q(body, `li[data-ingredient="${line.id}"] .sug`);
+      // One signal for a suggested row: the tag, switched on in place, never a tinted row too.
+      const row = q(body, `li[data-ingredient="${line.id}"]`);
+      expect(row.classList.contains('is-suggested')).toBe(false);
+      const tag = q(row, '.sug');
       expect(tag.hidden).toBe(false);
       expect(tag.classList.contains('is-off')).toBe(false);
     }
@@ -149,34 +203,56 @@ describe('inventory panel', () => {
     }
   });
 
-  it('shows the intro, then each result, in the same note above the list', () => {
+  it('reports a purchase through spend events only, never as text in the panel', () => {
     const state = game();
-    state.money = autoRestockSuggestion(state).totalCost + 1000;
+    const suggestion = autoRestockSuggestion(state);
+    state.money = suggestion.totalCost + 1000;
+    state.events = [];
     const { body } = mount(renderInventoryPanel, state);
-    const notes = body.querySelectorAll<HTMLElement>('.kho-note');
-    expect(notes).toHaveLength(1);
-    const note = notes[0]!;
-    expect(note.hidden).toBe(false);
-    expect(note.classList.contains('is-idle')).toBe(true);
-    expect(note.textContent).toContain('20% dự phòng');
+    const note = q(body, '.kho-note');
+    const intro = note.textContent;
+    expect(intro).toContain('20% dự phòng');
 
     q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
     expect(body.querySelector('.kho-note')).toBe(note);
-    expect(note.classList.contains('is-idle')).toBe(false);
-    expect(note.textContent).toContain('Đã điền gợi ý');
+    expect(note.textContent).toBe(intro);
+    expect(body.textContent).not.toContain('Đã điền');
 
     q<HTMLButtonElement>(body, '[data-action="buy"]').click();
-    expect(note.textContent).toContain('Đã nhập');
+    expect(note.textContent).toBe(intro);
+    expect(body.textContent).not.toContain('Đã nhập');
+    expect(body.querySelector('[role="status"]')).toBeNull();
+    // Each successful dispatch left one spend event for the HUD toast.
+    const spends = state.events.filter((e) => e.type === 'spend');
+    expect(spends).toHaveLength(suggestion.items.length);
+    expect(spends.at(-1)).toMatchObject({ kind: 'restock', moneyLeft: 1000 });
   });
 
-  it('dims the buy button with the shortfall when money is short', () => {
+  it('says in the foot hint when the suggestion finds nothing to buy', () => {
+    const state = game();
+    for (const i of state.inventory) i.qty = 1_000_000;
+    expect(autoRestockSuggestion(state).items).toHaveLength(0);
+    const { body } = mount(renderInventoryPanel, state);
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    const hint = q(document, `#${buy.getAttribute('aria-describedby')}`);
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    expect(hint.textContent).toBe(NOTHING_TO_BUY);
+    expect(body.querySelectorAll('.sug:not(.is-off)')).toHaveLength(0);
+
+    q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Thêm"]').click();
+    q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Bớt"]').click();
+    expect(hint.textContent).toBe(PICK_HINT);
+  });
+
+  it('dims the buy button and names the money short in đ when money is short', () => {
     const state = game();
     state.money = 1000;
     const { body, sent } = mount(renderInventoryPanel, state);
     q<HTMLButtonElement>(body, '.stepper[data-ingredient="coffee_beans"] button[aria-label^="Thêm"]').click();
     const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Thiếu');
+    const pack = ingredientPrice(state, 'coffee_beans', getIngredient('coffee_beans').packSize);
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toBe(`Thiếu ${formatMoney(pack - 1000)}. Bớt số gói để vừa tiền.`);
     buy.click();
     expect(sent).toHaveLength(0);
   });
@@ -253,6 +329,22 @@ describe('inventory panel', () => {
     expect(hint.classList.contains('reason-danger')).toBe(true);
     expect(useOf(hint)).toBe('i-lock');
     expect(body.querySelectorAll('.panel-foot .reason')).toHaveLength(1);
+  });
+
+  it('puts Kho rows on the P24 scale: 44 px controls, one suggested signal, rows kept on phones', () => {
+    const css = readFileSync('src/ui/panels/panels.css', 'utf8');
+    const rule = (sel: string): string => css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    expect(rule('.step-btn,\n.step-input')).toContain('height: var(--size-control-md)');
+    expect(rule('.step-btn')).toContain('box-shadow: var(--btn-shadow-rest)');
+    expect(rule('.prep .btn-lg')).toContain('min-height: var(--size-control-lg)');
+    expect(css).not.toMatch(/\.is-suggested|\.status-ok|\.item-cost/);
+    // The phone rule that stacks marketing and upgrade cards leaves the Kho/Menu row template alone.
+    expect(css).toContain('.item:not(.item-row) > .badge');
+
+    const { body } = mount(renderInventoryPanel, game());
+    const row = q(body, 'li[data-ingredient="milk"]');
+    expect(row.classList.contains('item-row')).toBe(true);
+    expect([...row.children].map((c) => c.classList[0])).toEqual(['item-icon', 'item-text', 'badge', 'stepper']);
   });
 
   it('draws the ingredient icon by id and names the ingredient on − and +', () => {
