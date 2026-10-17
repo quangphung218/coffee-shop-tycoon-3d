@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coffee Shop Tycoon 3D</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #f6e7d2;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      #scene {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+      }
+      #scene.is-ready {
+        opacity: 1;
+      }
+      #ui {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #ui > * {
+        pointer-events: auto;
+      }
+      /* Loading screen: plain CSS + inline SVG, painted before any JS or font
+         arrives (the build moves the stylesheet below it); main.ts fades it
+         out. The script under #boot fills the bar from the files really
+         loaded. Colours are the hex values of src/ui/styles/tokens.css
+         (cream 100/50/200, ink, honey 400, coffee 700, berry 400, warning
+         700, danger 700, neutral 700). */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        background: #f6e7d2;
+        color: #3a2216;
+        font-family: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        transition: opacity 0.3s ease;
+      }
+      #boot.is-done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .boot-card {
+        width: min(320px, 80vw);
+        text-align: center;
+      }
+      .boot-mark {
+        display: block;
+        width: 104px;
+        height: 104px;
+        margin: 0 auto;
+        overflow: visible;
+        transform-origin: 50% 90%;
+        animation: boot-bob 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+      }
+      .boot-mark .ln {
+        fill: none;
+        stroke: #3a2216;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .boot-mark .o {
+        stroke: #3a2216;
+        stroke-width: 3;
+        stroke-linejoin: round;
+      }
+      .boot-steam {
+        animation: boot-steam 1.6s ease-in-out infinite;
+      }
+      .boot-title {
+        margin: 16px 0 20px;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+      /* Ink-outlined track with a hard sticker shadow, honey fill. */
+      .boot-bar {
+        height: 16px;
+        border: 3px solid #3a2216;
+        border-radius: 999px;
+        background: #fffaf2;
+        box-shadow: 0 4px 0 0 #3a2216;
+        overflow: hidden;
+      }
+      /* --boot-p (0–1) is set by the boot script as files arrive. */
+      .boot-bar > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: #ffc145;
+        transform-origin: left;
+        transform: scaleX(max(0.04, var(--boot-p, 0)));
+        transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      #boot.is-done .boot-bar > span {
+        transform: none;
+      }
+      .boot-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 12px 0 0;
+        font-size: 14px;
+        font-weight: 700;
+        color: #6e4f3c;
+      }
+      .boot-pct {
+        font-variant-numeric: tabular-nums;
+      }
+      #boot.is-slow .boot-text {
+        color: #7a4a00;
+      }
+      .boot-tip {
+        min-height: 2.5em;
+        margin: 16px 0 0;
+        font-size: 14px;
+        line-height: 1.25;
+        color: #6e4f3c;
+      }
+      .boot-retry {
+        margin-top: 16px;
+        min-height: 44px;
+        padding: 0 24px;
+        border: 3px solid #3a2216;
+        border-radius: 12px;
+        background: #ffc145;
+        color: #3a2216;
+        box-shadow: 0 4px 0 0 #3a2216;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .boot-retry:focus-visible {
+        outline: none;
+        border-color: #7a3000;
+        box-shadow:
+          inset 0 0 0 3px #7a3000,
+          0 4px 0 0 #3a2216;
+      }
+      #boot.is-failed .boot-text {
+        color: #b3261e;
+      }
+      #boot.is-failed .boot-bar,
+      #boot.is-failed .boot-pct,
+      #boot.is-failed .boot-tip {
+        display: none;
+      }
+      #boot [hidden] {
+        display: none;
+      }
+      /* Small hop with a squash on landing. */
+      @keyframes boot-bob {
+        0%,
+        100% {
+          transform: translateY(0) scale(1, 1);
+        }
+        40% {
+          transform: translateY(-8px) scale(0.97, 1.03);
+        }
+        80% {
+          transform: translateY(0) scale(1.04, 0.96);
+        }
+      }
+      @keyframes boot-steam {
+        0%,
+        100% {
+          opacity: 0.35;
+          transform: translateY(2px);
+        }
+        50% {
+          opacity: 1;
+          transform: translateY(-2px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-mark,
+        .boot-steam,
+        .boot-bar > span {
+          animation: none;
+          transition: none;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DJjyKocI.js"></script>
+  </head>
+  <body>
+    <div id="boot" role="status">
+      <div class="boot-card">
+        <!-- Cup mascot, same drawing as the Main Menu logo (design/t237-cartoon #mascot). -->
+        <svg class="boot-mark" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+          <path class="ln boot-steam" d="M34 24c-5-5 5-8 0-14M48 22c-5-5 5-8 0-14M62 24c-5-5 5-8 0-14" />
+          <ellipse class="o" fill="#ffc145" cx="46" cy="84" rx="38" ry="8" />
+          <path class="ln" d="M72 44h6a10 10 0 0 1 0 20h-8" />
+          <path class="o" fill="#fffaf2" d="M18 36h56v20a28 28 0 0 1-56 0z" />
+          <ellipse class="o" fill="#6b3f24" cx="46" cy="36" rx="28" ry="7" />
+          <circle fill="#3a2216" cx="36" cy="55" r="4" />
+          <circle fill="#3a2216" cx="56" cy="55" r="4" />
+          <circle fill="#ff8a7a" opacity="0.6" cx="28" cy="63" r="4.5" />
+          <circle fill="#ff8a7a" opacity="0.6" cx="64" cy="63" r="4.5" />
+          <path class="ln" d="M40 63q6 7 12 0" />
+        </svg>
+        <p class="boot-title">Coffee Shop Tycoon 3D</p>
+        <div class="boot-bar" aria-hidden="true"><span></span></div>
+        <p class="boot-row"><span class="boot-text">Đang mở quán…</span><span class="boot-pct" aria-hidden="true"></span></p>
+        <p class="boot-tip"></p>
+        <button class="boot-retry" type="button" hidden>Thử lại</button>
+      </div>
+    </div>
+    <script>
+      // Boot progress from the files the page really loads, no timer. The
+      // build replaces the empty lists (vite.config.ts): window.__cstAssets
+      // holds [file, bytes] for the Main Menu (boot) and the 3D scene (scene,
+      // read by src/ui/core/loadProgress.ts); the tips come from
+      // src/ui/core/tips.ts. A failed script or stylesheet shows "Thử lại".
+      (function () {
+        var assets = (window.__cstAssets = {"boot":[["assets/index-DJjyKocI.js",213736],["assets/index-DspEEkmr.css",80126]],"scene":[["assets/index-CfXXTFoN.js",88523],["assets/three-xffqyR5G.js",502039]]});
+        var tips = ["Nhập đủ nguyên liệu lúc chuẩn bị, hết hàng giữa giờ cao điểm là mất khách.","Thiếu người thì bấm thẳng vào khách, quầy hay bàn để tự phục vụ.","Khách chờ lâu sẽ bỏ về. Thêm nhân viên trước giờ cao điểm trưa và tối.","Trang trí làm quán hút khách và được thêm sao.","Mức giá Cao tăng tiền mỗi ly nhưng bớt khách và sao.","Tab Chỉ số trong Daily Report chỉ ra chỗ cần sửa cho ngày mai.","Nhấn 1, 2, 3 để đổi tốc độ, Space để tạm dừng."];
+        var boot = document.getElementById('boot');
+        var text = boot.querySelector('.boot-text');
+        var pct = boot.querySelector('.boot-pct');
+        var retry = boot.querySelector('.boot-retry');
+        var failed = false;
+        var tip = Math.floor(Math.random() * tips.length) || 0;
+        window.__cstTip = tip;
+        if (tips.length) boot.querySelector('.boot-tip').textContent = 'Mẹo: ' + tips[tip];
+
+        var total = 0;
+        var got = 0;
+        var done = {};
+        assets.boot.forEach(function (f) {
+          total += f[1];
+        });
+        function show() {
+          var p = total ? got / total : 0;
+          boot.style.setProperty('--boot-p', String(p));
+          if (total) pct.textContent = Math.round(p * 100) + '%';
+        }
+        if (total && window.PerformanceObserver) {
+          try {
+            new PerformanceObserver(function (list) {
+              list.getEntries().forEach(function (e) {
+                var path = e.name.split(/[?#]/)[0];
+                assets.boot.forEach(function (f) {
+                  if (!done[f[0]] && path.slice(-f[0].length - 1) === '/' + f[0]) {
+                    done[f[0]] = true;
+                    got += f[1];
+                  }
+                });
+              });
+              show();
+            }).observe({ type: 'resource', buffered: true });
+          } catch (e) {}
+        }
+        show();
+
+        // Once the menu is up (is-done) the menu's own loading line takes over.
+        function gone() {
+          return !boot.isConnected || boot.classList.contains('is-done');
+        }
+        function fail() {
+          if (failed || gone()) return;
+          failed = true;
+          boot.classList.add('is-failed');
+          text.textContent = 'Không tải được game. Kiểm tra mạng rồi bấm Thử lại.';
+          retry.hidden = false;
+          retry.focus();
+        }
+        retry.addEventListener('click', function () {
+          location.reload();
+        });
+        // Resource errors do not bubble; catch them on the way down.
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e.target;
+            var file = t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK');
+            var ours = e.filename && e.filename.indexOf(location.origin) === 0;
+            if (file || ours) fail();
+          },
+          true,
+        );
+        setTimeout(function () {
+          if (failed || gone()) return;
+          boot.classList.add('is-slow');
+          text.textContent = 'Mạng đang chậm, game vẫn đang tải…';
+        }, 5000);
+      })();
+    </script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DspEEkmr.css">
+    <canvas id="scene"></canvas>
+    <div id="ui"></div>
+  </body>
+</html>

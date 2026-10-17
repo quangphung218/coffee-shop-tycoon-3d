@@ -1,0 +1,2082 @@
+{
+  "version": 2,
+  "cell": 48,
+  "gap": 2,
+  "columns": 11,
+  "rows": 11,
+  "width": 552,
+  "height": 708,
+  "scales": [
+    1,
+    2
+  ],
+  "icons": {
+    "i-tasks": {
+      "x": 2,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-menu": {
+      "x": 52,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-inventory": {
+      "x": 102,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-people": {
+      "x": 152,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-marketing": {
+      "x": 202,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-upgrades": {
+      "x": 252,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-reviews": {
+      "x": 302,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-open": {
+      "x": 352,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-next-day": {
+      "x": 402,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-camera": {
+      "x": 452,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-settings": {
+      "x": 502,
+      "y": 2,
+      "w": 48,
+      "h": 48
+    },
+    "i-pause": {
+      "x": 2,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-speed-1": {
+      "x": 52,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-speed-2": {
+      "x": 102,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-speed-4": {
+      "x": 152,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-close": {
+      "x": 202,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-home": {
+      "x": 252,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-back": {
+      "x": 302,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-forward": {
+      "x": 352,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-phase-prep": {
+      "x": 402,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-phase-open": {
+      "x": 452,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-flame": {
+      "x": 502,
+      "y": 52,
+      "w": 48,
+      "h": 48
+    },
+    "i-phase-close": {
+      "x": 2,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-clock": {
+      "x": 52,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-ok": {
+      "x": 102,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-check": {
+      "x": 152,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-warning": {
+      "x": 202,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-error": {
+      "x": 252,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-info": {
+      "x": 302,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-lock": {
+      "x": 352,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-sparkle": {
+      "x": 402,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-tip": {
+      "x": 452,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-busy": {
+      "x": 502,
+      "y": 102,
+      "w": 48,
+      "h": 48
+    },
+    "i-free": {
+      "x": 2,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-rest": {
+      "x": 52,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-auto": {
+      "x": 102,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-trend-up": {
+      "x": 152,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-trend-down": {
+      "x": 202,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-equal": {
+      "x": 252,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-todo": {
+      "x": 302,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-dot": {
+      "x": 352,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-dot-empty": {
+      "x": 402,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-chevron-down": {
+      "x": 452,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-retry": {
+      "x": 502,
+      "y": 152,
+      "w": 48,
+      "h": 48
+    },
+    "i-reset": {
+      "x": 2,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-coin": {
+      "x": 52,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-star": {
+      "x": 102,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-star-empty": {
+      "x": 152,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-chart": {
+      "x": 202,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-trophy": {
+      "x": 252,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-thumb-up": {
+      "x": 302,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-thumb-down": {
+      "x": 352,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-load": {
+      "x": 402,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-delete": {
+      "x": 452,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-save": {
+      "x": 502,
+      "y": 202,
+      "w": 48,
+      "h": 48
+    },
+    "i-music": {
+      "x": 2,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-sound": {
+      "x": 52,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-quality": {
+      "x": 102,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-easy": {
+      "x": 152,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-cup-hot": {
+      "x": 202,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-cold": {
+      "x": 252,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-role-server": {
+      "x": 302,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-role-cleaner": {
+      "x": 352,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-chef": {
+      "x": 402,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar": {
+      "x": 452,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-face-happy": {
+      "x": 502,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-face-ok": {
+      "x": 2,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-face-worried": {
+      "x": 52,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-face-angry": {
+      "x": 102,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-espresso": {
+      "x": 152,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-americano": {
+      "x": 202,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-latte": {
+      "x": 252,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-cappuccino": {
+      "x": 302,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-mocha": {
+      "x": 352,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-bubble-tea": {
+      "x": 402,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-lemon-tea": {
+      "x": 452,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-orange-juice": {
+      "x": 502,
+      "y": 302,
+      "w": 48,
+      "h": 48
+    },
+    "i-croissant": {
+      "x": 2,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-cake": {
+      "x": 52,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-beans": {
+      "x": 102,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-milk": {
+      "x": 152,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-sugar": {
+      "x": 202,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-cacao": {
+      "x": 252,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-tea": {
+      "x": 302,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-pearls": {
+      "x": 352,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-lemon": {
+      "x": 402,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-orange": {
+      "x": 452,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-flour": {
+      "x": 502,
+      "y": 352,
+      "w": 48,
+      "h": 48
+    },
+    "i-butter": {
+      "x": 2,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-ice": {
+      "x": 52,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-cup": {
+      "x": 102,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-flyer": {
+      "x": 152,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-happy-hour": {
+      "x": 202,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-social": {
+      "x": 252,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-kol": {
+      "x": 302,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-tables": {
+      "x": 352,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-machine": {
+      "x": 402,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-fast-machine": {
+      "x": 452,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-counter": {
+      "x": 502,
+      "y": 402,
+      "w": 48,
+      "h": 48
+    },
+    "i-outdoor": {
+      "x": 2,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-expand": {
+      "x": 52,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-plants": {
+      "x": 102,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-paintings": {
+      "x": 152,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-lights": {
+      "x": 202,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-window-bar": {
+      "x": 252,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-grinder": {
+      "x": 302,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-pastry-case": {
+      "x": 352,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-blender": {
+      "x": 402,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-ice-maker": {
+      "x": 452,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-dishwasher": {
+      "x": 502,
+      "y": 452,
+      "w": 48,
+      "h": 48
+    },
+    "i-frappe": {
+      "x": 2,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-level": {
+      "x": 52,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-mission": {
+      "x": 102,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-0": {
+      "x": 152,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-1": {
+      "x": 202,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-2": {
+      "x": 252,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-3": {
+      "x": 302,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-4": {
+      "x": 352,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-5": {
+      "x": 402,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-6": {
+      "x": 452,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    },
+    "i-avatar-7": {
+      "x": 502,
+      "y": 502,
+      "w": 48,
+      "h": 48
+    }
+  },
+  "small": {
+    "cell": 24,
+    "columns": 21,
+    "rows": 6,
+    "top": 552
+  },
+  "smallIcons": {
+    "i-tasks": {
+      "x": 2,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-menu": {
+      "x": 28,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-inventory": {
+      "x": 54,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-people": {
+      "x": 80,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-marketing": {
+      "x": 106,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-upgrades": {
+      "x": 132,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-reviews": {
+      "x": 158,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-open": {
+      "x": 184,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-next-day": {
+      "x": 210,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-camera": {
+      "x": 236,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-settings": {
+      "x": 262,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-pause": {
+      "x": 288,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-speed-1": {
+      "x": 314,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-speed-2": {
+      "x": 340,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-speed-4": {
+      "x": 366,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-close": {
+      "x": 392,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-home": {
+      "x": 418,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-back": {
+      "x": 444,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-forward": {
+      "x": 470,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-phase-prep": {
+      "x": 496,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-phase-open": {
+      "x": 522,
+      "y": 552,
+      "w": 24,
+      "h": 24
+    },
+    "i-flame": {
+      "x": 2,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-phase-close": {
+      "x": 28,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-clock": {
+      "x": 54,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-ok": {
+      "x": 80,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-check": {
+      "x": 106,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-warning": {
+      "x": 132,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-error": {
+      "x": 158,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-info": {
+      "x": 184,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-lock": {
+      "x": 210,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-sparkle": {
+      "x": 236,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-tip": {
+      "x": 262,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-busy": {
+      "x": 288,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-free": {
+      "x": 314,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-rest": {
+      "x": 340,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-auto": {
+      "x": 366,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-trend-up": {
+      "x": 392,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-trend-down": {
+      "x": 418,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-equal": {
+      "x": 444,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-todo": {
+      "x": 470,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-dot": {
+      "x": 496,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-dot-empty": {
+      "x": 522,
+      "y": 578,
+      "w": 24,
+      "h": 24
+    },
+    "i-chevron-down": {
+      "x": 2,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-retry": {
+      "x": 28,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-reset": {
+      "x": 54,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-coin": {
+      "x": 80,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-star": {
+      "x": 106,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-star-empty": {
+      "x": 132,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-chart": {
+      "x": 158,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-trophy": {
+      "x": 184,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-thumb-up": {
+      "x": 210,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-thumb-down": {
+      "x": 236,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-load": {
+      "x": 262,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-delete": {
+      "x": 288,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-save": {
+      "x": 314,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-music": {
+      "x": 340,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-sound": {
+      "x": 366,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-quality": {
+      "x": 392,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-easy": {
+      "x": 418,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-cup-hot": {
+      "x": 444,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-cold": {
+      "x": 470,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-role-server": {
+      "x": 496,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-role-cleaner": {
+      "x": 522,
+      "y": 604,
+      "w": 24,
+      "h": 24
+    },
+    "i-chef": {
+      "x": 2,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar": {
+      "x": 28,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-face-happy": {
+      "x": 54,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-face-ok": {
+      "x": 80,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-face-worried": {
+      "x": 106,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-face-angry": {
+      "x": 132,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-espresso": {
+      "x": 158,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-americano": {
+      "x": 184,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-latte": {
+      "x": 210,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-cappuccino": {
+      "x": 236,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-mocha": {
+      "x": 262,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-bubble-tea": {
+      "x": 288,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-lemon-tea": {
+      "x": 314,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-orange-juice": {
+      "x": 340,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-croissant": {
+      "x": 366,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-cake": {
+      "x": 392,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-beans": {
+      "x": 418,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-milk": {
+      "x": 444,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-sugar": {
+      "x": 470,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-cacao": {
+      "x": 496,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-tea": {
+      "x": 522,
+      "y": 630,
+      "w": 24,
+      "h": 24
+    },
+    "i-pearls": {
+      "x": 2,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-lemon": {
+      "x": 28,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-orange": {
+      "x": 54,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-flour": {
+      "x": 80,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-butter": {
+      "x": 106,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-ice": {
+      "x": 132,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-cup": {
+      "x": 158,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-flyer": {
+      "x": 184,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-happy-hour": {
+      "x": 210,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-social": {
+      "x": 236,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-kol": {
+      "x": 262,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-tables": {
+      "x": 288,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-machine": {
+      "x": 314,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-fast-machine": {
+      "x": 340,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-counter": {
+      "x": 366,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-outdoor": {
+      "x": 392,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-expand": {
+      "x": 418,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-plants": {
+      "x": 444,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-paintings": {
+      "x": 470,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-lights": {
+      "x": 496,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-window-bar": {
+      "x": 522,
+      "y": 656,
+      "w": 24,
+      "h": 24
+    },
+    "i-grinder": {
+      "x": 2,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-pastry-case": {
+      "x": 28,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-blender": {
+      "x": 54,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-ice-maker": {
+      "x": 80,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-dishwasher": {
+      "x": 106,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-frappe": {
+      "x": 132,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-level": {
+      "x": 158,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-mission": {
+      "x": 184,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-0": {
+      "x": 210,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-1": {
+      "x": 236,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-2": {
+      "x": 262,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-3": {
+      "x": 288,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-4": {
+      "x": 314,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-5": {
+      "x": 340,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-6": {
+      "x": 366,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    },
+    "i-avatar-7": {
+      "x": 392,
+      "y": 682,
+      "w": 24,
+      "h": 24
+    }
+  },
+  "smallQuality": {
+    "i-tasks": {
+      "edgeInk": 1,
+      "edgeContrast": 10.153,
+      "creamShare": 0
+    },
+    "i-menu": {
+      "edgeInk": 1,
+      "edgeContrast": 10.04,
+      "creamShare": 0
+    },
+    "i-inventory": {
+      "edgeInk": 1,
+      "edgeContrast": 9.917,
+      "creamShare": 0.029
+    },
+    "i-people": {
+      "edgeInk": 1,
+      "edgeContrast": 8.511,
+      "creamShare": 0.006
+    },
+    "i-marketing": {
+      "edgeInk": 1,
+      "edgeContrast": 10.7,
+      "creamShare": 0.007
+    },
+    "i-upgrades": {
+      "edgeInk": 1,
+      "edgeContrast": 10.471,
+      "creamShare": 0
+    },
+    "i-reviews": {
+      "edgeInk": 1,
+      "edgeContrast": 10.92,
+      "creamShare": 0
+    },
+    "i-open": {
+      "edgeInk": 1,
+      "edgeContrast": 9.654,
+      "creamShare": 0
+    },
+    "i-next-day": {
+      "edgeInk": 1,
+      "edgeContrast": 10.05,
+      "creamShare": 0
+    },
+    "i-camera": {
+      "edgeInk": 1,
+      "edgeContrast": 8.786,
+      "creamShare": 0.006
+    },
+    "i-settings": {
+      "edgeInk": 1,
+      "edgeContrast": 9.376,
+      "creamShare": 0
+    },
+    "i-pause": {
+      "edgeInk": 1,
+      "edgeContrast": 8.021,
+      "creamShare": 0
+    },
+    "i-speed-1": {
+      "edgeInk": 1,
+      "edgeContrast": 9.03,
+      "creamShare": 0
+    },
+    "i-speed-2": {
+      "edgeInk": 1,
+      "edgeContrast": 9.897,
+      "creamShare": 0
+    },
+    "i-speed-4": {
+      "edgeInk": 1,
+      "edgeContrast": 10.338,
+      "creamShare": 0
+    },
+    "i-close": {
+      "edgeInk": 1,
+      "edgeContrast": 10.343,
+      "creamShare": 0
+    },
+    "i-home": {
+      "edgeInk": 1,
+      "edgeContrast": 10.307,
+      "creamShare": 0
+    },
+    "i-back": {
+      "edgeInk": 1,
+      "edgeContrast": 11.604,
+      "creamShare": 0.123
+    },
+    "i-forward": {
+      "edgeInk": 1,
+      "edgeContrast": 12.186,
+      "creamShare": 0.14
+    },
+    "i-phase-prep": {
+      "edgeInk": 1,
+      "edgeContrast": 8.66,
+      "creamShare": 0
+    },
+    "i-phase-open": {
+      "edgeInk": 1,
+      "edgeContrast": 10.611,
+      "creamShare": 0
+    },
+    "i-flame": {
+      "edgeInk": 1,
+      "edgeContrast": 8.784,
+      "creamShare": 0
+    },
+    "i-phase-close": {
+      "edgeInk": 1,
+      "edgeContrast": 9.208,
+      "creamShare": 0
+    },
+    "i-clock": {
+      "edgeInk": 1,
+      "edgeContrast": 8.342,
+      "creamShare": 0
+    },
+    "i-ok": {
+      "edgeInk": 1,
+      "edgeContrast": 9.035,
+      "creamShare": 0
+    },
+    "i-check": {
+      "edgeInk": 1,
+      "edgeContrast": 9.491,
+      "creamShare": 0
+    },
+    "i-warning": {
+      "edgeInk": 1,
+      "edgeContrast": 9.68,
+      "creamShare": 0
+    },
+    "i-error": {
+      "edgeInk": 1,
+      "edgeContrast": 9.353,
+      "creamShare": 0
+    },
+    "i-info": {
+      "edgeInk": 1,
+      "edgeContrast": 9.138,
+      "creamShare": 0
+    },
+    "i-lock": {
+      "edgeInk": 1,
+      "edgeContrast": 10.86,
+      "creamShare": 0
+    },
+    "i-sparkle": {
+      "edgeInk": 1,
+      "edgeContrast": 10.421,
+      "creamShare": 0
+    },
+    "i-tip": {
+      "edgeInk": 1,
+      "edgeContrast": 9.817,
+      "creamShare": 0
+    },
+    "i-busy": {
+      "edgeInk": 1,
+      "edgeContrast": 12.563,
+      "creamShare": 0
+    },
+    "i-free": {
+      "edgeInk": 1,
+      "edgeContrast": 9.643,
+      "creamShare": 0.056
+    },
+    "i-rest": {
+      "edgeInk": 1,
+      "edgeContrast": 11.219,
+      "creamShare": 0
+    },
+    "i-auto": {
+      "edgeInk": 1,
+      "edgeContrast": 9.579,
+      "creamShare": 0
+    },
+    "i-trend-up": {
+      "edgeInk": 1,
+      "edgeContrast": 8.85,
+      "creamShare": 0
+    },
+    "i-trend-down": {
+      "edgeInk": 1,
+      "edgeContrast": 9.082,
+      "creamShare": 0
+    },
+    "i-equal": {
+      "edgeInk": 1,
+      "edgeContrast": 8.155,
+      "creamShare": 0.112
+    },
+    "i-todo": {
+      "edgeInk": 1,
+      "edgeContrast": 12.741,
+      "creamShare": 0.05
+    },
+    "i-dot": {
+      "edgeInk": 1,
+      "edgeContrast": 10.546,
+      "creamShare": 0
+    },
+    "i-dot-empty": {
+      "edgeInk": 1,
+      "edgeContrast": 10.632,
+      "creamShare": 0
+    },
+    "i-chevron-down": {
+      "edgeInk": 1,
+      "edgeContrast": 9.954,
+      "creamShare": 0.124
+    },
+    "i-retry": {
+      "edgeInk": 1,
+      "edgeContrast": 9.404,
+      "creamShare": 0.091
+    },
+    "i-reset": {
+      "edgeInk": 1,
+      "edgeContrast": 9.722,
+      "creamShare": 0.1
+    },
+    "i-coin": {
+      "edgeInk": 1,
+      "edgeContrast": 9.349,
+      "creamShare": 0
+    },
+    "i-star": {
+      "edgeInk": 1,
+      "edgeContrast": 9.206,
+      "creamShare": 0
+    },
+    "i-star-empty": {
+      "edgeInk": 1,
+      "edgeContrast": 9.324,
+      "creamShare": 0
+    },
+    "i-chart": {
+      "edgeInk": 1,
+      "edgeContrast": 10.871,
+      "creamShare": 0.067
+    },
+    "i-trophy": {
+      "edgeInk": 1,
+      "edgeContrast": 11.399,
+      "creamShare": 0
+    },
+    "i-thumb-up": {
+      "edgeInk": 1,
+      "edgeContrast": 7.541,
+      "creamShare": 0.026
+    },
+    "i-thumb-down": {
+      "edgeInk": 1,
+      "edgeContrast": 7.629,
+      "creamShare": 0.018
+    },
+    "i-load": {
+      "edgeInk": 1,
+      "edgeContrast": 11.927,
+      "creamShare": 0
+    },
+    "i-delete": {
+      "edgeInk": 1,
+      "edgeContrast": 9.946,
+      "creamShare": 0
+    },
+    "i-save": {
+      "edgeInk": 1,
+      "edgeContrast": 12.067,
+      "creamShare": 0
+    },
+    "i-music": {
+      "edgeInk": 1,
+      "edgeContrast": 11.086,
+      "creamShare": 0
+    },
+    "i-sound": {
+      "edgeInk": 1,
+      "edgeContrast": 10.19,
+      "creamShare": 0
+    },
+    "i-quality": {
+      "edgeInk": 1,
+      "edgeContrast": 11.321,
+      "creamShare": 0
+    },
+    "i-easy": {
+      "edgeInk": 1,
+      "edgeContrast": 11.879,
+      "creamShare": 0
+    },
+    "i-cup-hot": {
+      "edgeInk": 1,
+      "edgeContrast": 10.314,
+      "creamShare": 0.003
+    },
+    "i-cold": {
+      "edgeInk": 1,
+      "edgeContrast": 10.583,
+      "creamShare": 0
+    },
+    "i-role-server": {
+      "edgeInk": 1,
+      "edgeContrast": 9.588,
+      "creamShare": 0.026
+    },
+    "i-role-cleaner": {
+      "edgeInk": 1,
+      "edgeContrast": 10.314,
+      "creamShare": 0
+    },
+    "i-chef": {
+      "edgeInk": 1,
+      "edgeContrast": 10.381,
+      "creamShare": 0.144
+    },
+    "i-avatar": {
+      "edgeInk": 1,
+      "edgeContrast": 10.318,
+      "creamShare": 0
+    },
+    "i-face-happy": {
+      "edgeInk": 1,
+      "edgeContrast": 10.553,
+      "creamShare": 0
+    },
+    "i-face-ok": {
+      "edgeInk": 1,
+      "edgeContrast": 10.46,
+      "creamShare": 0
+    },
+    "i-face-worried": {
+      "edgeInk": 1,
+      "edgeContrast": 9.454,
+      "creamShare": 0
+    },
+    "i-face-angry": {
+      "edgeInk": 1,
+      "edgeContrast": 10.786,
+      "creamShare": 0
+    },
+    "i-espresso": {
+      "edgeInk": 1,
+      "edgeContrast": 8.589,
+      "creamShare": 0.141
+    },
+    "i-americano": {
+      "edgeInk": 1,
+      "edgeContrast": 11.183,
+      "creamShare": 0.015
+    },
+    "i-latte": {
+      "edgeInk": 1,
+      "edgeContrast": 9.221,
+      "creamShare": 0.119
+    },
+    "i-cappuccino": {
+      "edgeInk": 1,
+      "edgeContrast": 8.736,
+      "creamShare": 0.24
+    },
+    "i-mocha": {
+      "edgeInk": 1,
+      "edgeContrast": 9.442,
+      "creamShare": 0.126
+    },
+    "i-bubble-tea": {
+      "edgeInk": 1,
+      "edgeContrast": 11.142,
+      "creamShare": 0.099
+    },
+    "i-lemon-tea": {
+      "edgeInk": 1,
+      "edgeContrast": 9.76,
+      "creamShare": 0.016
+    },
+    "i-orange-juice": {
+      "edgeInk": 1,
+      "edgeContrast": 9.847,
+      "creamShare": 0.008
+    },
+    "i-croissant": {
+      "edgeInk": 1,
+      "edgeContrast": 10.796,
+      "creamShare": 0.111
+    },
+    "i-cake": {
+      "edgeInk": 1,
+      "edgeContrast": 11.342,
+      "creamShare": 0.149
+    },
+    "i-beans": {
+      "edgeInk": 1,
+      "edgeContrast": 11.026,
+      "creamShare": 0
+    },
+    "i-milk": {
+      "edgeInk": 1,
+      "edgeContrast": 12.032,
+      "creamShare": 0.108
+    },
+    "i-sugar": {
+      "edgeInk": 1,
+      "edgeContrast": 10.591,
+      "creamShare": 0.178
+    },
+    "i-cacao": {
+      "edgeInk": 1,
+      "edgeContrast": 10.547,
+      "creamShare": 0
+    },
+    "i-tea": {
+      "edgeInk": 1,
+      "edgeContrast": 9.68,
+      "creamShare": 0
+    },
+    "i-pearls": {
+      "edgeInk": 1,
+      "edgeContrast": 9.46,
+      "creamShare": 0
+    },
+    "i-lemon": {
+      "edgeInk": 1,
+      "edgeContrast": 10.938,
+      "creamShare": 0
+    },
+    "i-orange": {
+      "edgeInk": 1,
+      "edgeContrast": 11.371,
+      "creamShare": 0
+    },
+    "i-flour": {
+      "edgeInk": 1,
+      "edgeContrast": 11.739,
+      "creamShare": 0.136
+    },
+    "i-butter": {
+      "edgeInk": 1,
+      "edgeContrast": 10.172,
+      "creamShare": 0.086
+    },
+    "i-ice": {
+      "edgeInk": 1,
+      "edgeContrast": 9.57,
+      "creamShare": 0.212
+    },
+    "i-cup": {
+      "edgeInk": 1,
+      "edgeContrast": 9.895,
+      "creamShare": 0
+    },
+    "i-flyer": {
+      "edgeInk": 1,
+      "edgeContrast": 9.501,
+      "creamShare": 0
+    },
+    "i-happy-hour": {
+      "edgeInk": 1,
+      "edgeContrast": 10.879,
+      "creamShare": 0
+    },
+    "i-social": {
+      "edgeInk": 1,
+      "edgeContrast": 11.759,
+      "creamShare": 0
+    },
+    "i-kol": {
+      "edgeInk": 1,
+      "edgeContrast": 9.601,
+      "creamShare": 0.009
+    },
+    "i-tables": {
+      "edgeInk": 1,
+      "edgeContrast": 8.603,
+      "creamShare": 0
+    },
+    "i-machine": {
+      "edgeInk": 1,
+      "edgeContrast": 8.649,
+      "creamShare": 0.003
+    },
+    "i-fast-machine": {
+      "edgeInk": 1,
+      "edgeContrast": 9.347,
+      "creamShare": 0.003
+    },
+    "i-counter": {
+      "edgeInk": 1,
+      "edgeContrast": 9.388,
+      "creamShare": 0.089
+    },
+    "i-outdoor": {
+      "edgeInk": 1,
+      "edgeContrast": 10.993,
+      "creamShare": 0
+    },
+    "i-expand": {
+      "edgeInk": 1,
+      "edgeContrast": 9.753,
+      "creamShare": 0.07
+    },
+    "i-plants": {
+      "edgeInk": 1,
+      "edgeContrast": 10.309,
+      "creamShare": 0
+    },
+    "i-paintings": {
+      "edgeInk": 1,
+      "edgeContrast": 12.225,
+      "creamShare": 0
+    },
+    "i-lights": {
+      "edgeInk": 1,
+      "edgeContrast": 9.178,
+      "creamShare": 0
+    },
+    "i-window-bar": {
+      "edgeInk": 1,
+      "edgeContrast": 11.358,
+      "creamShare": 0.003
+    },
+    "i-grinder": {
+      "edgeInk": 1,
+      "edgeContrast": 9.453,
+      "creamShare": 0.098
+    },
+    "i-pastry-case": {
+      "edgeInk": 1,
+      "edgeContrast": 9.877,
+      "creamShare": 0
+    },
+    "i-blender": {
+      "edgeInk": 1,
+      "edgeContrast": 9.691,
+      "creamShare": 0
+    },
+    "i-ice-maker": {
+      "edgeInk": 1,
+      "edgeContrast": 9.714,
+      "creamShare": 0.012
+    },
+    "i-dishwasher": {
+      "edgeInk": 1,
+      "edgeContrast": 12.258,
+      "creamShare": 0.015
+    },
+    "i-frappe": {
+      "edgeInk": 1,
+      "edgeContrast": 9.782,
+      "creamShare": 0.077
+    },
+    "i-level": {
+      "edgeInk": 1,
+      "edgeContrast": 9.329,
+      "creamShare": 0.009
+    },
+    "i-mission": {
+      "edgeInk": 1,
+      "edgeContrast": 11.288,
+      "creamShare": 0
+    },
+    "i-avatar-0": {
+      "edgeInk": 1,
+      "edgeContrast": 10.494,
+      "creamShare": 0
+    },
+    "i-avatar-1": {
+      "edgeInk": 1,
+      "edgeContrast": 10.219,
+      "creamShare": 0
+    },
+    "i-avatar-2": {
+      "edgeInk": 1,
+      "edgeContrast": 10.54,
+      "creamShare": 0
+    },
+    "i-avatar-3": {
+      "edgeInk": 1,
+      "edgeContrast": 9.287,
+      "creamShare": 0
+    },
+    "i-avatar-4": {
+      "edgeInk": 1,
+      "edgeContrast": 8.847,
+      "creamShare": 0
+    },
+    "i-avatar-5": {
+      "edgeInk": 1,
+      "edgeContrast": 10.821,
+      "creamShare": 0
+    },
+    "i-avatar-6": {
+      "edgeInk": 1,
+      "edgeContrast": 9.322,
+      "creamShare": 0
+    },
+    "i-avatar-7": {
+      "edgeInk": 1,
+      "edgeContrast": 11.111,
+      "creamShare": 0
+    }
+  }
+}
