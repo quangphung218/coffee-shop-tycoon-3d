@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
-import { xpToReach } from '../../src/sim/data/levels';
+import { MAX_SHOP_LEVEL, xpToReach } from '../../src/sim/data/levels';
 import { createNewGame } from '../../src/sim/state';
 import type { ActiveCampaign, Command, DailyReport, GameState, Mission, Staff, Unlocks } from '../../src/sim/types';
 import { createHud } from '../../src/ui/hud/hud';
@@ -143,11 +143,11 @@ describe('HUD level chip and XP bar', () => {
 
   it('reports the top level as full and capped', () => {
     const state = game();
-    state.shopLevel = 6;
+    state.shopLevel = MAX_SHOP_LEVEL;
     state.xp = 5000;
     const el = makeHud(state);
     const bar = q(el, '[data-stat="level"] [role="progressbar"]');
-    expect(q(el, '.level-name').textContent).toContain('Cấp 6');
+    expect(q(el, '.level-name').textContent).toContain(`Cấp ${MAX_SHOP_LEVEL}`);
     expect(bar.getAttribute('aria-valuenow')).toBe('1');
     expect(bar.getAttribute('aria-valuemax')).toBe('1');
     expect(bar.getAttribute('aria-valuetext')).toBe('Cấp tối đa');

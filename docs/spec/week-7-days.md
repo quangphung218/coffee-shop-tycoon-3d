@@ -76,7 +76,7 @@ Ván mới nhận mục tiêu tuần theo độ khó (`WEEK_GOALS` trong `src/si
 
 Cách đặt doanh thu: chơi 7 ngày với chiến lược cơ bản (mỗi sáng nhập hàng theo gợi ý, tự phục vụ một mình, không thuê, không nâng cấp), có lịch sự kiện, seed 1, 42, 777, 2024, 31337, 9001. Doanh thu trung bình: Dễ khoảng 22,6 triệu, Thường 21,2 triệu, Khó 18,2 triệu. Mục tiêu đặt để chiến lược này đạt khoảng 80% (từng seed 75–86%).
 
-Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 20% mỗi tuần sau tuần 1, tối đa gấp đôi tuần 1 (từ tuần 6), làm tròn tới 100.000; mục tiêu sao giữ nguyên.
+Bảng trên là tuần 1. Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)`: doanh thu tăng 50% mỗi tuần sau tuần 1, tối đa gấp 3 tuần 1 (từ tuần 5), làm tròn tới 100.000; mục tiêu sao giữ nguyên. Số đo 4 tuần ở [reports/p23-long-economy.md](../reports/p23-long-economy.md).
 
 ### Chấm điểm
 
@@ -86,6 +86,13 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
 - Sao = `state.rating` lúc đóng ngày 7, làm tròn 1 chữ số thập phân như số hiển thị; đạt khi sao ≥ mục tiêu sao.
 - Điểm = round(60 × min(1, doanh thu / mục tiêu) + 40 × min(1, sao / mục tiêu sao)), từ 0 tới 100.
 - Cúp: điểm ≥ 90 được 3, ≥ 70 được 2, ≥ 40 được 1, còn lại 0.
+- Thưởng tiền (`WEEK_REWARDS`), cộng ngay tối ngày 7:
+
+  | Độ khó | 2 cúp | 3 cúp |
+  | --- | --- | --- |
+  | Dễ | 1.000.000 | 1.500.000 |
+  | Thường | 1.500.000 | 2.250.000 |
+  | Khó | 2.000.000 | 3.000.000 |
 - `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
 
 Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Giao diện chuyển sang màn kết tuần.

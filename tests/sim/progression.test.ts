@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SHOP_LEVEL, levelForXp, xpToReach } from '../../src/sim/data/levels';
+import { DIFFICULTIES } from '../../src/sim/data/difficulty';
+import {
+  BONUS_LEVEL_PRICE_MULT,
+  FULL_UNLOCK_LEVEL,
+  LEVELS,
+  MAX_SHOP_LEVEL,
+  levelForXp,
+  maxLevelBonus,
+  xpToReach,
+} from '../../src/sim/data/levels';
+import { UPGRADES, getUpgrade, upgradeCost } from '../../src/sim/data/upgrades';
+import { WEEK_REWARDS, weekReward } from '../../src/sim/data/week';
 import { dispatch, isUnlocked, missionProgress, rollMissions, scoreProgression } from '../../src/sim/index';
-import { MISSION_POOL, XP_PER_SERVED, makeMission } from '../../src/sim/progression';
+import { validateLayout } from '../../src/sim/nav/validate';
+import { MISSION_POOL, XP_PER_SERVED, grantWeekReward, makeMission } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
-import type { DayStats, GameState, MissionId } from '../../src/sim/types';
+import type { DayStats, GameState, MissionId, UpgradeId, WeekResult } from '../../src/sim/types';
+import {
+  DECOR_REFUND_SHARE,
+  INDOOR_AREA,
+  buyUpgrade,
+  getShopLayout,
+  maxUpgradeLevel,
+  nextUpgradeCost,
+  removeDecor,
+  upgradeLevel,
+  upgradeLevelPrice,
+} from '../../src/sim/upgrades';
 import { settleDay } from '../../src/sim/economy';
 import { updateRating } from '../../src/sim/rating';
 import { playDay, runOpenDay } from '../integration/helpers';
@@ -30,6 +53,108 @@ function withMission(id: MissionId, patch: (t: DayStats) => void = () => {}): Ga
 function progressOf(s: GameState) {
   return missionProgress(s, s.missions[0]!);
 }
+
+describe('shop levels 7–10', () => {
+  /** A Normal game at `level` with plenty of money. */
+  function rich(level: number): GameState {
+    const s = createNewGame('Quán Cấp Cao', 'normal', 1);
+    s.shopLevel = level;
+    s.xp = xpToReach(level);
+    s.money = 1e9;
+    return s;
+  }
+
+  /** Buys an upgrade until its cap at the shop's level. */
+  function maxOut(s: GameState, id: UpgradeId): void {
+    while (nextUpgradeCost(s, id) !== null) expect(buyUpgrade(s, id).ok).toBe(true);
+  }
+
+  it('unlocks nothing new but raises the cap of some upgrades by one level each', () => {
+    expect(MAX_SHOP_LEVEL).toBe(10);
+    for (const def of LEVELS.filter((l) => l.level > FULL_UNLOCK_LEVEL)) {
+      expect(def.unlocks, `level ${def.level}`).toEqual({ menu: [], upgrades: [], tools: [] });
+      expect(Object.keys(def.maxLevelBonus ?? {}).length, `level ${def.level}`).toBeGreaterThan(0);
+    }
+    for (const def of LEVELS.filter((l) => l.level <= FULL_UNLOCK_LEVEL)) expect(def.maxLevelBonus).toBeUndefined();
+    expect(maxLevelBonus(FULL_UNLOCK_LEVEL, 'better_machine')).toBe(0);
+    expect(maxLevelBonus(7, 'better_machine')).toBe(1);
+    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'better_machine')).toBe(2);
+    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'expand_area')).toBe(0);
+  });
+
+  it('opens the extra level only from the shop level that grants it, at BONUS_LEVEL_PRICE_MULT times the price', () => {
+    const s6 = rich(FULL_UNLOCK_LEVEL);
+    maxOut(s6, 'better_machine');
+    expect(upgradeLevel(s6, 'better_machine')).toBe(getUpgrade('better_machine').maxLevel);
+    expect(nextUpgradeCost(s6, 'better_machine')).toBeNull();
+
+    const s7 = rich(7);
+    maxOut(s7, 'better_machine');
+    expect(maxUpgradeLevel(s7, 'better_machine')).toBe(getUpgrade('better_machine').maxLevel + 1);
+    expect(upgradeLevel(s7, 'better_machine')).toBe(maxUpgradeLevel(s7, 'better_machine'));
+    const def = getUpgrade('better_machine');
+    const plain = upgradeCost({ ...def, maxLevel: Infinity }, def.maxLevel, DIFFICULTIES.normal.priceMult)!;
+    expect(upgradeLevelPrice(s7, 'better_machine', def.maxLevel + 1)).toBe(plain * BONUS_LEVEL_PRICE_MULT);
+    expect(upgradeLevelPrice(s7, 'better_machine', def.maxLevel)).toBe(
+      upgradeCost(def, def.maxLevel - 1, DIFFICULTIES.normal.priceMult),
+    );
+  });
+
+  it('keeps the floor plan valid with every upgrade at its level-10 cap', () => {
+    const s = rich(MAX_SHOP_LEVEL);
+    for (const def of UPGRADES) maxOut(s, def.id);
+    const layout = getShopLayout(s);
+    expect(validateLayout(layout)).toEqual([]);
+    expect(layout.decor.filter((d) => d.kind === 'light')).toHaveLength(maxUpgradeLevel(s, 'lights'));
+    expect(layout.tables.every((t) => t.pos.z < INDOOR_AREA.maxZ || t.zone === 'outdoor')).toBe(true);
+  });
+
+  it('refunds half of what a bonus decor level cost', () => {
+    const s = rich(9);
+    maxOut(s, 'lights');
+    const top = upgradeLevel(s, 'lights');
+    expect(top).toBe(getUpgrade('lights').maxLevel + 1);
+    const before = s.money;
+    const res = removeDecor(s, 'lights');
+    expect(res).toEqual({ ok: true, refund: Math.round(upgradeLevelPrice(s, 'lights', top) * DECOR_REFUND_SHARE), level: top - 1 });
+    expect(s.money - before).toBeGreaterThan(0);
+  });
+});
+
+describe('week cup reward', () => {
+  const result = (cups: number): WeekResult => ({
+    revenue: 0,
+    revenueTarget: 1,
+    stars: 0,
+    starsTarget: 1,
+    score: 0,
+    cups,
+    days: [],
+  });
+
+  it('pays nothing below 2 cups', () => {
+    const s = createNewGame('Quán', 'normal', 1);
+    const money = s.money;
+    expect(grantWeekReward(s, result(1))).toBe(0);
+    expect(s.money).toBe(money);
+    expect(s.events.some((e) => e.type === 'notify' && e.text.startsWith('Thưởng'))).toBe(false);
+  });
+
+  it('pays the difficulty amount for 2 and 3 cups and announces it, more on harder games', () => {
+    for (const d of ['easy', 'normal', 'hard'] as const) {
+      for (const cups of [2, 3] as const) {
+        const s = createNewGame('Quán', d, 1);
+        const money = s.money;
+        expect(grantWeekReward(s, result(cups))).toBe(WEEK_REWARDS[d][cups]);
+        expect(s.money - money).toBe(WEEK_REWARDS[d][cups]);
+        expect(s.events.some((e) => e.type === 'notify' && e.level === 'success' && e.text.includes(`${cups} cúp`))).toBe(true);
+      }
+      expect(WEEK_REWARDS[d][3]).toBeGreaterThan(WEEK_REWARDS[d][2]);
+    }
+    expect(weekReward('hard', 2)).toBeGreaterThan(weekReward('normal', 2));
+    expect(weekReward('normal', 2)).toBeGreaterThan(weekReward('easy', 2));
+  });
+});
 
 describe('levels and XP', () => {
   it('maps total XP to the level thresholds', () => {
