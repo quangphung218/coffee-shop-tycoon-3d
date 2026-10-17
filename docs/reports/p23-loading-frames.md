@@ -56,6 +56,22 @@ Hai cấu hình như `measure-startup.mjs`: máy bàn không giới hạn, và d
 - Lần đo này không có long task ở cả hai bản. Hai lần đo cộng lại cho thấy long task chỉ thỉnh thoảng xuất hiện trên M2 ở headless, nên chưa đủ để kết luận phần warm-up làm giảm chúng.
 - Số khung > 50 ms dao động 34–54 mỗi lần ở cả hai bản, do headless khoá nhịp khung.
 
+### Cửa sổ thật, vsync thật
+
+`measure-frames.mjs --base f9508d8 --runs 5 --headed`, Chrome 155 có cửa sổ, ANGLE Metal (Apple M2), bản `0205afe`, trung vị 5 lần.
+
+| Cấu hình | Bản | Cảnh 3D | Khung | Frame p50 | p95 | Max | Max từng lần | Frame > 50 ms | Long task |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Máy bàn | `f9508d8` | 174 ms | 375 | 13 ms | 15 ms | 15 ms | 38 / 15 / 15 / 15 / 27 | 0 | 0 ms |
+| Máy bàn | `0205afe` | 205 ms | 375 | 13 ms | 15 ms | 20 ms | 27 / 20 / 15 / 29 / 16 | 0 | 0 ms |
+| Di động, CPU 4x | `f9508d8` | 3019 ms | 374 | 13 ms | 15 ms | 27 ms | 28 / 27 / 29 / 27 / 27 | 0 | 0 ms |
+| Di động, CPU 4x | `0205afe` | 3043 ms | 376 | 13 ms | 15 ms | 15 ms | 15 / 27 / 15 / 26 / 15 | 0 | 0 ms |
+
+- Trên M2 cả hai bản đều không có khung > 50 ms hay long task trong 5 s đầu, nên ở máy này không đo được mức giảm của chỉ số đó.
+- Di động (CPU chậm 4 lần): bản cũ khựng khoảng 27 ms ở cả 5 lần; bản mới chỉ khựng ở 2/5 lần, khung dài nhất (trung vị) giảm 27 → 15 ms.
+- Máy bàn: khung dài nhất 15 → 20 ms (trung vị), các lần đo dao động 15–38 ms ở cả hai bản.
+- Cảnh 3D: di động 3019 → 3043 ms (+0,8%), máy bàn 174 → 205 ms.
+
 ## Thay đổi và nguồn giật
 
 | Nguồn giật | Trước | Thay đổi |
