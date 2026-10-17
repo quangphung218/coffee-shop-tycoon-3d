@@ -505,8 +505,11 @@ const inWindow = (boxes, { width: w, height: h }) =>
   });
 /** CSS px between the change lines and their ring. */
 const DELTA_RING_OFFSET = 4;
-/** Boxes grown by `d` on every side. */
-const grow = (boxes, d) => boxes.map((b) => ({ x: b.x - d, y: b.y - d, w: b.w + 2 * d, h: b.h + 2 * d }));
+/**
+ * Boxes grown by `d` on the sides and bottom. The top stays put: the sub line
+ * sits only --space-1 above the changes, and a ring grown up would cross it.
+ */
+const grow = (boxes, d) => boxes.map((b) => ({ x: b.x - d, y: b.y, w: b.w + 2 * d, h: b.h + d }));
 /** Marks with nothing to ring are left out when `optional`. */
 const keep = (marks) => marks.filter((m) => !m.optional || m.boxes.some(Boolean));
 
