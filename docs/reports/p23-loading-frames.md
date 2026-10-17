@@ -72,6 +72,20 @@ Hai cấu hình như `measure-startup.mjs`: máy bàn không giới hạn, và d
 - Máy bàn: khung dài nhất 15 → 20 ms (trung vị), các lần đo dao động 15–38 ms ở cả hai bản.
 - Cảnh 3D: di động 3019 → 3043 ms (+0,8%), máy bàn 174 → 205 ms.
 
+### Mốc khởi động
+
+`measure-startup.mjs --base f9508d8 --runs 5`, Chrome headless, ANGLE Metal (Apple M2), bản `0205afe`, trung vị 5 lần.
+
+| Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
+| --- | --- | --- | --- | --- |
+| Máy bàn | `f9508d8` | 108 ms | 99 ms | 331 ms |
+| Máy bàn | `0205afe` | 72 ms | 75 ms | 301 ms |
+| Di động, CPU 4x | `f9508d8` | 360 ms | 1067 ms | 2922 ms |
+| Di động, CPU 4x | `0205afe` | 368 ms | 1045 ms | 2911 ms |
+
+- Cảnh 3D di động 2911 ms, không chậm hơn bản cũ.
+- Main Menu di động 1045 ms, trên mốc 1 s ở cả hai bản. Warm-up chạy sau `cst:menu` nên không ảnh hưởng mốc này.
+
 ## Thay đổi và nguồn giật
 
 | Nguồn giật | Trước | Thay đổi |
