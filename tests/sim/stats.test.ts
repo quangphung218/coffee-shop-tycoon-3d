@@ -5,6 +5,7 @@ import { buildDailyReport } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import { bestDay, dayCompare, STAT_IDS, weekCompare, weekToDate, type StatId } from '../../src/sim/stats';
 import type { DayStats, GameState, WeekSummary } from '../../src/sim/types';
+import { scoreWeek } from '../../src/sim/week';
 
 const SEED = 4242;
 
@@ -95,6 +96,31 @@ describe('dayCompare', () => {
     const r = byId(dayCompare(state, state.lastReport!));
     expect(r.revenue.vsYesterday).toBe(100_000);
     expect(r.revenue.vsWeekAvg).toBeNull();
+  });
+
+  it('after the day 7 report rolls into week 2, averages only week 2 days', () => {
+    const week1 = Array.from({ length: 7 }, (_, i) => day(i + 1, 1_000_000, 50, 50, 0, 4));
+    const state = onReport(week1);
+    state.week!.result = scoreWeek(state)!;
+    expect(dispatch(state, { type: 'next_day' })).toBe(true);
+    expect(state.week!.index).toBe(2);
+    expect(state.week!.startedDay).toBe(8);
+
+    // Week 2 day 1 (day 8): yesterday is day 7, but no week day before it.
+    state.today = day(8, 300_000, 30, 30, 0, 4);
+    state.phase = 'report';
+    const first = byId(dayCompare(state, buildDailyReport(state)));
+    expect(first.revenue.vsYesterday).toBe(-700_000);
+    for (const row of Object.values(first)) expect(row.vsWeekAvg).toBeNull();
+
+    // Week 2 day 2 (day 9): the week average is day 8 alone, not week 1's days.
+    expect(dispatch(state, { type: 'next_day' })).toBe(true);
+    state.today = day(9, 500_000, 40, 40, 0, 4);
+    state.phase = 'report';
+    const second = byId(dayCompare(state, buildDailyReport(state)));
+    expect(second.revenue.vsYesterday).toBe(200_000);
+    expect(second.revenue.vsWeekAvg).toBe(200_000);
+    expect(second.customersServed.vsWeekAvg).toBe(10);
   });
 
   it('compares with yesterday only in a game without a week', () => {

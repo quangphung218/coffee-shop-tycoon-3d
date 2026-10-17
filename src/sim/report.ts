@@ -144,7 +144,11 @@ export function closeDay(state: GameState): DailyReport {
     if (result) state.week.result = result;
     if (summary) (state.week.archive ??= []).push(summary);
     // The week's cup reward lands tonight, so the report shows the money with it.
-    if (result && grantWeekReward(state, result) > 0) report.money = state.money;
+    // The result keeps the amount paid; the week summary shows that, never a recount.
+    if (result) {
+      result.reward = grantWeekReward(state, result);
+      if (result.reward > 0) report.money = state.money;
+    }
   }
   return report;
 }
