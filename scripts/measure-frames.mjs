@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measures how smooth the first seconds after loading are, in headless Chromium.
 //
-//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>] [--headed]
+//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>] [--headed] [--fx]
 //
 // Headless Chrome hands out frames on whole vsync intervals (about 83 ms
 // each here even with no main-thread work), so frame times there only show
@@ -18,14 +18,31 @@
 // desktop, and mobile (150 ms RTT, 1.6 Mbps, CPU 4x). Runs take turns
 // between builds so drift spreads over both. Runs the installed Chrome
 // ($CHROME_PATH, else the usual install locations) so WebGL uses the GPU.
+// Each run also lists the confetti chunk and `tiers` atlas files requested
+// before the window ends: the Main Menu must not load them.
+//
+// --fx measures the P25 effects instead, from saves each build's sim writes
+// (scripts/capture-p25.mjs playSaves). After cst:world it presses Tiếp tục
+// and records FX_WINDOW_MS around each effect: "upgrade" opens Nâng cấp on
+// the tier-1 save and, FX_LEAD_MS into the window, clicks Mua and its confirm
+// on Máy espresso cao cấp (sparkle and bounce); "level-up" starts the window
+// at the Tiếp tục click on the report save of the first level-up, which opens
+// the Daily Report with its level-up card and confetti.
 import { existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { buildRef, startPreview, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const PORT = Number(process.env.MEDIA_PORT ?? 4173);
+const PORT = Number(process.env.MEDIA_PORT ?? process.env.PORT ?? 4173);
+/** Files loaded on demand only (confetti chunk, upgrade tier atlas). */
+const LAZY = /confetti-|icons3d\/tiers/;
+/** --fx: recorded around each effect, ms; the upgrade click comes FX_LEAD_MS in. */
+const FX_WINDOW_MS = 3000;
+const FX_LEAD_MS = 500;
+const FX_ROW = '.panel:not([hidden]) li[data-upgrade="better_machine"]';
 const PROFILES = [
   { name: 'Desktop, no throttling' },
   // Lighthouse's mobile preset: slow 4G and a 4x slower CPU.
@@ -49,6 +66,36 @@ const PROBE = `(() => {
       for (const e of list.getEntries()) tasks.push([e.startTime, e.duration]);
     }).observe({ type: 'longtask', buffered: true });
   } catch {}
+  const lazy = (end) => performance.getEntriesByType('resource').filter((e) => e.startTime < end && ${LAZY}.test(e.name)).map((e) => e.name.split('/').pop());
+  const overlap = (t0, end) => {
+    let total = 0;
+    let count = 0;
+    for (const [s, d] of tasks) {
+      const a = Math.max(s, t0);
+      const b = Math.min(s + d, end);
+      if (b > a) {
+        total += b - a;
+        count += 1;
+      }
+    }
+    return { count, total };
+  };
+  // --fx: frames and long tasks for ms from now.
+  window.__record = (ms) =>
+    new Promise((resolve) => {
+      const t0 = performance.now();
+      const end = t0 + ms;
+      const ts = [t0];
+      const frame = (t) => {
+        ts.push(t);
+        if (t < end) return requestAnimationFrame(frame);
+        setTimeout(() => {
+          const lt = overlap(t0, end);
+          resolve({ ts, longTasks: lt.count, longTaskMs: lt.total });
+        }, 200);
+      };
+      requestAnimationFrame(frame);
+    });
   window.__frames = new Promise((resolve) => {
     new PerformanceObserver((list, po) => {
       const mark = list.getEntriesByName('cst:world')[0];
@@ -62,17 +109,8 @@ const PROBE = `(() => {
         if (t < end) return requestAnimationFrame(frame);
         // Long tasks are reported a little after they end.
         setTimeout(() => {
-          let total = 0;
-          let count = 0;
-          for (const [s, d] of tasks) {
-            const a = Math.max(s, t0);
-            const b = Math.min(s + d, end);
-            if (b > a) {
-              total += b - a;
-              count += 1;
-            }
-          }
-          resolve({ world: t0, ts, longTasks: count, longTaskMs: total });
+          const lt = overlap(t0, end);
+          resolve({ world: t0, ts, longTasks: lt.count, longTaskMs: lt.total, lazy: lazy(end) });
         }, 200);
       };
       requestAnimationFrame(frame);
@@ -81,10 +119,11 @@ const PROBE = `(() => {
 })();`;
 
 function parseArgs(argv) {
-  const args = { base: null, runs: 3, headed: false };
+  const args = { base: null, runs: 3, headed: false, fx: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--headed') args.headed = true;
+    else if (argv[i] === '--fx') args.fx = true;
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
@@ -139,37 +178,124 @@ const median = (xs) => {
 };
 const ms = (x) => (x === null ? 'n/a' : `${Math.round(x)} ms`);
 
+/** Frame time quantiles, frames over JANK_MS and long tasks of one recording. */
+function stats(r) {
+  const frames = intervals(r.ts).sort((a, b) => a - b);
+  return {
+    world: r.world ?? null,
+    frames: frames.length,
+    p50: quantile(frames, 0.5),
+    p95: quantile(frames, 0.95),
+    max: frames.length ? frames[frames.length - 1] : null,
+    janky: frames.filter((f) => f > JANK_MS).length,
+    longTasks: r.longTasks,
+    longTaskMs: r.longTaskMs,
+    lazy: r.lazy ?? [],
+  };
+}
+
+/** A context with the fixed clock, muted settings, the probe and `save` (if any) in localStorage; a page throttled to `profile`. */
+async function openPage(browser, profile, save = null) {
+  const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    `Date.now = () => ${FIXED_NOW};
+    localStorage.setItem('cst3d:settings', ${JSON.stringify(JSON.stringify({ musicVolume: 0, sfxVolume: 0 }))});
+    ${save ? `localStorage.setItem(${JSON.stringify(save.key)}, ${JSON.stringify(save.text)});` : ''}
+    ${PROBE}`,
+  );
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (profile.network) await cdp.send('Network.emulateNetworkConditions', profile.network);
+  if (profile.cpu) await cdp.send('Emulation.setCPUThrottlingRate', { rate: profile.cpu });
+  return { context, page };
+}
+
 /** One cold load of `url`: frame and long-task stats for WINDOW_MS after cst:world. */
 async function measureOnce(browser, url, profile) {
-  const context = await browser.newContext({ viewport: VIEW, deviceScaleFactor: 1 });
+  const { context, page } = await openPage(browser, profile);
   try {
-    await context.addInitScript(
-      `Date.now = () => ${FIXED_NOW};
-      localStorage.setItem('cst3d:settings', ${JSON.stringify(JSON.stringify({ musicVolume: 0, sfxVolume: 0 }))});
-      ${PROBE}`,
-    );
-    const page = await context.newPage();
-    const cdp = await context.newCDPSession(page);
-    await cdp.send('Network.enable');
-    await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-    if (profile.network) await cdp.send('Network.emulateNetworkConditions', profile.network);
-    if (profile.cpu) await cdp.send('Emulation.setCPUThrottlingRate', { rate: profile.cpu });
     await page.goto(url, { waitUntil: 'commit' });
     const r = await page.evaluate((t) => Promise.race([window.__frames, new Promise((res) => setTimeout(() => res(null), t))]), TIMEOUT_MS);
-    if (!r) return null;
-    const frames = intervals(r.ts).sort((a, b) => a - b);
-    return {
-      world: r.world,
-      frames: frames.length,
-      p50: quantile(frames, 0.5),
-      p95: quantile(frames, 0.95),
-      max: frames.length ? frames[frames.length - 1] : null,
-      janky: frames.filter((f) => f > JANK_MS).length,
-      longTasks: r.longTasks,
-      longTaskMs: r.longTaskMs,
-    };
+    return r ? stats(r) : null;
   } finally {
     await context.close();
+  }
+}
+
+/**
+ * --fx, one cold load of `url` with `save`: after cst:world, Tiếp tục, then
+ * FX_WINDOW_MS recorded around the effect `kind` ('upgrade' or 'level-up').
+ */
+async function measureFx(browser, url, profile, kind, save) {
+  const { context, page } = await openPage(browser, profile, save);
+  try {
+    await page.goto(url, { waitUntil: 'commit' });
+    await page.waitForFunction(() => performance.getEntriesByName('cst:world').length > 0, null, { timeout: TIMEOUT_MS, polling: 100 });
+    const resume = page.getByRole('button', { name: /^Tiếp tục/ });
+    await resume.waitFor({ timeout: TIMEOUT_MS });
+    let rec;
+    if (kind === 'upgrade') {
+      await resume.click();
+      await page.locator('[data-action="open"]').first().waitFor({ timeout: TIMEOUT_MS });
+      await page.evaluate(() => document.querySelector('nav.dock [data-panel="upgrades"]')?.click());
+      await page.locator(`${FX_ROW} [data-action="buy"]`).waitFor({ timeout: TIMEOUT_MS });
+      await page.locator(FX_ROW).scrollIntoViewIfNeeded();
+      // Tier atlas and panel slide-in done before the window.
+      await sleep(1500);
+      rec = page.evaluate((ms) => window.__record(ms), FX_WINDOW_MS);
+      await sleep(FX_LEAD_MS);
+      const bought = await page.evaluate(async (row) => {
+        document.querySelector(`${row} [data-action="buy"]`)?.click();
+        await new Promise((r) => setTimeout(r, 0));
+        const ok = document.querySelector(`${row} [data-action="confirm"]`);
+        ok?.click();
+        return !!ok;
+      }, FX_ROW);
+      if (!bought) throw new Error('Mua on Máy espresso cao cấp had no confirm step');
+    } else {
+      await sleep(500);
+      rec = page.evaluate((ms) => window.__record(ms), FX_WINDOW_MS);
+      await resume.click();
+      await page.locator('.rpt-layer:not([hidden])').waitFor({ timeout: FX_WINDOW_MS });
+    }
+    const r = await rec;
+    const confetti = kind === 'level-up' ? await page.evaluate(() => performance.getEntriesByType('resource').some((e) => /confetti-/.test(e.name))) : null;
+    return { ...stats(r), confetti };
+  } finally {
+    await context.close();
+  }
+}
+
+/** --fx table: per build, profile and effect, the median over `runs` of measureFx. */
+async function runFx(browser, builds, runs) {
+  console.log(`| Build | Profile | Effect | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const profile of PROFILES) {
+    for (const kind of ['upgrade', 'level-up']) {
+      const cells = builds.map((build) => ({ build, runs: [] }));
+      for (let i = 0; i < runs; i++) {
+        for (const c of cells) {
+          let r = null;
+          try {
+            r = await measureFx(browser, c.build.url, profile, kind, c.build.fx[kind]);
+          } catch (err) {
+            console.error(`  ${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: ${String(err.message ?? err).split('\n')[0]}`);
+            continue;
+          }
+          console.error(`  ${c.build.label} · ${profile.name} · ${kind} · run ${i + 1}: p95 ${ms(r.p95)}, max ${ms(r.max)}, ${r.janky}/${r.frames} frames > ${JANK_MS} ms, ${r.longTasks} long tasks${r.confetti === null ? '' : `, confetti chunk ${r.confetti ? 'loaded' : 'not loaded'}`}`);
+          c.runs.push(r);
+        }
+      }
+      for (const c of cells) {
+        const pick = (k) => median(c.runs.map((r) => r[k]));
+        const jankRuns = c.runs.map((r) => r.janky).join('/');
+        console.log(
+          `| ${c.build.label} | ${profile.name} | ${kind} | ${pick('frames') ?? 'n/a'} | ${ms(pick('p50'))} | ${ms(pick('p95'))} | ${ms(pick('max'))} | ${pick('janky') ?? 'n/a'} (${jankRuns}) | ${pick('longTasks') ?? 'n/a'} (${c.runs.map((r) => r.longTasks).join('/')}) | ${ms(pick('longTaskMs'))} |`,
+        );
+      }
+    }
   }
 }
 
@@ -187,6 +313,14 @@ async function main() {
       builds.push({ label: `base (${args.base})`, root: dir });
     }
     builds.push({ label: 'working tree', root: ROOT });
+    if (args.fx) {
+      const { playSaves } = await import('./capture-p25.mjs');
+      for (const b of builds) {
+        console.error(`Playing the saves of ${b.label}…`);
+        const s = await playSaves(b.root);
+        b.fx = { upgrade: s.tiers[1], 'level-up': s.saves.levelUp };
+      }
+    }
     for (const [i, b] of builds.entries()) {
       servers.push(await startPreview(b.root, PORT + i));
       b.url = urlFor(PORT + i);
@@ -197,10 +331,15 @@ async function main() {
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
     const gpu = await gpuName(browser);
-    console.log(`Chrome ${browser.version()}${args.headed ? ' (headed)' : ' (headless)'}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${WINDOW_MS / 1000} s after cst:world, ${args.runs} runs per cell (median)\n`);
+    const windowText = args.fx ? `${FX_WINDOW_MS / 1000} s around each effect` : `${WINDOW_MS / 1000} s after cst:world`;
+    console.log(`Chrome ${browser.version()}${args.headed ? ' (headed)' : ' (headless)'}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${windowText}, ${args.runs} runs per cell (median)\n`);
     if (/swiftshader|llvmpipe|software/i.test(gpu)) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
-    console.log(`| Build | Profile | 3D scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
-    console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+    if (args.fx) {
+      await runFx(browser, builds, args.runs);
+      return;
+    }
+    console.log(`| Build | Profile | 3D scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time | Confetti, tiers loaded |`);
+    console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const profile of PROFILES) {
       const cells = builds.map((build) => ({ build, runs: [] }));
       for (let i = 0; i < args.runs; i++) {
@@ -213,8 +352,9 @@ async function main() {
       for (const c of cells) {
         const pick = (k) => median(c.runs.map((r) => r[k]));
         const jankRuns = c.runs.map((r) => r.janky).join('/');
+        const lazy = [...new Set(c.runs.flatMap((r) => r.lazy))];
         console.log(
-          `| ${c.build.label} | ${profile.name} | ${ms(pick('world'))} | ${pick('frames') ?? 'n/a'} | ${ms(pick('p50'))} | ${ms(pick('p95'))} | ${ms(pick('max'))} | ${pick('janky') ?? 'n/a'} (${jankRuns}) | ${pick('longTasks') ?? 'n/a'} | ${ms(pick('longTaskMs'))} |`,
+          `| ${c.build.label} | ${profile.name} | ${ms(pick('world'))} | ${pick('frames') ?? 'n/a'} | ${ms(pick('p50'))} | ${ms(pick('p95'))} | ${ms(pick('max'))} | ${pick('janky') ?? 'n/a'} (${jankRuns}) | ${pick('longTasks') ?? 'n/a'} | ${ms(pick('longTaskMs'))} | ${lazy.length ? lazy.join(', ') : 'none'} |`,
         );
       }
     }
