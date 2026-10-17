@@ -17,6 +17,7 @@
     "media:loading": "npm run build && node scripts/capture-loading.mjs",
     "review:p22": "npm run build && node scripts/review-p22.mjs",
     "layout": "npm run build && node scripts/check-layout.mjs",
+    "perf:frames": "npm run build && node scripts/measure-frames.mjs",
     "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
