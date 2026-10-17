@@ -74,9 +74,9 @@ export interface Actors {
   /**
    * Before the scene shows: makes the tag of every icon, WARM_BODIES pooled
    * characters and WARM_COINS coin popups (hidden, so a shader compile of
-   * the scene covers them). Resolves with the tag textures once drawn.
+   * the scene covers them). Returns the tag and steam textures to upload.
    */
-  prebuild(): Promise<Texture[]>;
+  prebuild(): Texture[];
   /**
    * Shows the pooled characters in every persona and mood, with tags, steam
    * and a coin, for one call of `draw` (a frame nobody sees), so their GPU
@@ -475,14 +475,14 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
 
     calm,
 
-    prebuild(): Promise<Texture[]> {
+    prebuild(): Texture[] {
       const bodies = Array.from({ length: WARM_BODIES }, () => pool.acquire());
       for (const body of bodies) pool.release(body);
       const now = performance.now() / 1000;
       for (let i = 0; i < WARM_COINS; i++) coins.spawn(1, { x: 0, z: 0 }, now);
       coins.update(now + COIN_FORGET_S, true);
       const textures = assets.prebuild();
-      return puff ? textures.then((t) => [...t, puff]) : textures;
+      return puff ? [...textures, puff] : textures;
     },
 
     drawWarm(draw: () => void): void {

@@ -117,11 +117,10 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       sync(state, state.tickAccumulator);
       onStep?.('shaders', 0);
       // Tags, pooled people and coins first, so the compile covers their materials.
-      const labels = actors.prebuild();
+      const textures = actors.prebuild();
       await view.renderer.compileAsync(view.scene, camera.camera);
       onStep?.('shaders', 1);
       onStep?.('labels', 0);
-      const textures = await labels;
       textures.forEach((t, i) => {
         view.renderer.initTexture(t);
         onStep?.('labels', (i + 1) / (textures.length + 1));

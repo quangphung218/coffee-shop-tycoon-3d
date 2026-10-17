@@ -24,22 +24,32 @@ describe('label prebuild', () => {
     expect(LABEL_FACES).toEqual(expect.arrayContaining(['i-face-happy', 'i-face-ok', 'i-face-worried', 'i-coin']));
   });
 
-  it('makes one texture per icon up front and reuses them afterwards', async () => {
+  it('makes one texture per icon up front and reuses them afterwards', () => {
     vi.stubGlobal('document', { createElement: () => fakeCanvas() });
     const assets = new LabelAssets();
-    const textures = await assets.prebuild();
+    const textures = assets.prebuild();
     expect(textures).toHaveLength(LABEL_BUBBLES.length + LABEL_FACES.length);
     expect(new Set(textures).size).toBe(textures.length);
     // Tags shown later take the prebuilt materials instead of drawing new canvases.
     expect(textures).toContain(assets.icon('i-latte').map);
     expect(textures).toContain(assets.face('i-face-ok').map);
-    expect(await assets.prebuild()).toHaveLength(textures.length);
+    expect(assets.prebuild()).toHaveLength(textures.length);
     assets.dispose();
   });
 
-  it('resolves with no textures without a DOM', async () => {
+  it('does not wait for the icon atlas', () => {
+    vi.stubGlobal('document', { createElement: () => fakeCanvas() });
+    // An atlas that never arrives (a slow network) must not hold the scene back.
+    vi.stubGlobal('createImageBitmap', () => new Promise(() => {}));
+    vi.stubGlobal('fetch', () => new Promise(() => {}));
     const assets = new LabelAssets();
-    expect(await assets.prebuild()).toEqual([]);
+    expect(assets.prebuild()).toHaveLength(LABEL_BUBBLES.length + LABEL_FACES.length);
+    assets.dispose();
+  });
+
+  it('returns no textures without a DOM', () => {
+    const assets = new LabelAssets();
+    expect(assets.prebuild()).toEqual([]);
     assets.dispose();
   });
 });
@@ -50,10 +60,10 @@ describe('actors warm-up', () => {
     return actors.children.filter((o: Object3D) => o.visible && o.name !== 'coins').length;
   };
 
-  it('pools the warm-up characters and coins before the first customer', async () => {
+  it('pools the warm-up characters and coins before the first customer', () => {
     const scene = new Scene();
     const actors = createActors(scene);
-    await actors.prebuild();
+    actors.prebuild();
     const s = actors.stats();
     expect(s.created).toBeGreaterThanOrEqual(WARM_BODIES);
     expect(s.live).toBe(0);
@@ -62,13 +72,13 @@ describe('actors warm-up', () => {
     actors.dispose();
   });
 
-  it('shows the warm-up characters for one draw, then puts them back', async () => {
+  it('shows the warm-up characters for one draw, then puts them back', () => {
     const scene = new Scene();
     const actors = createActors(scene);
     const state = createNewGame('Test', 'normal', 1);
     dispatch(state, { type: 'start_day' });
     actors.update(state, 0);
-    await actors.prebuild();
+    actors.prebuild();
     const before = actors.stats();
     const shown = visibleRoots(scene);
     const draw = vi.fn(() => {

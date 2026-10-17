@@ -115,14 +115,14 @@ export class LabelAssets {
   /**
    * Makes the material of every icon a tag can show (LABEL_BUBBLES,
    * LABEL_FACES), so the first customers do not draw canvases mid-frame.
-   * Resolves with every icon texture once the atlas is drawn into them, or
-   * failed to load, ready for renderer.initTexture. Empty without a DOM.
+   * Returns every icon texture, ready for renderer.initTexture; empty without
+   * a DOM. Does not wait for the @2x atlas: on a slow network that held the
+   * scene back about a second. Each texture draws its icon when the atlas
+   * arrives and re-uploads (one 128 px texture).
    */
-  async prebuild(): Promise<Texture[]> {
+  prebuild(): Texture[] {
     for (const id of LABEL_BUBBLES) this.icon(id);
     for (const id of LABEL_FACES) this.face(id);
-    // Each texture drew itself in a .then() on the same atlas promise, added before this one.
-    if (this.textures.length > 0 && typeof createImageBitmap !== 'undefined') await loadIconAtlas().catch(() => {});
     return [...this.textures];
   }
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // Measures how smooth the first seconds after loading are, in headless Chromium.
 //
-//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>]
+//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>] [--headed]
+//
+// Headless Chrome hands out frames on whole vsync intervals (about 83 ms
+// each here even with no main-thread work), so frame times there only show
+// long tasks; --headed opens a real window with real vsync for frame times.
 //
 // Serves dist/ (run `npm run build` first) and, with --base, a build of
 // <git-ref>; loads each with an empty cache, waits for the `cst:world` mark
@@ -77,9 +81,10 @@ const PROBE = `(() => {
 })();`;
 
 function parseArgs(argv) {
-  const args = { base: null, runs: 3 };
+  const args = { base: null, runs: 3, headed: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
+    else if (argv[i] === '--headed') args.headed = true;
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
@@ -188,10 +193,11 @@ async function main() {
     }
     browser = await chromium.launch({
       executablePath: findChrome(),
+      headless: !args.headed,
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
     const gpu = await gpuName(browser);
-    console.log(`Chrome ${browser.version()}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${WINDOW_MS / 1000} s after cst:world, ${args.runs} runs per cell (median)\n`);
+    console.log(`Chrome ${browser.version()}${args.headed ? ' (headed)' : ' (headless)'}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${WINDOW_MS / 1000} s after cst:world, ${args.runs} runs per cell (median)\n`);
     if (/swiftshader|llvmpipe|software/i.test(gpu)) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
     console.log(`| Build | Profile | 3D scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
     console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
