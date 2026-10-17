@@ -128,6 +128,8 @@ describe('HUD during a week', () => {
     expect(dayText(el).week.hidden).toBe(true);
     expect(el.textContent).not.toContain('/7');
     expect(el.querySelector<HTMLElement>('.hud-week')!.hidden).toBe(true);
+    // The phase pill does not depend on the week.
+    expect(el.querySelector('.phase-pill')!.textContent).toBe('Chuẩn bị');
   });
 });
 

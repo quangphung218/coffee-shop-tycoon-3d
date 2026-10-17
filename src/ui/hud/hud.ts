@@ -1,3 +1,4 @@
+import { CLOSING_MINUTE, PEAK_WINDOWS } from '../../sim/clock';
 import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
 import { DAY_EVENTS } from '../../sim/data/week';
@@ -7,7 +8,7 @@ import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
-import { icon, type IconId, type IconSize } from '../core/icons';
+import { icon, type IconId } from '../core/icons';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
 
 export interface HudActions {
@@ -51,7 +52,15 @@ const PHASE_STEPS: readonly { phase: Phase; label: string }[] = [
   { phase: 'closing', label: 'Đóng cửa' },
 ];
 
-const PHASE_ORDER: Record<Phase, number> = { preparation: 0, opening: 1, peak: 2, closing: 3, report: 4 };
+/**
+ * Minute of the next phase change while open and before closing (the end or
+ * start of a peak window, or closing time), from the sim clock; null otherwise.
+ */
+export function nextPhaseMinute(phase: Phase, minute: number): number | null {
+  if (phase !== 'opening' && phase !== 'peak') return null;
+  const marks = [...PEAK_WINDOWS.flat(), CLOSING_MINUTE].filter((m) => m > minute);
+  return marks.length ? Math.min(...marks) : null;
+}
 
 export function phaseLabel(phase: Phase): string {
   return phase === 'report' ? 'Tổng kết' : (PHASE_STEPS.find((s) => s.phase === phase)?.label ?? phase);
@@ -148,7 +157,7 @@ function countDuration(el: Element): number {
 
 /**
  * HUD in three clusters over the scene (P23), each one cream frame:
- * Hôm nay (day, week line, weather and event, clock, phase strip), Tiến độ
+ * Hôm nay (day, week line, weather and event, clock, phase pill), Tiến độ
  * (money, rating, level with its XP bar) and Điều khiển (the phase action
  * "Mở cửa" / "Sang ngày mới" or the speed group (one cycling button on a
  * phone), pause, and a menu with the
@@ -257,27 +266,30 @@ export function createHud(actions: HudActions): Hud {
     },
   );
 
-  // The four phases as a strip: the current one shows its icon and name, the
-  // others are dots (filled once done); every name stays readable in the list.
-  const phaseItems = PHASE_STEPS.map((step) => {
-    const mark = h('span', { class: 'ph-icon' });
-    const li = h('li', { attrs: { 'data-phase': step.phase } }, mark, h('span', { class: 'ph-label', text: step.label }));
-    return { step, li, mark };
-  });
+  // The current phase as one flat pill (icon and name) and, while open before
+  // closing, "tới 13:00" for the next change. The four phases sit in an
+  // sr-only list (current one marked) and in the title.
+  const phaseItems = PHASE_STEPS.map((step) => ({ step, li: h('li', { attrs: { 'data-phase': step.phase }, text: step.label }) }));
+  const phaseList = h('ol', { class: 'phases sr-only', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li));
+  const phasePill = h('span', { class: 'phase-pill', attrs: { 'aria-hidden': 'true' } });
+  const phaseNext = h('small', { class: 'ph-next', attrs: { 'data-stat': 'phase-next' } });
+  const phaseBox = h('span', { class: 'hud-phase' }, phaseList, phasePill, phaseNext);
   w.watch(
-    (s) => s.phase,
-    (phase) => {
-      const current = PHASE_ORDER[phase];
-      for (const { step, li, mark } of phaseItems) {
-        const order = PHASE_ORDER[step.phase];
-        const active = step.phase === phase;
-        if (active) li.setAttribute('aria-current', 'step');
+    (s) => `${s.phase}|${nextPhaseMinute(s.phase, s.minute) ?? ''}`,
+    (_, s) => {
+      const phase = s.phase;
+      for (const { step, li } of phaseItems) {
+        if (step.phase === phase) li.setAttribute('aria-current', 'step');
         else li.removeAttribute('aria-current');
-        li.classList.toggle('is-peak', step.phase === 'peak');
-        li.classList.toggle('is-done', order < current);
-        const size: IconSize = active ? 24 : 16;
-        setChildren(mark, icon(order < current ? 'i-check' : PHASE_ICONS[step.phase], { size }));
       }
+      phasePill.dataset.phase = phase;
+      setChildren(phasePill, icon(PHASE_ICONS[phase]), h('span', { class: 'ph-label', text: phaseLabel(phase) }));
+      const next = nextPhaseMinute(phase, s.minute);
+      const nextText = next === null ? '' : `tới ${formatClock(next)}`;
+      phaseNext.textContent = nextText;
+      phaseNext.hidden = !nextText;
+      const now = nextText ? `${phaseLabel(phase)}, ${nextText}` : phaseLabel(phase);
+      phaseBox.title = `Pha trong ngày: ${PHASE_STEPS.map((p) => p.label).join(', ')}. Bây giờ: ${now}.`;
     },
   );
 
@@ -556,7 +568,7 @@ export function createHud(actions: HudActions): Hud {
           attrs: { type: 'button', 'aria-pressed': String(p.id === openId), 'aria-controls': 'ui-panel', 'data-panel': p.id },
           on: { click: (e) => (openId === p.id ? closePanel() : openPanel(p.id, e.currentTarget as HTMLElement)) },
         },
-        icon(p.icon, { size: 32 }),
+        icon(p.icon),
         h('span', { text: p.label }),
       );
       const count = p.badge;
@@ -642,7 +654,7 @@ export function createHud(actions: HudActions): Hud {
         'span',
         { class: 'hud-time' },
         value('i-clock', 'Giờ', clock),
-        h('ol', { class: 'phases', attrs: { 'aria-label': 'Pha trong ngày' } }, ...phaseItems.map((p) => p.li)),
+        phaseBox,
       ),
     ),
     cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-star', 'Đánh giá', ratingValue), levelChip),

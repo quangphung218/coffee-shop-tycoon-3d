@@ -152,14 +152,84 @@ describe('HUD clusters (P23)', () => {
     expect(q(bar, '[data-action="open"]').title).toContain('07:00');
   });
 
-  it('shows the phases as a strip with every name in the list and the current one marked', () => {
+  it('keeps every phase name in an sr-only list and the title, with the current one marked', () => {
     const state = game();
     state.phase = 'peak';
+    state.minute = 12 * 60;
     const { bar } = mountHud(state);
-    const items = [...bar.querySelectorAll<HTMLElement>('ol.phases li')];
+    const list = q(bar, 'ol.phases');
+    expect(list.classList.contains('sr-only')).toBe(true);
+    const items = [...list.querySelectorAll<HTMLElement>('li')];
     expect(items.map((li) => li.textContent)).toEqual(['Chuẩn bị', 'Mở cửa', 'Cao điểm', 'Đóng cửa']);
     expect(items.filter((li) => li.getAttribute('aria-current') === 'step').map((li) => li.dataset.phase)).toEqual(['peak']);
-    expect(items.filter((li) => li.classList.contains('is-done')).map((li) => li.dataset.phase)).toEqual(['preparation', 'opening']);
+    expect(q(bar, '.hud-phase').title).toBe('Pha trong ngày: Chuẩn bị, Mở cửa, Cao điểm, Đóng cửa. Bây giờ: Cao điểm, tới 13:00.');
+  });
+
+  it('shows the current phase as one flat pill with its name, and no dots', () => {
+    const state = game();
+    state.phase = 'peak';
+    state.minute = 12 * 60;
+    const { bar } = mountHud(state);
+    const today = q(bar, '[data-cluster="today"]');
+    // The only list items are the sr-only names: none is drawn as a dot.
+    const shownItems = [...today.querySelectorAll('li')].filter((li) => !li.closest('.sr-only'));
+    expect(shownItems).toEqual([]);
+    const pills = today.querySelectorAll<HTMLElement>('.phase-pill');
+    expect(pills).toHaveLength(1);
+    expect(pills[0]!.dataset.phase).toBe('peak');
+    expect(pills[0]!.textContent).toBe('Cao điểm');
+    expect(q(pills[0]!, '.ic').dataset.icon).toBe('i-flame');
+    const pillRule = UI_RULES.find((r) => r.selector === '.phase-pill');
+    expect(decl(pillRule!.body, 'box-shadow')).toBe('var(--label-shadow)');
+    expect(decl(pillRule!.body, 'border')).toBeUndefined();
+  });
+
+  it.each<[Phase, number, string]>([
+    ['peak', 12 * 60 + 50, 'tới 13:00'],
+    ['peak', 17 * 60, 'tới 19:00'],
+    ['opening', 7 * 60, 'tới 11:00'],
+    ['opening', 15 * 60, 'tới 17:00'],
+    ['opening', 19 * 60 + 30, 'tới 20:00'],
+  ])('says when %s at minute %i ends: "%s"', (phase, minute, next) => {
+    const state = game();
+    state.phase = phase;
+    state.minute = minute;
+    const { bar } = mountHud(state);
+    const el = q(bar, '[data-stat="phase-next"]');
+    expect(el.hidden).toBe(false);
+    expect(el.textContent).toBe(next);
+  });
+
+  it.each<[Phase, string]>([
+    ['preparation', 'Chuẩn bị'],
+    ['closing', 'Đóng cửa'],
+    ['report', 'Tổng kết'],
+  ])('shows no next change in %s', (phase, name) => {
+    const state = game();
+    state.phase = phase;
+    state.minute = phase === 'preparation' ? 7 * 60 : 20 * 60 + 30;
+    const { bar } = mountHud(state);
+    expect(q(bar, '[data-stat="phase-next"]').hidden).toBe(true);
+    expect(q(bar, '.phase-pill').textContent).toBe(name);
+  });
+
+  it('updates the pill and the next change as the clock moves', () => {
+    const state = game();
+    state.phase = 'opening';
+    state.minute = 10 * 60 + 59;
+    const { hud, bar } = mountHud(state);
+    expect(q(bar, '[data-stat="phase-next"]').textContent).toBe('tới 11:00');
+    state.phase = 'peak';
+    state.minute = 11 * 60;
+    hud.update(state);
+    expect(q(bar, '.phase-pill').textContent).toBe('Cao điểm');
+    expect(q(bar, '[data-stat="phase-next"]').textContent).toBe('tới 13:00');
+  });
+
+  it('keeps the pill alone from 480 px down', () => {
+    const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const block = css.slice(css.indexOf('@media (max-width: 480px)'));
+    expect(block.slice(0, block.indexOf('}'))).toContain('.ph-next');
   });
 
   it('shows no note while preparing; the open button says why the clock waits', () => {
@@ -183,6 +253,22 @@ describe('HUD clusters (P23)', () => {
     const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const block = css.slice(css.indexOf('@media (max-width: 1439px)'));
     expect(block.slice(0, block.indexOf('}')), 'hidden from 1439 px down').toContain('.week-chip-label');
+  });
+});
+
+describe('HUD frames on the P24 scale', () => {
+  it('gives the clusters one row height and the dock, menu and toast the same frame', () => {
+    const rule = (sel: string): string => UI_RULES.find((r) => r.selector.split(',').map((s) => s.trim()).includes(sel))!.body;
+    expect(decl(UI_RULES.find((r) => r.selector === '.hud-cluster')!.body, 'height')).toBe('var(--size-hud-row)');
+    for (const sel of ['.hud-cluster', '.dock', '.hud-menu', '.toast']) {
+      expect(decl(rule(sel), 'border'), sel).toBe('var(--size-frame-outline) solid var(--border-outline)');
+      expect(decl(rule(sel), 'box-shadow'), sel).toBe('var(--frame-shadow)');
+    }
+    expect(decl(rule('.dock-btn'), 'min-height')).toBe('var(--size-control-lg)');
+    expect(decl(rule('.dock-btn'), 'font-size')).toBe('var(--font-size-label)');
+    expect(decl(rule('.hud-cluster b'), 'font-size')).toBe('var(--font-size-value)');
+    expect(decl(rule('.hud-day small'), 'font-size')).toBe('var(--font-size-caption)');
+    expect(decl(rule('.xp-num'), 'font-size')).toBe('var(--font-size-caption)');
   });
 });
 
@@ -270,6 +356,15 @@ describe('HUD touch targets and speed control', () => {
       '4x|i-speed-4|Tốc độ 4x, bấm để chuyển sang 1x',
     ]);
     expect(nextSpeed(3)).toBe(1);
+  });
+
+  it('marks the selected speed by its honey fill alone, no outline or shadow of its own', () => {
+    for (const sel of ['.seg button[aria-pressed=\'true\']', '.hud-controls .hud-btn.speed-cycle']) {
+      const rule = UI_RULES.find((r) => r.selector.split(',').map((s) => s.trim()).includes(sel));
+      expect(decl(rule!.body, 'background'), sel).toBe('var(--accent-primary)');
+      expect(decl(rule!.body, 'border-color'), sel).toBeUndefined();
+      expect(decl(rule!.body, 'box-shadow'), sel).toBeUndefined();
+    }
   });
 
   it('hides the cycling button with the group outside the open phases', () => {

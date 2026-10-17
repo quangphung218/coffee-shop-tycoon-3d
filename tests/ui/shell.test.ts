@@ -378,12 +378,11 @@ describe('HUD', () => {
     expect(text()).toContain('11:42');
     expect(text()).toContain('2.465.000đ');
     expect(q(hud.el, '[data-cluster="progress"] [role="img"]').getAttribute('aria-label')).toBe('3,8 trên 5 sao');
-    const peak = q(hud.el, '[aria-current="step"]');
-    expect(peak.dataset.phase).toBe('peak');
-    expect(peak.classList.contains('is-peak')).toBe(true);
-    expect(q(peak, '.ic').dataset.icon).toBe('i-flame');
-    expect(q(hud.el, '[data-phase="opening"] .ic').dataset.icon).toBe('i-check');
-    expect(q(hud.el, '[data-phase="closing"] .ic').dataset.icon).toBe('i-phase-close');
+    expect(q(hud.el, '[aria-current="step"]').dataset.phase).toBe('peak');
+    const pill = q(hud.el, '.phase-pill');
+    expect(pill.dataset.phase).toBe('peak');
+    expect(q(pill, '.ic').dataset.icon).toBe('i-flame');
+    expect(text()).toContain('tới 13:00');
     expect(q(hud.el, '.speed').hidden).toBe(false);
     expect(button(hud.el, 'Mở cửa').hidden).toBe(true);
     expect(q(hud.el, '[data-speed="2"]').getAttribute('aria-pressed')).toBe('true');
@@ -490,7 +489,8 @@ describe('HUD', () => {
       for (const b of buttons) {
         expect(b.getAttribute('aria-controls')).toBe('ui-panel');
         expect(b.getAttribute('aria-pressed')).toBe('false');
-        expect(b.querySelector('.ic.ic-lg[aria-hidden="true"][data-icon]')).toBeTruthy();
+        // 24 px icon (P24 dock): no size class.
+        expect(b.querySelector('.ic:not(.ic-sm, .ic-lg, .ic-xl)[aria-hidden="true"][data-icon]')).toBeTruthy();
       }
 
       const kho = q<HTMLButtonElement>(dock, '[data-panel="inventory"]');
