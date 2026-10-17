@@ -271,7 +271,7 @@ Mỗi mục `fixed` trong `docs/reports/p22-review/fixed-ui.json` và `fixed-act
 | `main-menu-icons-p22.png` | Main Menu 390 lúc menu hiện: v0.4.0 ô icon trống, P22 ô chờ. Nhãn ghi thêm mốc ms trên mạng di động (lần tải của bước 3): lúc ô trống hay ô chờ hiện, lúc icon hiện. |
 | `main-menu-atlas-390-p22.png` | Main Menu 390 trên mạng di động, lúc icon hiện: nhãn ghi mốc menu hiện, `three-*.js` xong, xin atlas @1x, icon hiện; chú thích thêm `cst:world` và atlas @2x. P22 xin @1x ngay sau khi menu vẽ, sau lệnh xin chunk cảnh. Một lần đo; số trung vị ở [perf.txt](reports/p22-review/perf.txt). |
 | `kho-foot-390-p22.png` | Chân bảng Kho 390 lúc vừa mở: chiều cao chân và thân ở v0.4.0; P22 khoanh chân gọn và nút Nhập hàng thấy ngay khi mở. Chân P22 không dính hoặc nút Nhập hàng ngoài tầm chạm lúc vừa mở thì in `!!`, thêm khung cuộn tới cuối thân bảng. |
-| `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, số dòng hàng chạm được khi cuộn. |
+| `layout-blocked-suggest-390-p22.png` | Bảng Kho 390: v0.4.0 chân bảng dính che nút Gợi ý; P22 nút chạm được, số dòng hàng chạm được khi cuộn (không dòng nào thì khoanh dải thân bảng phía trên chân). |
 | `actors-persona-motion-p22.png` | Khách văn phòng và sinh viên đứng chờ: dáng chờ chung ở v0.4.0, cầm điện thoại và tay đút túi ở P22; nhãn ghi góc tay, đầu, thân. |
 | `actors-persona-accessory-p22.png` | Khách quen và gia đình: không phụ kiện ở v0.4.0, mũ len và túi vải ở P22; nhãn ghi cỡ phụ kiện. |
 | `actors-impatient-silhouette-p22.png` | Khách sốt ruột: tay buông ở v0.4.0, khoanh tay ở P22; nhãn ghi góc tay và nhịp chân. |

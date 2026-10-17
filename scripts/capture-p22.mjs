@@ -871,6 +871,8 @@ async function khoBoard(browser, out, { base, cur }) {
   const al = cur.list.kho;
   const px = (n) => Math.round(n ?? 0);
   const covered = b.suggestCover ? 'Che nút Gợi ý' : 'Nút Gợi ý bấm được';
+  // No row in reach: ring the strip of the body above the foot, where the rows scroll.
+  const listView = al.list ?? (al.body && al.foot ? { x: al.body.x, y: al.body.y, w: al.body.w, h: Math.max(0, al.foot.y - al.body.y) } : null);
   await board(browser, out, {
     frames: [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở'), after(cur.list.png, 'Kho 390 · cuộn tới danh sách')],
     marks: [
@@ -878,7 +880,7 @@ async function khoBoard(browser, out, { base, cur }) {
       { frame: 0, boxes: [b.foot], label: `Chân ${b.sticky ? 'dính' : 'cuộn'} ${px(b.foot?.h)} px / thân ${px(b.body?.h)} px` },
       { frame: 0, boxes: [b.foot], label: `${covered}; cuộn: ${bl.rowsSeen}/${bl.rows} dòng chạm được` },
       { frame: 1, boxes: [a.suggest], label: a.suggestCover ? `Nút Gợi ý vẫn bị .${a.suggestCover} che` : 'Nút Gợi ý chạm được' },
-      { frame: 2, boxes: [al.list], label: `${al.rowsSeen}/${al.rows} dòng chạm được, chân ${al.sticky ? 'vẫn dính' : 'cuộn sau'}` },
+      { frame: 2, boxes: [listView], label: `${al.rowsSeen}/${al.rows} dòng chạm được, chân ${al.sticky ? 'vẫn dính' : 'cuộn sau'}` },
     ],
     include: [b.panel, a.panel, al.panel],
     pad: 16,
