@@ -9,7 +9,8 @@
 // cst:menu, the icon atlas held back so the shot shows what a cold load
 // shows), main-menu-atlas-390-p22.png (Main Menu at 390 px on the mobile
 // profile of measure-startup.mjs, shot when the icons are drawn, with when
-// each atlas was asked for), kho-foot-390-p22.png (the Kho foot on opening),
+// each atlas was asked for), kho-foot-390-p22.png (the Kho foot on opening,
+// and at the end of the body when the foot scrolls with the list),
 // then one board per entry of docs/reports/p22-review/fixed-ui.json and
 // fixed-actors.json, named <id>-p22.png. The save is the morning of day 2 of
 // the review week (Normal, seed of review:p22) from the working tree's sim.
@@ -297,6 +298,13 @@ function measureKho() {
   return {
     panel: box(panel),
     body: box(panel?.querySelector('.panel-body')),
+    // Height the panel-body container query sees: the content box, without padding.
+    bodyContent: (() => {
+      const el = panel?.querySelector('.panel-body');
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    })(),
     foot: box(foot),
     sticky: foot ? getComputedStyle(foot).position === 'sticky' : false,
     suggest: box(suggest),
@@ -708,7 +716,14 @@ async function khoSession(browser, url, save, who) {
     await sleep(400);
     const listKho = await page.evaluate(measureKho);
     out.list = { png: await shot(page), texts: await page.evaluate(measureTexts), kho: listKho };
-    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows; scrolled to the list ${listKho.rowsSeen}/${listKho.rows} rows`);
+    // Then scrolled to the end of the body, where a foot that scrolls with the list comes into view.
+    await page.evaluate(() => {
+      const body = document.querySelector('#ui-panel .panel-body');
+      if (body) body.scrollTop = body.scrollHeight;
+    });
+    await sleep(400);
+    out.end = { png: await shot(page), texts: await page.evaluate(measureTexts), kho: await page.evaluate(measureKho) };
+    progress(who, `Kho 390: body ${Math.round(kho.body?.h ?? 0)} px, foot ${Math.round(kho.foot?.h ?? 0)} px ${kho.sticky ? 'sticky' : 'static'}, Auto-restock ${kho.suggestCover ? `covered by .${kho.suggestCover}` : 'reachable'}, Nhập hàng ${kho.buyCover ? `out of reach (${kho.buyCover})` : 'reachable'}, ${kho.rowsSeen}/${kho.rows} rows; scrolled to the list ${listKho.rowsSeen}/${listKho.rows} rows`);
     return out;
   } finally {
     await context.close();
@@ -803,7 +818,7 @@ async function menuBoard(browser, { base, cur }) {
       {
         frame: 1,
         boxes: cur.buttons,
-        label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ màu kem, ${count(cur)}, lúc menu hiện, ${cur.menuMs} ms`,
+        label: `${cur.icons.placeholder}/${cur.icons.visible} ô chờ, ${count(cur)}, lúc menu hiện, ${cur.menuMs} ms`,
       },
     ],
     pad: 24,
@@ -863,7 +878,7 @@ async function khoBoard(browser, out, { base, cur }) {
     avoid: avoidTexts(base, cur, cur.list),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng vẫn dính nhưng gọn (hai tổng một hàng, nút Nhập hàng 44 px), dưới 12rem mới cuộn sau danh sách; desktop và tablet giữ chân đầy đủ. Chân gọn ở kho-foot-390-p22.png.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED} (ván review:p22), HUD 4 hàng. Khung 1–2: bảng Kho vừa mở; khung 3: P22 cuộn dòng hàng đầu lên đỉnh thân bảng. Thân bảng ${px(b.body?.h)} px (v0.4.0) / ${px(a.body?.h)} px (P22).${b.suggestCover ? ` v0.4.0: chạm vào giữa nút Gợi ý trúng .${b.suggestCover} của chân bảng.` : ''} P22: thân dưới 30rem thì chân bảng gọn (hai tổng một hàng, nút Nhập hàng 44 px), vùng nội dung dưới 12rem thì chân cuộn sau danh sách; ở đây chân ${a.sticky ? 'vẫn dính' : 'cuộn sau danh sách'}. Desktop và tablet giữ chân đầy đủ. Chân bảng ở kho-foot-390-p22.png.`,
     ],
   });
 }
@@ -873,21 +888,33 @@ async function khoFootBoard(browser, { base, cur }) {
   const a = cur.kho;
   const px = (n) => Math.round(n ?? 0);
   const buy = (k) => (k.buyCover ? `ngoài tầm chạm (${k.buyCover})` : 'chạm được');
+  const e = cur.end.kho;
+  // A P22 foot that scrolls with the list is off screen on opening: ring the bottom of the body there, and the foot at the end of the body.
+  const bodyEnd = a.body ? { x: a.body.x, y: a.body.y + a.body.h - 60, w: a.body.w, h: 60 } : null;
+  const frames = a.sticky
+    ? [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở')]
+    : [before(base.png, 'Kho 390 · vừa mở'), after(cur.png, 'Kho 390 · vừa mở'), after(cur.end.png, 'Kho 390 · cuộn tới cuối')];
+  // Short labels, as on the Kho board: the gutter is KHO_GUTTER wide.
+  const marks = a.sticky
+    ? [
+        { frame: 1, boxes: [a.foot], label: `Chân gọn ${px(a.foot?.h)} px, vẫn dính` },
+        { frame: 1, boxes: [a.buy], label: `Nhập hàng ${px(a.buy?.h)} px, ${a.buyCover ? 'bị che' : 'chạm được'}` },
+      ]
+    : [
+        { frame: 1, boxes: [bodyEnd], label: 'Đáy thân: chưa thấy Nhập hàng' },
+        { frame: 2, boxes: [e.foot], label: `Chân gọn ${px(e.foot?.h)} px, cuộn sau` },
+        { frame: 2, boxes: [e.buy], label: `Nhập hàng ${px(e.buy?.h)} px` },
+      ];
   await board(browser, 'kho-foot-390-p22.png', {
-    frames: [before(base.png, 'Kho 390 · chân bảng'), after(cur.png, 'Kho 390 · chân bảng')],
-    // Short labels, as on the Kho board: the gutter is KHO_GUTTER wide.
-    marks: [
-      { frame: 0, boxes: [b.foot], label: `Chân ${b.sticky ? 'dính' : 'cuộn'} ${px(b.foot?.h)} px / thân ${px(b.body?.h)} px` },
-      { frame: 1, boxes: [a.foot], label: `Chân gọn ${px(a.foot?.h)} px, ${a.sticky ? 'vẫn dính' : 'cuộn'}` },
-      { frame: 1, boxes: [a.buy], label: `Nhập hàng ${px(a.buy?.h)} px, ${a.buyCover ? 'bị che' : 'chạm được'}` },
-    ],
+    frames,
+    marks: [{ frame: 0, boxes: [b.foot], label: `Chân ${b.sticky ? 'dính' : 'cuộn'} ${px(b.foot?.h)} px / thân ${px(b.body?.h)} px` }, ...marks],
     include: [b.panel, a.panel],
     pad: 16,
     maxScale: 1.5,
-    avoid: avoidTexts(base, cur),
+    avoid: avoidTexts(base, cur, ...(a.sticky ? [] : [cur.end])),
     gutter: KHO_GUTTER,
     notes: [
-      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED}, bảng Kho vừa mở. v0.4.0: chân ${px(b.foot?.h)} px, nút Nhập hàng ${px(b.buy?.h)} px ${buy(b)}. P22: thân dưới 30rem thì hai tổng chung một hàng, nút Nhập hàng còn cao 44 px, chân vẫn dính đáy nên Nhập hàng luôn thấy khi mở Kho.`,
+      `Khổ 390×844, sáng ngày ${SAVE_DAY} của ván Vừa, seed ${SEED}, bảng Kho vừa mở. v0.4.0: chân ${px(b.foot?.h)} px, nút Nhập hàng ${px(b.buy?.h)} px ${buy(b)}. P22: thân ${px(a.body?.h)} px, vùng nội dung (trừ padding) ${px(a.bodyContent)} px; dưới 30rem chân gọn (hai tổng một hàng, nút Nhập hàng 44 px), dưới 12rem (192 px) chân cuộn sau danh sách. ${a.sticky ? `Chân vẫn dính đáy, nút Nhập hàng ${buy(a)} khi mở Kho.` : `Chân cuộn sau danh sách: khi mở Kho nút Nhập hàng ${buy(a)}, phải cuộn tới cuối mới thấy.`}`,
     ],
   });
 }
