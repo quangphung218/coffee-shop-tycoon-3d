@@ -1923,6 +1923,34 @@ legend {
   align-items: center;
   gap: 0 var(--space-1);
 }
+.wk-next-label {
+  white-space: nowrap;
+}
+/* Narrow: the comparison table becomes a list, one row per figure with its
+   label, this week and the signed change; last week's column is dropped. */
+@media (max-width: 480px) {
+  .rpt-table-wrap.wk-compare-wrap {
+    overflow-x: visible;
+  }
+  .rpt-margins.wk-compare,
+  .rpt-margins.wk-compare tbody {
+    display: block;
+  }
+  .rpt-margins.wk-compare thead,
+  .rpt-margins.wk-compare .wk-prev {
+    display: none;
+  }
+  .rpt-margins.wk-compare tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0 var(--space-2);
+    padding: var(--space-1) 0;
+  }
+  .rpt-margins.wk-compare td {
+    padding: 0;
+  }
+}
 
 /* Focus (design/p17-states): one rule for every control. The border turns
    --focus-ring and a ring is drawn just INSIDE it, so nothing paints outside

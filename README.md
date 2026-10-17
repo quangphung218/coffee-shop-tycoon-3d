@@ -84,11 +84,11 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
    - băng "Lên cấp N" với danh sách mở khóa (ngày có lên cấp);
    - 4 ô số chính: Lãi/Lỗ, Doanh thu, Khách (phục vụ/đến), Sao; mỗi ô có Δ so hôm qua và Δ so trung bình các ngày trước trong tuần;
    - dòng Tuần N · ngày d/7 với doanh thu tuần so mục tiêu;
-   - Thu chi cạnh nhiệm vụ đạt/hụt kèm thưởng và KN, món bán chạy, món hết nguyên liệu;
-   - 2 gợi ý cho ngày mai.
+   - Thu chi cạnh nhiệm vụ đạt/hụt kèm thưởng và KN, một dòng 3 món bán chạy và món hết nguyên liệu;
+   - 1 gợi ý cho ngày mai (các gợi ý khác ở tab Chỉ số).
 
    Chỉ số xem food cost, lương, thời gian chờ… với nhãn Tốt/Cần chú ý; Đánh giá xem review. Game tự lưu trước khi báo cáo hiện; bấm **Ngày tiếp theo** để sang ngày mới.
-6. **Tổng kết tuần**: hết ngày 7 của tuần, nút chính của báo cáo thành **Xem tổng kết tuần**. Màn Tổng kết tuần N hiện điểm 0–100, 0–3 cúp và tiền thưởng, doanh thu và sao so mục tiêu, bảng so với tuần trước (từ tuần 2), cột doanh thu 7 ngày có đánh dấu ngày tốt nhất, mục tiêu tuần tới và cấp quán tiếp theo. **Sang tuần N+1** (nút chính) mở ngày đầu tuần mới ở pha chuẩn bị; **Chơi lại** mở ván mới cùng tên quán và độ khó; **Về menu** (hoặc `Esc`) về Main Menu.
+6. **Tổng kết tuần**: hết ngày 7 của tuần, nút chính của báo cáo thành **Xem tổng kết tuần**. Màn Tổng kết tuần N hiện điểm 0–100, 0–3 cúp và tiền thưởng, doanh thu và sao so mục tiêu, bảng so với tuần trước (từ tuần 2), cột doanh thu 7 ngày có đánh dấu ngày tốt nhất, mục tiêu tuần tới và cấp quán tiếp theo. **Sang tuần N+1** (nút chính) mở ngày đầu tuần mới ở pha chuẩn bị; **Chơi lại** (bấm 2 lần, lần đầu nút đổi thành "Bấm lần nữa để bỏ ván") mở ván mới cùng tên quán và độ khó; **Về menu** (hoặc `Esc`) về Main Menu.
 
 Bảng **Đánh giá** (nhóm riêng cuối dock) liệt kê các review gần nhất bất cứ lúc nào.
 

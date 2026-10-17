@@ -145,7 +145,7 @@ describe('Daily Report', () => {
     expect(el.textContent).toContain('mọi thứ ổn');
   });
 
-  it('keeps the summary to two tips', () => {
+  it('keeps the summary to one tip on one line, its full text in the title', () => {
     const r = report({
       suggestions: [
         { kind: 'restock', text: 'Nhập thêm nguyên liệu' },
@@ -154,8 +154,38 @@ describe('Daily Report', () => {
       ],
     });
     const { el } = mountReport(atReport(r));
-    const tips = [...el.querySelectorAll<HTMLElement>('[data-block="tips"] [data-kind]')].map((t) => t.dataset.kind);
-    expect(tips).toEqual(['restock', 'hire_server']);
+    const tips = [...el.querySelectorAll<HTMLElement>('[data-block="tips"] [data-kind]')];
+    expect(tips.map((t) => t.dataset.kind)).toEqual(['restock']);
+    expect(tips[0]!.title).toBe('Nhập thêm nguyên liệu');
+    expect(tips[0]!.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('names at most 3 best sellers and the stock-outs on one goods line', () => {
+    const r = report({
+      topSellers: [
+        { id: 'latte', qty: 20 },
+        { id: 'croissant', qty: 10 },
+        { id: 'mocha', qty: 8 },
+        { id: 'espresso', qty: 5 },
+      ],
+      outOfStock: ['mocha'],
+    });
+    const { el } = mountReport(atReport(r));
+    const goods = q(el, '#rpt-summary [data-block="goods"]');
+    expect([...goods.querySelectorAll<HTMLElement>('[data-block="top"] [data-item]')].map((li) => li.dataset.item)).toEqual(['latte', 'croissant', 'mocha']);
+    expect(q(goods, '[data-block="out"] [data-item="mocha"]')).toBeTruthy();
+    expect(q(goods, '.rpt-goods-out').classList.contains('is-warn')).toBe(true);
+    // One line of text, not two blocks.
+    expect(el.querySelectorAll('#rpt-summary [data-block="top"]')).toHaveLength(1);
+    expect(goods.tagName).toBe('P');
+  });
+
+  it('says so on the goods line when nothing sold or ran out', () => {
+    const { el } = mountReport(atReport(report({ topSellers: [], outOfStock: [] })));
+    const goods = text(el, '[data-block="goods"]');
+    expect(goods).toContain('Bán chạy: chưa có món nào');
+    expect(goods).toContain('Hết nguyên liệu: không');
+    expect(el.querySelector('[data-block="goods"] .is-warn')).toBeNull();
   });
 
   it('handles a day without customers: neutral result, no charts, no reviews', () => {
@@ -182,8 +212,8 @@ describe('Daily Report', () => {
     expect(el.querySelector('[data-block="top"]')).toBeNull();
     expect(el.querySelector('[data-block="out"]')).toBeNull();
     expect(el.querySelector('[data-block="recent"]')).toBeNull();
-    expect(el.textContent).toContain('Chưa bán được món nào');
-    expect(el.textContent).toContain('Không món nào hết nguyên liệu');
+    expect(el.textContent).toContain('Bán chạy: chưa có món nào');
+    expect(el.textContent).toContain('Hết nguyên liệu: không');
     expect(text(el, '[data-block="customers"] .rpt-fig-value')).toBe('0/0');
     expect(text(el, '[data-block="customers"] .rpt-fig-sub')).toBe('phục vụ/đến');
   });
@@ -503,6 +533,20 @@ describe('report.css', () => {
     expect(body).toMatch(/overflow-y:\s*auto/);
     expect(body).toMatch(/overflow-x:\s*hidden/);
     expect(src).toMatch(/\.rpt-foot\s*\{[^}]*flex:\s*none/);
+  });
+
+  it('fits the summary in one view: one-line tip, thin level band, a wider report card', async () => {
+    const src = await css();
+    const tip = src.match(/\.rpt-tip p\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(tip).toMatch(/white-space:\s*nowrap/);
+    expect(tip).toMatch(/text-overflow:\s*ellipsis/);
+    expect(src).toMatch(/\.rpt-tips\s*\{[^}]*display:\s*flex/);
+    expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-1\) var\(--space-2\)/);
+    expect(src).toMatch(/\.rpt-layer\[data-screen='report'\] \.rpt-dialog\s*\{[^}]*max-width:\s*calc\(var\(--size-dialog\)/);
+    expect(src).toMatch(/\.rpt-body\.is-summary\s*\{[^}]*gap:\s*var\(--space-2\)/);
+    // On a phone the tip wraps rather than hiding text behind an ellipsis.
+    const narrow = src.slice(src.indexOf('@media (max-width: 640px)'));
+    expect(narrow).toMatch(/\.rpt-tip p\s*\{[^}]*white-space:\s*normal/);
   });
 
   it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {

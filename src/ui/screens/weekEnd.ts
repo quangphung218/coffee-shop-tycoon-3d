@@ -36,6 +36,9 @@ export interface WeekEndScreen extends Screen {
 /** Cups a week can earn (weekCups in src/sim/week.ts). */
 const MAX_CUPS = 3;
 
+/** How long "Chơi lại" stays armed waiting for a second click, ms (as "Gỡ" in Nâng cấp). */
+export const REPLAY_CONFIRM_MS = 3000;
+
 function section(iconId: IconId, title: string, ...children: (HTMLElement | null)[]): HTMLElement {
   return h('section', { class: 'rpt-section' }, h('h4', { class: 'rpt-h4' }, icon(iconId), title), ...children);
 }
@@ -140,21 +143,25 @@ function compareDelta(id: StatId, delta: number): { dir: 'up' | 'down' | 'flat';
 
 const DELTA_ICON = { up: 'i-trend-up', down: 'i-trend-down', flat: 'i-equal' } as const satisfies Record<string, IconId>;
 
-/** Each figure of this week next to last week's, with the change (arrow shape, sign, then colour). */
+/**
+ * Each figure of this week next to last week's, with the change (arrow shape,
+ * sign, then colour). Below 480 px each row becomes label, this week and the
+ * change (ui.css), so nothing is cut or scrolls sideways.
+ */
 function compareBlock(c: WeekCompare): HTMLElement {
   return section(
     'i-chart',
     `So với tuần ${c.previous.index}`,
     h(
       'div',
-      { class: 'rpt-table-wrap' },
+      { class: 'rpt-table-wrap wk-compare-wrap' },
       h(
         'table',
         { class: 'rpt-margins wk-compare', attrs: { 'data-block': 'compare' } },
         h(
           'thead',
           {},
-          h('tr', {}, h('th', { text: 'Chỉ số' }), h('th', { class: 'is-num', text: `Tuần ${c.current.index}` }), h('th', { class: 'is-num', text: `Tuần ${c.previous.index}` }), h('th', { class: 'is-num', text: 'Thay đổi' })),
+          h('tr', {}, h('th', { text: 'Chỉ số' }), h('th', { class: 'is-num', text: `Tuần ${c.current.index}` }), h('th', { class: 'is-num wk-prev', text: `Tuần ${c.previous.index}` }), h('th', { class: 'is-num', text: 'Thay đổi' })),
         ),
         h(
           'tbody',
@@ -166,7 +173,7 @@ function compareBlock(c: WeekCompare): HTMLElement {
               { attrs: { 'data-stat': row.id } },
               h('td', { class: 'rpt-strong', text: COMPARE_LABELS[row.id] }),
               h('td', { class: 'is-num', text: compareValue(row.id, row.value) }),
-              h('td', { class: 'is-num rpt-muted', text: compareValue(row.id, row.previous) }),
+              h('td', { class: 'is-num rpt-muted wk-prev', text: compareValue(row.id, row.previous) }),
               h(
                 'td',
                 { class: 'is-num' },
@@ -239,8 +246,9 @@ function nextLevelLine(state: GameState): HTMLElement {
     'p',
     { attrs: { 'data-next': 'level' } },
     icon('i-level', { size: 16 }),
-    h('b', { text: `Cấp ${level + 1} · ${def.name}` }),
-    `: ${opens}. Còn ${xpLeft.toLocaleString('vi-VN')} KN.`,
+    // The label and its colon never break apart.
+    h('span', { class: 'wk-next-label' }, h('b', { text: `Cấp ${level + 1} · ${def.name}` }), ':'),
+    ` ${opens}. Còn ${xpLeft.toLocaleString('vi-VN')} KN.`,
   );
 }
 
@@ -271,8 +279,8 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
  * Week summary after the last week day: score, cups and cup reward, revenue
  * and stars against the goal, the figures against the week before (from week
  * 2), revenue per day with the best day marked, and next week's goal and shop
- * level. "Sang tuần N+1" (focused) starts the next week; "Chơi lại" and
- * "Về menu" (also Esc) leave. A failed autosave adds one light line with
+ * level. "Sang tuần N+1" (focused) starts the next week; "Chơi lại" (two
+ * clicks) and "Về menu" (also Esc) leave. A failed autosave adds one light line with
  * "Thử lại" above the buttons.
  */
 export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
@@ -286,7 +294,26 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
   let retried = false;
   const nextLabel = h('span', { text: 'Sang tuần mới' });
   const next = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-week' }, on: { click: () => actions.onNextWeek() } }, icon('i-next-day'), nextLabel);
-  const replay = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'replay' }, on: { click: () => actions.onReplay() } }, icon('i-retry'), 'Chơi lại');
+  // "Chơi lại" drops the running game: the first click arms it for REPLAY_CONFIRM_MS, the second replays.
+  const replayLabel = h('span', { text: 'Chơi lại' });
+  const replay = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'replay' } }, icon('i-retry'), replayLabel);
+  let replayTimer: ReturnType<typeof setTimeout> | null = null;
+  const disarmReplay = (): void => {
+    if (replayTimer !== null) clearTimeout(replayTimer);
+    replayTimer = null;
+    replay.removeAttribute('data-armed');
+    replayLabel.textContent = 'Chơi lại';
+  };
+  replay.addEventListener('click', () => {
+    if (replayTimer === null) {
+      replay.setAttribute('data-armed', '');
+      replayLabel.textContent = 'Bấm lần nữa để bỏ ván';
+      replayTimer = setTimeout(disarmReplay, REPLAY_CONFIRM_MS);
+      return;
+    }
+    disarmReplay();
+    actions.onReplay();
+  });
   const menu = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'menu' }, on: { click: () => actions.onMenu() } }, icon('i-home'), 'Về menu');
   const dialog = h(
     'div',
@@ -348,6 +375,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
   return {
     el,
     onShow: () => {
+      disarmReplay();
       const state = actions.getState();
       const result = state?.week?.result;
       const index = state ? weekIndex(state) : 1;

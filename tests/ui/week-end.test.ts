@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
@@ -9,6 +9,7 @@ import type { GameState } from '../../src/sim/types';
 import { rollWeekPlan, scoreWeek, summarizeWeek } from '../../src/sim/week';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
+import { REPLAY_CONFIRM_MS } from '../../src/ui/screens/weekEnd';
 
 let shell: Shell | null = null;
 
@@ -265,6 +266,18 @@ describe('week summary', () => {
     expect(served.textContent).toContain('420');
     expect(served.textContent).toContain('+109');
 
+    // Every figure has a signed, toned change; last week's cell can drop out when narrow.
+    const rows = [...compare.querySelectorAll<HTMLTableRowElement>('tbody tr')];
+    expect(rows.map((tr) => tr.dataset.stat)).toEqual(['profit', 'revenue', 'customersServed', 'abandonRate', 'stars']);
+    for (const tr of rows) {
+      const d = tr.querySelector<HTMLElement>('.wk-delta');
+      expect(d, tr.dataset.stat).not.toBeNull();
+      expect(d!.className).toMatch(/is-(up|down|flat)/);
+      expect(d!.textContent).toMatch(/^([+−]|0$)/);
+      expect(tr.querySelectorAll('td.wk-prev')).toHaveLength(1);
+      expect(tr.cells).toHaveLength(4);
+    }
+
     // Day 10 (week day 3) sold the most.
     const best = block(el, 'days').querySelector<HTMLElement>('[data-best]');
     expect(best?.dataset.day).toBe('3');
@@ -281,9 +294,12 @@ describe('week summary', () => {
     expect(next.closest('section')?.textContent).toContain('Tuần 2');
     expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('34.500.000đ');
     expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('4,2 sao');
-    const level = next.querySelector('[data-next="level"]')?.textContent ?? '';
-    expect(level).toContain('Cấp 2 · Quán quen');
+    const levelEl = next.querySelector<HTMLElement>('[data-next="level"]')!;
+    const level = levelEl.textContent ?? '';
+    expect(level).toContain('Cấp 2 · Quán quen: mở');
     expect(level).toContain('Cappuccino');
+    // The colon stays with its label.
+    expect(levelEl.querySelector('.wk-next-label')?.textContent).toBe('Cấp 2 · Quán quen:');
   });
 
   it('lights all 3 cups when both goals are beaten', () => {
@@ -398,7 +414,14 @@ describe('week summary', () => {
     const old = atReport(WEEK_LENGTH);
     shell.startGame(old);
     mainButton(shell).click();
-    action(weekEndEl(root), 'replay').click();
+    const replay = action(weekEndEl(root), 'replay');
+    replay.click();
+    // The first click only arms it, in place.
+    expect(shell.state).toBe(old);
+    expect(shell.screen).toBe('weekEnd');
+    expect(replay.textContent).toBe('Bấm lần nữa để bỏ ván');
+    expect(replay.hasAttribute('data-armed')).toBe(true);
+    replay.click();
 
     const next = shell.state!;
     expect(next).not.toBe(old);
@@ -409,6 +432,25 @@ describe('week summary', () => {
     expect(next.week?.result).toBeUndefined();
     expect(shell.screen).toBeNull();
     expect(finished).toEqual([old]);
+  });
+
+  it('"Chơi lại" disarms by itself after a few seconds, keeping the game', () => {
+    vi.useFakeTimers();
+    try {
+      const { root, shell, state } = openWeekEnd();
+      const replay = action(weekEndEl(root), 'replay');
+      replay.click();
+      expect(replay.textContent).toBe('Bấm lần nữa để bỏ ván');
+      vi.advanceTimersByTime(REPLAY_CONFIRM_MS);
+      expect(replay.textContent).toBe('Chơi lại');
+      expect(replay.hasAttribute('data-armed')).toBe(false);
+      // A single click after the reset arms it again rather than replaying.
+      replay.click();
+      expect(shell.state).toBe(state);
+      expect(shell.screen).toBe('weekEnd');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('"Về menu" goes back to the main menu', () => {
