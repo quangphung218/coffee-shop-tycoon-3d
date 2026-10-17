@@ -4,9 +4,18 @@ import { getMenuItem } from '../../sim/data/menu';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { stockOutlook } from '../../sim/inventory';
 import { weekIndex } from '../../sim/progression';
-import type { GameEvent, GameState, Unlocks } from '../../sim/types';
+import type { GameEvent, GameState, SpendKind, Unlocks } from '../../sim/types';
 import { INGREDIENT_ICONS, LEVEL_ICON } from '../core/iconMap';
+import type { IconId } from '../core/icons';
 import type { ToastInput } from '../core/toast';
+
+/** Verb and icon of a spend toast; the icons are the dock tabs of each kind. */
+const SPEND_TOASTS: Readonly<Record<SpendKind, { title: string; icon: IconId }>> = {
+  restock: { title: 'Đã nhập', icon: 'i-inventory' },
+  upgrade: { title: 'Đã mua', icon: 'i-upgrades' },
+  hire: { title: 'Đã thuê', icon: 'i-people' },
+  campaign: { title: 'Đã chạy', icon: 'i-marketing' },
+};
 
 /** "2 món, 1 nâng cấp, 1 dụng cụ" — the non-empty unlock counts of a level-up. */
 function unlockSummary(u: Unlocks): string {
@@ -69,6 +78,16 @@ export function toastForEvent(event: GameEvent, state: GameState): ToastInput | 
         title: level === 'out' ? `Hết ${def.name}` : `Sắp hết ${def.name}`,
         text: `Còn ${qty} ${def.unit}. Nhập thêm trước khi món bị khóa.`,
         key: `low:${event.ingredientId}`,
+      };
+    }
+    case 'spend': {
+      const { title, icon } = SPEND_TOASTS[event.kind];
+      return {
+        level: 'success',
+        icon,
+        title,
+        key: `spend:${event.kind}`,
+        merge: { verb: title, label: event.label, amount: event.amount, moneyLeft: event.moneyLeft },
       };
     }
     default:
