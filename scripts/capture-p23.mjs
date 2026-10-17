@@ -545,7 +545,7 @@ async function reportBoard(browser, name, viewport, { base, cur }) {
     include: [...b.dialog, ...a.dialog],
     avoid: avoidTexts(base, cur),
     notes: [
-      `Khổ ${viewport.width}×${viewport.height}, báo cáo ngày ${REPORT_DAY} vừa mở và cuộn về đầu, cửa sổ không nới thêm. P22: ô kết quả và ${Math.max(0, b.frames.length - 1)} khung mục, phải ${fold(base.overflow)}. P23: một hàng 4 ô (lãi/lỗ, doanh thu, khách, sao) mỗi ô kèm Δ so hôm qua và so trung bình tuần, một dòng tiến độ tuần, Thu chi bên cạnh nhiệm vụ, bán chạy và hết nguyên liệu; đánh giá chuyển sang tab Đánh giá. Mỗi bản dùng save do sim của chính nó chơi nên số có thể lệch nhau.`,
+      `Khổ ${viewport.width}×${viewport.height}, báo cáo ngày ${REPORT_DAY} vừa mở và cuộn về đầu, cửa sổ không nới thêm. P22: ô kết quả và ${Math.max(0, b.frames.length - 1)} khung mục, phải ${fold(base.overflow)}. P23: 4 ô số chính (lãi/lỗ, doanh thu, khách, sao) mỗi ô kèm Δ so hôm qua và so trung bình tuần, một dòng tiến độ tuần, Thu chi bên cạnh nhiệm vụ, bán chạy và hết nguyên liệu; đánh giá chuyển sang tab Đánh giá. Mỗi bản dùng save do sim của chính nó chơi nên số có thể lệch nhau.`,
     ],
   });
 }
