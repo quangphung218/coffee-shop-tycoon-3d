@@ -4,7 +4,8 @@
 //
 // For each viewport: a new game, the six dock panels in order, a whole day at
 // 4x, then the Daily Report and its Đánh giá tab. On every screen the scroll
-// boxes must not scroll sideways (scrollWidth <= clientWidth) and no element
+// boxes must not scroll sideways (scrollWidth <= clientWidth; a line cut with
+// text-overflow: ellipsis and its full text in a title is allowed) and no element
 // may stick out of the left or right edge of the panel or report card. In the
 // Kho panel a layout-shift observer runs while the stepper, Auto-restock and
 // an over-budget pack count change the order: CLS (shifts without recent
@@ -107,11 +108,21 @@ function measure({ frame, scrollers, eps }) {
   const left = box.left + root.clientLeft;
   const right = left + root.clientWidth;
   const wide = [];
+  const ellipsized = [];
   const seen = new Set();
+  // A line cut with text-overflow: ellipsis whose full text is in a title on
+  // it or an ancestor (the level-up unlock chips) is not an overflow.
+  const ellipsis = (el) => {
+    if (getComputedStyle(el).textOverflow !== 'ellipsis') return false;
+    const text = (el.textContent ?? '').trim();
+    return text !== '' && el.closest('[title]')?.getAttribute('title') === text;
+  };
   const checkScroll = (el) => {
     if (seen.has(el)) return;
     seen.add(el);
-    if (el.scrollWidth > el.clientWidth) wide.push(`${describe(el)} scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+    if (el.scrollWidth <= el.clientWidth) return;
+    if (ellipsis(el)) ellipsized.push(describe(el));
+    else wide.push(`${describe(el)} scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
   };
   const doc = document.documentElement;
   if (doc.scrollWidth > doc.clientWidth) wide.push(`html scrollWidth ${doc.scrollWidth} > clientWidth ${doc.clientWidth}`);
@@ -140,7 +151,7 @@ function measure({ frame, scrollers, eps }) {
       outside.push(`${describe(el)} ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside ${left.toFixed(1)}..${right.toFixed(1)}`);
     }
   }
-  return { wide, outside, checked, scrollChecked };
+  return { wide, outside, ellipsized, checked, scrollChecked };
 }
 
 /** One overflow row per screen. */
@@ -152,7 +163,7 @@ async function checkScreen(page, results, viewport, screen, opts) {
     viewport,
     screen,
     pass: fails.length === 0,
-    detail: m.error ?? `${m.scrollChecked} scroll box, ${m.checked} phần tử; ${m.wide.length} tràn scroll, ${m.outside.length} lệch khung`,
+    detail: m.error ?? `${m.scrollChecked} scroll box, ${m.checked} phần tử; ${m.wide.length} tràn scroll, ${m.outside.length} lệch khung${m.ellipsized.length ? `; ${m.ellipsized.length} chữ "…" có title đủ tên` : ''}`,
     fails,
   });
 }

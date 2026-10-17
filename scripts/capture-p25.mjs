@@ -761,6 +761,8 @@ async function upgradesBoard(browser, name, width, { base, cur, levels }) {
 /** Height of each icon + 3D pair on the tier board, px, and the gap between the two. */
 const PAIR_H = 200;
 const PAIR_GAP = 12;
+/** Body colour of the espresso icon and 3D machine per tier (MACHINE_TIER_COLORS, MACHINE_TIERS). */
+const PAIR_LOOK = { 1: 'icon xanh trời, máy đỏ: chưa cùng màu', 2: 'cùng thân xanh bạc hà', 3: 'cùng thân vàng' };
 
 /**
  * The tier icon of Máy espresso cao cấp next to the 3D machine of the same
@@ -798,12 +800,12 @@ async function tierPairBoard(browser, name, width, { base, cur, baseLayouts, cur
   return board(browser, name, {
     frames: [before(pairs[0].png, 'Icon và máy, cấp bậc 3'), ...TIERS.map((t, i) => after(pairs[i + 1].png, `Icon và máy, bậc ${t}`))],
     marks: [
-      { frame: 0, boxes: pairs[0].boxes, label: `Cấp ${lv(3)}: icon và máy như cấp 1` },
-      ...TIERS.map((t, i) => ({ frame: i + 1, boxes: pairs[i + 1].boxes, label: `Bậc ${t}: icon và máy cùng bậc` })),
+      { frame: 0, boxes: pairs[0].boxes, label: `Cấp ${lv(3)}: icon như cấp 1, máy đã vàng` },
+      ...TIERS.map((t, i) => ({ frame: i + 1, boxes: pairs[i + 1].boxes, label: `Bậc ${t}: ${PAIR_LOOK[t]}` })),
     ],
     gutter: 0,
     notes: [
-      `Khổ ${width} px. Mỗi khung ghép icon Máy espresso cao cấp trong bảng Nâng cấp (trái) với máy espresso trong cảnh 3D của cùng save (phải), camera mặc định. Cấp ${TIERS.map(lv).join(' / ')} → bậc ${TIERS.join(' / ')}. P24 một icon và một hình cho mọi cấp; P25 icon bậc và hình 3D đổi cùng nhau: bậc 2 thêm chi tiết và đế thép, bậc 3 đế vàng và sao vàng.`,
+      `Khổ ${width} px. Mỗi khung ghép icon Máy espresso cao cấp trong bảng Nâng cấp (trái) với máy espresso trong cảnh 3D của cùng save (phải), camera mặc định. Cấp ${TIERS.map(lv).join(' / ')} → bậc ${TIERS.join(' / ')}. P24 một icon cho mọi cấp, máy 3D đổi màu theo cấp; P25 icon bậc và hình 3D đổi cùng nhau: bậc 1 icon xanh trời của atlas chính, máy thân đỏ; bậc 2 thân xanh bạc hà, nắp vàng và đế thép; bậc 3 thân vàng, nắp nâu đậm, đế vàng và sao vàng.`,
     ],
   });
 }

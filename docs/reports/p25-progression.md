@@ -15,7 +15,7 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 - Menu: mỗi món một dòng thấp (P24: 150 px, món thiếu hàng 236 px ở 390 px); công tắc nhỏ trên dòng, "Thiếu Cam" là nút mở Kho. Tên món và dòng giá xuống dòng thay vì bị cắt.
 - Lên cấp: thẻ có huy hiệu cấp bật lên, chip icon các mục mở khoá và confetti 1,4 s không chặn bấm.
 - Nâng cấp: máy pha, máy xay, tủ bánh, quầy, bàn ghế, cây, tranh, đèn đổi hình theo 3 bậc; vừa mua thì máy nảy và rắc sao; mỗi bậc có icon riêng và dòng "Bậc n/3".
-- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt; Main Menu di động 1230 ms so với base 1227 ms (+0,2%), JS chính +2,0 kB gzip (sát ngưỡng 2 kB); `perf:frames` thường và `--fx` 0 long task, confetti chạy ở mọi lượt lên cấp ([mục 4](#4-kết-quả-kiểm)).
+- Kiểm: `npm run check` đạt; `npm run layout` đạt 68/68; `npm run media:p25` đạt; Main Menu di động 1287 ms so với base 1267 ms (+1,6%); JS chính +2,1 kB gzip, vượt ngưỡng 2 kB; `perf:frames` thường và `--fx` 0 long task, confetti chạy ở mọi lượt lên cấp ([mục 4](#4-kết-quả-kiểm)).
 
 ## 2. Ý đã làm và để sau
 
@@ -40,6 +40,8 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 
 Khung trái là P24 `5d33195` (nét đứt cam), các khung phải là P25 (nét liền xanh). Nhãn ghi chỗ đã sửa; số đọc từ trang lúc chụp. Mỗi bản dùng save do sim của chính nó chơi (ván Vừa, seed `1760400000000 >>> 0`); save bậc là ván mới ở cấp quán 10 mua tới bậc 1, 2, 3.
 
+Icon bậc 2–3 của máy espresso và máy 2 group lấy màu thân của máy 3D cùng bậc: bậc 2 thân xanh bạc hà, nắp vàng; bậc 3 thân vàng, nắp nâu đậm (ảnh "Icon bậc cạnh máy 3D cùng bậc"). Bậc 1 giữ icon xanh trời của atlas chính, còn máy 3D cấp 1 thân đỏ, nắp trắng: hai bên chưa cùng màu.
+
 | Cảnh | 390×844 | 1280×800 |
 | --- | --- | --- |
 | Menu, bấm công tắc Nước cam khi thiếu Cam | ![Menu 390](p25-review/menu-390-p25.jpg) | ![Menu 1280](p25-review/menu-1280-p25.jpg) |
@@ -58,8 +60,8 @@ Hiệu ứng vừa mua, phần điểm ảnh trong khung máy khác khung lúc y
 
 | Khổ | P24, 0,2 s | P25, 0 s | P25, 0,2 s | P25, 0,5 s |
 | --- | --- | --- | --- | --- |
-| 390 | 0,0% | 0,0% | 24,9% | 0,0% |
-| 1280 | 0,0% | 0,0% | 7,7% | 0,0% |
+| 390 | 0,0% | 0,0% | 5,2% | 0,0% |
+| 1280 | 0,0% | 0,0% | 24,4% | 0,0% |
 
 Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 0,5 s chỉ còn vài sao nhỏ, dưới ngưỡng đo.
 
@@ -67,16 +69,16 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| `npm run check` | tsc, test, build xanh | PASS: 90 file, 1273 test |
-| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, mọi nút ≥ 44 px, tên món và dòng giá Menu không bị cắt (`scrollWidth ≤ clientWidth`, không "…"), báo cáo có thẻ lên cấp vừa 1280×720 | PASS: lệnh thoát mã 0 ở 390/768/1280/1440 |
+| `npm run check` | tsc, test, build xanh | PASS: 90 file, 1280 test |
+| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, mọi nút ≥ 44 px, tên món và dòng giá Menu không bị cắt (`scrollWidth ≤ clientWidth`, không "…"; chữ "…" ngoài Menu phải có `title` đủ tên), báo cáo có thẻ lên cấp vừa 1280×720 | PASS 68/68 ở 390/768/1280/1440, lệnh thoát mã 0. Chip "Máy espresso 2 group" trên thẻ lên cấp cắt "…" trong 14ch, đủ tên trong `title`; dòng cắt như vậy không tính là tràn |
 | Cao một dòng Menu ở 390 px | ≤ 72 px khi không nhãn, ≤ 96 px khi có nhãn ("Thiếu …", "Mở …", "Mới"): đủ chỗ cho tên và "Giá … · lãi …%" xuống dòng mà vẫn đọc trọn | PASS: 56 px không nhãn, 89 px "Thiếu Cam" (P24: 150 / 236 px); 6/11 món thấy trọn (P24: 3) |
-| Main Menu di động so với `5d33195` | ≤ base + 5% | PASS: 1230 ms so với 1227 ms (+0,2%) |
-| JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | PASS, sát ngưỡng: 73,7 → 75,7 kB (+2,0 kB) |
+| Main Menu di động so với `5d33195` | ≤ base + 5% | PASS: 1287 ms so với 1267 ms (+1,6%) |
+| JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | FAIL: 73,7 → 75,8 kB (+2,1 kB); 0,1 kB tăng so với lần đo trước đến từ `icons.ts` (đổi atlas `tiers` sang @2x khi bật HD), `menu.ts`, `widgets.ts`, `report.ts` |
 | Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | PASS: không file nào ở cả hai hồ sơ (`perf:frames`, cột cuối) |
 | `npm run perf:frames` | 0 long task | PASS: 0 ở máy bàn và di động |
 | `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | PASS: 0 long task ở mọi hiệu ứng và hồ sơ; 6/6 lượt level-up tải chunk confetti và có canvas; tỉ lệ khung > 50 ms 48–70% so với 63% chế độ thường |
 | 60 FPS máy bàn khi có hiệu ứng (`--fx --headed`) | p95 ≤ 16,7 ms | Chưa đạt, cần đo trên máy thật: p95 18 ms, trên 16,7 ms; headless khoá nhịp khung nên chưa kết luận được 60 FPS |
-| `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | PASS: 21 bảng, thoát mã 0; `tier-pair` ghép icon và máy espresso cùng save ở mỗi bậc |
+| `npm run media:p25` | Không `!!`, nhãn chỉ đúng chỗ sửa; icon bậc đặt cạnh hình 3D cùng bậc | PASS: 21 bảng, thoát mã 0, không `!!`; `tier-pair` cho thấy icon máy espresso cùng màu thân với máy 3D ở bậc 2 và 3, bậc 1 lệch (icon xanh trời, máy đỏ). Bảng chưa có máy 2 group vì save bậc không mua `fast_machine` |
 
 ### Số đo
 
@@ -84,14 +86,14 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 
 | Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
 | --- | --- | --- | --- | --- |
-| Máy bàn | `5d33195` | 96 ms | 68 ms | 302 ms |
-| Máy bàn | P25 | 56 ms | 44 ms | 282 ms |
-| Di động, CPU 4x | `5d33195` | 404 ms | 1227 ms | 3346 ms |
-| Di động, CPU 4x | P25 | 524 ms | 1230 ms | 3403 ms |
+| Máy bàn | `5d33195` | 132 ms | 167 ms | 306 ms |
+| Máy bàn | P25 | 72 ms | 73 ms | 264 ms |
+| Di động, CPU 4x | `5d33195` | 440 ms | 1267 ms | 3320 ms |
+| Di động, CPU 4x | P25 | 476 ms | 1287 ms | 3437 ms |
 
 | Chunk | `5d33195` gzip | P25 gzip |
 | --- | --- | --- |
-| JS chính `index-*.js` | 73,7 kB | 75,7 kB |
+| JS chính `index-*.js` | 73,7 kB | 75,8 kB |
 | CSS `index-*.css` | 13,0 kB | 13,6 kB |
 | `src/render` `index-*.js` | 32,8 kB | 36,3 kB |
 | `confetti-*.js` | – | 1,2 kB, chỉ khi báo cáo có lên cấp |
@@ -111,4 +113,4 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | `--fx` level-up, headed | Máy bàn | 3 s từ Tiếp tục | 17 / 18 / 33 ms | 0 | 0 |
 
 - p95 máy bàn: 18 ms trong cửa sổ thật (headed), lúc thường cũng như lúc có hiệu ứng.
-- Main Menu di động trên 1,1 s là nợ có từ trước: base `5d33195` đo cùng lượt cũng 1227 ms. Tối ưu Main Menu là một dự án riêng.
+- Main Menu di động trên 1,1 s là nợ có từ trước: base `5d33195` đo cùng lượt cũng 1267 ms. Tối ưu Main Menu là một dự án riêng.
