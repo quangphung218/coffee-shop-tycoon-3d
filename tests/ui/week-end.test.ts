@@ -2,11 +2,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
-import { WEEK_LENGTH } from '../../src/sim/data/week';
+import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
 import { buildDailyReport } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
-import { scoreWeek } from '../../src/sim/week';
+import { rollWeekPlan, scoreWeek, summarizeWeek } from '../../src/sim/week';
+import { toastForEvent } from '../../src/ui/hud/events';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 
 let shell: Shell | null = null;
@@ -22,6 +23,13 @@ function boot(onReplay?: (finished: GameState) => void, storage: StorageLike = c
   document.body.append(root);
   shell = createShell({ root, storage, settings: { ...DEFAULT_SETTINGS }, seed: () => 99, onReplay });
   return { root, shell };
+}
+
+/** Scores the week like closeDay does on its last day: result plus one archive row. */
+function scoreLastDay(state: GameState): void {
+  const result = scoreWeek(state)!;
+  state.week!.result = result;
+  (state.week!.archive ??= []).push(summarizeWeek(state, result)!);
 }
 
 /**
@@ -42,7 +50,30 @@ function atReport(day: number, { pastRevenue = 3_000_000, todayRevenue = 2_000_0
   state.today.customersServed = 50;
   state.rating = rating;
   state.phase = 'report';
-  if (day === WEEK_LENGTH) state.week!.result = scoreWeek(state)!;
+  if (day === WEEK_LENGTH) scoreLastDay(state);
+  return state;
+}
+
+/**
+ * Week 1 as atReport(7), then week 2 (days 8–14) played to its scored report:
+ * 4.000.000đ and 60 customers a day, 5.000.000đ on day 10, 3.000.000đ today.
+ */
+function atWeek2Report(): GameState {
+  const state = atReport(WEEK_LENGTH);
+  const archive = state.week!.archive;
+  state.history.push(state.today);
+  state.week = { length: 7, index: 2, startedDay: 8, plan: rollWeekPlan(state.seed, 2), goal: weekGoal('hard', 2), archive };
+  for (let d = 8; d < 14; d++) {
+    const stats = createDayStats(d, 4);
+    stats.revenue = d === 10 ? 5_000_000 : 4_000_000;
+    stats.customersServed = 60;
+    state.history.push(stats);
+  }
+  state.day = 14;
+  state.today = createDayStats(14, 4);
+  state.today.revenue = 3_000_000;
+  state.today.customersServed = 60;
+  scoreLastDay(state);
   return state;
 }
 
@@ -62,7 +93,13 @@ function block(root: ParentNode, name: string): HTMLElement {
   return el;
 }
 
-/** Report of day 7 → "Xem kết tuần". */
+function action(root: ParentNode, name: string): HTMLButtonElement {
+  const el = root.querySelector<HTMLButtonElement>(`[data-action="${name}"]`);
+  if (!el) throw new Error(`missing action ${name}`);
+  return el;
+}
+
+/** Report of the last week day → "Xem tổng kết tuần". */
 function openWeekEnd(state: GameState = atReport(WEEK_LENGTH)): { root: HTMLElement; shell: Shell; state: GameState } {
   const { root, shell } = boot();
   shell.startGame(state);
@@ -86,12 +123,12 @@ function flakyStorage(): StorageLike & { fail: boolean } {
 }
 
 describe('Daily Report main button', () => {
-  it('reads "Xem kết tuần" once the week is scored, and opens the week-end screen', () => {
+  it('reads "Xem tổng kết tuần" once the week is scored, and opens the week summary', () => {
     const { root, shell } = boot();
     shell.startGame(atReport(WEEK_LENGTH));
     expect(shell.report.visible).toBe(true);
     const btn = mainButton(shell);
-    expect(btn.textContent).toBe('Xem kết tuần');
+    expect(btn.textContent).toBe('Xem tổng kết tuần');
     expect(btn.dataset.action).toBe('week-end');
     expect(btn.querySelector('[data-icon="i-trophy"]')).not.toBeNull();
 
@@ -99,7 +136,7 @@ describe('Daily Report main button', () => {
     expect(shell.screen).toBe('weekEnd');
     expect(shell.report.visible).toBe(false);
     expect(weekEndEl(root).hidden).toBe(false);
-    // The week is over: the day did not move on.
+    // Opening the summary does not move the day on.
     expect(shell.state?.day).toBe(WEEK_LENGTH);
   });
 
@@ -136,7 +173,7 @@ describe('Daily Report of the last week day', () => {
     expect(el.textContent).toContain('Gợi ý cho tuần sau');
   });
 
-  it('drops the insight links that would open a panel, keeping "Xem kết tuần"', () => {
+  it('drops the insight links that would open a panel, keeping "Xem tổng kết tuần"', () => {
     const { shell } = boot();
     shell.startGame(withReport(WEEK_LENGTH));
     const el = shell.report.el;
@@ -154,12 +191,13 @@ describe('Daily Report of the last week day', () => {
   });
 });
 
-describe('week-end screen', () => {
-  it('shows revenue and stars against the goal, the score and the cups, one row per day', () => {
+describe('week summary', () => {
+  it('shows revenue and stars against the goal, the score and the cups', () => {
     const { root, state } = openWeekEnd();
     const r = state.week!.result!;
     const el = weekEndEl(root);
-    expect(el.querySelector('h3')?.textContent).toBe('Kết thúc tuần');
+    expect(el.querySelector('h3')?.textContent).toBe('Tổng kết tuần 1');
+    expect(el.querySelector('.rpt-sub')?.textContent).toContain('Ngày 1–7');
 
     // 6 × 3.000.000 + 2.000.000 against the hard goal.
     expect(r.revenue).toBe(20_000_000);
@@ -181,23 +219,71 @@ describe('week-end screen', () => {
     expect(cups.children).toHaveLength(3);
     expect(cups.querySelectorAll('.is-off')).toHaveLength(3 - r.cups);
     expect(cups.getAttribute('aria-label')).toBe(`${r.cups}/3 cúp`);
-
-    const rows = block(el, 'days').querySelectorAll('tbody tr');
-    expect(rows).toHaveLength(WEEK_LENGTH);
-    expect(rows[0]!.textContent).toContain('Khai trương');
-    expect(rows[0]!.textContent).toContain('3.000.000đ');
-    expect(rows[WEEK_LENGTH - 1]!.textContent).toContain('2.000.000đ');
   });
 
-  it('marks the stars goal reached when the shown rating equals the target', () => {
-    // Hard goal 4,2: a rating of 4.16 shows as 4,2.
-    const { root, state } = openWeekEnd(atReport(WEEK_LENGTH, { rating: 4.16 }));
-    expect(state.week!.result!.stars).toBe(4.2);
-    const stars = block(weekEndEl(root), 'stars');
-    expect(stars.textContent).toContain('4,2');
-    expect(stars.textContent).toContain('mục tiêu 4,2 sao');
-    expect(stars.textContent).toContain('Đạt mục tiêu');
-    expect(stars.textContent).not.toContain('Chưa đạt');
+  it('draws one column per day sized by revenue, the best day marked', () => {
+    const { root } = openWeekEnd();
+    const cols = block(weekEndEl(root), 'days').querySelectorAll<HTMLElement>('li');
+    expect(cols).toHaveLength(WEEK_LENGTH);
+    // Days 1–6 tie at 3.000.000đ: the earliest is the best.
+    const best = [...cols].filter((c) => c.hasAttribute('data-best'));
+    expect(best.map((c) => c.dataset.day)).toEqual(['1']);
+    expect(best[0]!.classList.contains('is-best')).toBe(true);
+    expect(cols[0]!.getAttribute('aria-label')).toContain('Khai trương');
+    expect(cols[0]!.getAttribute('aria-label')).toContain('3.000.000đ');
+    expect(cols[0]!.getAttribute('aria-label')).toContain('ngày tốt nhất');
+    expect(cols[0]!.querySelector<HTMLElement>('.wk-bar')!.style.height).toBe('100%');
+    expect(cols[WEEK_LENGTH - 1]!.querySelector<HTMLElement>('.wk-bar')!.style.height).toBe('67%');
+    expect(cols[WEEK_LENGTH - 1]!.textContent).toContain('2,0tr');
+  });
+
+  it('has no comparison in week 1', () => {
+    const { root } = openWeekEnd();
+    const el = weekEndEl(root);
+    expect(el.querySelector('[data-block="compare"]')).toBeNull();
+    expect(el.textContent).not.toContain('So với tuần');
+  });
+
+  it('compares week 2 with week 1', () => {
+    const { root, state } = openWeekEnd(atWeek2Report());
+    const el = weekEndEl(root);
+    expect(el.querySelector('h3')?.textContent).toBe('Tổng kết tuần 2');
+    expect(el.querySelector('.rpt-sub')?.textContent).toContain('Ngày 8–14');
+    expect(state.week!.result!.revenue).toBe(28_000_000);
+
+    const compare = block(el, 'compare');
+    expect(compare.closest('section')?.textContent).toContain('So với tuần 1');
+    const head = [...compare.querySelectorAll('th')].map((th) => th.textContent);
+    expect(head).toEqual(['Chỉ số', 'Tuần 2', 'Tuần 1', 'Thay đổi']);
+    const revenue = compare.querySelector<HTMLElement>('tr[data-stat="revenue"]')!;
+    expect(revenue.textContent).toContain('28.000.000đ');
+    expect(revenue.textContent).toContain('20.000.000đ');
+    expect(revenue.textContent).toContain('+8.000.000đ');
+    expect(revenue.querySelector('[data-delta]')?.getAttribute('data-delta')).toBe('up');
+    const served = compare.querySelector<HTMLElement>('tr[data-stat="customersServed"]')!;
+    // 7 × 60 against 41 + … + 46 + 50.
+    expect(served.textContent).toContain('420');
+    expect(served.textContent).toContain('+109');
+
+    // Day 10 (week day 3) sold the most.
+    const best = block(el, 'days').querySelector<HTMLElement>('[data-best]');
+    expect(best?.dataset.day).toBe('3');
+    expect(best?.textContent).toContain('5,0tr');
+  });
+
+  it('shows the cup reward and next week\'s goal and shop level', () => {
+    const { root, state } = openWeekEnd(atReport(WEEK_LENGTH, { pastRevenue: 5_000_000, todayRevenue: 5_000_000, rating: 5 }));
+    expect(state.week!.result!.cups).toBe(3);
+    const el = weekEndEl(root);
+    expect(block(el, 'reward').textContent).toContain('+3.000.000đ');
+
+    const next = block(el, 'next-week');
+    expect(next.closest('section')?.textContent).toContain('Tuần 2');
+    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('34.500.000đ');
+    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('4,2 sao');
+    const level = next.querySelector('[data-next="level"]')?.textContent ?? '';
+    expect(level).toContain('Cấp 2 · Quán quen');
+    expect(level).toContain('Cappuccino');
   });
 
   it('lights all 3 cups when both goals are beaten', () => {
@@ -209,33 +295,29 @@ describe('week-end screen', () => {
     const cups = block(el, 'cups');
     expect(cups.dataset.cups).toBe('3');
     expect(cups.querySelectorAll('.is-off')).toHaveLength(0);
-    expect(cups.getAttribute('aria-label')).toBe('3/3 cúp');
     expect(block(el, 'revenue').textContent).toContain('Đạt mục tiêu');
     expect(block(el, 'stars').textContent).toContain('Đạt mục tiêu');
   });
 
-  it('dims every cup and marks both goals unmet on a week without sales', () => {
+  it('dims every cup, pays nothing and marks both goals unmet on a week without sales', () => {
     const { root, state } = openWeekEnd(atReport(WEEK_LENGTH, { pastRevenue: 0, todayRevenue: 0, rating: 1 }));
-    const r = state.week!.result!;
-    expect(r.cups).toBe(0);
+    expect(state.week!.result!.cups).toBe(0);
     const el = weekEndEl(root);
-    expect(block(el, 'score').textContent).toContain(`${r.score}/100`);
     const cups = block(el, 'cups');
     expect(cups.dataset.cups).toBe('0');
     expect(cups.querySelectorAll('.is-off')).toHaveLength(3);
-    expect(cups.getAttribute('aria-label')).toBe('0/3 cúp');
-    expect(block(el, 'revenue').textContent).toContain('Chưa đạt');
+    expect(el.querySelector('[data-block="reward"]')).toBeNull();
     expect(block(el, 'revenue').textContent).toContain('0% mục tiêu');
     expect(block(el, 'stars').textContent).toContain('Chưa đạt');
-    // Still a way out.
-    expect(el.querySelector('[data-action="replay"]')?.textContent).toBe('Chơi lại');
+    // No bar has a height without sales.
+    for (const bar of block(el, 'days').querySelectorAll<HTMLElement>('.wk-bar')) expect(bar.style.height).toBe('0%');
+    expect(action(el, 'next-week').textContent).toBe('Sang tuần 2');
   });
 
-  it('says day 7 was not saved, offers "Thử lại", and keeps the results', () => {
+  it('says the last day was not saved, offers "Thử lại", and keeps the results', () => {
     const storage = flakyStorage();
     const { root, shell } = boot(undefined, storage);
-    const state = atReport(WEEK_LENGTH);
-    shell.startGame(state);
+    shell.startGame(atReport(WEEK_LENGTH));
     shell.handleEvents([{ type: 'dayEnded', day: WEEK_LENGTH }]);
     mainButton(shell).click();
 
@@ -244,28 +326,23 @@ describe('week-end screen', () => {
     expect(save.classList.contains('is-error')).toBe(true);
     expect(save.getAttribute('role')).toBe('alert');
     expect(save.textContent).toContain('Chưa tự lưu được ngày 7, kết quả vẫn hiển thị');
-    const retry = save.querySelector<HTMLButtonElement>('[data-action="retry-save"]')!;
+    const retry = action(save, 'retry-save');
     expect(retry.textContent).toBe('Thử lại');
-    // The results stay as they were.
-    for (const name of ['score', 'cups', 'revenue', 'stars', 'days']) expect(() => block(el, name)).not.toThrow();
-    expect(block(el, 'days').querySelectorAll('tbody tr')).toHaveLength(WEEK_LENGTH);
-    expect(el.querySelector('[data-action="replay"]')).not.toBeNull();
+    for (const name of ['score', 'cups', 'revenue', 'stars', 'days', 'next-week']) expect(() => block(el, name)).not.toThrow();
 
-    // Still failing: the line stays.
     retry.click();
     expect(save.textContent).toContain('Chưa tự lưu được ngày 7');
 
     storage.fail = false;
-    save.querySelector<HTMLButtonElement>('[data-action="retry-save"]')!.click();
+    action(save, 'retry-save').click();
     expect(save.classList.contains('is-error')).toBe(false);
     expect(save.textContent).toContain('Đã tự lưu ngày 7');
-    expect(document.activeElement).toBe(el.querySelector('[data-action="replay"]'));
+    expect(document.activeElement).toBe(action(el, 'next-week'));
     // The Daily Report hears about it too.
     expect(shell.report.el.querySelector('[data-save]')?.textContent).toContain('Đã tự lưu ngày 7');
-    expect(block(el, 'score')).not.toBeNull();
   });
 
-  it('shows no save line when the day-7 autosave worked', () => {
+  it('shows no save line when the last day\'s autosave worked', () => {
     const { root, shell } = boot();
     shell.startGame(atReport(WEEK_LENGTH));
     shell.handleEvents([{ type: 'dayEnded', day: WEEK_LENGTH }]);
@@ -275,19 +352,53 @@ describe('week-end screen', () => {
     expect(save.classList.contains('is-error')).toBe(false);
   });
 
-  it('focuses "Chơi lại" when it opens', () => {
+  it('focuses "Sang tuần 2", the only primary button', () => {
     const { root } = openWeekEnd();
-    expect(document.activeElement).toBe(weekEndEl(root).querySelector('[data-action="replay"]'));
-    expect(document.activeElement?.textContent).toBe('Chơi lại');
+    const el = weekEndEl(root);
+    const next = action(el, 'next-week');
+    expect(document.activeElement).toBe(next);
+    expect(next.textContent).toBe('Sang tuần 2');
+    expect([...el.querySelectorAll('.btn-primary')]).toEqual([next]);
+    expect(action(el, 'replay').classList.contains('btn-secondary')).toBe(true);
+    expect(action(el, 'menu').classList.contains('btn-secondary')).toBe(true);
   });
 
-  it('"Chơi lại" starts day 1 of a new week with the same shop name and difficulty', () => {
+  it('"Sang tuần 2" opens day 8 in preparation, week 2 day 1/7 on the HUD', () => {
+    const { root, shell, state } = openWeekEnd();
+    action(weekEndEl(root), 'next-week').click();
+
+    expect(shell.state).toBe(state);
+    expect(state.day).toBe(8);
+    expect(state.phase).toBe('preparation');
+    expect(state.week?.index).toBe(2);
+    expect(state.week?.startedDay).toBe(8);
+    expect(state.week?.result).toBeUndefined();
+    expect(state.week?.archive).toHaveLength(1);
+    expect(shell.screen).toBeNull();
+    expect(shell.report.visible).toBe(false);
+    expect(weekEndEl(root).hidden).toBe(true);
+    expect(shell.hud.el.querySelector('[data-stat="week"]')?.textContent).toBe('Tuần 2 · 1/7');
+    // Next step is the HUD's "Mở cửa".
+    expect(shell.hud.el.querySelector('.hud-btn-cta:not([hidden])')).toBe(document.activeElement);
+  });
+
+  it('"Sang tuần 3" after week 2', () => {
+    const { root, state } = openWeekEnd(atWeek2Report());
+    const next = action(weekEndEl(root), 'next-week');
+    expect(next.textContent).toBe('Sang tuần 3');
+    next.click();
+    expect(state.day).toBe(15);
+    expect(state.week?.index).toBe(3);
+    expect(state.week?.archive).toHaveLength(2);
+  });
+
+  it('"Chơi lại" starts day 1 of a new game with the same shop name and difficulty', () => {
     const finished: GameState[] = [];
     const { root, shell } = boot((g) => finished.push(g));
     const old = atReport(WEEK_LENGTH);
     shell.startGame(old);
     mainButton(shell).click();
-    weekEndEl(root).querySelector<HTMLButtonElement>('[data-action="replay"]')!.click();
+    action(weekEndEl(root), 'replay').click();
 
     const next = shell.state!;
     expect(next).not.toBe(old);
@@ -302,7 +413,7 @@ describe('week-end screen', () => {
 
   it('"Về menu" goes back to the main menu', () => {
     const { root, shell } = openWeekEnd();
-    weekEndEl(root).querySelector<HTMLButtonElement>('[data-action="menu"]')!.click();
+    action(weekEndEl(root), 'menu').click();
     expect(shell.screen).toBe('menu');
     expect(shell.state).toBeNull();
   });
@@ -312,5 +423,17 @@ describe('week-end screen', () => {
     expect(shell.screen).toBe('weekEnd');
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(shell.screen).toBe('menu');
+  });
+});
+
+describe('week_ended toast', () => {
+  it('names the week, the score and the next week', () => {
+    const state = atReport(WEEK_LENGTH);
+    const result = state.week!.result!;
+    const toast = toastForEvent({ type: 'week_ended', result }, state)!;
+    expect(toast.title).toBe(`Hết tuần 1 · ${result.score}/100 điểm`);
+    expect(toast.text).toContain(`${result.cups}/3 cúp`);
+    expect(toast.text).toContain('sang tuần 2');
+    expect(toast.icon).toBe('i-trophy');
   });
 });

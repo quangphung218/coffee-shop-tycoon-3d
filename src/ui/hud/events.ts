@@ -3,6 +3,7 @@ import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { stockOutlook } from '../../sim/inventory';
+import { weekIndex } from '../../sim/progression';
 import type { GameEvent, GameState, Unlocks } from '../../sim/types';
 import { INGREDIENT_ICONS, LEVEL_ICON } from '../core/iconMap';
 import type { ToastInput } from '../core/toast';
@@ -46,6 +47,16 @@ export function toastForEvent(event: GameEvent, state: GameState): ToastInput | 
         title: `Ngày ${event.day}: mở khóa mới`,
         text: names ? `${names}.` : 'Có thứ mới trong quán hôm nay.',
         key: 'week_unlocks',
+      };
+    }
+    case 'week_ended': {
+      const index = weekIndex(state);
+      return {
+        level: 'success',
+        icon: 'i-trophy',
+        title: `Hết tuần ${index} · ${event.result.score}/100 điểm`,
+        text: `${event.result.cups}/3 cúp. Xem tổng kết tuần rồi sang tuần ${index + 1}.`,
+        key: 'week_ended',
       };
     }
     case 'low_stock': {

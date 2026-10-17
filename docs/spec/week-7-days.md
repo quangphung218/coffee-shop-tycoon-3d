@@ -95,7 +95,7 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
   | Khó | 2.000.000 | 3.000.000 |
 - `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
 
-Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Giao diện chuyển sang màn kết tuần.
+Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Nút **Xem tổng kết tuần** của báo cáo mở màn Tổng kết tuần; nút **Sang tuần N+1** ở đó gửi `next_day`.
 
 ### Sang tuần mới
 

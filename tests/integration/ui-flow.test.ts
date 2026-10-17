@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
+import { WEEK_LENGTH } from '../../src/sim/data/week';
 import { registerPrepPanels } from '../../src/ui/panels';
 import { registerReviewsPanel } from '../../src/ui/report';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
@@ -82,6 +83,36 @@ describe('Main Menu "Tiếp tục"', () => {
     expect(shell.screen).toBeNull();
     expect(shell.state?.shopName).toBe('Quán Luồng');
     expect(shell.state?.day).toBe(savedDay);
+  });
+});
+
+describe('week 1 into week 2', () => {
+  it('plays 7 days, shows the week summary and "Sang tuần 2" opens day 8 in preparation', () => {
+    const { root, shell } = boot();
+    const state = newGame(root, shell, 'Quán Tuần');
+    for (let d = 1; d <= WEEK_LENGTH; d++) {
+      const events = playDay(state, { play: true });
+      shell.update();
+      shell.handleEvents(events);
+      if (d < WEEK_LENGTH) button(shell.report.el, 'Ngày tiếp theo').click();
+    }
+    expect(state.day).toBe(WEEK_LENGTH);
+    expect(state.week?.result).toBeDefined();
+
+    button(shell.report.el, 'Xem tổng kết tuần').click();
+    expect(shell.screen).toBe('weekEnd');
+    const summary = q(root, '[data-screen="weekEnd"]');
+    expect(q(summary, 'h3').textContent).toBe('Tổng kết tuần 1');
+    expect(summary.querySelector('[data-block="compare"]')).toBeNull();
+    expect(summary.querySelectorAll('[data-block="days"] li')).toHaveLength(WEEK_LENGTH);
+    expect(summary.querySelectorAll('[data-block="days"] [data-best]')).toHaveLength(1);
+
+    button(summary, 'Sang tuần 2').click();
+    expect(shell.screen).toBeNull();
+    expect(state.day).toBe(WEEK_LENGTH + 1);
+    expect(state.phase).toBe('preparation');
+    expect(state.week?.index).toBe(2);
+    expect(q(shell.hud.el, '[data-stat="week"]').textContent).toBe('Tuần 2 · 1/7');
   });
 });
 
