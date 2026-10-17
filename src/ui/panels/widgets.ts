@@ -25,13 +25,17 @@ export interface Toggle {
   set(checked: boolean, disabled?: boolean, describedBy?: string): void;
 }
 
-/** role="switch" button with a text state ("Bán"/"Không"). */
-export function toggle(label: string, onText: string, offText: string, onChange: (next: boolean) => void): Toggle {
-  const state = h('span', { class: 'toggle-state' });
+/**
+ * role="switch" button with a text state ("Bán"/"Không"). `compact` drops the
+ * text and draws a 40 × 24 track inside the same 44 px target (Menu rows):
+ * aria-checked alone carries the state.
+ */
+export function toggle(label: string, onText: string, offText: string, onChange: (next: boolean) => void, opts: { compact?: boolean } = {}): Toggle {
+  const state = opts.compact ? null : h('span', { class: 'toggle-state' });
   const el = h(
     'button',
     {
-      class: 'toggle',
+      class: opts.compact ? 'toggle toggle-compact' : 'toggle',
       attrs: { type: 'button', role: 'switch', 'aria-checked': 'false', 'aria-label': label },
       on: {
         click: () => {
@@ -47,7 +51,7 @@ export function toggle(label: string, onText: string, offText: string, onChange:
     el,
     set(checked, disabled = false, describedBy) {
       el.setAttribute('aria-checked', String(checked));
-      state.textContent = checked ? onText : offText;
+      if (state) state.textContent = checked ? onText : offText;
       setAriaDisabled(el, disabled);
       if (describedBy) el.setAttribute('aria-describedby', describedBy);
       else el.removeAttribute('aria-describedby');

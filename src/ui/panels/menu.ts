@@ -12,7 +12,7 @@ import { formatMoney } from '../core/format';
 import { MENU_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { linkBtn, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon } from './widgets';
+import { openOtherPanel, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon } from './widgets';
 
 const PRICE_OPTIONS: readonly { value: PolicyLevel; label: string }[] = [
   { value: 'low', label: 'Rẻ' },
@@ -87,18 +87,20 @@ export function missingLabel(state: GameState, item: MenuItemDef): string | null
 }
 
 /**
- * Menu hôm nay: the Mức giá choice (locked outside preparation), then one row
- * per item (icon | name + price, margin, hot/cold, popularity | one status
- * label | Bán/Không switch). An item the stock cannot make shows "Thiếu Cam"
- * and a "Mở Kho" link (the amounts only in the switch's description); an item not open yet shows
- * "Mở ngày N" or "Mở ở cấp N" (unlockHint) and stays off. An item short of
- * stock can still be switched on or off.
+ * Menu hôm nay: the Mức giá choice (locked outside preparation), then one
+ * compact row per item on a single line (icon | name + "[hot/cold] Giá · lãi
+ * %" | one status label | small switch). The full line (margin per cup,
+ * popularity) is the switch's description and the row's title. An item the
+ * stock cannot make shows a "Thiếu Cam" button that opens Kho (the amounts
+ * only in its description); an item not open yet shows "Mở ngày N" or "Mở ở
+ * cấp N" (unlockHint) and stays off. An item short of stock can still be
+ * switched on or off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
   const intro = h('p', { class: 'intro' });
-  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món. Món thiếu nguyên liệu vẫn bật được để Kho gợi ý nhập, khách chỉ gọi khi đã có hàng; món mới mở theo cấp quán.`);
+  w.text(intro, (s) => `Đang bán ${s.menu.filter((m) => m.enabled).length}/${MENU.length} món; món thiếu hàng vẫn bật được để Kho gợi ý nhập.`);
 
   // Mức giá: a trade-off set in place; the hint names what it gains and costs.
   const priceTitleId = uid('price-policy');
@@ -132,23 +134,29 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
 
   const rows = MENU.map((item) => {
     const why = reasonLine();
-    const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }));
+    why.classList.add('sr-only');
+    const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }), { compact: true });
     // One flat label slot (design/p20 §5): "Thiếu Cam" or "Mở ngày N" / "Mở ở cấp N", never both; empty while sellable.
-    const missBadge = h('span', { class: 'badge badge-danger', hidden: true, attrs: { 'data-lock': 'stock' } });
+    // "Thiếu Cam" is itself the way to Kho, so the row needs no link line.
+    const missBadge = h('button', {
+      class: 'badge badge-danger badge-btn',
+      hidden: true,
+      attrs: { type: 'button', 'data-lock': 'stock', 'data-goto': 'inventory', 'aria-describedby': why.id },
+      on: { click: () => openOtherPanel('inventory') },
+    });
     const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
     const meta = h('p', { class: 'item-meta' });
-    const toStock = linkBtn('Mở Kho', 'inventory');
-    toStock.hidden = true;
+    // The full line for screen readers (the switch's description while nothing blocks it) and as the row's title.
+    const detail = h('span', { class: 'sr-only', id: uid('menu-detail') });
     const temp = item.temperature === 'hot' ? 'Nóng' : 'Lạnh';
     const popular = Math.max(1, Math.min(5, Math.round(item.popularity * 5)));
     const li = h(
       'li',
-      { class: 'item item-row', attrs: { 'data-item': item.id } },
+      { class: 'item item-row menu-row', attrs: { 'data-item': item.id } },
       h('span', { class: 'item-icon' }, icon(MENU_ICONS[item.id], { size: 32 })),
-      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: item.name }), meta),
+      h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: item.name }), meta, detail, why),
       h('span', { class: 'item-status' }, missBadge, levelBadge),
       sw.el,
-      h('div', { class: 'item-actions' }, why, toStock),
     );
     w.watch(
       (s) => {
@@ -164,20 +172,25 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
         const locked = levelLocked ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
-        meta.textContent = `Giá ${formatMoney(price)} · lãi ${formatMoney(price - item.cost)}/ly (${margin}%) · ${temp} · phổ biến ${popular}/5`;
+        setIconText(meta, item.temperature === 'hot' ? 'i-flame' : 'i-cold', `Giá ${formatMoney(price)} · lãi ${margin}%`);
+        detail.textContent = `Giá ${formatMoney(price)} · lãi ${formatMoney(price - item.cost)}/ly (${margin}%) · ${temp} · phổ biến ${popular}/5`;
+        li.title = detail.textContent;
         // Dashed frame and lock icon mean "not open yet" only; missing stock is one warning label.
         li.classList.toggle('is-locked', levelLocked);
         const opens = levelLocked ? unlockHint(s, 'menu', item.id) : null;
         levelBadge.hidden = !opens;
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
         missBadge.hidden = !locked;
-        if (locked) setIconText(missBadge, 'i-warning', missingLabel(s, item)!);
-        toStock.hidden = !locked;
+        if (locked) {
+          const label = missingLabel(s, item)!;
+          setIconText(missBadge, 'i-warning', label);
+          missBadge.setAttribute('aria-label', `${label}, mở Kho`);
+        }
         // Short stock never locks the switch: on, it puts the item's ingredients in Gợi ý nhập.
         sw.set(enabled, levelLocked);
-        // The amounts stay in the switch's description for screen readers, off screen.
-        why.classList.toggle('sr-only', !!locked);
+        // The label says it on the row; the reason (amounts, unlock day or level) is the switch's description, off screen.
         setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);
+        if (!sw.el.hasAttribute('aria-describedby')) sw.el.setAttribute('aria-describedby', detail.id);
       },
     );
     return li;
