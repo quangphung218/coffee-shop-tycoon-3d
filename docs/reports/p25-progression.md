@@ -15,7 +15,7 @@ Báo cáo P25 so với P24 `5d33195`: các ý đã làm và để sau, ảnh tr�
 - Menu: mỗi món một dòng thấp (P24: 150 px, món thiếu hàng 236 px ở 390 px); công tắc nhỏ trên dòng, "Thiếu Cam" là nút mở Kho. Tên món và dòng giá xuống dòng thay vì bị cắt.
 - Lên cấp: thẻ có huy hiệu cấp bật lên, chip icon các mục mở khoá và confetti 1,4 s không chặn bấm.
 - Nâng cấp: máy pha, máy xay, tủ bánh, quầy, bàn ghế, cây, tranh, đèn đổi hình theo 3 bậc; vừa mua thì máy nảy và rắc sao; mỗi bậc có icon riêng và dòng "Bậc n/3".
-- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt. Khởi động và khung hình đo lại theo [mục 4](#4-kết-quả-kiểm).
+- Kiểm: `npm run check`, `npm run layout` và `npm run media:p25` đạt; Main Menu di động 1230 ms so với base 1227 ms (+0,2%), JS chính +2,0 kB gzip (sát ngưỡng 2 kB). Khung hình: [mục 4](#4-kết-quả-kiểm).
 
 ## 2. Ý đã làm và để sau
 
@@ -70,8 +70,8 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | `npm run check` | tsc, test, build xanh | PASS: 90 file, 1273 test |
 | `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, mọi nút ≥ 44 px, tên món và dòng giá Menu không bị cắt (`scrollWidth ≤ clientWidth`, không "…"), báo cáo có thẻ lên cấp vừa 1280×720 | PASS: lệnh thoát mã 0 ở 390/768/1280/1440 |
 | Cao một dòng Menu ở 390 px | ≤ 72 px khi không nhãn, ≤ 96 px khi có nhãn ("Thiếu …", "Mở …", "Mới"): đủ chỗ cho tên và "Giá … · lãi …%" xuống dòng mà vẫn đọc trọn | PASS: 56 px không nhãn, 89 px "Thiếu Cam" (P24: 150 / 236 px); 6/11 món thấy trọn (P24: 3) |
-| Main Menu di động so với `5d33195` | ≤ base + 5% | Chờ lượt đo |
-| JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | 75,8 kB (`vite build`); chờ số base cùng lượt |
+| Main Menu di động so với `5d33195` | ≤ base + 5% | PASS: 1230 ms so với 1227 ms (+0,2%) |
+| JS chính gzip | Tăng ≤ 2 kB: `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải file nào ở Main Menu | PASS, sát ngưỡng: 73,7 → 75,7 kB (+2,0 kB) |
 | Confetti, atlas `tiers` ngoài đường tải Main Menu | Không tải trước và 5 s sau `cst:world` | Chờ lượt đo |
 | `npm run perf:frames` | 0 long task | Chờ lượt đo |
 | `npm run perf:frames -- --fx` | 0 long task; level-up tải chunk confetti và có `canvas.fx-confetti` trong DOM (thiếu thì lượt đó FAIL, lệnh thoát mã 1); tỉ lệ khung > 50 ms không hơn chế độ thường quá 10% | Chờ lượt đo |
@@ -84,15 +84,15 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 
 | Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
 | --- | --- | --- | --- | --- |
-| Máy bàn | `5d33195` | 28 ms | 49 ms | 337 ms |
-| Máy bàn | P25 | 52 ms | 65 ms | 291 ms |
-| Di động, CPU 4x | `5d33195` | 388 ms | 1292 ms | 3293 ms |
-| Di động, CPU 4x | P25 | 500 ms | 1241 ms | 3339 ms |
+| Máy bàn | `5d33195` | 96 ms | 68 ms | 302 ms |
+| Máy bàn | P25 | 56 ms | 44 ms | 282 ms |
+| Di động, CPU 4x | `5d33195` | 404 ms | 1227 ms | 3346 ms |
+| Di động, CPU 4x | P25 | 524 ms | 1230 ms | 3403 ms |
 
 | Chunk | `5d33195` gzip | P25 gzip |
 | --- | --- | --- |
-| JS chính `index-*.js` | 73,7 kB | 75,8 kB |
-| CSS `index-*.css` | 13,0 kB | 13,7 kB |
+| JS chính `index-*.js` | 73,7 kB | 75,7 kB |
+| CSS `index-*.css` | 13,0 kB | 13,6 kB |
 | `src/render` `index-*.js` | 32,8 kB | 36,3 kB |
 | `confetti-*.js` | – | 1,2 kB, chỉ khi báo cáo có lên cấp |
 
@@ -111,4 +111,4 @@ Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 
 | `--fx` level-up, headed | Máy bàn | 3 s từ Tiếp tục | 17 / 18 / 33 ms | 0 | 0 |
 
 - p95 máy bàn: 18 ms trong cửa sổ thật (headed), lúc thường cũng như lúc có hiệu ứng.
-- Main Menu di động trên 1,15 s là nợ có từ trước: base `5d33195` đo cùng lượt chậm hơn (1292 ms). Tối ưu Main Menu là một dự án riêng.
+- Main Menu di động trên 1,1 s là nợ có từ trước: base `5d33195` đo cùng lượt cũng 1227 ms. Tối ưu Main Menu là một dự án riêng.

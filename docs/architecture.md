@@ -465,8 +465,8 @@ Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon 
 
 | Chunk (`npm run build`) hoặc file nguồn | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 219,1 kB | 75,8 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 83,6 kB | 13,7 kB | Ngay khi mở trang |
+| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 219,1 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 83,6 kB | 13,6 kB | Ngay khi mở trang |
 | `index-*.js` (`src/render`) | 98,7 kB | 36,3 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 504,5 kB | 126,5 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `confetti-*.js` (`src/ui/fx/confetti.ts`) | 2,3 kB | 1,2 kB | Daily Report đầu tiên có lên cấp, khi không giảm chuyển động |
