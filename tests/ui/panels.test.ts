@@ -113,23 +113,22 @@ describe('menu panel', () => {
     expect(why.querySelector('.ic')).toBeNull();
     expect(useOf(q(mocha, '.item-icon'))).toBe('i-mocha');
 
-    // One status label names the missing ingredient; the link opens Kho in place, no modal.
-    const label = q(mocha, '[data-lock="stock"]');
+    // One status label names the missing ingredient and is itself the way to Kho: no separate link.
+    const label = q<HTMLButtonElement>(mocha, '[data-lock="stock"]');
+    expect(label.tagName).toBe('BUTTON');
     expect(label.hidden).toBe(false);
     expect(label.textContent).toBe(`Thiếu ${getIngredient('cacao').name}`);
     expect(useOf(label)).toBe('i-warning');
+    expect(label.getAttribute('aria-describedby')).toBe(why.id);
     expect(q(mocha, '[data-lock="level"]').hidden).toBe(true);
-    const link = q<HTMLButtonElement>(mocha, '[data-goto="inventory"]');
-    expect(link.hidden).toBe(false);
-    expect(link.textContent).toBe('Mở Kho');
+    expect(mocha.querySelector('.link-btn')).toBeNull();
 
-    // On while still short: the label and the link stay until the stock arrives.
+    // On while still short: the label stays until the stock arrives.
     sw.click();
     expect(sent).toEqual([{ type: 'set_menu_item', itemId: 'mocha', enabled: true }]);
     expect(state.menu.find((m) => m.id === 'mocha')!.enabled).toBe(true);
     expect(sw.getAttribute('aria-checked')).toBe('true');
     expect(label.hidden).toBe(false);
-    expect(link.hidden).toBe(false);
   });
 
   it('names the missing ingredient on an item already on sale, and drops it once stocked', () => {
@@ -139,7 +138,7 @@ describe('menu panel', () => {
     const row = q(body, '[data-item="lemon_tea"]');
     expect(q(row, '[role="switch"]').getAttribute('aria-checked')).toBe('true');
     expect(q(row, '[data-lock="stock"]').textContent).toBe(`Thiếu ${getIngredient('lemon').name}`);
-    expect(q(row, '[data-goto="inventory"]').hidden).toBe(false);
+    expect(q(row, '[data-lock="stock"]').hidden).toBe(false);
 
     // Two missing: the label stays short, the reason line names both.
     state.inventory.find((i) => i.id === 'tea')!.qty = 0;
@@ -153,19 +152,28 @@ describe('menu panel', () => {
     state.inventory.find((i) => i.id === 'tea')!.qty = 1000;
     (handle as PanelHandle).update!(state);
     expect(q(row, '[data-lock="stock"]').hidden).toBe(true);
-    expect(q(row, '[data-goto="inventory"]').hidden).toBe(true);
     expect(row.classList.contains('is-locked')).toBe(false);
+    // Nothing blocks it: the switch is described by the full line instead.
+    expect(q(document, `#${q(row, '[role="switch"]').getAttribute('aria-describedby')}`).textContent).toContain('phổ biến');
   });
 
-  it('puts every item on one row template with a single meta line and no popularity dots', () => {
+  it('puts every item on one compact row with a short meta line; the full line is the description and title', () => {
     const { body } = mount(renderMenuPanel, game());
     for (const row of body.querySelectorAll('li.item')) {
       expect(row.classList.contains('item-row')).toBe(true);
+      expect(row.classList.contains('menu-row')).toBe(true);
       expect(row.querySelectorAll('.item-meta')).toHaveLength(1);
       expect(row.querySelectorAll('.item-status')).toHaveLength(1);
+      expect(row.querySelector('.item-actions')).toBeNull();
     }
     expect(body.querySelector('.dots')).toBeNull();
-    expect(q(body, '[data-item="espresso"] .item-meta').textContent).toMatch(/^Giá [\d.]+đ · lãi [\d.]+đ\/ly \(\d+%\) · Nóng · phổ biến \d\/5$/);
+    const espresso = q(body, '[data-item="espresso"]');
+    expect(q(espresso, '.item-meta').textContent).toMatch(/^Giá [\d.]+đ · lãi \d+%$/);
+    expect(useOf(q(espresso, '.item-meta'))).toBe('i-flame');
+    expect(useOf(q(body, '[data-item="orange_juice"] .item-meta'))).toBe('i-cold');
+    const full = q(document, `#${q(espresso, '[role="switch"]').getAttribute('aria-describedby')}`);
+    expect(full.textContent).toMatch(/^Giá [\d.]+đ · lãi [\d.]+đ\/ly \(\d+%\) · Nóng · phổ biến \d\/5$/);
+    expect(espresso.title).toBe(full.textContent);
   });
 
   it('toggles an available item through set_menu_item', () => {

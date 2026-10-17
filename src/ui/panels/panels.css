@@ -288,6 +288,80 @@
 .item-row > .item-actions {
   grid-area: more;
 }
+
+/* Menu (P25): one line per item, icon 32 | name + short meta | one label |
+   small switch, so a phone shows more items. The 44 px switch target plus
+   2 × (4 + 2) px padding and frame makes a 56 px row; name and meta stay
+   one line each and the row's title holds the full line. */
+.item.menu-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  grid-template-areas: 'icon text status control';
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+}
+.menu-row .item-title,
+.menu-row .item-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-row .item-meta .ic {
+  margin-right: var(--space-1);
+  vertical-align: -3px;
+}
+/* "Thiếu Cam" opens Kho: a label-sized button whose hit area is 44 px tall
+   without growing the row. */
+.badge-btn {
+  position: relative;
+  font-family: inherit;
+  cursor: pointer;
+}
+.badge-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--size-target);
+  transform: translateY(-50%);
+}
+@media (hover: hover) {
+  .badge-btn:hover {
+    text-decoration: underline;
+  }
+}
+.badge-btn:focus-visible {
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--size-focus-width));
+}
+
+/* Compact switch (Menu rows): track 40 × 24 and a 16 px thumb inside the
+   same 44 × 44 target; on/off moves the thumb and fills the track, no text
+   or tick. Focus uses the shared ring inside the track's border. */
+.toggle.toggle-compact {
+  justify-content: center;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  padding: 0;
+}
+.toggle-compact .toggle-track {
+  width: 40px;
+  height: 24px;
+}
+.toggle-compact .toggle-thumb {
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+}
+.toggle.toggle-compact[aria-checked='true'] .toggle-thumb {
+  left: 18px;
+}
+.toggle.toggle-compact[aria-checked='true'] .toggle-thumb::after {
+  content: none;
+}
 .sug {
   display: inline-flex;
   align-items: center;
