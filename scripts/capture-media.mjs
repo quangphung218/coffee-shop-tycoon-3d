@@ -670,7 +670,7 @@ async function khoSession(browser, url, focus) {
  * puts each label off the rings with a leader line, and a legend with the
  * notes below.
  */
-async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop, scale, avoid = [], gutter = 0 }) {
+async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop, scale, avoid = [], gutter = 0, labelShare = 0 }) {
   const INK = '#2b1d14';
   const COLOR = { before: '#e07a5f', after: '#2fb898' };
   const LINE = '#f2c14e';
@@ -679,8 +679,6 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
   const TITLE = 44;
   const ROW = 28;
   const TITLE_FONT = (px) => `700 ${px}px Nunito, system-ui, sans-serif`;
-  const LABEL_FONT = '700 15px Nunito, system-ui, sans-serif';
-  const LABEL_LINE = 19;
   const LEGEND_FONT = '600 17px Nunito, system-ui, sans-serif';
   const load = async (b64) => createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
   const imgs = await Promise.all(frames.map((f) => load(f.png)));
@@ -696,7 +694,11 @@ async function drawBoard({ frames, marks, lines, lineLegend, notes, names, crop,
   const sx = (x) => (x - crop.x) * SCALE;
   const sy = (y) => (y - crop.y) * SCALE;
   const width = px;
-  const ph = Math.max(...panels.map((p) => p.h));
+  // Label text is 15 px, or `labelShare` of the board width when that is larger.
+  const labelPx = Math.max(15, Math.ceil(width * labelShare));
+  const LABEL_FONT = `700 ${labelPx}px Nunito, system-ui, sans-serif`;
+  const LABEL_LINE = Math.round(labelPx * 1.27);
+  const ph =Math.max(...panels.map((p) => p.h));
   const wrap = (c, text, max) => {
     const out = [];
     let line = '';
@@ -914,10 +916,11 @@ function cropAround(boxes, pad, { w, h }) {
  * the same crop: the rings and `include` boxes grown by `pad`, enlarged up to
  * `maxScale` so the row fits BOARD_WIDTH. Labels keep off the `avoid` text
  * boxes ({ frame, boxes }), using a `gutter` px strip right of each frame when
- * needed. Prints the rings per label and warns with !! for a label with
- * nothing to ring or one that still covers text.
+ * needed, and are drawn at `labelShare` of the board width (at least 15 px).
+ * Prints the rings per label and warns with !! for a label with nothing to
+ * ring or one that still covers text.
  */
-async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25, names = { before: `P18 (${P18_COMMIT})`, after: 'P19' }, avoid = [], gutter = 0 }) {
+async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend = '', notes = [], include = [], pad = 40, maxScale = 1.25, names = { before: `P18 (${P18_COMMIT})`, after: 'P19' }, avoid = [], gutter = 0, labelShare = 0 }) {
   const kept = marks.map((m) => ({ ...m, boxes: m.boxes.filter(Boolean) }));
   const ringed = kept.filter((m) => m.boxes.length > 0);
   // The largest frame bounds the crop, so a ring on a taller frame (a longer form) is not cut off.
@@ -940,6 +943,7 @@ async function makeBoard(browser, out, { frames, marks, lines = [], lineLegend =
       scale,
       avoid,
       gutter,
+      labelShare,
     });
     overText = board.overText;
     writeFileSync(join(OUT, out), Buffer.from(board.png, 'base64'));
