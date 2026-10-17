@@ -2,7 +2,7 @@ import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS } from './data/ingredients';
 import { MENU } from './data/menu';
 import { STAFF_NAMES } from './data/staffNames';
-import { WEEK_GOALS, WEEK_LENGTH } from './data/week';
+import { WEEK_LENGTH, weekGoal } from './data/week';
 import { rollMissions } from './progression';
 import { normalizeSeed, pick, randInt, randRange, type RngHolder } from './rng';
 import type { DayStats, Difficulty, GameState, IngredientId, MenuItemId, Staff, Table } from './types';
@@ -139,7 +139,7 @@ export function createNewGame(shopName: string, difficulty: Difficulty, seed: nu
     today: createDayStats(1, diff.startRating),
     history: [],
     reviews: [],
-    week: { length: WEEK_LENGTH, startedDay: 1, plan: rollWeekPlan(normSeed), goal: { ...WEEK_GOALS[difficulty] } },
+    week: { length: WEEK_LENGTH, index: 1, startedDay: 1, plan: rollWeekPlan(normSeed, 1), goal: weekGoal(difficulty, 1) },
     events: [],
     nextId,
   };

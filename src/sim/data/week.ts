@@ -15,6 +15,21 @@ export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
   hard: { revenue: 23_000_000, stars: 4.2 },
 };
 
+/** Revenue target growth per week after week 1, and its cap as a multiple of week 1. */
+export const WEEK_GOAL_GROWTH = 0.2;
+export const WEEK_GOAL_MAX_MULT = 2;
+
+/**
+ * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue grows by
+ * WEEK_GOAL_GROWTH a week up to WEEK_GOAL_MAX_MULT times, rounded to 100.000;
+ * the stars target stays.
+ */
+export function weekGoal(difficulty: Difficulty, index: number): WeekGoal {
+  const base = WEEK_GOALS[difficulty];
+  const mult = Math.min(WEEK_GOAL_MAX_MULT, 1 + WEEK_GOAL_GROWTH * Math.max(0, index - 1));
+  return { revenue: Math.round((base.revenue * mult) / 100_000) * 100_000, stars: base.stars };
+}
+
 export interface WeekUnlockDay {
   /** Day of the week, 1..WEEK_LENGTH. */
   day: number;
@@ -25,9 +40,10 @@ export interface WeekUnlockDay {
 }
 
 /**
- * The 7-day unlock calendar. Something new opens every day from day 2, and
- * day 7 expands the shop. A menu item or upgrade is available once the shop
- * level or this calendar reaches it, whichever comes first (see isUnlocked).
+ * The 7-day unlock calendar of week 1. Something new opens every day from day
+ * 2, and day 7 expands the shop. A menu item or upgrade is available once the
+ * shop level or this calendar reaches it, whichever comes first; from week 2
+ * all of it stays open (see isUnlocked).
  * Table in docs/spec/week-7-days.md.
  */
 export const WEEK_UNLOCKS: readonly WeekUnlockDay[] = [

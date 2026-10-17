@@ -4,7 +4,7 @@ import { createMemoryStorage } from '../../src/save/storage';
 import { menuUnlockLevel, upgradeUnlockLevel } from '../../src/sim/data/levels';
 import { MENU } from '../../src/sim/data/menu';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { WEEK_GOALS, WEEK_LENGTH } from '../../src/sim/data/week';
+import { WEEK_GOALS, WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
 import { dispatch } from '../../src/sim/index';
 import { isUnlocked } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
@@ -130,6 +130,8 @@ describe('a week saved without a goal', { timeout: 120_000 }, () => {
     expect(result.revenueTarget).toBe(WEEK_GOALS.hard.revenue);
     expect(result.starsTarget).toBe(WEEK_GOALS.hard.stars);
     expect(Number.isFinite(result.score)).toBe(true);
-    expect(dispatch(g, { type: 'next_day' })).toBe(false);
+    expect(dispatch(g, { type: 'next_day' })).toBe(true);
+    expect(g.week!.index).toBe(2);
+    expect(g.week!.goal).toEqual(weekGoal('hard', 2));
   });
 });

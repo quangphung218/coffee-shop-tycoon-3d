@@ -54,6 +54,41 @@ describe('week plan', () => {
     expect(state.rngState).toBe(before);
   });
 
+  it('keeps the week-1 plan of a seed from before weeks rolled on', () => {
+    expect(rollWeekPlan(12345)).toEqual([
+      { day: 1, weather: 'sunny', event: 'grand_opening' },
+      { day: 2, weather: 'rainy', event: 'supplier_hike' },
+      { day: 3, weather: 'rainy', event: 'none' },
+      { day: 4, weather: 'rainy', event: 'fair' },
+      { day: 5, weather: 'hot', event: 'fair' },
+      { day: 6, weather: 'rainy', event: 'supplier_hike' },
+      { day: 7, weather: 'hot', event: 'supplier_hike' },
+    ]);
+    expect(rollWeekPlan(12345, 1)).toEqual(rollWeekPlan(12345));
+  });
+
+  it('rolls later weeks from the seed and the index, without a grand opening', () => {
+    for (const seed of SEEDS) {
+      expect(rollWeekPlan(seed, 2), `seed ${seed}`).toEqual(rollWeekPlan(seed, 2));
+      for (const index of [2, 3, 10]) {
+        const plan = rollWeekPlan(seed, index);
+        expect(plan.map((p) => p.day), `seed ${seed} week ${index}`).toEqual([1, 2, 3, 4, 5, 6, 7]);
+        expect(plan.some((p) => p.event === 'grand_opening'), `seed ${seed} week ${index}`).toBe(false);
+        expect(isValidWeekPlan(plan, index), `seed ${seed} week ${index}`).toBe(true);
+      }
+    }
+    const differ = SEEDS.filter((s) => JSON.stringify(rollWeekPlan(s, 2)) !== JSON.stringify(rollWeekPlan(s, 1)));
+    expect(differ).toHaveLength(SEEDS.length);
+    const week2 = new Set(SEEDS.map((s) => JSON.stringify(rollWeekPlan(s, 2))));
+    expect(week2.size).toBeGreaterThan(10);
+    expect(rollWeekPlan(1234, 2)).not.toEqual(rollWeekPlan(1234, 3));
+  });
+
+  it('only allows the grand opening in week 1', () => {
+    expect(isValidWeekPlan(rollWeekPlan(5), 2)).toBe(false);
+    expect(isValidWeekPlan(rollWeekPlan(5, 2), 1)).toBe(false);
+  });
+
   it('rejects plans that break a rule', () => {
     const good: DayPlan[] = rollWeekPlan(5);
     expect(isValidWeekPlan(good)).toBe(true);

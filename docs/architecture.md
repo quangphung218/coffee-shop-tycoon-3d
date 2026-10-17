@@ -114,7 +114,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | Command | Khi nào |
 | --- | --- |
 | `start_day` | Chuẩn bị → mở cửa. |
-| `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). Tuần đã chấm điểm (`week.result`) thì trả `false`. |
+| `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). Tuần đã chấm điểm (`week.result`) thì mở luôn tuần tiếp theo. |
 | `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu; bật món chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
@@ -157,7 +157,7 @@ stateDiagram-v2
 | `closing` | Chạy | Không nhận khách mới. |
 | `report` | Dừng | `closeDay` đã trả lương, cập nhật rating, chấm nhiệm vụ ngày, cộng XP và lên cấp, dựng `DailyReport`; UI hiện Daily Report (`src/ui/report`). |
 
-Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history`, tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing, phân vai nhân viên và rút nhiệm vụ mới cho ngày mới. Ván có tuần thì sáng ngày có mở khóa phát `week_unlocks`; sáng ngày 7 tặng cấp 1 Mở rộng diện tích nếu quán chưa có. Tối ngày 7, `closeDay` chấm điểm tuần vào `state.week.result`, sim phát `week_ended` và `next_day` không chạy nữa ([Mục tiêu tuần](spec/week-7-days.md#mục-tiêu-tuần)).
+Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history` (giữ `HISTORY_DAYS` = 28 ngày gần nhất), tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing, phân vai nhân viên và rút nhiệm vụ mới cho ngày mới. Ván có tuần thì trong tuần 1, sáng ngày có mở khóa phát `week_unlocks`; sáng ngày 7 tặng cấp 1 Mở rộng diện tích nếu quán chưa có. Tối ngày 7 mỗi tuần, `closeDay` chấm điểm tuần vào `state.week.result`, thêm một dòng vào `state.week.archive` và sim phát `week_ended`; `next_day` sau đó mở tuần tiếp theo ([Mục tiêu tuần](spec/week-7-days.md#mục-tiêu-tuần)).
 
 ### Cấp quán và nhiệm vụ
 
@@ -165,25 +165,27 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 
 | Khái niệm | Chi tiết |
 | --- | --- |
-| Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ 11 món và 15 nâng cấp. Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần đã tới ngày mở theo lịch ([spec/week-7-days.md](spec/week-7-days.md)). |
-| Tuần (`state.week`) | Ván mới chơi tuần 7 ngày, mở khóa thêm theo lịch `WEEK_UNLOCKS` ([Tuần 7 ngày](#tuần-7-ngày)). Save không có `week` chỉ mở khóa theo cấp. |
+| Cấp (`state.shopLevel`, 1–6) | Mỗi cấp mở thêm món và nâng cấp; `LEVELS` gộp đủ 11 món và 15 nâng cấp. Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần 1 đã tới ngày mở theo lịch (từ tuần 2 cả lịch đã mở) ([spec/week-7-days.md](spec/week-7-days.md)). |
+| Tuần (`state.week`) | Ván mới chơi liên tục từng tuần 7 ngày; tuần 1 mở khóa thêm theo lịch `WEEK_UNLOCKS` ([Tuần 7 ngày](#tuần-7-ngày)). Save không có `week` chỉ mở khóa theo cấp. |
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP; tổng nhân `xpMult` của độ khó (Dễ 1,25 · Vừa 1 · Khó 0,8). Cộng lúc `closeDay`; qua ngưỡng `xpToReach` (cấp 2–6: 1100, 3500, 7000, 12000, 19000) thì lên cấp và phát `level_up`. Mốc thiết kế: chiến lược mẫu ở Vừa lên cấp 2 vào ngày 2–4, cấp 6 vào ngày 20–35 (`tests/integration/level-balance.test.ts`). |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng 50–70 XP và 80.000–120.000 đ. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính; `food_cost` cần có doanh thu mới tính đạt. |
 | Tiến độ nhiệm vụ | `missionProgress(state, mission)` trả `{ value, ratio, met }` từ số liệu đang chạy của ngày: `value` theo đơn vị nhiệm vụ, `ratio` 0..1 cho thanh tiến độ (nhiệm vụ "đạt tối thiểu" là `value / target`; nhiệm vụ "giữ dưới ngưỡng" là 1 khi còn trong ngưỡng, giảm khi vượt), `met` là kết quả nếu ngày kết thúc lúc đó. Hàm thuần, `closeDay` chấm bằng chính hàm này. Chỉ đọc trường có giá trị trong ngày: `food_cost` = `ingredientCostUsed(state)` / doanh thu, `value` là `null` (UI ghi "Chưa đủ dữ liệu") khi chưa có doanh thu; `end_rating` = `nextRating(state, today.ratingStart)`, đúng số `updateRating` ghi lúc chốt ngày. |
 
 ### Tuần 7 ngày
 
-Mọi ván mới chơi một tuần 7 ngày có lịch mở khóa, sự kiện, thời tiết và mục tiêu. Luật và con số ở [spec/week-7-days.md](spec/week-7-days.md); code ở `src/sim/week.ts` và `src/sim/data/week.ts`.
+Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự kiện, thời tiết, mục tiêu và chấm điểm; tuần 1 có thêm lịch mở khóa. Luật và con số ở [spec/week-7-days.md](spec/week-7-days.md); code ở `src/sim/week.ts` và `src/sim/data/week.ts`.
 
 | Phần | Chi tiết |
 | --- | --- |
-| `state.week` (`WeekState`) | `length` (7), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult`). `createNewGame` điền đủ trừ `result`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
-| Lịch sự kiện | `rollWeekPlan(seed)` rút từng ngày từ hash(`seed`, ngày, lần rút), không đọc hay đổi `state.rngState`: cùng seed luôn ra cùng lịch, dù người chơi làm gì. Tuần sai luật (`isValidWeekPlan`) rút lại; 64 lần không được thì dùng `FALLBACK_PLAN`. |
+| `state.week` (`WeekState`) | `length` (7), `index` (tuần thứ mấy, từ 1; `weekIndex(state)` coi thiếu là 1), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult` của tuần vừa xong), `archive?` (`WeekSummary[]`, một dòng mỗi tuần đã xong). `createNewGame` điền tuần 1, chưa có `result` và `archive`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
+| Lịch sự kiện | `rollWeekPlan(seed, weekIndex)` rút từng ngày từ hash(`seed`, tuần, ngày, lần rút), không đọc hay đổi `state.rngState`: cùng seed luôn ra cùng lịch cho từng tuần, dù người chơi làm gì. Tuần 1 dùng thẳng `seed` nên giữ lịch cũ. Tuần sai luật (`isValidWeekPlan(plan, weekIndex)`) rút lại; 64 lần không được thì dùng `FALLBACK_PLAN`. |
+| Mục tiêu | `weekGoal(difficulty, index)`: tuần 1 là `WEEK_GOALS`, sau đó doanh thu +20%/tuần, trần ×2. |
+| Sang tuần mới | `next_day` khi có `result`: tạo tuần `index + 1` bắt đầu từ ngày mới, `plan` và `goal` theo index mới, giữ `archive`. |
 | Thời tiết | `startNextDay` vẫn gọi `rollWeather` (giữ nguyên chuỗi RNG), rồi ghi đè `state.weather` bằng thời tiết của `plan`. |
 | Hệ số sự kiện | `dayArrivalMult` nhân vào `arrivalRate` (`customers.ts`); `dayIngredientPriceMult` nhân vào `effectiveUnitPrice` (`inventory.ts`), nên đổi cả giá mua gói lẫn giá vốn phần làm ra. Hệ số ở `DAY_EVENTS`. |
-| Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`. Sáng ngày có mở khóa, `next_day` phát `week_unlocks`. |
-| Mở rộng ngày 7 | Sáng ngày có `expandShop` (ngày 7) mà `expand_area` còn cấp 0: `grantUpgradeLevel` lên cấp 1 không trừ tiền, phát `notify` "Quán mở rộng!". |
-| Chấm điểm | Tối ngày cuối (`isLastWeekDay`), `closeDay` gọi `scoreWeek` và lưu vào `state.week.result`; `endOfDay` phát `week_ended` sau `dayEnded`. Từ đó `next_day` trả `false`. Điểm = `weekScore` (60 phần doanh thu + 40 phần sao, mỗi phần chặn ở mục tiêu); cúp = `weekCups` (≥ 90 → 3, ≥ 70 → 2, ≥ 40 → 1). |
+| Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc trong tuần 1 `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`, hoặc từ tuần 2 món có trong lịch. Sáng ngày tuần 1 có mở khóa, `next_day` phát `week_unlocks`. |
+| Mở rộng ngày 7 | Sáng ngày 7 tuần 1 (`expandShop`) mà `expand_area` còn cấp 0: `grantUpgradeLevel` lên cấp 1 không trừ tiền, phát `notify` "Quán mở rộng!". |
+| Chấm điểm | Tối ngày cuối (`isLastWeekDay`), `closeDay` gọi `scoreWeek` lưu vào `state.week.result` và `summarizeWeek` thêm dòng vào `state.week.archive`; `endOfDay` phát `week_ended` sau `dayEnded`. Điểm = `weekScore` (60 phần doanh thu + 40 phần sao, mỗi phần chặn ở mục tiêu); cúp = `weekCups` (≥ 90 → 3, ≥ 70 → 2, ≥ 40 → 1). |
 | UI | HUD ghi "Ngày N/7" và chip thời tiết, sự kiện (`src/ui/hud/hud.ts`); bảng Việc có khối Hôm nay (`weekTodayLines` trong `src/ui/panels/tasks.ts`); `week_unlocks` thành toast. Báo cáo ngày 7 đổi nút chính thành **Xem kết tuần**, ghi "Gợi ý cho tuần sau" và bỏ link mở bảng ở tab Chỉ số; nút chính mở màn kết tuần (`src/ui/screens/weekEnd.ts`); **Chơi lại** tạo ván mới cùng tên quán và độ khó, seed mới. |
 
 ### Nâng cấp và dụng cụ

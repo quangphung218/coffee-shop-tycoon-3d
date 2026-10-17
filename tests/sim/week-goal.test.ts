@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { WEEK_GOALS, WEEK_LENGTH } from '../../src/sim/data/week';
+import { WEEK_GOALS, WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
+import { profit } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
+import { weekDay } from '../../src/sim/progression';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState, WeekResult } from '../../src/sim/types';
-import { scoreWeek, weekCups, weekScore } from '../../src/sim/week';
+import { rollWeekPlan, scoreWeek, weekCups, weekScore } from '../../src/sim/week';
 import { playDay } from '../integration/helpers';
 
 const SEED = 4242;
@@ -81,11 +83,51 @@ describe('end of the week', { timeout: 30_000 }, () => {
     expect(share).toBeLessThanOrEqual(0.9);
   });
 
-  it('refuses next_day once the week is scored', () => {
-    expect(state.phase).toBe('report');
-    expect(dispatch(state, { type: 'next_day' })).toBe(false);
-    expect(state.day).toBe(WEEK_LENGTH);
-    expect(state.phase).toBe('report');
+  it('adds one archive row with the week totals', () => {
+    const result = state.week!.result!;
+    const stats = [...state.history, state.today];
+    expect(state.week!.archive).toEqual([
+      {
+        index: 1,
+        startedDay: 1,
+        revenue: result.revenue,
+        profit: stats.reduce((s, d) => s + profit(d), 0),
+        customersServed: stats.reduce((s, d) => s + d.customersServed, 0),
+        stars: result.stars,
+        score: result.score,
+        cups: result.cups,
+      },
+    ]);
+  });
+
+  it('opens week 2 on next_day: new start, index, plan and goal, result cleared', () => {
+    const next = structuredClone(state);
+    expect(next.phase).toBe('report');
+    expect(dispatch(next, { type: 'next_day' })).toBe(true);
+    expect(next.day).toBe(WEEK_LENGTH + 1);
+    expect(next.phase).toBe('preparation');
+    expect(next.week).toMatchObject({ length: WEEK_LENGTH, index: 2, startedDay: WEEK_LENGTH + 1 });
+    expect(next.week!.result).toBeUndefined();
+    expect(next.week!.plan).toEqual(rollWeekPlan(SEED, 2));
+    expect(next.week!.goal).toEqual(weekGoal('normal', 2));
+    expect(next.week!.archive).toEqual(state.week!.archive);
+    expect(weekDay(next)).toBe(1);
+    expect(next.weather).toBe(next.week!.plan[0]!.weather);
+  });
+});
+
+describe('weekGoal', () => {
+  it('is WEEK_GOALS in week 1, then grows 20% a week up to twice, stars unchanged', () => {
+    for (const d of ['easy', 'normal', 'hard'] as const) {
+      expect(weekGoal(d, 1)).toEqual(WEEK_GOALS[d]);
+      expect(weekGoal(d, 2).revenue).toBe(Math.round((WEEK_GOALS[d].revenue * 1.2) / 100_000) * 100_000);
+      expect(weekGoal(d, 6).revenue).toBe(WEEK_GOALS[d].revenue * 2);
+      expect(weekGoal(d, 30).revenue).toBe(WEEK_GOALS[d].revenue * 2);
+      for (let i = 2; i <= 8; i++) {
+        expect(weekGoal(d, i).revenue).toBeGreaterThanOrEqual(weekGoal(d, i - 1).revenue);
+        expect(weekGoal(d, i).stars).toBe(WEEK_GOALS[d].stars);
+      }
+    }
   });
 });
 

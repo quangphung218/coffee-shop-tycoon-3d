@@ -1,10 +1,11 @@
 import { rollWeather } from './customers';
 import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH } from './data/week';
-import { weekDay } from './progression';
+import { profit } from './economy';
+import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
-import type { DayEventId, DayPlan, GameState, WeekResult } from './types';
+import type { DayEventId, DayPlan, GameState, WeekResult, WeekSummary } from './types';
 
-/** Draw weights of the events on days 2..WEEK_LENGTH; the grand opening is day 1 only. */
+/** Draw weights of the events on the rolled days; the grand opening is day 1 of week 1 only. */
 const EVENT_WEIGHTS: Readonly<Record<Exclude<DayEventId, 'grand_opening'>, number>> = {
   none: 0.4,
   fair: 0.3,
@@ -25,6 +26,9 @@ const FALLBACK_PLAN: readonly DayPlan[] = [
   { day: 7, weather: 'sunny', event: 'supplier_hike' },
 ];
 
+/** Day 1 of FALLBACK_PLAN from week 2 on, when there is no grand opening. */
+const FALLBACK_LATER_DAY1: DayPlan = { day: 1, weather: 'hot', event: 'none' };
+
 /** Keeps week draws apart from the daily missions, which hash the same seed and day. */
 const WEEK_SALT = 0x5bd1e995;
 
@@ -36,6 +40,12 @@ function planHash(seed: number, index: number): number {
   h = Math.imul(h | 1, 0x27d4eb2f) >>> 0;
   h ^= h >>> 13;
   return h >>> 0;
+}
+
+/** Seed of the draws for week `weekIndex`: the game seed itself for week 1, so its plan never changes. */
+function weekSeed(seed: number, weekIndex: number): number {
+  // Negative indices never collide with the draw indices (attempt * WEEK_LENGTH + day).
+  return weekIndex <= 1 ? seed : planHash(seed, -weekIndex);
 }
 
 /** One day of a draw: weather and event, redrawn until something differs from a plain sunny day. */
@@ -50,14 +60,19 @@ function rollDay(seed: number, day: number, attempt: number): DayPlan {
 }
 
 /**
- * The rules every week plan keeps: day 1 is sunny with the grand opening,
- * every day has rain, heat or an event, no two days in a row are the same,
- * and the week has at least one rainy day, one fair and one supplier hike.
+ * The rules every week plan keeps: day 1 of week 1 is sunny with the grand
+ * opening and later weeks have no grand opening, every day has rain, heat or
+ * an event, no two days in a row are the same, and the week has at least one
+ * rainy day, one fair and one supplier hike.
  */
-export function isValidWeekPlan(plan: readonly DayPlan[]): boolean {
+export function isValidWeekPlan(plan: readonly DayPlan[], weekIndex = 1): boolean {
   if (plan.length !== WEEK_LENGTH) return false;
   const first = plan[0];
-  if (!first || first.weather !== 'sunny' || first.event !== 'grand_opening') return false;
+  if (weekIndex <= 1) {
+    if (!first || first.weather !== 'sunny' || first.event !== 'grand_opening') return false;
+  } else if (plan.some((p) => p.event === 'grand_opening')) {
+    return false;
+  }
   for (let i = 0; i < plan.length; i++) {
     const p = plan[i]!;
     if (p.day !== i + 1) return false;
@@ -73,17 +88,20 @@ export function isValidWeekPlan(plan: readonly DayPlan[]): boolean {
 }
 
 /**
- * Weather and event of each day of the week. Each day draws from a hash of the
- * seed and the day, never from `state.rngState`; a week that breaks the rules
- * (isValidWeekPlan) is drawn again with the next attempt's hashes.
+ * Weather and event of each day of week `weekIndex` (from 1). Each day draws
+ * from a hash of the seed, the week and the day, never from `state.rngState`;
+ * a week that breaks the rules (isValidWeekPlan) is drawn again with the next
+ * attempt's hashes. Week 1 opens with the grand opening; later weeks roll day 1 too.
  */
-export function rollWeekPlan(seed: number): DayPlan[] {
+export function rollWeekPlan(seed: number, weekIndex = 1): DayPlan[] {
+  const first = weekIndex <= 1;
+  const drawSeed = weekSeed(seed, weekIndex);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const plan: DayPlan[] = [{ day: 1, weather: 'sunny', event: 'grand_opening' }];
-    for (let day = 2; day <= WEEK_LENGTH; day++) plan.push(rollDay(seed, day, attempt));
-    if (isValidWeekPlan(plan)) return plan;
+    const plan: DayPlan[] = first ? [{ day: 1, weather: 'sunny', event: 'grand_opening' }] : [];
+    for (let day = plan.length + 1; day <= WEEK_LENGTH; day++) plan.push(rollDay(drawSeed, day, attempt));
+    if (isValidWeekPlan(plan, weekIndex)) return plan;
   }
-  return FALLBACK_PLAN.map((p) => ({ ...p }));
+  return FALLBACK_PLAN.map((p) => (first || p.day !== 1 ? { ...p } : { ...FALLBACK_LATER_DAY1 }));
 }
 
 /** Plan of today, or null when the game has no week plan or today is outside the week. */
@@ -163,6 +181,27 @@ export function scoreWeek(state: GameState): WeekResult | null {
     score,
     cups: weekCups(score),
     days,
+  };
+}
+
+/**
+ * Archive row of the week just scored: the result's revenue, stars, score and
+ * cups plus the profit and customers summed over its days. Null without a week.
+ */
+export function summarizeWeek(state: GameState, result: WeekResult): WeekSummary | null {
+  const week = state.week;
+  if (!week) return null;
+  const lastDay = week.startedDay + week.length - 1;
+  const stats = [...state.history, state.today].filter((d) => d.day >= week.startedDay && d.day <= lastDay);
+  return {
+    index: weekIndex(state),
+    startedDay: week.startedDay,
+    revenue: result.revenue,
+    profit: stats.reduce((s, d) => s + profit(d), 0),
+    customersServed: stats.reduce((s, d) => s + d.customersServed, 0),
+    stars: result.stars,
+    score: result.score,
+    cups: result.cups,
   };
 }
 
