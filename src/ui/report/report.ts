@@ -111,6 +111,12 @@ function labelled(iconId: IconId, text: string): (Node | string)[] {
   return [icon(iconId), text];
 }
 
+/** Footer button label: icon + text, named by aria-label too, so the phone layout can show the secondary one as an icon only. */
+function footLabel(btn: HTMLElement, iconId: IconId, text: string): void {
+  btn.setAttribute('aria-label', text);
+  setChildren(btn, icon(iconId), h('span', { class: 'rpt-btn-text', text }));
+}
+
 // ── Figures: profit, revenue, customers, stars with their change ────────────
 
 type FigureId = 'profit' | 'revenue' | 'customersServed' | 'stars';
@@ -152,14 +158,14 @@ function figure(
   tone = '',
 ): HTMLElement {
   const d = stats.deltas?.find((s) => s.id === id);
+  // Every cell keeps the sub row (empty for Lãi and Doanh thu) so the changes of all four start on one line.
   return h(
     'div',
     { class: `rpt-fig${tone}`, attrs: { 'data-fig': id, ...attrs } },
     h('span', { class: 'rpt-fig-label' }, ...label),
     h('span', { class: 'rpt-fig-value', text: value }),
-    sub ? h('span', { class: 'rpt-fig-sub', text: sub }) : null,
-    deltaLine(id, d?.vsYesterday ?? null, 'yesterday'),
-    deltaLine(id, d?.vsWeekAvg ?? null, 'week'),
+    sub ? h('span', { class: 'rpt-fig-sub', text: sub }) : h('span', { class: 'rpt-fig-sub', attrs: { 'aria-hidden': 'true', 'data-empty': '' } }),
+    h('span', { class: 'rpt-fig-deltas' }, deltaLine(id, d?.vsYesterday ?? null, 'yesterday'), deltaLine(id, d?.vsWeekAvg ?? null, 'week')),
   );
 }
 
@@ -389,7 +395,8 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
 
   const save = h('div', { class: 'rpt-save', attrs: { 'data-save': '' } });
   const toggleBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'reviews' } });
-  const nextBtn = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-day' } }, ...labelled('i-next-day', 'Ngày tiếp theo'));
+  const nextBtn = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-day' } });
+  footLabel(nextBtn, 'i-next-day', 'Ngày tiếp theo');
   const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') } }, ...labelled('i-chart', 'Về Tổng kết'));
 
   summaryTab.addEventListener('click', () => showTab('summary'));
@@ -426,7 +433,8 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
       tabButtons[name].tabIndex = name === next ? 0 : -1;
       tabPanels[name].hidden = name !== next;
     }
-    setChildren(toggleBtn, ...(next === 'summary' ? labelled('i-reviews', 'Xem đánh giá') : labelled('i-chart', 'Về Tổng kết')));
+    if (next === 'summary') footLabel(toggleBtn, 'i-reviews', 'Xem đánh giá');
+    else footLabel(toggleBtn, 'i-chart', 'Về Tổng kết');
   }
 
   function renderSave(): void {
@@ -504,7 +512,8 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
       if (ended !== weekEnded) renderBodies(s);
       weekEnded = ended;
       nextBtn.setAttribute('data-action', ended ? 'week-end' : 'next-day');
-      setChildren(nextBtn, ...(ended ? labelled('i-trophy', 'Xem tổng kết tuần') : labelled('i-next-day', 'Ngày tiếp theo')));
+      if (ended) footLabel(nextBtn, 'i-trophy', 'Xem tổng kết tuần');
+      else footLabel(nextBtn, 'i-next-day', 'Ngày tiếp theo');
     },
   );
   showTab('summary');

@@ -39,7 +39,8 @@ describe('ui.css [hidden]', () => {
   });
 
   it('drops the per-component [hidden] rules', () => {
-    const scoped = rules(uiCss).filter((r) => /\S\[hidden\]/.test(r.selector));
+    // `:not([hidden])` only tests whether a layer is open; it hides nothing itself.
+    const scoped = rules(uiCss).filter((r) => /\S\[hidden\]/.test(r.selector.replace(/:not\(\[hidden\]\)/g, '')));
     expect(scoped.map((r) => r.selector)).toEqual([]);
   });
 });
@@ -184,6 +185,24 @@ describe('ui.css HUD level chip (design/p20 §4)', () => {
       const body = all.find((r) => r.selector === sel)?.body ?? '';
       expect(body, sel).not.toMatch(/\b\d+px\b/);
     }
+  });
+});
+
+describe('ui.css scene loading rows', () => {
+  it('sizes and spaces the component rows with tokens, no hand-set px', () => {
+    const all = rules(uiCss);
+    for (const sel of ['.scene-load-list', '.scene-load-item']) {
+      const body = all.find((r) => r.selector === sel)?.body;
+      expect(body, sel).toBeTruthy();
+      expect(body, sel).not.toMatch(/\b\d+px\b/);
+    }
+  });
+});
+
+describe('ui.css dock under the Daily Report', () => {
+  it('hides the dock (and its badges) while the report is open', () => {
+    const rule = rules(uiCss).find((r) => r.selector === '#ui:has(.rpt-layer:not([hidden])) .dock');
+    expect(rule?.body).toMatch(/visibility:\s*hidden/);
   });
 });
 

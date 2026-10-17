@@ -268,6 +268,33 @@ describe('Daily Report', () => {
     expect(save.textContent).toBe('');
   });
 
+  it('names both footer buttons by aria-label, so the phone layout can show the secondary one as an icon', () => {
+    const { el } = mountReport(atReport(report()));
+    const toggle = q(el, '.rpt-foot [data-action="reviews"]');
+    const next = q(el, '.rpt-foot [data-action="next-day"]');
+    expect(toggle.getAttribute('aria-label')).toBe('Xem đánh giá');
+    expect(text(toggle, '.rpt-btn-text')).toBe('Xem đánh giá');
+    expect(next.getAttribute('aria-label')).toBe('Ngày tiếp theo');
+    expect(text(next, '.rpt-btn-text')).toBe('Ngày tiếp theo');
+    toggle.click();
+    expect(toggle.getAttribute('aria-label')).toBe('Về Tổng kết');
+  });
+
+  it('keeps a sub row in all four figures, empty for profit and revenue, then the changes', () => {
+    const { el } = mountReport(atReport(report()));
+    const figs = [...el.querySelectorAll<HTMLElement>('[data-block="figures"] [data-fig]')];
+    expect(figs).toHaveLength(4);
+    for (const fig of figs) {
+      const rows = [...fig.children].map((c) => c.className);
+      expect(rows, fig.dataset.fig).toEqual(['rpt-fig-label', 'rpt-fig-value', 'rpt-fig-sub', 'rpt-fig-deltas']);
+    }
+    for (const id of ['profit', 'revenue']) {
+      const sub = q(el, `[data-fig="${id}"] .rpt-fig-sub`);
+      expect(sub.textContent).toBe('');
+      expect(sub.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
   it('stays hidden outside the report phase', () => {
     const { view, el } = mountReport(atReport(report()));
     view.update(createNewGame('Khác', 'easy', 1), false);
@@ -547,6 +574,24 @@ describe('report.css', () => {
     // On a phone the tip wraps rather than hiding text behind an ellipsis.
     const narrow = src.slice(src.indexOf('@media (max-width: 640px)'));
     expect(narrow).toMatch(/\.rpt-tip p\s*\{[^}]*white-space:\s*normal/);
+  });
+
+  it('lines up the changes of all four figures through a subgrid', async () => {
+    const src = await css();
+    const fig = src.match(/\.rpt-fig\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(fig).toMatch(/grid-row:\s*span 4/);
+    expect(fig).toMatch(/grid-template-rows:\s*subgrid/);
+  });
+
+  it('keeps the phone footer to one row: one-line buttons, the main one widest, the other an icon', async () => {
+    const src = await css();
+    const narrow = src.slice(src.indexOf('@media (max-width: 640px)'));
+    expect(narrow).toMatch(/\.rpt-foot-actions\s*\{[^}]*flex-wrap:\s*nowrap/);
+    expect(narrow).toMatch(/\.rpt-foot \.btn\s*\{[^}]*white-space:\s*nowrap/);
+    expect(narrow).toMatch(/\.rpt-foot-actions > \.btn-primary\s*\{[^}]*flex:\s*1 1 auto/);
+    expect(narrow).toMatch(/\.rpt-foot-actions > \[data-action='reviews'\]\s*\{[^}]*min-height:\s*var\(--size-target-lg\)/);
+    expect(narrow).toMatch(/\.rpt-foot-actions > \[data-action='reviews'\] \.rpt-btn-text\s*\{[^}]*display:\s*none/);
+    expect(narrow).not.toMatch(/\.rpt-foot \.btn\s*\{[^}]*flex:\s*1 1 10rem/);
   });
 
   it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {
