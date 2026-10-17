@@ -1126,8 +1126,8 @@ legend {
    the scene, panel dock at the bottom centre. The bar itself is transparent
    and lets clicks through to the 3D scene; only the pills catch them. */
 #ui {
-  /* Room the dock takes at the bottom: button 68 + padding + outline + shadow + gap. */
-  --dock-space: calc(68px + 2 * var(--space-2) + 2 * var(--size-outline) + 6px + var(--space-3));
+  /* Room the dock takes at the bottom: button + padding + outline + shadow + gap. */
+  --dock-space: calc(var(--size-control-lg) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + 6px + var(--space-3));
 }
 .hud-layer {
   display: contents;
@@ -1150,13 +1150,15 @@ legend {
   order: 1;
 }
 /* Three clusters (P23): Hôm nay | Tiến độ | Điều khiển. Each is one cream
-   frame; the values inside sit on it with no frame of their own. */
+   frame of the same height (P24 --size-hud-row); the values inside sit on it
+   with no frame of their own. */
 .hud-cluster,
 .hud-note {
   background: var(--surface-hud-solid);
   color: var(--text-primary);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-pill);
+  box-shadow: var(--frame-shadow);
   pointer-events: auto;
 }
 .hud-cluster {
@@ -1166,19 +1168,19 @@ legend {
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  min-height: var(--size-hud-pill);
-  padding: var(--space-1) var(--space-4);
-  box-shadow: var(--shadow-md);
+  height: var(--size-hud-row);
+  padding: 0 var(--space-4);
   line-height: var(--line-height-tight);
   white-space: nowrap;
 }
+/* The 44 px controls fill the row inside the 2px frame. */
 .hud-controls {
   gap: var(--space-1);
   margin-left: auto;
-  padding: var(--space-1);
+  padding: 0 var(--space-1);
 }
 .hud-cluster b {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-value);
   font-weight: var(--font-weight-heavy);
   font-variant-numeric: tabular-nums;
 }
@@ -1187,8 +1189,9 @@ legend {
   display: flex;
   flex-direction: column;
 }
-.hud-day small {
-  font-size: var(--font-size-xs);
+.hud-day small,
+.ph-next {
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
@@ -1220,7 +1223,7 @@ legend {
   white-space: nowrap;
 }
 .hud-level .level-name {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-value);
   font-weight: var(--font-weight-heavy);
   white-space: nowrap;
 }
@@ -1241,7 +1244,7 @@ legend {
   transition: width var(--duration-base) var(--easing-standard);
 }
 .xp-num {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-heavy);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1259,57 +1262,38 @@ legend {
     box-shadow: 0 0 0 var(--space-1) var(--accent-primary);
   }
 }
-/* Phase strip: the current phase as a honey sticker with its icon and name,
-   the others as dots, filled once done. Names of the dots stay in the list
-   for a screen reader. */
-.phases {
-  display: flex;
+/* Phase: the current one as a flat honey label (icon and name) and "tới
+   13:00" for the next change; the four names live in the sr-only list and
+   the title. */
+.hud-phase {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
+}
+.phases {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.phases li {
-  position: relative;
-  flex: none;
+.phase-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
+  min-height: var(--size-control-sm);
+  padding: 0 var(--space-3) 0 var(--space-1);
+  border-radius: var(--label-radius);
+  background: var(--accent-primary);
+  color: var(--text-primary);
+  box-shadow: var(--label-shadow);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   white-space: nowrap;
 }
-.phases li:not([aria-current]) {
-  width: var(--space-2);
-  height: var(--space-2);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  background: var(--surface-hud-solid);
-}
-.phases li.is-done:not([aria-current]) {
-  background: var(--border-outline);
-}
-.phases li:not([aria-current]) .ph-icon {
-  display: none;
-}
-.phases li:not([aria-current]) .ph-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-.phases li[aria-current='step'] {
-  padding: 0 var(--space-2) 0 var(--space-1);
-  min-height: var(--space-8);
-  background: var(--accent-primary);
-  border: var(--size-outline-sm) solid var(--border-outline);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
-}
-.ph-icon {
-  display: inline-flex;
+/* 480 px and down: the pill alone; the next change stays in the title. */
+@media (max-width: 480px) {
+  .ph-next {
+    display: none;
+  }
 }
 .hud-btn {
   min-width: var(--size-hud-pill);
@@ -1398,10 +1382,9 @@ legend {
   transform: translateY(1px) scale(0.96);
   transition-duration: var(--duration-instant);
 }
+/* Selected: the honey fill is the one signal, no outline or shadow of its own. */
 .seg button[aria-pressed='true'] {
   background: var(--accent-primary);
-  border-color: var(--border-outline);
-  box-shadow: var(--shadow-sm);
 }
 /* Inside the Điều khiển frame the speed group, pause and the menu button are
    ghost buttons like the speed options; the phase action stays a sticker. */
@@ -1441,7 +1424,7 @@ legend {
   border-color: var(--border-outline);
 }
 /* The phone's one speed button (shown from 640 px down in place of the
-   group): the current speed as a honey sticker, like the pressed option. */
+   group): the current speed on honey, like the pressed option. */
 .hud-controls .speed-cycle {
   display: none;
 }
@@ -1450,8 +1433,6 @@ legend {
   gap: var(--space-1);
   padding: 0 var(--space-2);
   background: var(--accent-primary);
-  border-color: var(--border-outline);
-  box-shadow: var(--shadow-sm);
 }
 /* Camera and settings: a menu dropping down in place under its button. */
 .hud-menu-wrap {
@@ -1469,9 +1450,9 @@ legend {
   min-width: max-content;
   padding: var(--space-1);
   background: var(--surface-panel-solid);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--frame-shadow);
 }
 .hud-menu-item {
   display: flex;
@@ -1502,8 +1483,7 @@ legend {
   gap: var(--space-2);
   max-width: 100%;
   padding: var(--space-2) var(--space-4);
-  box-shadow: var(--shadow-sm);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
 }
 
@@ -1545,6 +1525,7 @@ legend {
   .hud-controls {
     grid-area: controls;
     align-self: stretch;
+    height: auto;
     display: grid;
     grid-template-areas:
       'main main'
@@ -1568,7 +1549,8 @@ legend {
   }
 }
 
-/* Dock: the seven panel buttons, bottom centre. Ghost buttons in one frame. */
+/* Dock: the seven panel buttons, bottom centre. Ghost buttons in one frame,
+   with the HUD clusters' outline and shadow. */
 .dock {
   position: absolute;
   left: 50%;
@@ -1579,10 +1561,11 @@ legend {
   padding: var(--space-2);
   max-width: calc(100% - 2 * var(--space-3));
   background: var(--surface-hud-solid);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--frame-shadow);
 }
+/* 56 px: a 24 px icon over a 14 px label. */
 .dock-btn {
   position: relative;
   display: flex;
@@ -1591,14 +1574,14 @@ legend {
   justify-content: center;
   gap: var(--space-1);
   min-width: 76px;
-  min-height: 68px;
-  padding: var(--space-1) var(--space-2);
+  min-height: var(--size-control-lg);
+  padding: 0 var(--space-2);
   border: var(--size-outline) solid transparent;
   border-radius: var(--radius-lg);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   white-space: nowrap;
@@ -1628,14 +1611,14 @@ legend {
   z-index: 1;
   display: grid;
   place-items: center;
-  min-width: 24px;
-  height: 24px;
+  min-width: var(--size-icon-md);
+  height: var(--size-icon-md);
   padding: 0 var(--space-1);
   background: var(--accent-danger);
   border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: var(--radius-pill);
   color: var(--text-primary);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-heavy);
   line-height: 1;
 }
@@ -1752,9 +1735,9 @@ legend {
   align-items: flex-start;
   background: var(--surface-panel-solid);
   color: var(--text-primary);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--frame-shadow);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
   animation: toast-in var(--duration-pop) var(--easing-bounce);
 }
@@ -2038,15 +2021,16 @@ legend {
     justify-content: center;
     padding-left: var(--space-3);
   }
-  /* HUD in two rows of 390 px: smaller type and gaps; the event and the
-     current phase keep their icon (names in the title and the list), the
-     clock sits over the phase dots, the level shows its number with the XP
-     bar as a thin line along the bottom of the Tiến độ frame, and one speed
-     button (icon and "2x") steps through the speeds in place of the group.
-     Every control keeps the 44 px target. */
+  /* HUD in two rows of 390 px: smaller type and gaps; the event keeps its
+     icon (name in the title), the clock sits over the phase pill, the level
+     shows its number with the XP bar as a thin line along the bottom of the
+     Tiến độ frame, and one speed button (icon and "2x") steps through the
+     speeds in place of the group. Every control keeps the 44 px target. */
   .hud-cluster {
     gap: var(--space-2);
-    padding: var(--space-1) var(--space-2);
+    height: auto;
+    min-height: var(--size-hud-row);
+    padding: 0 var(--space-2);
   }
   .hud-controls {
     gap: var(--size-group-gap);
@@ -2062,7 +2046,6 @@ legend {
     gap: var(--size-group-gap);
   }
   .hud-time .hud-val > .ic,
-  .phases li .ph-label,
   .hud-level .level-word,
   .hud-level .xp-num,
   .hud-controls > .speed,
@@ -2072,14 +2055,12 @@ legend {
   .hud-controls > .speed-cycle {
     display: inline-flex;
   }
-  .phases li[aria-current='step'] {
+  .phase-pill {
     min-height: 0;
-    padding: 0;
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
+    padding: 0 var(--space-2) 0 var(--size-group-gap);
+    font-size: var(--font-size-caption);
   }
-  .phases li[aria-current='step'] .ic,
+  .phase-pill .ic,
   .hud-val > .ic,
   .week-chip > .ic,
   .hud-level > .ic {
@@ -2121,9 +2102,9 @@ legend {
   .hud-btn .lbl-long {
     display: none;
   }
-  /* Dock: a 4-column grid across the bottom (two rows of 68px). */
+  /* Dock: a 4-column grid across the bottom (two rows of 56px). */
   #ui {
-    --dock-space: calc(2 * 68px + var(--size-group-gap) + 2 * var(--space-2) + 2 * var(--size-outline) + 6px + var(--space-3));
+    --dock-space: calc(2 * var(--size-control-lg) + var(--size-group-gap) + 2 * var(--space-2) + 2 * var(--size-frame-outline) + 6px + var(--space-3));
   }
   .dock {
     display: grid;
@@ -2136,7 +2117,7 @@ legend {
   }
   /* Narrow cells: labels such as "Nhân viên" wrap onto two lines inside the
      border (line height leaves room for Vietnamese marks); the cell grows
-     past 68px instead of overflowing, so the inset focus ring is never cut. */
+     past 56px instead of overflowing, so the inset focus ring is never cut. */
   .dock-btn {
     min-width: 0;
     padding: var(--space-1);
