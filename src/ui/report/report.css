@@ -1,5 +1,8 @@
 /* Daily Report and Reviews (Daily Report in design/t237-cartoon/index.html;
-   tab states per design/p17-states). Shared tokens come from src/ui/styles. */
+   tab states per design/p17-states). Shared tokens come from src/ui/styles.
+   P24 scale: titles --font-size-screen-title / --font-size-panel-title,
+   figures --font-size-value, everything else --font-size-label or
+   --font-size-caption; one 2px frame outline, --shadow-card on the dialog only. */
 .rpt-layer {
   padding: var(--space-4);
 }
@@ -13,7 +16,7 @@
   max-height: 100%;
   margin: auto 0;
   background: var(--surface-panel-solid);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -47,13 +50,13 @@
   place-items: center;
 }
 .rpt-head h3 {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-screen-title);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
 .rpt-sub {
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 
 /* Tabs: ghost buttons; the selected one turns into a honey sticker. Focus is
@@ -66,7 +69,7 @@
 }
 .rpt-tab {
   --bw: var(--size-outline);
-  min-height: var(--size-target);
+  min-height: var(--size-control-md);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -133,24 +136,31 @@
   gap: var(--space-3);
   margin-left: auto;
 }
+/* Footer buttons on the P24 control heights: the main one large, the rest medium. */
+.rpt-foot .btn {
+  min-height: var(--size-control-md);
+}
+.rpt-foot .btn-primary {
+  min-height: var(--size-control-lg);
+}
 .rpt-section {
   padding: var(--space-4);
   background: var(--surface-panel-solid);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-lg);
 }
 .rpt-h4 {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-panel-title);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   margin: 0 0 var(--space-3);
 }
 .rpt-muted {
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-strong {
   font-weight: var(--font-weight-heavy);
@@ -172,9 +182,8 @@
   gap: 0 var(--space-4);
   align-items: center;
   padding: var(--space-4) var(--space-6);
-  border: var(--size-outline) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
   background: var(--surface-ok);
   color: var(--text-ok);
   animation: rpt-stamp var(--duration-pop) var(--easing-bounce) var(--duration-base) both;
@@ -197,12 +206,12 @@
   color: var(--text-primary);
 }
 .rpt-result-label {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-panel-title);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
 .rpt-result-value {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-screen-title);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
@@ -226,7 +235,7 @@
   min-width: 0;
   padding: var(--space-2) var(--space-3);
   background: var(--surface-sunken);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
 }
 .rpt-fig.is-result {
@@ -245,18 +254,18 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
 }
 .rpt-fig-value {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-value);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
 }
 .rpt-fig-sub,
 .rpt-fig-delta {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: var(--line-height-tight);
   color: var(--text-muted);
 }
@@ -289,7 +298,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-week-label {
   display: flex;
@@ -317,7 +326,7 @@
   align-items: center;
   gap: var(--space-1);
   margin: 0 0 var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
 }
@@ -326,10 +335,10 @@
 }
 .rpt-split .rpt-stat {
   padding: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-split .rpt-stat.is-total {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-value);
 }
 .rpt-cash {
   margin-top: var(--space-1);
@@ -339,7 +348,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 /* Best sellers · stock-outs: one line of text that wraps only when narrow. */
 .rpt-goods {
@@ -401,8 +410,8 @@
   margin-top: var(--space-1);
   padding-top: var(--space-2);
   border-bottom: 0;
-  border-top: var(--size-outline) solid var(--border-outline);
-  font-size: var(--font-size-lg);
+  border-top: var(--size-frame-outline) solid var(--border-outline);
+  font-size: var(--font-size-value);
 }
 .rpt-stat.is-total dt {
   color: var(--text-primary);
@@ -423,7 +432,7 @@
 }
 .rpt-stars-num {
   margin-left: var(--space-1);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-value);
   font-weight: var(--font-weight-heavy);
 }
 
@@ -461,7 +470,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-tip .ic {
   flex: none;
@@ -472,13 +481,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Flat honey disc, no outline of its own: it sits inside a framed section. */
 .rpt-tip-icon {
   display: grid;
   place-items: center;
   width: var(--size-target);
   height: var(--size-target);
   background: var(--surface-selected);
-  border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: var(--radius-pill);
 }
 
@@ -492,13 +501,13 @@
   padding: var(--space-1) var(--space-2);
   background: var(--level-chip-bg);
   color: var(--level-chip-text);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: var(--line-height-tight);
 }
 .rpt-levelup-title {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-levelup .rpt-unlocks {
   gap: 0 var(--space-3);
@@ -513,14 +522,14 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0 var(--space-2);
   align-items: center;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-mission-goal {
   grid-column: 2 / -1;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
 }
 .rpt-mission-reward {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -539,7 +548,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-skel {
   display: block;
@@ -550,7 +559,7 @@
 }
 .rpt-skel.is-lg {
   width: auto;
-  height: 48px;
+  height: var(--space-12);
   border-radius: var(--radius-lg);
 }
 .rpt-skel.is-short {
@@ -564,14 +573,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
   color: var(--text-ok);
 }
 .rpt-save.is-error {
   flex-basis: 100%;
   padding: var(--space-3);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   background: var(--surface-warning);
   color: var(--text-primary);
@@ -601,7 +610,7 @@
   padding: var(--space-1) var(--space-2);
   border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-heavy);
   background: var(--surface-sunken);
   color: var(--text-primary);
@@ -617,7 +626,7 @@
   grid-template-columns: var(--size-avatar) minmax(0, 1fr);
   gap: var(--space-1) var(--space-3);
   padding: var(--space-3);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
 }
@@ -635,12 +644,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-2);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
 .rpt-review-name {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   color: var(--text-primary);
 }
@@ -648,7 +657,7 @@
   margin-left: auto;
 }
 .rpt-review p {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-empty {
   display: flex;
@@ -678,25 +687,25 @@
   gap: var(--space-1);
   padding: var(--space-3);
   background: var(--surface-sunken);
-  border: var(--size-outline-sm) solid var(--border-outline);
+  border: var(--size-frame-outline) solid var(--border-outline);
   border-radius: var(--radius-md);
 }
 .rpt-kpi-label {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
 .rpt-kpi-value {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-value);
   font-weight: var(--font-weight-heavy);
   line-height: var(--line-height-tight);
   font-variant-numeric: tabular-nums;
 }
 .rpt-kpi-target {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   color: var(--text-muted);
 }
 
@@ -733,7 +742,7 @@
   background: var(--accent-primary-hover);
 }
 .rpt-hour-label {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -752,7 +761,7 @@
 .rpt-margins {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 .rpt-margins th,
 .rpt-margins td {
@@ -761,8 +770,8 @@
 }
 .rpt-margins thead th {
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  border-bottom: var(--size-outline-sm) solid var(--border-outline);
+  font-size: var(--font-size-caption);
+  border-bottom: var(--size-frame-outline) solid var(--border-outline);
 }
 .rpt-margins tbody tr {
   border-bottom: var(--size-outline-sm) dotted var(--border-subtle);
@@ -794,7 +803,7 @@
   gap: var(--space-2);
 }
 .rpt-sugg-text {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label);
 }
 
 /* Week-end screen (src/ui/screens/weekEnd.ts): score strip with cups,
@@ -822,7 +831,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-value);
   font-variant-numeric: tabular-nums;
 }
 .wk-track {
@@ -844,12 +853,6 @@
 }
 .wk-save.is-error p {
   color: var(--text-warning);
-}
-.wk-day-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-right: var(--space-2);
 }
 
 @media (max-width: 640px) {
@@ -883,8 +886,8 @@
   }
   .rpt-foot-actions > [data-action='reviews'] {
     flex: none;
-    min-width: var(--size-target-lg);
-    min-height: var(--size-target-lg);
+    min-width: var(--size-control-lg);
+    min-height: var(--size-control-lg);
     padding: 0;
   }
   .rpt-foot-actions > [data-action='reviews'] .rpt-btn-text {
@@ -892,9 +895,6 @@
   }
   .rpt-figs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .rpt-fig-value {
-    font-size: var(--font-size-lg);
   }
   /* Label and bar on the first line, the numbers on the second. */
   .rpt-week {
@@ -923,9 +923,6 @@
   }
   .rpt-result {
     padding: var(--space-3) var(--space-4);
-  }
-  .rpt-result-value {
-    font-size: var(--font-size-2xl);
   }
 }
 
