@@ -544,6 +544,9 @@ describe('report.css', () => {
     expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-1\) var\(--space-2\)/);
     expect(src).toMatch(/\.rpt-layer\[data-screen='report'\] \.rpt-dialog\s*\{[^}]*max-width:\s*calc\(var\(--size-dialog\)/);
     expect(src).toMatch(/\.rpt-body\.is-summary\s*\{[^}]*gap:\s*var\(--space-2\)/);
+    // On a phone the tip wraps rather than hiding text behind an ellipsis.
+    const narrow = src.slice(src.indexOf('@media (max-width: 640px)'));
+    expect(narrow).toMatch(/\.rpt-tip p\s*\{[^}]*white-space:\s*normal/);
   });
 
   it('drops the card in, stamps the result, and tones both down for reduced motion', async () => {

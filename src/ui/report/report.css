@@ -885,6 +885,18 @@
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
   }
+  /* No hover title on a phone: the tip wraps under its heading instead of being cut. */
+  .rpt-tips {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+  }
+  .rpt-tips .rpt-list {
+    flex-basis: 100%;
+  }
+  .rpt-tip p {
+    overflow: visible;
+    white-space: normal;
+  }
   .rpt-result {
     padding: var(--space-3) var(--space-4);
   }
