@@ -192,6 +192,43 @@ describe('tokens.css', () => {
   });
 });
 
+describe('ui.css panel head (P24 type scale)', () => {
+  const body = (selector: string): string => rules(uiCss).find((r) => r.selector === selector)?.body ?? '';
+
+  it('sets the panel title at the panel-title step (20 px), not the screen-title step', () => {
+    expect(body('.panel-head h2')).toMatch(/font-size:\s*var\(--font-size-panel-title\)/);
+  });
+
+  it('gives the head a fixed height from --panel-head-h', () => {
+    expect(body('.panel-head')).toMatch(/(?:^|;)\s*height:\s*var\(--panel-head-h\)/);
+    expect(body('#ui')).toMatch(/--panel-head-h:\s*calc\(48px \+ 2 \* var\(--space-3\) \+ var\(--size-outline\)\)/);
+  });
+});
+
+describe('ui.css toasts on a phone with a panel open', () => {
+  const all = rules(uiCss);
+  const phone = all.find((r) => r.selector === "#ui:has(.dock-btn[aria-pressed='true']) > .toasts");
+  const panelTop = all.find((r) => r.selector === '#ui > .panel')!.body.match(/top:\s*calc\(([^;]+)\);/)?.[1];
+
+  it('sits inside the 640 px media query', () => {
+    const src = uiCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).toMatch(/@media \(max-width: 640px\) \{\s*#ui:has\(\.dock-btn\[aria-pressed='true'\]\) > \.toasts \{/);
+  });
+
+  it('starts below the panel head, so the title and Đóng stay uncovered', () => {
+    expect(panelTop).toBe('var(--hud-h, 72px) + var(--space-2)');
+    const top = phone?.body.match(/(?:^|;)\s*top:\s*calc\(([^;]+)\);/)?.[1];
+    // Panel top + its top outline + the head, then a gap.
+    expect(top).toBe(`${panelTop} + var(--size-outline) + var(--panel-head-h) + var(--space-2)`);
+    expect(phone?.body).toMatch(/bottom:\s*auto/);
+  });
+
+  it('only moves the stack (absolute), so nothing else reflows', () => {
+    expect(all.find((r) => r.selector === '#ui > .toasts')?.body).toMatch(/position:\s*absolute/);
+    expect(phone?.body).not.toMatch(/position|margin|padding/);
+  });
+});
+
 describe('ui.css HUD level chip (design/p20 §4)', () => {
   it('tints the chip and the XP bar through the P20 aliases', () => {
     const all = rules(uiCss);
