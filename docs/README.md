@@ -8,6 +8,7 @@
 ## Báo cáo
 
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.
+- [reports/p25-progression.md](reports/p25-progression.md): P25, Menu gọn, thẻ lên cấp, hình và icon theo bậc nâng cấp, hiệu ứng mua, chấm "Mới"; ý đã làm và để sau; ảnh trước/sau P24→P25 ở 390 và 1280 px; kết quả kiểm layout, khởi động, khung hình lúc có hiệu ứng.
 - [reports/p24-ui.md](reports/p24-ui.md): P24, nguyên nhân gốc và cách sửa lỗi gợi ý nhập bỏ sót Cam, Bột bánh, Bơ; thang cỡ chữ, nút, viền, bóng chung và các chỗ đã thiết kế lại; ảnh trước/sau P23→P24 ở 390 và 1280 px; kết quả kiểm layout, khởi động, khung hình.
 - [reports/p23-ui.md](reports/p23-ui.md): P23, ảnh trước/sau P22→P23 có khoanh ở 390 và 1280 px: HUD 3 cụm, Daily Report gọn có Δ so hôm qua và so tuần, tổng kết tuần 1 và 2, danh sách thành phần lúc tải.
 - [reports/p23-loading-frames.md](reports/p23-loading-frames.md): P23, cách đo frame time và long task 5 s đầu sau khi cảnh 3D hiện, mỗi bước warm-up trong `world.prepare()` ứng với nguồn giật nào.

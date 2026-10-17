@@ -19,6 +19,13 @@
 // this HUD check only). The same HUD check runs again at 390, 1280 and 1440 px on
 // a day with an event ("Tăng giá nhập"), from a save written by this tree's
 // sim with the day-1 event swapped.
+// P25, at 390×844, 768×1024, 1280×720 and 1440×900, from saves of
+// scripts/capture-p25.mjs: the compact Menu on the day-3 morning after a
+// click on the Nước cam switch (no Cam), and the Daily Report of the first
+// level-up. Both must not overflow and every button must be at least
+// --size-target (a positioned ::before counts as tap area); at 390 px a
+// sellable Menu row must be at most 64 px and a short-of-stock row 80 px;
+// at 1280×720 the level-up report must fit without scrolling.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -563,6 +570,146 @@ async function runViewport(browser, viewport, overflow, shift) {
   }
 }
 
+/** Viewports of the P25 checks: the four widths, 1280 at 720 px high for the level-up report. */
+const P25_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+];
+/** Menu row height limits at 390 px: a sellable row, a row short of stock (P25 compact Menu). */
+const MENU_ROW_MAX = { ok: 64, short: 80 };
+const MENU_ROW_WIDTH = 390;
+
+/**
+ * Runs in the page: every shown button inside `root` smaller than `target`
+ * on a side. A ::before with a size (the 44 px tap area of .badge-btn)
+ * counts as part of the button.
+ */
+function smallButtons({ root, target, eps }) {
+  const out = [];
+  let count = 0;
+  for (const b of document.querySelectorAll(`${root} button`)) {
+    const r = b.getBoundingClientRect();
+    if (r.width <= 1 || r.height <= 1 || getComputedStyle(b).visibility === 'hidden') continue;
+    count++;
+    const before = getComputedStyle(b, '::before');
+    const extra = before.content !== 'none' && before.position === 'absolute';
+    const w = Math.max(r.width, extra ? parseFloat(before.width) || 0 : 0);
+    const h = Math.max(r.height, extra ? parseFloat(before.height) || 0 : 0);
+    if (w < target - eps || h < target - eps) out.push(`button ${b.dataset.action ?? b.getAttribute('aria-label') ?? b.textContent.trim().slice(0, 24)} ${w.toFixed(1)}×${h.toFixed(1)} < ${target} px`);
+  }
+  return { out, count };
+}
+
+/** Morning save of day 3 (Nước cam opens, no Cam) and the report of the first level-up, from scripts/capture-p25.mjs. */
+async function p25Saves() {
+  const { playSaves } = await import('./capture-p25.mjs');
+  const s = await playSaves(ROOT);
+  return { morning: s.saves.morning, levelUp: s.saves.levelUp, levelUpDay: s.levelUpDay };
+}
+
+/** A page at `viewport` with `save` in the autosave slot, resumed from the Main Menu until `ready`. */
+async function resumeSave(browser, viewport, save, ready) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    ({ now, settings, save }) => {
+      Date.now = () => now;
+      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
+      localStorage.setItem(save.key, save.text);
+    },
+    { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'low', gameSpeed: 1, cameraKeys: 'qe-wasd' }, save },
+  );
+  const page = await context.newPage();
+  await page.goto(URL_BASE);
+  await page.locator('#boot').waitFor({ state: 'detached' });
+  await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
+  await page.getByRole('button', { name: /^Tiếp tục/ }).click();
+  await page.locator(ready).first().waitFor();
+  return { context, page };
+}
+
+/**
+ * P25 compact Menu on the day-3 morning, after a click on the Nước cam
+ * switch (no Cam in stock): no overflow, every button ≥ --size-target, and at
+ * 390 px each sellable row ≤ MENU_ROW_MAX.ok and each short-of-stock row ≤
+ * MENU_ROW_MAX.short.
+ */
+async function checkMenuCompact(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'menu');
+    const sw = page.locator('#ui > .panel:not([hidden]) li[data-item="orange_juice"] .toggle');
+    await sw.scrollIntoViewIfNeeded();
+    await sw.click();
+    await page.locator('#ui > .panel:not([hidden]) li[data-item="orange_juice"] [data-lock="stock"]:not([hidden])').waitFor();
+    await checkScreen(page, results, size, 'Menu gọn (Nước cam thiếu Cam)', PANEL_FRAME);
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('#ui > .panel:not([hidden]) li[data-item]')].map((li) => {
+        const miss = li.querySelector('[data-lock="stock"]');
+        return { id: li.dataset.item, h: li.getBoundingClientRect().height, short: !!miss && !miss.hidden, locked: li.classList.contains('is-locked') };
+      }),
+    );
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: '#ui > .panel:not([hidden])', target, eps: EPS });
+    const ok = rows.filter((r) => !r.short && !r.locked);
+    const short = rows.filter((r) => r.short);
+    const max = (list) => Math.max(0, ...list.map((r) => r.h));
+    const fails = [...small.out];
+    if (viewport.width === MENU_ROW_WIDTH) {
+      for (const r of ok) if (r.h > MENU_ROW_MAX.ok + EPS) fails.push(`${r.id} row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.ok} px`);
+      for (const r of short) if (r.h > MENU_ROW_MAX.short + EPS) fails.push(`${r.id} (short of stock) row ${r.h.toFixed(1)} px > ${MENU_ROW_MAX.short} px`);
+    }
+    if (short.length === 0) fails.push('no row shows a "Thiếu …" label');
+    const limit = viewport.width === MENU_ROW_WIDTH ? ` (ngưỡng ${MENU_ROW_MAX.ok}/${MENU_ROW_MAX.short} px)` : '';
+    results.push({
+      viewport: size,
+      screen: 'Menu gọn: cao dòng, nút',
+      pass: fails.length === 0,
+      detail: `${rows.length} dòng; bán được cao tối đa ${max(ok).toFixed(1)} px, thiếu hàng ${max(short).toFixed(1)} px${limit}; ${small.count} nút ≥ ${target} px`,
+      fails,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * P25 level-up report (card, unlock chips, confetti): no overflow, every
+ * button ≥ --size-target, and at 1280×720 the summary tab fits without
+ * scrolling.
+ */
+async function checkLevelUpReport(browser, viewport, save, day, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.rpt-layer:not([hidden]) [data-block="level-up"]');
+  try {
+    await checkScreen(page, results, size, `Báo cáo ngày ${day} có thẻ lên cấp`, REPORT_FRAME);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: '.rpt-layer:not([hidden])', target, eps: EPS });
+    const fold = await page.evaluate(() => {
+      const over = (el) => (el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
+      return over(document.querySelector('#rpt-summary')) + over(document.querySelector('.rpt-layer:not([hidden])')) + over(document.querySelector('.rpt-layer:not([hidden]) .rpt-dialog'));
+    });
+    const card = await page.evaluate(() => {
+      const el = document.querySelector('.rpt-layer:not([hidden]) [data-block="level-up"]');
+      return { h: Math.round(el.getBoundingClientRect().height), chips: el.querySelectorAll('.rpt-unlock').length };
+    });
+    const fails = [...small.out];
+    const mustFit = viewport.width === 1280 && viewport.height === 720;
+    if (mustFit && fold > 0) fails.push(`the summary scrolls ${fold} px at 1280×720`);
+    results.push({
+      viewport: size,
+      screen: 'Thẻ lên cấp: vừa màn, nút',
+      pass: fails.length === 0,
+      detail: `thẻ cao ${card.h} px, ${card.chips} chip; ${fold > 0 ? `cuộn thêm ${fold} px` : 'vừa một màn'}${mustFit ? ' (phải vừa)' : ''}; ${small.count} nút ≥ ${target} px`,
+      fails,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -613,6 +760,17 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'HUD (ngày sự kiện)', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const p25 = await p25Saves();
+    for (const viewport of P25_VIEWPORTS) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkMenuCompact(browser, viewport, p25.morning, overflow);
+        await checkLevelUpReport(browser, viewport, p25.levelUp, p25.levelUpDay, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'P25: Menu gọn, thẻ lên cấp', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
