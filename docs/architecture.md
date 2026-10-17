@@ -257,6 +257,19 @@ Ngưỡng ở `src/sim/data/benchmarks.ts` là mốc huấn luyện theo thông 
 
 Đơn trung bình (AOV) và giờ cao điểm chỉ để tham khảo, không có ngưỡng. KPI `watch` hoặc `bad` kèm một câu gợi ý và một `panel` để UI mở thẳng bảng sửa (Nhân viên, Nâng cấp, Menu, Kho, Marketing).
 
+### Thống kê ngày và tuần
+
+`src/sim/stats.ts` gồm các hàm thuần, chỉ đọc `state.history` (28 ngày gần nhất), `state.today` và `state.week.archive`; không lưu gì thêm vào state. Mỗi phép so có 5 chỉ số (`STAT_IDS`): lợi nhuận, doanh thu, khách đã phục vụ, tỉ lệ bỏ về (0–100) và sao lúc đóng ngày.
+
+| Hàm | Trả về | Ai dùng |
+| --- | --- | --- |
+| `dayCompare(state, report)` | `StatDelta[]`: giá trị hôm nay, `vsYesterday` (`null` khi không có hôm qua) và `vsWeekAvg` so trung bình các ngày trước trong tuần (`null` ở ngày 1 của tuần hay khi không có `week`) | Ô số của tab Tổng kết (`src/ui/report/report.ts`) |
+| `weekToDate(state)` | `WeekToDate`: số ngày đã xong, tổng, trung bình ngày, mục tiêu và `revenueProgress` (doanh thu / mục tiêu); `null` khi không có `week` | Dòng tiến độ tuần của tab Tổng kết |
+| `weekCompare(state)` | Tuần vừa xong so tuần trước, mỗi chỉ số `value`, `previous`, `delta`; `null` khi `archive` chưa đủ 2 tuần | Bảng "So với tuần N" của màn Tổng kết tuần (`src/ui/screens/weekEnd.ts`) |
+| `bestDay(state)` | Ngày doanh thu cao nhất của tuần | Cột được đánh dấu trên biểu đồ doanh thu 7 ngày |
+
+Tỉ lệ bỏ về của tuần cũ là `null` khi các ngày của tuần đó đã ra khỏi `history`.
+
 ## FSM khách
 
 ```mermaid
@@ -338,7 +351,7 @@ Mỗi slot là JSON:
 { "version": 3, "savedAt": 1760364000000, "state": { "...": "GameState, events = []" } }
 ```
 
-- `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (3). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán; phiên bản 2 dừng sau tuần 1.
+- `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (3). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán; phiên bản 2 chưa có số tuần (`week.index`) và `week.archive`.
 - Migration 1→2 thêm `shopLevel`, `xp`, `missions` và `seed`: cấp tính từ số khách đã phục vụ trong `history`, nhưng không thấp hơn cấp đủ để mọi món đang bật và nâng cấp đã mua vẫn mở khóa, nên save cũ không mất quyền đã có. `xp` được nâng lên ít nhất `xpToReach(shopLevel)`.
 - Migration 2→3 cho `week` có sẵn thêm `index = 1` (nếu thiếu) và `archive`. Tuần đã có `result` được ghi một dòng `WeekSummary` vào `archive` (lợi nhuận và khách cộng từ các ngày của tuần trong `history` và `today`, không có thì 0) và giữ `result`, nên màn kết tuần vẫn hiện và `next_day` mở tuần 2. `history` dài hơn `HISTORY_DAYS` (28) bị cắt còn 28 ngày cuối. Save không có `week` giữ nguyên.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
@@ -399,9 +412,9 @@ Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`
 
 | Chunk (`npm run build`) | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 194,6 kB | 67,2 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 70,2 kB | 11,4 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 87,3 kB | 32,4 kB | Sau khi Main Menu đã vẽ |
+| `index-*.js` (chunk chính; từ `atlas.json` chỉ lấy số đo lưới) | 210,2 kB | 72,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 78,4 kB | 12,6 kB | Ngay khi mở trang |
+| `index-*.js` (`src/render`) | 88,5 kB | 32,8 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 502,0 kB | 126,1 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
 | `icons3d/atlas@1x.webp` | 116,1 kB | (đã nén) | Sau khi Main Menu đã vẽ, ngay sau lệnh xin chunk cảnh, `priority: 'low'`; không chặn Main Menu |
@@ -440,6 +453,14 @@ node scripts/measure-startup.mjs --base <git-ref> --runs 3
 ```
 
 Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless không cache, in bảng kích thước chunk và trung vị thời gian tới first paint, Main Menu và cảnh 3D, ở hai cấu hình: máy bàn không giới hạn và di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần).
+
+Đo frame time và long task 5 s đầu sau `cst:world`, để kiểm phần warm-up của `world.prepare()` còn chặn giật:
+
+```sh
+npm run perf:frames -- --base <git-ref> --runs 5
+```
+
+Thêm `--headed` để đo frame time trên cửa sổ có vsync; headless chỉ có số long task đáng tin. Script in tên GPU và cảnh báo khi WebGL vẽ bằng CPU (SwiftShader). Cách đọc kết quả và số đo: [reports/p23-loading-frames.md](reports/p23-loading-frames.md).
 
 ### Khi chơi
 
