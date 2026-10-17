@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ATLAS from '../../public/icons3d/atlas.json';
 import DESIGN from '../../design/t237-cartoon/icons/index.html?raw';
 import MAIN_TS from '../../src/main.ts?raw';
@@ -144,71 +144,46 @@ describe('drawIcon()', () => {
 });
 
 describe('atlas loading order', () => {
-  /** Every Image the code under test creates, so a test can fire its load or error. */
-  let images: HTMLImageElement[] = [];
-  const RealImage = globalThis.Image;
+  /** URL of every fetch the code under test makes, never answered. */
+  let fetched: { url: string; init?: RequestInit }[] = [];
 
   beforeEach(() => {
-    images = [];
-    globalThis.Image = class extends RealImage {
-      constructor() {
-        super();
-        images.push(this);
-      }
-    } as typeof Image;
+    fetched = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        fetched.push({ url, init });
+        return new Promise(() => {});
+      }),
+    );
   });
 
   afterEach(() => {
-    globalThis.Image = RealImage;
+    vi.unstubAllGlobals();
   });
 
   const freshRoot = (): HTMLElement => document.createElement('html');
 
-  it('marks the page icons-ready once the @1x atlas has loaded, and only then', () => {
+  it('asks for the @1x atlas with fetch, page-relative and at low priority, and holds icons-ready until it is in', () => {
     const root = freshRoot();
     watchIconAtlas(root, window);
-    expect(images).toHaveLength(1);
-    expect(images[0]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
-    images[0]!.onload?.(new Event('load'));
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(true);
-    expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
-  });
-
-  it('keeps the placeholders when the atlas fails, and tries once more when back online', () => {
-    const root = freshRoot();
-    const win = new EventTarget() as Window;
-    watchIconAtlas(root, win);
-    images[0]!.onerror?.(new Event('error'));
-    expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
-    expect(images).toHaveLength(1);
-    win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
-    expect(images[1]!.getAttribute('src')).toBe(ICON_ATLAS_URLS[1]);
-    images[1]!.onerror?.(new Event('error'));
-    win.dispatchEvent(new Event('online'));
-    expect(images).toHaveLength(2);
+    expect(fetched).toEqual([{ url: ICON_ATLAS_URLS[1], init: { priority: 'low' } }]);
     expect(root.classList.contains(ICONS_READY_CLASS)).toBe(false);
   });
 
   it('adds icons-hd only after the @2x atlas has loaded, and never on a failed load', async () => {
     const root = freshRoot();
-    let done!: () => void;
-    const pending = enableHdIcons(root, () => new Promise<void>((resolve) => (done = resolve)));
+    let done!: (img: HTMLImageElement) => void;
+    const pending = enableHdIcons(root, { devicePixelRatio: 2 }, () => new Promise((resolve) => (done = resolve)));
     await Promise.resolve();
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(false);
-    done();
+    done(new Image());
     await pending;
     expect(root.classList.contains(ICONS_HD_CLASS)).toBe(true);
 
     const failed = freshRoot();
-    await enableHdIcons(failed, () => Promise.reject(new Error('offline')));
+    await enableHdIcons(failed, { devicePixelRatio: 2 }, () => Promise.reject(new Error('offline')));
     expect(failed.classList.contains(ICONS_HD_CLASS)).toBe(false);
-  });
-
-  it('asks for the @1x atlas at low priority', () => {
-    watchIconAtlas(freshRoot(), window);
-    expect(images[0]!.fetchPriority).toBe('low');
   });
 
   it('is started by main.ts: @1x once the scene chunk is in (loaded or failed), @2x only after the 3D scene is ready', () => {

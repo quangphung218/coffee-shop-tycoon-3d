@@ -51,7 +51,7 @@ UI và cảnh 3D không hiển thị emoji; mọi biểu tượng là icon 3D lo
 
 | Module | Nội dung |
 | --- | --- |
-| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`, theo thứ tự ô trong atlas). `iconCell(id, size)` tính vị trí ô từ số đo lưới trong `atlas.json` (`small` cho lưới 24 px): ô 24 px khi `size` là 16 hoặc 24, ô 48 px khi 32, 48 hoặc bỏ trống; test so từng ô với bảng `icons` và `smallIcons` của file đó. `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô theo cỡ. `watchIconAtlas()` tải ảnh @1x rồi gắn `html.icons-ready`; lỗi thì thử lại một lần khi trình duyệt có mạng lại (`online`). `enableHdIcons()` tải ảnh @2x qua `loadIconAtlas()` rồi gắn `html.icons-hd`; lỗi thì giữ @1x. `loadIconAtlas()` tải ảnh @2x một lần (dùng chung với nhãn 3D), `drawIcon()` chép ô 48 px lên canvas. |
+| `src/ui/core/icons.ts` | Danh sách id (`ICON_IDS`, theo thứ tự ô trong atlas). `iconCell(id, size)` tính vị trí ô từ số đo lưới trong `atlas.json` (`small` cho lưới 24 px): ô 24 px khi `size` là 16 hoặc 24, ô 48 px khi 32, 48 hoặc bỏ trống; test so từng ô với bảng `icons` và `smallIcons` của file đó. `icon(id, { size })` trả `<span class="ic" data-icon="…" aria-hidden="true" focusable="false">` rỗng; ảnh là nền của ô theo cỡ. Mỗi atlas chỉ `fetch` một lần, thành blob và object URL dùng chung cho CSS và canvas. `watchIconAtlas()` tải ảnh @1x, gán `--ic-atlas: url(…)` lên `<html>` rồi gắn `html.icons-ready`; lỗi (mạng hay HTTP) thì thử lại một lần khi trình duyệt có mạng lại (`online`). `enableHdIcons()` chỉ chạy trên màn có `devicePixelRatio` > 1: lấy ảnh @2x qua `loadIconAtlas()`, gán nó vào `--ic-atlas` rồi gắn `html.icons-hd`; lỗi thì giữ @1x. `loadIconAtlas()` trả ảnh @2x đã tải (dùng chung với nhãn 3D), `drawIcon()` chép ô 48 px lên canvas. |
 | `src/ui/core/iconMap.ts` | Ánh xạ id của sim (món, nguyên liệu, marketing, nâng cấp, pha, vai, lý do review) sang icon. `avatarIcon(staffId)` trả ô `i-avatar-<n>` theo `AVATAR_LOOKS`. Trường `icon` emoji trong `src/sim/data` giữ nguyên nhưng không còn được hiển thị. |
 | `src/ui/styles/ui.css` (`.ic`) | Kích thước ô theo class: `.ic` 24 px, `.ic-sm` 16, `.ic-lg` 32, `.ic-xl` 48. Nền theo class trên `<html>` (bảng dưới); `icon()` đặt `--ic-size`, `--ic-pos` theo %, nên ô to nhỏ bao nhiêu cũng vừa. Icon trong nút nảy, nghiêng khi hover và co lại khi nhấn; tắt khi `prefers-reduced-motion`. |
 | `src/render/actors/labels.ts` | Nhãn món và mặt cảm xúc trên đầu khách trong cảnh 3D: vẽ bong bóng, rồi `drawIcon()` từ atlas @2x khi ảnh tải xong. |
@@ -61,13 +61,13 @@ Thứ tự tải atlas (`src/main.ts`):
 
 | Lúc | Việc | Ô `.ic` hiện |
 | --- | --- | --- |
-| Đầu `start()` (Main Menu hiện) | | Ô chờ: nền `--surface-sunken`, viền trong `--size-icon-stroke` màu `--border-outline`, bo `--radius-sm`, đứng yên |
-| Chunk `import('./render/scene')` (gọi sau khi menu đã vẽ) tải xong hoặc lỗi | `watchIconAtlas()` tải `atlas@1x.webp`, `fetchPriority = 'low'` | Vẫn ô chờ |
-| @1x tải xong (`html.icons-ready`) | | Ô của atlas @1x |
-| Sau `performance.mark('cst:world')` | `enableHdIcons()` tải `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
-| @2x tải xong (`html.icons-hd`) | | `image-set(@1x 1x, @2x 2x)`: màn 2x lấy @2x |
+| Đầu `start()` (Main Menu hiện) | | Ô chờ: nền mờ `--surface-icon-wait`, không viền, bo `--radius-sm`, đứng yên |
+| Chunk `import('./render/scene')` (gọi sau khi menu đã vẽ) tải xong hoặc lỗi | `watchIconAtlas()` fetch `atlas@1x.webp`, `priority: 'low'` | Vẫn ô chờ |
+| @1x tải xong (`--ic-atlas`, `html.icons-ready`) | | Ô của atlas @1x |
+| Sau `performance.mark('cst:world')`, màn 2x | `enableHdIcons()` fetch `atlas@2x.webp` | Vẫn @1x tới khi @2x tải xong |
+| @2x tải xong (`--ic-atlas`, `html.icons-hd`) | | Ô của atlas @2x |
 
-Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và không atlas nào tranh băng thông với chunk cảnh 3D. URL ảnh tương đối (`icons3d/…` trong JS, `/icons3d/…` trong CSS do Vite đổi theo `base: './'`).
+Màn 1x không tải @2x cho UI; nhãn 3D vẫn tải @2x khi cảnh cần, cũng một lần. Ô có sẵn kích thước trước khi atlas tải xong, nên layout không nhảy; không preload atlas, Main Menu không chờ ảnh, và không atlas nào tranh băng thông với chunk cảnh 3D. CSS không chứa URL atlas nào; URL trong JS tương đối (`icons3d/…`), đúng với `base: './'`.
 
 Thêm icon:
 

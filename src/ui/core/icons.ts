@@ -5,12 +5,13 @@
  * the 32 and 48 px sizes, and a 24 px one drawn for small sizes (thicker
  * ink, no fine detail) for 16 and 24 px.
  *
- * The DOM shows a cell as the background of an empty box. Until the @1x
- * atlas has loaded (watchIconAtlas, `html.icons-ready`) ui.css draws a plain
- * placeholder tile; once the 3D scene is up, enableHdIcons switches `.ic` to
- * image-set so a 2x screen gets the @2x image (`html.icons-hd`) without
- * taking bandwidth from three.js. The canvas (3D labels) copies the cell out
- * of the @2x image with drawImage. Nothing waits for the atlas, and the box
+ * The DOM shows a cell as the background of an empty box. Each atlas file
+ * is fetched once and handed to ui.css as an object URL in `--ic-atlas`.
+ * Until the @1x atlas has loaded (watchIconAtlas, `html.icons-ready`) ui.css
+ * draws a plain placeholder wash; once the 3D scene is up, enableHdIcons
+ * moves a 2x screen to the @2x image (`html.icons-hd`) without taking
+ * bandwidth from three.js. The canvas (3D labels) copies the cell out of the
+ * same @2x image with drawImage. Nothing waits for the atlas, and the box
  * has its final size before it arrives.
  */
 // Named imports only: Vite tree-shakes the rest of the JSON (the per-icon table).
@@ -149,27 +150,59 @@ export function icon(id: IconCellId, opts: IconOptions = {}): HTMLElement {
   return el;
 }
 
-let atlasImage: Promise<HTMLImageElement> | undefined;
+type AtlasScale = keyof typeof ICON_ATLAS_URLS;
 
-/** The @2x atlas as an image, for canvas drawing; loaded once and shared. A failed load can be retried. */
-export function loadIconAtlas(): Promise<HTMLImageElement> {
-  atlasImage ??= new Promise((resolve, reject) => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => resolve(img);
-    img.onerror = () => {
-      atlasImage = undefined;
-      reject(new Error(`icon atlas: cannot load ${ICON_ATLAS_URLS[2]}`));
-    };
-    img.src = ICON_ATLAS_URLS[2];
-  });
-  return atlasImage;
+/** One decoded image per atlas, from a single fetch; a failed load is forgotten so it can be retried. */
+const atlasImages = new Map<AtlasScale, Promise<HTMLImageElement>>();
+
+/**
+ * Fetches an atlas file once and decodes it from an object URL. The DOM
+ * (`--ic-atlas`) and the canvas both use that URL, so the file is never
+ * asked for twice, even with the HTTP cache off: an Image() and a CSS
+ * background are separate requests then.
+ */
+function atlasImage(scale: AtlasScale, priority: RequestPriority): Promise<HTMLImageElement> {
+  let pending = atlasImages.get(scale);
+  if (!pending) {
+    const url = ICON_ATLAS_URLS[scale];
+    pending = fetch(url, { priority })
+      .then((res) => {
+        if (!res.ok) throw new Error(`icon atlas: ${url} answered ${res.status}`);
+        return res.blob();
+      })
+      .then(
+        (blob) =>
+          new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.decoding = 'async';
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error(`icon atlas: cannot decode ${url}`));
+            img.src = URL.createObjectURL(blob);
+          }),
+      );
+    pending.catch(() => atlasImages.delete(scale));
+    atlasImages.set(scale, pending);
+  }
+  return pending;
 }
 
+/** The @2x atlas as an image, for canvas drawing; loaded once and shared with the DOM. A failed load can be retried. */
+export function loadIconAtlas(): Promise<HTMLImageElement> {
+  return atlasImage(2, 'auto');
+}
+
+/** Custom property on <html> holding `url(…)` of the loaded atlas; ui.css draws `.ic` with it. */
+export const ICON_ATLAS_VAR = '--ic-atlas';
 /** Class on <html> once the @1x atlas has loaded: ui.css drops the placeholder tile and draws the cells. */
 export const ICONS_READY_CLASS = 'icons-ready';
-/** Class on <html> once the @2x atlas has loaded after the 3D scene: ui.css lets 2x screens use it. */
+/** Class on <html> once a 2x screen draws from the @2x atlas, loaded after the 3D scene. */
 export const ICONS_HD_CLASS = 'icons-hd';
+
+/** Points ui.css at a loaded atlas, then adds `cls`: the image is set before the placeholder goes. */
+function useAtlas(root: HTMLElement, img: HTMLImageElement, cls: string): void {
+  root.style.setProperty(ICON_ATLAS_VAR, `url("${img.src}")`);
+  root.classList.add(cls);
+}
 
 /**
  * Loads the @1x atlas, the one every screen starts with, and marks `root`
@@ -179,29 +212,37 @@ export const ICONS_HD_CLASS = 'icons-hd';
 export function watchIconAtlas(root: HTMLElement = document.documentElement, win: Window = window): void {
   let retried = false;
   const load = (): void => {
-    const img = new Image();
-    img.decoding = 'async';
     // Below the scripts and fonts the page is still loading.
-    img.fetchPriority = 'low';
-    img.onload = () => root.classList.add(ICONS_READY_CLASS);
-    img.onerror = () => {
-      if (retried) return;
-      retried = true;
-      win.addEventListener('online', load, { once: true });
-    };
-    img.src = ICON_ATLAS_URLS[1];
+    atlasImage(1, 'low').then(
+      (img) => {
+        // A 2x screen may already draw the @2x one.
+        if (!root.classList.contains(ICONS_HD_CLASS)) useAtlas(root, img, ICONS_READY_CLASS);
+        else root.classList.add(ICONS_READY_CLASS);
+      },
+      () => {
+        if (retried) return;
+        retried = true;
+        win.addEventListener('online', load, { once: true });
+      },
+    );
   };
   load();
 }
 
 /**
- * Call once the 3D scene is on screen: loads the @2x atlas (shared with the
- * 3D labels) and then marks `root` with ICONS_HD_CLASS, so the switch never
- * shows an empty box. A failed load keeps the @1x icons.
+ * Call once the 3D scene is on screen. On a 2x screen: loads the @2x atlas
+ * (the same image the 3D labels draw from) and then marks `root` with
+ * ICONS_HD_CLASS, so the switch never shows an empty box. A 1x screen keeps
+ * the @1x atlas and asks for nothing. A failed load keeps the @1x icons.
  */
-export function enableHdIcons(root: HTMLElement = document.documentElement, load: () => Promise<unknown> = loadIconAtlas): Promise<void> {
+export function enableHdIcons(
+  root: HTMLElement = document.documentElement,
+  win: Pick<Window, 'devicePixelRatio'> = window,
+  load: () => Promise<HTMLImageElement> = loadIconAtlas,
+): Promise<void> {
+  if (win.devicePixelRatio <= 1) return Promise.resolve();
   return load().then(
-    () => void root.classList.add(ICONS_HD_CLASS),
+    (img) => useAtlas(root, img, ICONS_HD_CLASS),
     () => {},
   );
 }
