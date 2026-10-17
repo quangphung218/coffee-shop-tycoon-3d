@@ -8,6 +8,7 @@
 //   menu-<w>-p25.jpg            Menu of day 3 after a click on the Nước cam switch (no Cam):
 //                               row heights, rows in view, the switch and "Thiếu Cam"
 //   upgrades-<w>-p25.jpg        Nâng cấp at look tier 1/2/3: the tier icon and "Bậc n/3"
+//   tier-pair-<w>-p25.jpg       the espresso tier icon next to the 3D machine of the same save
 //   scene-espresso-<w>-p25.jpg  close-ups of the 3D shop at tier 1/2/3 (and P24 at the
 //   scene-grinder-<w>-p25.jpg   same levels): espresso machine, grinder and pastry case,
 //   scene-tables-<w>-p25.jpg    tables and chairs, plants and lamps
@@ -68,8 +69,8 @@ const FX_STEP = 24;
 const LEVELUP_LATER_MS = 2000;
 /** First level-up shot, ms after the confetti canvas appears: the report has dropped in, confetti still flies. */
 const LEVELUP_SETTLE_MS = 450;
-/** Menu row height limits at 390 px: a sellable row, a row short of stock. */
-const ROW_MAX = { ok: 64, short: 80 };
+/** Menu row height limits at 390 px: a sellable row, a row short of stock (as scripts/check-layout.mjs MENU_ROW_MAX). */
+const ROW_MAX = { ok: 72, short: 96 };
 const REVIEW = join(ROOT, 'docs', 'reports', 'p25-review');
 const PHONE = { width: 390, height: 844 };
 const DESK = { width: 1280, height: 800 };
@@ -348,6 +349,29 @@ async function ringDiff({ a, b, box, step }) {
   let changed = 0;
   for (let i = 0; i < da.length; i += 4) if (Math.abs(da[i] - db[i]) > step || Math.abs(da[i + 1] - db[i + 1]) > step || Math.abs(da[i + 2] - db[i + 2]) > step) changed++;
   return changed / (da.length / 4);
+}
+
+/**
+ * One PNG (base64) of the `icon` crop of `iconPng` and the `scene` crop of
+ * `scenePng`, side by side at height `h` on the board background, with the
+ * boxes of both in it.
+ */
+async function pairPng({ iconPng, icon, scenePng, scene, h, gap }) {
+  const load = async (png) => createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
+  const [a, b] = await Promise.all([load(iconPng), load(scenePng)]);
+  const iw = Math.round((icon.w / icon.h) * h);
+  const sw = Math.round((scene.w / scene.h) * h);
+  const canvas = new OffscreenCanvas(iw + gap + sw, h);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff8ec';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(a, icon.x, icon.y, icon.w, icon.h, 0, 0, iw, h);
+  ctx.drawImage(b, scene.x, scene.y, scene.w, scene.h, iw + gap, 0, sw, h);
+  const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { png: btoa(bin), icon: { x: 0, y: 0, w: iw, h }, scene: { x: iw + gap, y: 0, w: sw, h } };
 }
 
 /** A PNG (base64) as a JPEG (base64) at `quality`. */
@@ -734,6 +758,56 @@ async function upgradesBoard(browser, name, width, { base, cur, levels }) {
   });
 }
 
+/** Height of each icon + 3D pair on the tier board, px, and the gap between the two. */
+const PAIR_H = 200;
+const PAIR_GAP = 12;
+
+/**
+ * The tier icon of Máy espresso cao cấp next to the 3D machine of the same
+ * save: P24 at the tier-3 levels, P25 at tier 1, 2, 3. Each frame pairs the
+ * icon crop of the Nâng cấp shot with the close-up of the scene shot.
+ */
+async function tierPairBoard(browser, name, width, { base, cur, baseLayouts, curLayouts, levels }) {
+  const id = 'better_machine';
+  const lv = (t) => levels[t][id].level;
+  const grow = (r, x, y) => ({ x: r.x - x, y: r.y - y, w: r.w + 2 * x, h: r.h + 2 * y });
+  const inside = (r, crop, tile) => {
+    const k = tile.h / crop.h;
+    return { x: tile.x + (r.x - crop.x) * k, y: tile.y + (r.y - crop.y) * k, w: r.w * k, h: r.h * k };
+  };
+  const page = await browser.newPage();
+  const pairs = [];
+  try {
+    for (const [shot, layout] of [[base[3], baseLayouts[3]], ...TIERS.map((t) => [cur[t], curLayouts[t]])]) {
+      const iconBox = shot.panel.boxes[id]?.[0];
+      const machineBox = CLOSEUPS.espresso.boxes(layout).map(projector(layout, shot.scene.canvas))[0];
+      if (!iconBox || !machineBox) {
+        console.warn(`!! ${name}: no ${!iconBox ? 'icon' : '3D machine'} to pair`);
+        pairs.push(null);
+        continue;
+      }
+      const iconCrop = grow(iconBox, 10, 10);
+      const sceneCrop = grow(machineBox, 40, 40);
+      const r = await page.evaluate(pairPng, { iconPng: shot.panel.png.toString('base64'), icon: iconCrop, scenePng: shot.scene.png.toString('base64'), scene: sceneCrop, h: PAIR_H, gap: PAIR_GAP });
+      pairs.push({ png: Buffer.from(r.png, 'base64'), boxes: [inside(iconBox, iconCrop, r.icon), inside(machineBox, sceneCrop, r.scene)] });
+    }
+  } finally {
+    await page.close();
+  }
+  if (pairs.some((p) => !p)) return null;
+  return board(browser, name, {
+    frames: [before(pairs[0].png, 'Icon và máy, cấp bậc 3'), ...TIERS.map((t, i) => after(pairs[i + 1].png, `Icon và máy, bậc ${t}`))],
+    marks: [
+      { frame: 0, boxes: pairs[0].boxes, label: `Cấp ${lv(3)}: icon và máy như cấp 1` },
+      ...TIERS.map((t, i) => ({ frame: i + 1, boxes: pairs[i + 1].boxes, label: `Bậc ${t}: icon và máy cùng bậc` })),
+    ],
+    gutter: 0,
+    notes: [
+      `Khổ ${width} px. Mỗi khung ghép icon Máy espresso cao cấp trong bảng Nâng cấp (trái) với máy espresso trong cảnh 3D của cùng save (phải), camera mặc định. Cấp ${TIERS.map(lv).join(' / ')} → bậc ${TIERS.join(' / ')}. P24 một icon và một hình cho mọi cấp; P25 icon bậc và hình 3D đổi cùng nhau: bậc 2 thêm chi tiết và đế thép, bậc 3 đế vàng và sao vàng.`,
+    ],
+  });
+}
+
 async function sceneBoard(browser, name, width, kind, { base, cur, baseLayouts, curLayouts, levels }) {
   const c = CLOSEUPS[kind];
   const boxesOf = (layout, canvas) => c.boxes(layout).map(projector(layout, canvas));
@@ -888,6 +962,8 @@ async function main() {
       files.push(await menuBoard(browser, `menu-${w}-p25.jpg`, w, { base: baseMenu, cur: curMenu }));
       const tierPair = { base: baseTiers, cur: curTiers, baseLayouts: base.layouts, curLayouts: cur.layouts, levels: cur.levelsAt };
       files.push(await upgradesBoard(browser, `upgrades-${w}-p25.jpg`, w, tierPair));
+      const pairFile = await tierPairBoard(browser, `tier-pair-${w}-p25.jpg`, w, tierPair);
+      if (pairFile) files.push(pairFile);
       for (const kind of Object.keys(CLOSEUPS)) files.push(await sceneBoard(browser, `scene-${kind}-${w}-p25.jpg`, w, kind, tierPair));
       // The effect save is tier 1 bought one level up: the layout after the purchase.
       files.push(await fxBoard(browser, `fx-${w}-p25.jpg`, w, { base: baseFx, cur: curFx, baseLayout: base.layouts[1], curLayout: cur.layouts[1] }));
