@@ -12,9 +12,9 @@
 // p50, p95 and max, the frames over 50 ms, and the count and total time of
 // long tasks inside the window. Profiles match scripts/measure-startup.mjs:
 // desktop, and mobile (150 ms RTT, 1.6 Mbps, CPU 4x). Runs take turns
-// between builds so drift spreads over both. Needs Playwright's Chromium,
-// or Chrome at $CHROME_PATH.
-import { rmSync } from 'node:fs';
+// between builds so drift spreads over both. Runs the installed Chrome
+// ($CHROME_PATH, else the usual install locations) so WebGL uses the GPU.
+import { existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -86,6 +86,40 @@ function parseArgs(argv) {
   return args;
 }
 
+/**
+ * Installed Chrome, as in measure-startup.mjs: Playwright's own headless
+ * Chromium draws WebGL in software (SwiftShader), which makes every frame
+ * slow and hides the hitches this script looks for.
+ */
+function findChrome() {
+  const candidates = [
+    process.env.CHROME_PATH,
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ];
+  const found = candidates.find((p) => p && existsSync(p));
+  if (!found) throw new Error('Chrome not found; set CHROME_PATH');
+  return found;
+}
+
+/** WebGL renderer string of a blank page, e.g. "ANGLE (Apple, ANGLE Metal Renderer: Apple M2…)". */
+async function gpuName(browser) {
+  const page = await browser.newPage();
+  try {
+    return await page.evaluate(() => {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      if (!gl) return 'no WebGL2';
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      return gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+    });
+  } finally {
+    await page.close();
+  }
+}
+
 /** Frame intervals of rAF timestamps (the first one counted from the mark). */
 function intervals(ts) {
   const out = [];
@@ -153,10 +187,12 @@ async function main() {
       b.url = urlFor(PORT + i);
     }
     browser = await chromium.launch({
-      executablePath: process.env.CHROME_PATH || undefined,
+      executablePath: findChrome(),
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
-    console.log(`Chromium ${browser.version()}, ${VIEW.width}×${VIEW.height}, ${WINDOW_MS / 1000} s after cst:world, ${args.runs} runs per cell (median)\n`);
+    const gpu = await gpuName(browser);
+    console.log(`Chrome ${browser.version()}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${WINDOW_MS / 1000} s after cst:world, ${args.runs} runs per cell (median)\n`);
+    if (/swiftshader|llvmpipe|software/i.test(gpu)) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
     console.log(`| Build | Profile | 3D scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
     console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const profile of PROFILES) {

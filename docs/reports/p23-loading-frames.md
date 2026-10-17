@@ -12,13 +12,15 @@ node scripts/measure-startup.mjs --base f9508d8 --runs 5  # mốc Main Menu, c�
 
 `npm run perf:frames` chạy build rồi `measure-frames.mjs` (thêm `-- --base <commit> --runs <n>`).
 
-`scripts/measure-frames.mjs` mở bản build trong Chromium headless, không cache, cửa sổ 1280×800, `Date.now()` cố định nên quán sau menu giống nhau mỗi lần. Từ mốc `cst:world`, script ghi:
+`scripts/measure-frames.mjs` mở bản build trong Chrome cài trên máy (`$CHROME_PATH`, hoặc chỗ cài thường gặp), chạy headless, không cache, cửa sổ 1280×800, `Date.now()` cố định nên quán sau menu giống nhau mỗi lần. Từ mốc `cst:world`, script ghi:
 
 | Số | Cách lấy |
 | --- | --- |
 | Frame time p50, p95, max | Khoảng cách giữa các `requestAnimationFrame` trong 5 s, khung đầu tính từ mốc |
 | Frame > 50 ms | Số khung dài hơn 50 ms trong 5 s |
 | Long task | `PerformanceObserver` loại `longtask`: số task và tổng thời gian nằm trong 5 s |
+
+Dòng đầu của kết quả in tên GPU WebGL. Nếu là SwiftShader (Chromium của Playwright vẽ WebGL bằng CPU), mỗi khung mất khoảng 200 ms, long task phủ kín 5 s ở cả hai bản, và số đo không cho biết gì về giật; script in cảnh báo `!!`.
 
 Hai cấu hình như `measure-startup.mjs`: máy bàn không giới hạn, và di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần). Mỗi ô là trung vị của `--runs` lần, hai bản đo xen kẽ.
 
