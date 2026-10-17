@@ -60,8 +60,8 @@ Hiệu ứng vừa mua, phần điểm ảnh trong khung máy khác khung lúc y
 
 | Khổ | P24, 0,2 s | P25, 0 s | P25, 0,2 s | P25, 0,5 s |
 | --- | --- | --- | --- | --- |
-| 390 | 0,0% | 18,0% | 20,7% | 0,0% |
-| 1280 | 0,0% | 0,0% | 21,2% | 0,0% |
+| 390 | 0,0% | 0,0% | 5,2% | 0,0% |
+| 1280 | 0,0% | 0,0% | 24,4% | 0,0% |
 
 Máy đã ở hình bậc 2 ngay khung đầu; nảy thấy rõ ở 0,2 s. Lúc 0,5 s chỉ còn vài sao nhỏ, dưới ngưỡng đo.
 
