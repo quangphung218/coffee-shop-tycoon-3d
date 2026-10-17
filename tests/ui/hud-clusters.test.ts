@@ -2,7 +2,41 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState, Phase } from '../../src/sim/types';
-import { createHud, type Hud } from '../../src/ui/hud/hud';
+import { createHud, nextSpeed, type Hud } from '../../src/ui/hud/hud';
+
+// Vitest stubs .css imports to '', so ui.css is read through a dynamically
+// named node:fs import (as tests/ui/layout-overflow.test.ts).
+const FS_MODULE = 'node:fs';
+// jsdom gives import.meta.url no file: scheme, so the path is from the repo root (vitest's cwd).
+const { readFileSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
+/** Innermost `selector { body }` blocks of ui.css in source order, @media rules included. */
+const UI_RULES = [
+  ...readFileSync('src/ui/styles/ui.css', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .matchAll(/([^{}]+)\{([^{}]*)\}/g),
+]
+  .map((m) => ({ selector: m[1]!.trim(), body: m[2]!.trim() }))
+  .filter((r) => !r.selector.startsWith('@') && !/^(from|to|\d+%)/.test(r.selector));
+
+function decl(body: string, prop: string): string | undefined {
+  return body.match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`))?.[1]?.trim();
+}
+
+/** ui.css rules whose selector matches `el` (selectors jsdom cannot parse are skipped). */
+function rulesFor(el: Element): { selector: string; body: string }[] {
+  return UI_RULES.filter((r) => {
+    try {
+      return el.matches(r.selector);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** Sizes at or above the 44 px touch target (tokens.css). */
+const TARGET_SIZES = ['var(--size-target)', 'var(--size-hud-pill)', 'var(--size-target-lg)'];
 
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
@@ -131,6 +165,117 @@ describe('HUD clusters (P23)', () => {
   it('shows no note while preparing; the open button says why the clock waits', () => {
     const { bar } = mountHud(game());
     expect(q(bar, '.hud-note').hidden).toBe(true);
+  });
+
+  it('names an event in the title and aria-label; below 1440 px only its icon shows', () => {
+    const state = game();
+    const today = state.week!.plan.find((p) => p.day === 1)!;
+    today.event = 'supplier_hike';
+    const { bar } = mountHud(state);
+    const chip = q(bar, '[data-chip="event"]');
+    expect(chip.hidden).toBe(false);
+    expect(q(chip, '.ic').dataset.icon).toBeTruthy();
+    expect(chip.getAttribute('aria-label')).toMatch(/^Tăng giá nhập: /);
+    expect(chip.title).toBe(chip.getAttribute('aria-label'));
+    const word = q(chip, '.week-chip-label');
+    const hiders = rulesFor(word).filter((r) => decl(r.body, 'display') === 'none');
+    expect(hiders.length).toBeGreaterThan(0);
+    const css = readFileSync('src/ui/styles/ui.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const block = css.slice(css.indexOf('@media (max-width: 1439px)'));
+    expect(block.slice(0, block.indexOf('}')), 'hidden from 1439 px down').toContain('.week-chip-label');
+  });
+});
+
+// P23 review: at 390 px the controls were squeezed to 36 px and the speed
+// group showed one empty honey dot (a rule hid every span, icons included).
+describe('HUD touch targets and speed control', () => {
+  it.each<Phase>(['preparation', 'peak', 'report'])('sizes every %s button with a target token, never below 44 px', (phase) => {
+    const state = game();
+    state.phase = phase;
+    const { bar } = mountHud(state);
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button')];
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const b of buttons) {
+      const name = b.dataset.action ?? b.getAttribute('aria-label');
+      const matched = rulesFor(b);
+      // The 640 px rules come last, so each size a button ends up with is in this list.
+      for (const prop of ['min-width', 'min-height']) {
+        const values = matched.map((r) => decl(r.body, prop)).filter((v): v is string => v !== undefined);
+        // Menu items are full-width rows with a word; every other control needs both sides.
+        if (prop === 'min-height' || !b.matches('[role="menuitem"]')) expect(values.length, `${name} ${prop}`).toBeGreaterThan(0);
+        for (const v of values) expect(TARGET_SIZES, `${name} ${prop}: ${v}`).toContain(v);
+      }
+    }
+  });
+
+  it('gives every speed option an icon, a visible "Nx" and an aria-label that no rule hides', () => {
+    const state = game();
+    state.phase = 'peak';
+    const { bar } = mountHud(state);
+    const hiders = UI_RULES.filter((r) => decl(r.body, 'display') === 'none');
+    const hidden = (el: Element): string | undefined => hiders.find((r) => rulesFor(el).includes(r))?.selector;
+    const options = [...bar.querySelectorAll<HTMLButtonElement>('.speed [data-speed]')];
+    expect(options.map((b) => b.getAttribute('aria-label'))).toEqual(['Tốc độ 1x', 'Tốc độ 2x', 'Tốc độ 4x']);
+    for (const b of [...options, q<HTMLButtonElement>(bar, '[data-action="speed-cycle"]')]) {
+      const ic = q(b, '.ic');
+      const label = q(b, ':scope > span:not(.ic)');
+      expect(b.getAttribute('aria-label'), b.outerHTML).toBeTruthy();
+      expect(ic.dataset.icon).toMatch(/^i-speed-/);
+      expect(label.textContent).toMatch(/^\dx$/);
+      expect(hidden(ic), `${b.outerHTML} icon`).toBeUndefined();
+      expect(hidden(label), `${b.outerHTML} label`).toBeUndefined();
+    }
+  });
+
+  it('hides the group and shows the cycling button from 640 px down, in the same grid cell', () => {
+    const rule = (sel: string, prop: string): string[] => UI_RULES.filter((r) => r.selector.split(',').map((s) => s.trim()).includes(sel)).map((r) => decl(r.body, prop) ?? '');
+    expect(rule('.hud-controls > .speed', 'display')).toContain('none');
+    expect(rule('.hud-controls .speed-cycle', 'display')).toEqual(['none']);
+    expect(rule('.hud-controls > .speed-cycle', 'display')).toContain('inline-flex');
+    expect(rule('.hud-controls > .speed-cycle', 'grid-area')).toContain('main');
+  });
+
+  it('steps the cycling button 1x → 2x → 4x → 1x and names the current speed', () => {
+    const state = game();
+    state.phase = 'peak';
+    const sent: number[] = [];
+    const hud = createHud({
+      dispatch: (cmd) => {
+        if (cmd.type === 'set_speed') {
+          sent.push(cmd.speed);
+          state.speed = cmd.speed;
+        }
+        return true;
+      },
+      getState: () => state,
+      onPause() {},
+      onSettings() {},
+      onResetCamera() {},
+    });
+    mounted = hud;
+    document.body.append(hud.el);
+    hud.update(state);
+    const cycle = q<HTMLButtonElement>(hud.el, '[data-action="speed-cycle"]');
+    expect(cycle.hidden).toBe(false);
+    const seen: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      seen.push(`${visibleText(cycle)}|${q(cycle, '.ic').dataset.icon}|${cycle.getAttribute('aria-label')}`);
+      cycle.click();
+      hud.update(state);
+    }
+    expect(sent).toEqual([2, 4, 1]);
+    expect(seen).toEqual([
+      '1x|i-speed-1|Tốc độ 1x, bấm để chuyển sang 2x',
+      '2x|i-speed-2|Tốc độ 2x, bấm để chuyển sang 4x',
+      '4x|i-speed-4|Tốc độ 4x, bấm để chuyển sang 1x',
+    ]);
+    expect(nextSpeed(3)).toBe(1);
+  });
+
+  it('hides the cycling button with the group outside the open phases', () => {
+    const { bar } = mountHud(game());
+    expect(q(bar, '.speed').hidden).toBe(true);
+    expect(q(bar, '[data-action="speed-cycle"]').hidden).toBe(true);
   });
 });
 

@@ -1440,6 +1440,19 @@ legend {
   background: var(--surface-selected);
   border-color: var(--border-outline);
 }
+/* The phone's one speed button (shown from 640 px down in place of the
+   group): the current speed as a honey sticker, like the pressed option. */
+.hud-controls .speed-cycle {
+  display: none;
+}
+.hud-controls .hud-btn.speed-cycle,
+.hud-controls .hud-btn.speed-cycle:hover {
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  background: var(--accent-primary);
+  border-color: var(--border-outline);
+  box-shadow: var(--shadow-sm);
+}
 /* Camera and settings: a menu dropping down in place under its button. */
 .hud-menu-wrap {
   position: relative;
@@ -1494,10 +1507,12 @@ legend {
   font-weight: var(--font-weight-bold);
 }
 
-/* Below 1440 px the XP count and the pause word live in the bar's title and
-   the button's aria-label, so the three clusters keep one row at 1280 px. */
+/* Below 1440 px the XP count, the event's name and the pause word live in
+   the titles and aria-labels, so the three clusters keep one row at 1280 px
+   (also on a "Tăng giá nhập" day). */
 @media (max-width: 1439px) {
   .hud-level .xp-num,
+  .week-chip-label,
   .hud-btn .lbl-long {
     display: none;
   }
@@ -1541,7 +1556,8 @@ legend {
     border-radius: var(--radius-xl);
   }
   .hud-controls > .hud-btn-cta,
-  .hud-controls > .speed {
+  .hud-controls > .speed,
+  .hud-controls > .speed-cycle {
     grid-area: main;
   }
   .hud-controls > [data-action='pause'] {
@@ -1992,8 +2008,9 @@ legend {
   /* HUD in two rows of 390 px: smaller type and gaps; the event and the
      current phase keep their icon (names in the title and the list), the
      clock sits over the phase dots, the level shows its number with the XP
-     bar as a thin line along the bottom of the Tiến độ frame, and the speed
-     options show their icon only (each keeps its aria-label). */
+     bar as a thin line along the bottom of the Tiến độ frame, and one speed
+     button (icon and "2x") steps through the speeds in place of the group.
+     Every control keeps the 44 px target. */
   .hud-cluster {
     gap: var(--space-2);
     padding: var(--space-1) var(--space-2);
@@ -2012,13 +2029,15 @@ legend {
     gap: var(--size-group-gap);
   }
   .hud-time .hud-val > .ic,
-  .week-chip-label,
   .phases li .ph-label,
   .hud-level .level-word,
   .hud-level .xp-num,
-  .speed button > span,
+  .hud-controls > .speed,
   .hud-menu-btn > .ic + .ic {
     display: none;
+  }
+  .hud-controls > .speed-cycle {
+    display: inline-flex;
   }
   .phases li[aria-current='step'] {
     min-height: 0;
@@ -2052,15 +2071,17 @@ legend {
     height: var(--space-1);
     border-width: 0;
   }
-  .hud-controls .hud-btn:not(.hud-btn-cta),
-  .hud-controls .seg button {
-    min-width: calc(var(--space-8) + var(--space-1));
-    min-height: calc(var(--space-8) + var(--space-1));
+  .hud-controls .hud-btn:not(.hud-btn-cta) {
+    min-width: var(--size-target);
+    min-height: var(--size-target);
     padding: 0 var(--space-1);
     justify-content: center;
   }
+  .hud-controls .hud-btn.speed-cycle {
+    padding: 0 var(--space-2);
+  }
   .hud-controls .hud-btn-cta {
-    min-height: calc(var(--space-8) + var(--space-1));
+    min-height: var(--size-target);
     padding: 0 var(--space-3);
     font-size: var(--font-size-sm);
   }
