@@ -14,7 +14,11 @@
 // are listed per step as notes. The HUD is checked before opening, with the
 // camera menu open and while open: three clusters inside the viewport, not
 // overlapping, content inside each frame, one row from 1280 px up and at
-// most two below (1280×800 runs this HUD check only).
+// most two below, every button at least --size-target (44 px) and, while
+// open, each speed button with an icon and an aria-label (1280×800 runs
+// this HUD check only). The same HUD check runs again at 390, 1280 and 1440 px on
+// a day with an event ("Tăng giá nhập"), from a save written by this tree's
+// sim with the day-1 event swapped.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -194,14 +198,58 @@ async function checkHud(page, results, viewport, screen, maxRows) {
         const r = menu.getBoundingClientRect();
         if (r.left < -eps || r.right > innerWidth + eps) fails.push(`menu ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside 0..${innerWidth}`);
       }
+      // Every shown button is at least --size-target on both sides.
+      const target = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44;
+      const shown = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden';
+      };
+      const buttons = [...document.querySelectorAll('.hud button')].filter(shown);
+      for (const b of buttons) {
+        const r = b.getBoundingClientRect();
+        if (r.width < target - eps || r.height < target - eps) fails.push(`button ${b.dataset.action ?? b.dataset.speed ?? b.getAttribute('aria-label')} ${r.width.toFixed(1)}×${r.height.toFixed(1)} < ${target} px`);
+      }
+      // While open, the speed control shows: each speed button an icon and a name.
+      const speed = buttons.filter((b) => b.matches('.speed button, .speed-cycle'));
+      const open = document.querySelector('.phases li[aria-current="step"]')?.dataset.phase;
+      if (open && open !== 'preparation' && speed.length === 0) fails.push('no speed button shown while open');
+      for (const b of speed) {
+        const ic = b.querySelector('.ic');
+        if (!ic || !shown(ic)) fails.push(`speed button ${b.getAttribute('aria-label')} shows no icon`);
+        if (!b.getAttribute('aria-label')) fails.push('speed button without aria-label');
+      }
+      const event = document.querySelector('.hud [data-chip="event"]:not([hidden])');
       const bar = document.querySelector('.hud').getBoundingClientRect();
-      return { fails, rows, height: Math.round(bar.height), widths: boxes.map(([c, r]) => `${name(c)} ${Math.round(r.width)}`).join(', ') };
+      return {
+        fails,
+        rows,
+        height: Math.round(bar.height),
+        widths: boxes.map(([c, r]) => `${name(c)} ${Math.round(r.width)}`).join(', '),
+        buttons: buttons.length,
+        event: event?.getAttribute('aria-label')?.split(':')[0] ?? null,
+      };
     },
     { eps: EPS },
   );
   const fails = [...m.fails];
   if (m.rows > maxRows) fails.push(`${m.rows} rows, at most ${maxRows}`);
-  results.push({ viewport, screen, pass: fails.length === 0, detail: `${m.rows} hàng, cao ${m.height} px; ${m.widths}`, fails });
+  const event = m.event ? `; sự kiện ${m.event}` : '';
+  results.push({ viewport, screen, pass: fails.length === 0, detail: `${m.rows} hàng, cao ${m.height} px; ${m.widths}; ${m.buttons} nút ≥ 44 px${event}`, fails });
+}
+
+/** Sets 4x: the speed option where the group shows, else the phone's cycling button until it reads 4x. */
+async function setSpeed4(page) {
+  const option = page.locator('.hud .speed [data-speed="4"]');
+  if (await option.isVisible()) return option.click();
+  const cycle = page.locator('.hud [data-action="speed-cycle"]');
+  for (let i = 0; i < 3; i++) {
+    const now = await cycle.getAttribute('data-current');
+    if (now === '4') return;
+    await cycle.click();
+    // The HUD redraws on the next frame.
+    await page.locator(`.hud [data-action="speed-cycle"]:not([data-current="${now}"])`).waitFor();
+  }
+  throw new Error('the speed button did not reach 4x');
 }
 
 /** Rows the HUD may take: one on a wide screen, two from 1279 px down. */
@@ -247,8 +295,74 @@ async function runHudOnly(browser, viewport, results) {
     await startDayOne(page);
     await checkHudPhases(page, results, viewport);
     await page.locator('.hud [data-action="open"]').click();
-    await page.locator('[data-speed="4"]').click();
+    await setSpeed4(page);
     await checkHud(page, results, `${viewport.width}×${viewport.height}`, 'HUD: mở cửa', hudRows(viewport));
+  } finally {
+    await context.close();
+  }
+}
+
+/** Viewports of the event-day HUD check. */
+const EVENT_DAY = [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+  // The event's name shows again from 1440 px (ui.css).
+  { width: 1440, height: 900 },
+];
+/** The event with the longest name (DAY_EVENT_LABELS "Tăng giá nhập"). */
+const EVENT = 'supplier_hike';
+
+/**
+ * Autosave of a new Easy game on the morning of day 1, its plan turned into
+ * an EVENT day (day 1 is always the grand opening), written by the sim and
+ * save code of this tree.
+ */
+async function eventDaySave() {
+  const { createServer } = await import('vite');
+  const vite = await createServer({ root: ROOT, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
+  try {
+    const [stateMod, save] = await Promise.all(['/src/sim/state.ts', '/src/save/save.ts'].map((p) => vite.ssrLoadModule(p)));
+    const state = stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+    const today = state.week?.plan.find((p) => p.day === 1);
+    if (!today) throw new Error('the new game has no week plan');
+    today.event = EVENT;
+    const data = new Map();
+    const storage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
+    const r = save.saveGame(state, 'auto', storage, FIXED_NOW);
+    if (!r.ok) throw new Error(`cannot write the event-day save: ${r.error.message}`);
+    const key = save.saveKey('auto');
+    return { key, text: data.get(key) };
+  } finally {
+    await vite.close();
+  }
+}
+
+/** HUD of an EVENT day (from eventDaySave) before opening, with the menu and while open. */
+async function runEventDay(browser, viewport, results, eventSave) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    ({ now, settings, save }) => {
+      Date.now = () => now;
+      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
+      localStorage.setItem(save.key, save.text);
+    },
+    { now: FIXED_NOW, settings: { musicVolume: 0, sfxVolume: 0, quality: 'low', gameSpeed: 1, cameraKeys: 'qe-wasd' }, save: eventSave },
+  );
+  const page = await context.newPage();
+  try {
+    await page.goto(URL_BASE);
+    await page.locator('#boot').waitFor({ state: 'detached' });
+    await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
+    await page.getByRole('button', { name: /^Tiếp tục/ }).click();
+    await page.locator('.hud [data-action="open"]').waitFor();
+    await page.locator('.hud [data-chip="event"]:not([hidden])').waitFor();
+    const before = results.length;
+    await checkHudPhases(page, results, viewport);
+    await page.locator('.hud [data-action="open"]').click();
+    await setSpeed4(page);
+    await checkHud(page, results, size, 'HUD: mở cửa', hudRows(viewport));
+    for (const r of results.slice(before)) r.screen += ' (ngày sự kiện)';
   } finally {
     await context.close();
   }
@@ -430,7 +544,7 @@ async function runViewport(browser, viewport, overflow, shift) {
     await page.locator('#ui > .panel').waitFor({ state: 'hidden' });
 
     await page.locator('.hud [data-action="open"]').click();
-    await page.locator('[data-speed="4"]').click();
+    await setSpeed4(page);
     await checkHud(page, overflow, size, 'HUD: mở cửa', hudRows(viewport));
     await page.waitForFunction(
       () => document.querySelector('.rpt-layer:not([hidden]) [data-block="money"]') && !document.querySelector('.rpt-layer:not([hidden]) [data-block="busy"]'),
@@ -486,6 +600,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'HUD', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const eventSave = await eventDaySave();
+    for (const viewport of EVENT_DAY) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await runEventDay(browser, viewport, overflow, eventSave);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'HUD (ngày sự kiện)', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
