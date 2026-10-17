@@ -472,9 +472,11 @@ const MENU_STYLES = {
 async function clickSwitch(page, item) {
   const sw = page.locator(`${ROW('data-item', item)} .toggle`);
   await sw.scrollIntoViewIfNeeded();
-  await sw.click();
+  const locked = (await sw.getAttribute('aria-disabled')) === 'true';
+  // Playwright waits for an aria-disabled control to enable; a player can still tap it, so force the tap.
+  await sw.click({ force: locked });
   await sleep(400);
-  return { checked: (await sw.getAttribute('aria-checked')) === 'true', locked: (await sw.getAttribute('aria-disabled')) === 'true' };
+  return { checked: (await sw.getAttribute('aria-checked')) === 'true', locked };
 }
 
 /** Kho → Gợi ý nhập tự động, then the pack count and tag of each WATCH row. */
@@ -575,7 +577,9 @@ async function cakeSession(browser, url, save, viewport, who) {
     const switched = await clickSwitch(page, item);
     await openPanel(page, 'inventory');
     const rows = await pressSuggest(page);
-    await page.locator(`${PANEL} [data-action="buy"]`).click();
+    const buy = page.locator(`${PANEL} [data-action="buy"]`);
+    // Dimmed (aria-disabled) when money is short: tap it anyway, the missing toast is the result.
+    await buy.click({ force: (await buy.getAttribute('aria-disabled')) === 'true' });
     await sleep(400);
     const playtest = { day: CAKE_DAY, name, switched, rows, toasts: await page.evaluate(spendToasts) };
     printPlaytest(who, viewport.width, playtest);
