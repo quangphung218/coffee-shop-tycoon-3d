@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, migrate } from '../../src/save/save';
 import { pickOrder } from '../../src/sim/customers';
 import { getIngredient } from '../../src/sim/data/ingredients';
-import { applyRestockSuggestion, autoRestockSuggestion, expectedDemand } from '../../src/sim/inventory';
+import { applyRestockSuggestion, autoRestockSuggestion, expectedDemand, type RestockLine } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState, IngredientId, MenuItemId } from '../../src/sim/types';
 
@@ -55,6 +55,23 @@ describe('restock demand for items the last day did not sell', () => {
     const amount = String(shortfall).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     const names = r.skipped.map((id) => getIngredient(id).name).join(', ');
     expect(s.events).toContainEqual({ type: 'notify', level: 'warning', text: `Thiếu ${amount}đ để nhập ${names}` });
+  });
+
+  it('(d2) buys the first line and names only the later lines with what they still lack', () => {
+    const s = dayTwo(['orange', 'flour']);
+    enable(s, 'orange_juice', 'cake');
+    const lines = autoRestockSuggestion(s).items;
+    expect(lines.map((l) => l.id)).toEqual(['orange', 'flour']);
+    const [first, second] = lines as [RestockLine, RestockLine];
+    s.money = first.cost + 1000;
+    s.events = [];
+    const r = applyRestockSuggestion(s);
+    expect(r.bought.map((l) => l.id)).toEqual(['orange']);
+    expect(r.skipped).toEqual(['flour']);
+    expect(s.money).toBe(1000);
+    const amount = String(second.cost - 1000).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const notices = s.events.filter((e) => e.type === 'notify');
+    expect(notices).toEqual([{ type: 'notify', level: 'warning', text: `Thiếu ${amount}đ để nhập ${getIngredient('flour').name}` }]);
   });
 });
 
