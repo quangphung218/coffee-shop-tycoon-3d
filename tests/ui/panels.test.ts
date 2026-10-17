@@ -92,7 +92,7 @@ describe('registration', () => {
 });
 
 describe('menu panel', () => {
-  it('lists the 11 items and blocks one that lacks an ingredient with one warning label', () => {
+  it('lists the 11 items and lets one that lacks an ingredient be switched on, with one warning label', () => {
     const state = game();
     // Mocha opens at a later shop level; reach it so only the ingredient blocks it.
     state.shopLevel = 6;
@@ -105,7 +105,7 @@ describe('menu panel', () => {
     // Not the "not open yet" look: no dashed frame, no lock icon anywhere in the row.
     expect(mocha.classList.contains('is-locked')).toBe(false);
     expect(mocha.querySelector('[data-icon="i-lock"]')).toBeNull();
-    expect(sw.getAttribute('aria-disabled')).toBe('true');
+    expect(sw.getAttribute('aria-disabled')).not.toBe('true');
     // The amounts stay in the switch's description, off screen.
     const why = q(document, `#${sw.getAttribute('aria-describedby')}`);
     expect(why.textContent).toContain(getIngredient('cacao').name);
@@ -123,9 +123,13 @@ describe('menu panel', () => {
     expect(link.hidden).toBe(false);
     expect(link.textContent).toBe('Mở Kho');
 
+    // On while still short: the label and the link stay until the stock arrives.
     sw.click();
-    expect(sent).toHaveLength(0);
-    expect(state.menu.find((m) => m.id === 'mocha')!.enabled).toBe(false);
+    expect(sent).toEqual([{ type: 'set_menu_item', itemId: 'mocha', enabled: true }]);
+    expect(state.menu.find((m) => m.id === 'mocha')!.enabled).toBe(true);
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    expect(label.hidden).toBe(false);
+    expect(link.hidden).toBe(false);
   });
 
   it('names the missing ingredient on an item already on sale, and drops it once stocked', () => {
@@ -257,9 +261,16 @@ describe('inventory panel', () => {
     const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
     const pack = ingredientPrice(state, 'coffee_beans', getIngredient('coffee_beans').packSize);
-    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toBe(`Thiếu ${formatMoney(pack - 1000)}. Bớt số gói để vừa tiền.`);
+    const hint = q(document, `#${buy.getAttribute('aria-describedby')}`);
+    expect(hint.textContent).toBe(`Thiếu ${formatMoney(pack - 1000)}. Bớt ${getIngredient('coffee_beans').name} để vừa tiền.`);
     buy.click();
     expect(sent).toHaveLength(0);
+
+    // Several lines: the hint names the one that costs the most.
+    for (let i = 0; i < 3; i++) q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Thêm"]').click();
+    const milk = ingredientPrice(state, 'milk', 3 * getIngredient('milk').packSize);
+    const top = milk > pack ? 'milk' : 'coffee_beans';
+    expect(hint.textContent).toBe(`Thiếu ${formatMoney(pack + milk - 1000)}. Bớt ${getIngredient(top).name} để vừa tiền.`);
   });
 
   it('shows a low-stock badge', () => {

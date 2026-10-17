@@ -207,7 +207,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 | `iceCostReduction` | Giảm chi phí đá cho đồ lạnh | `inventory.ts` |
 | `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
 
-Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 80k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
+Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 60k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
 
 Gỡ trang trí (`removeDecor`) chỉ áp cho `plants`, `paintings`, `lights` (`isRemovableDecor`: `decor` không có `capacity`): giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% giá của cấp đó theo `priceMult`. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
 
@@ -233,11 +233,11 @@ Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, 
 
 | Trường hợp | Nhu cầu |
 | --- | --- |
-| Món có nhu cầu quan sát > 0 | `sold` + `outOfStock` + `missedDemand` của món. |
+| Món có nhu cầu quan sát > 0 | `sold` + `outOfStock` + `missedDemand` của món, không âm. |
 | Món đang bật mà nhu cầu quan sát = 0 (mới bật, hay bị ẩn vì hết hàng) | Mức nền: tổng nhu cầu quan sát của ngày tham chiếu × `popularity` món / tổng `popularity` các món đang bật. |
 | Chưa có ngày tham chiếu, hoặc ngày đó tổng nhu cầu = 0 | Như mức nền, với tổng là `DAY_ONE_SERVINGS` theo độ khó. |
 
-`DayStats.missedDemand` ghi nhu cầu bị bỏ lỡ: khi `pickOrder` chỉ chọn trong các món còn làm được, mỗi món đang bật bị loại vì hết hàng được cộng trọng số của nó / tổng trọng số mọi món đang bật. Không rút thêm số ngẫu nhiên. Save cũ thiếu trường này coi như `{}`.
+`DayStats.missedDemand` ghi nhu cầu bị bỏ lỡ: khi `pickOrder` chỉ chọn trong các món còn làm được, mỗi món đang bật bị loại vì hết hàng được cộng trọng số của nó / tổng trọng số mọi món đang bật, và món khách chọn thay bị trừ đúng tổng phần đó (giá trị có thể âm), nên mỗi khách vẫn tính là một ly. Không rút thêm số ngẫu nhiên. Save cũ thiếu trường này coi như `{}`.
 
 `autoRestockSuggestion` lấy nhu cầu này nhân lượng nguyên liệu mỗi ly, cộng `RESTOCK_BUFFER` (20%), trừ tồn kho, làm tròn lên theo gói.
 

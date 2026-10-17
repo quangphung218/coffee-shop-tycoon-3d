@@ -1,4 +1,4 @@
-import { INGREDIENTS } from '../../sim/data/ingredients';
+import { INGREDIENTS, getIngredient } from '../../sim/data/ingredients';
 import { autoRestockSuggestion, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
 import type { GameState, IngredientDef, IngredientId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
@@ -135,7 +135,11 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
     // One slot for every message, at most two lines, so the foot keeps its height.
     hint.classList.toggle('reason-danger', short);
     if (sum === 0) setIconText(hint, nothingToBuy ? 'i-ok' : 'i-info', nothingToBuy ? NOTHING_TO_BUY : PICK_HINT);
-    else if (short) setIconText(hint, 'i-lock', `Thiếu ${formatMoney(sum - s.money)}. Bớt số gói để vừa tiền.`);
+    else if (short) {
+      // Name the costliest line: trimming it frees the most money.
+      const top = lines.reduce((a, l) => (l.cost > a.cost ? l : a));
+      setIconText(hint, 'i-lock', `Thiếu ${formatMoney(sum - s.money)}. Bớt ${getIngredient(top.id).name} để vừa tiền.`);
+    }
     else setIconText(hint, 'i-info', 'Kiểm tra số gói rồi bấm Nhập hàng.');
   }
 

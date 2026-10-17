@@ -238,7 +238,8 @@ export function arrivalRate(state: GameState): number {
  * are in stock. When every enabled item is out of stock the customer still
  * wants one of them and will leave angry at the counter. Null if the menu is empty.
  * Items left out for empty stock add their share of the full weight to
- * today's missed demand, so restocking still plans for them.
+ * today's missed demand, taken off the item picked instead, so restocking
+ * still plans for them without counting the order twice.
  */
 export function pickOrder(state: GameState, persona?: Persona): MenuItemId | null {
   const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
@@ -251,23 +252,35 @@ export function pickOrder(state: GameState, persona?: Persona): MenuItemId | nul
     const taste = persona?.itemWeights[id] ?? 1;
     return def.popularity * WEATHER_TEMPERATURE[state.weather][def.temperature] * boost * taste;
   };
-  if (inStock.length > 0 && inStock.length < enabled.length) recordMissed(state, enabled, inStock, weightOf);
   const pool = inStock.length > 0 ? inStock : enabled;
-  return pool[weightedIndex(state, pool.map(weightOf))] ?? null;
+  const picked = pool[weightedIndex(state, pool.map(weightOf))] ?? null;
+  if (picked && inStock.length > 0 && inStock.length < enabled.length) recordMissed(state, enabled, inStock, picked, weightOf);
+  return picked;
 }
 
+/**
+ * Credits each item left out for empty stock with its share of the full menu
+ * weight, and takes the same total off the item picked in their place, so the
+ * order still counts as one serving of demand.
+ */
 function recordMissed(
   state: GameState,
   enabled: readonly MenuItemId[],
   inStock: readonly MenuItemId[],
+  picked: MenuItemId,
   weightOf: (id: MenuItemId) => number,
 ): void {
   const total = enabled.reduce((s, id) => s + weightOf(id), 0);
   if (total <= 0) return;
   const missed = (state.today.missedDemand ??= {});
+  let moved = 0;
   for (const id of enabled) {
-    if (!inStock.includes(id)) missed[id] = (missed[id] ?? 0) + weightOf(id) / total;
+    if (inStock.includes(id)) continue;
+    const share = weightOf(id) / total;
+    missed[id] = (missed[id] ?? 0) + share;
+    moved += share;
   }
+  missed[picked] = (missed[picked] ?? 0) - moved;
 }
 
 /**

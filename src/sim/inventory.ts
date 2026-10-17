@@ -1,3 +1,5 @@
+// Pure string formatting with no imports, so the sim stays free of DOM.
+import { formatMoney } from '../ui/core/format';
 import { CLOSING_MINUTE } from './clock';
 import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS, getIngredient } from './data/ingredients';
@@ -146,12 +148,17 @@ function referenceDay(state: GameState): DayStats | undefined {
   return state.history[state.history.length - 1];
 }
 
-/** Servings a day asked for: sold, plus orders lost to empty stock or missed while an item could not be made. */
+/**
+ * Servings a day asked for: sold, plus orders lost to empty stock, plus the
+ * missed-demand balance (positive for an item that could not be made, negative
+ * for the items sold in its place). Never below zero per item.
+ */
 function observedDemand(day: DayStats): Partial<Record<MenuItemId, number>> {
   const demand: Partial<Record<MenuItemId, number>> = {};
   for (const counts of [day.sold, day.outOfStock, day.missedDemand ?? {}]) {
     for (const [id, n] of Object.entries(counts) as [MenuItemId, number | undefined][]) demand[id] = (demand[id] ?? 0) + (n ?? 0);
   }
+  for (const id of Object.keys(demand) as MenuItemId[]) demand[id] = Math.max(0, demand[id]!);
   return demand;
 }
 
@@ -297,8 +304,8 @@ export function applyRestockSuggestion(state: GameState): RestockResult {
   }
   if (result.skipped.length > 0) {
     const names = result.skipped.map((id) => getIngredient(id).name).join(', ');
-    const short = String(Math.max(0, skippedCost - state.money)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short}đ để nhập ${names}` });
+    const short = formatMoney(Math.max(0, skippedCost - state.money));
+    state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short} để nhập ${names}` });
   }
   return result;
 }
