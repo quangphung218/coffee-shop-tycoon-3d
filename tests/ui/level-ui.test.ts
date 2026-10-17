@@ -11,7 +11,9 @@ import { renderMenuPanel } from '../../src/ui/panels/menu';
 import { renderTasksPanel } from '../../src/ui/panels/tasks';
 import { UPGRADE_GROUPS, renderUpgradesPanel } from '../../src/ui/panels/upgrades';
 import { registerReviewsPanel } from '../../src/ui/report';
-import { renderSummary } from '../../src/ui/report/report';
+import { getUpgrade } from '../../src/sim/data/upgrades';
+import { LEVEL_ICON, MENU_ICONS, UPGRADE_ICONS } from '../../src/ui/core/iconMap';
+import { LEVELUP_CHIPS, renderSummary } from '../../src/ui/report/report';
 
 function game(): GameState {
   return createNewGame('Quán Thử', 'normal', 42);
@@ -361,13 +363,51 @@ describe('daily report: missions, XP and level-up', () => {
     expect(root.querySelector('[data-block="level-up"]')).toBeNull();
   });
 
-  it('shows a "Lên cấp N" band in place with the unlocks', () => {
+  it('shows a "Lên cấp N" card in place with a level badge and icon chips per group', () => {
     const root = summary(report({ missions: [], xpGained: 300, levelUp: { level: 2, unlocks } }));
     const band = q(root, '[data-block="level-up"]');
+    expect(band.getAttribute('role')).toBe('status');
     expect(band.closest('[role="dialog"]')).toBeNull();
-    expect(band.textContent).toContain('Lên cấp 2');
-    expect(band.textContent).toContain('Cappuccino');
-    expect(band.textContent).toContain('Dụng cụ');
+    expect(q(band, '.rpt-levelup-title').textContent).toBe('Lên cấp 2 · Quán quen');
+
+    const badge = q(band, '[data-block="level-badge"]');
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+    const badgeIcon = q(badge, '.ic');
+    expect(badgeIcon.dataset.icon).toBe(LEVEL_ICON);
+    expect(badgeIcon.classList.contains('ic-xl')).toBe(true); // 48 px
+    expect(q(badge, '.rpt-levelup-num').textContent).toBe('2');
+
+    const groups = [...band.querySelectorAll<HTMLElement>('.rpt-unlock-group')].map((g) => [g.dataset.group, q(g, 'b').textContent]);
+    expect(groups).toEqual([
+      ['menu', 'Món mới'],
+      ['upgrades', 'Nâng cấp'],
+      ['tools', 'Dụng cụ'],
+    ]);
+    const chips = [...band.querySelectorAll<HTMLElement>('.rpt-unlock')].map((c) => [c.dataset.unlock, q(c, '.ic').dataset.icon, c.textContent]);
+    expect(chips).toEqual([
+      ['cappuccino', MENU_ICONS.cappuccino, 'Cappuccino'],
+      ['fast_machine', UPGRADE_ICONS.fast_machine, getUpgrade('fast_machine').name],
+      ['grinder', UPGRADE_ICONS.grinder, getUpgrade('grinder').name],
+    ]);
+    // 24 px is the default size: no size class.
+    for (const c of band.querySelectorAll('.rpt-unlock .ic')) expect(c.className).toBe('ic');
+    expect(band.querySelector('[data-block="unlocks-more"]')).toBeNull();
+  });
+
+  it(`shows at most ${LEVELUP_CHIPS} unlock chips and counts the rest as "+N"`, () => {
+    const many: Unlocks = { menu: ['mocha', 'frappe', 'cake'], upgrades: ['paintings', 'lights', 'window_bar'], tools: ['blender', 'ice_maker'] };
+    const band = q(summary(report({ levelUp: { level: 5, unlocks: many } })), '[data-block="level-up"]');
+    expect(band.querySelectorAll('.rpt-unlock')).toHaveLength(LEVELUP_CHIPS);
+    // The tools group has no chip left, so its heading is dropped too.
+    expect(band.querySelector('[data-group="tools"]')).toBeNull();
+    expect(q(band, '[data-block="unlocks-more"]').textContent).toBe('+2');
+  });
+
+  it('says so when a level unlocks nothing', () => {
+    const band = q(summary(report({ levelUp: { level: 7, unlocks: { menu: [], upgrades: [], tools: [] } } })), '[data-block="level-up"]');
+    expect(band.querySelector('.rpt-unlocks')).toBeNull();
+    expect(band.textContent).toContain('Cấp này chưa mở thêm');
+    expect(q(band, '[data-block="level-badge"] .rpt-levelup-num').textContent).toBe('7');
   });
 
   it('says so when an old save has no missions or XP in its report', () => {

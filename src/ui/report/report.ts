@@ -7,7 +7,7 @@ import { dayCompare, weekToDate, type StatDelta, type WeekToDate } from '../../s
 import type { Command, DailyReport, GameState, InsightPanel, Mission, SuggestionKind } from '../../sim/types';
 import { h, setChildren, trapFocus, Watcher, type Child } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
-import { LEVEL_ICON, MENU_ICONS, MISSION_ICON } from '../core/iconMap';
+import { LEVEL_ICON, MENU_ICONS, MISSION_ICON, UPGRADE_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import { MISSION_META } from '../panels/tasks';
 import { renderInsights } from './insights';
@@ -311,32 +311,72 @@ function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
   );
 }
 
+/** Unlock chips the level-up card shows (two lines at 1280 px); the rest is counted as "+N". */
+export const LEVELUP_CHIPS = 6;
+
+type UnlockGroup = 'menu' | 'upgrades' | 'tools';
+interface UnlockChip {
+  id: string;
+  name: string;
+  icon: IconId;
+}
+
 /**
- * Thin "Lên cấp N" band at the top of the summary (design/p20 §6): the new
- * level's name and what it unlocks, on one line. Null when the day brought no level-up.
+ * "Lên cấp N" card at the top of the summary: a level badge that pops in, the
+ * new level's name, and what it unlocks as icon chips grouped Món mới /
+ * Nâng cấp / Dụng cụ. A status in place, not a modal. Null when the day
+ * brought no level-up.
  */
 export function levelUpBand(r: DailyReport): HTMLElement | null {
   const up = r.levelUp;
   if (!up) return null;
-  const groups: [string, string[]][] = [
-    ['Món mới', up.unlocks.menu.map((id) => getMenuItem(id).name)],
-    ['Nâng cấp', up.unlocks.upgrades.map((id) => getUpgrade(id).name)],
-    ['Dụng cụ', up.unlocks.tools.map((id) => getUpgrade(id).name)],
+  const groups: [UnlockGroup, string, UnlockChip[]][] = [
+    ['menu', 'Món mới', up.unlocks.menu.map((id) => ({ id, name: getMenuItem(id).name, icon: MENU_ICONS[id] }))],
+    ['upgrades', 'Nâng cấp', up.unlocks.upgrades.map((id) => ({ id, name: getUpgrade(id).name, icon: UPGRADE_ICONS[id] }))],
+    ['tools', 'Dụng cụ', up.unlocks.tools.map((id) => ({ id, name: getUpgrade(id).name, icon: UPGRADE_ICONS[id] }))],
   ];
-  const lines = groups.filter(([, names]) => names.length > 0);
+  const total = groups.reduce((n, [, , chips]) => n + chips.length, 0);
+  let room = LEVELUP_CHIPS;
+  const items: HTMLElement[] = [];
+  for (const [group, title, chips] of groups) {
+    const shown = chips.slice(0, room);
+    room -= shown.length;
+    if (shown.length === 0) continue;
+    items.push(
+      h(
+        'li',
+        { class: 'rpt-unlock-group', attrs: { 'data-group': group } },
+        h('b', { text: title }),
+        ...shown.map((c) => h('span', { class: 'rpt-unlock', attrs: { 'data-unlock': c.id } }, icon(c.icon, { size: 24 }), c.name)),
+      ),
+    );
+  }
+  const hidden = total - (LEVELUP_CHIPS - room);
+  if (hidden > 0) items.push(h('li', { class: 'rpt-unlock-more', attrs: { 'data-block': 'unlocks-more' }, text: `+${hidden}` }));
   return h(
     'div',
     { class: 'rpt-levelup', attrs: { role: 'status', 'data-block': 'level-up' } },
-    icon(LEVEL_ICON, { size: 16, class: 'rpt-levelup-icon' }),
-    h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
-    lines.length === 0
-      ? h('span', { class: 'rpt-muted', text: 'Cấp này chưa mở thêm món hay dụng cụ.' })
-      : h(
-          'ul',
-          { class: 'rpt-inline rpt-unlocks', attrs: { 'aria-label': 'Mở khóa' } },
-          ...lines.map(([title, names]) => h('li', {}, h('b', { text: `${title}: ` }), names.join(', '))),
-        ),
+    h(
+      'span',
+      { class: 'rpt-levelup-badge', attrs: { 'aria-hidden': 'true', 'data-block': 'level-badge' } },
+      icon(LEVEL_ICON, { size: 48 }),
+      h('b', { class: 'rpt-levelup-num', text: String(up.level) }),
+    ),
+    h(
+      'div',
+      { class: 'rpt-levelup-text' },
+      h('p', { class: 'rpt-levelup-title' }, h('b', { text: `Lên cấp ${up.level}` }), ` · ${levelDef(up.level).name}`),
+      items.length === 0
+        ? h('span', { class: 'rpt-muted', text: 'Cấp này chưa mở thêm món hay dụng cụ.' })
+        : h('ul', { class: 'rpt-unlocks', attrs: { 'aria-label': 'Mở khóa' } }, ...items),
+    ),
   );
+}
+
+/** The OS asks for less motion, or the "Giảm chuyển động" setting forces it (html.reduce-motion). */
+function reducedMotion(doc: Document): boolean {
+  if (doc.documentElement.classList.contains('reduce-motion')) return true;
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /**
@@ -381,6 +421,9 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   let saveStatus: SaveStatus | null = null;
   let day = 0;
   let weekEnded = false;
+  let celebrated: DailyReport | null = null;
+  let stopConfetti: (() => void) | null = null;
+  let fxGen = 0;
 
   const title = h('h3', { id: 'rpt-title' });
   const sub = h('p', { class: 'rpt-sub' });
@@ -486,9 +529,30 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
   }
 
+  // Confetti for a level-up: loaded on first use, thrown once per report over
+  // the overlay (clicks pass through), stopped when the report closes.
+  function celebrate(r: DailyReport | null): void {
+    if (!r?.levelUp || r === celebrated) return;
+    celebrated = r;
+    if (reducedMotion(el.ownerDocument)) return;
+    const gen = ++fxGen;
+    import('../fx/confetti')
+      .then(({ burst }) => {
+        if (gen === fxGen && shown) stopConfetti = burst(el);
+      })
+      .catch(() => {});
+  }
+
+  function endConfetti(): void {
+    fxGen++;
+    stopConfetti?.();
+    stopConfetti = null;
+  }
+
   w.watch(
     (s) => s.lastReport ?? null,
     (r, s) => {
+      endConfetti();
       day = r?.day ?? s.day;
       title.textContent = `Hết ngày ${day} · ${s.shopName}`;
       // Opening hours never change, so the line names only the difficulty.
@@ -524,10 +588,13 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     update(state, want) {
       const visible = want && state !== null;
       if (visible && state) w.run(state);
-      if (visible === shown) return;
-      shown = visible;
-      el.hidden = !visible;
-      if (visible) nextBtn.focus();
+      if (visible !== shown) {
+        shown = visible;
+        el.hidden = !visible;
+        if (visible) nextBtn.focus();
+        else endConfetti();
+      }
+      if (visible && state) celebrate(state.lastReport ?? null);
     },
     setSaveStatus(status) {
       saveStatus = status;

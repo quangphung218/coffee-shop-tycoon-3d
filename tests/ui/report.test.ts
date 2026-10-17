@@ -564,13 +564,16 @@ describe('report.css', () => {
     expect(src).toMatch(/\.rpt-foot\s*\{[^}]*flex:\s*none/);
   });
 
-  it('fits the summary in one view: one-line tip, thin level band, a wider report card', async () => {
+  it('fits the summary in one view: one-line tip, a compact level card, a wider report card', async () => {
     const src = await css();
     const tip = src.match(/\.rpt-tip p\s*\{([^}]*)\}/)?.[1] ?? '';
     expect(tip).toMatch(/white-space:\s*nowrap/);
     expect(tip).toMatch(/text-overflow:\s*ellipsis/);
     expect(src).toMatch(/\.rpt-tips\s*\{[^}]*display:\s*flex/);
-    expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-1\) var\(--space-2\)/);
+    // 8 px padding + 2 px frame around a 48 px badge and at most two 24 px chip lines stays under 96 px.
+    expect(src).toMatch(/\.rpt-levelup\s*\{[^}]*padding:\s*var\(--space-2\) var\(--space-3\)/);
+    expect(src).toMatch(/\n\.rpt-unlocks\s*\{[^}]*max-height:\s*calc\(2 \* var\(--size-icon-md\) \+ var\(--space-1\)\)/);
+    expect(src).toMatch(/\.rpt-unlock,\s*\.rpt-unlock-more\s*\{[^}]*height:\s*var\(--size-icon-md\)/);
     expect(src).toMatch(/\.rpt-layer\[data-screen='report'\] \.rpt-dialog\s*\{[^}]*max-width:\s*calc\(var\(--size-dialog\)/);
     expect(src).toMatch(/\.rpt-body\.is-summary\s*\{[^}]*gap:\s*var\(--space-2\)/);
     // On a phone the tip wraps rather than hiding text behind an ellipsis.
@@ -627,6 +630,15 @@ describe('report.css', () => {
     const reduced = src.slice(src.indexOf('prefers-reduced-motion'));
     expect(reduced).toMatch(/\.rpt-dialog\s*\{[^}]*animation:\s*rpt-fade/);
     expect(reduced).toMatch(/\.rpt-result\s*\{[^}]*animation:\s*none/);
+  });
+
+  it('pops the level badge 0.6 → 1.08 → 1 in 400 ms, and not under reduced motion', async () => {
+    const src = await css();
+    expect(src).toMatch(/\.rpt-levelup-badge\s*\{[^}]*animation:\s*rpt-badge-pop 400ms/);
+    const pop = src.slice(src.indexOf('@keyframes rpt-badge-pop'));
+    expect(pop).toMatch(/0%\s*\{[^}]*scale\(0\.6\)[^}]*\}\s*60%\s*\{[^}]*scale\(1\.08\)[^}]*\}\s*100%\s*\{[^}]*scale\(1\)/);
+    const reduced = src.slice(src.indexOf('prefers-reduced-motion'));
+    expect(reduced).toMatch(/\.rpt-levelup-badge\s*\{[^}]*animation:\s*none/);
   });
 });
 
