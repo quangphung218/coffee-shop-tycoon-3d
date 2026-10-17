@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measures how fast the production build shows the Main Menu, in headless Chrome.
 //
-//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>] [--fps | --fps-only]
+//   node scripts/measure-startup.mjs [--base <git-ref>] [--runs <n>] [--fps | --fps-only] [--quality medium|high]
 //
 // Builds the working tree (and <git-ref> with --base), serves each build with
 // `vite preview`, loads it with an empty cache and prints chunk sizes and the
@@ -10,7 +10,7 @@
 // graphics setting, <n> times per build taking turns between builds, and prints
 // the median over runs of the average frame rate across FPS_SECONDS of play and
 // the 5th-percentile frame rate of all those frames. --fps-only skips the
-// startup table. Chrome: $CHROME_PATH, else the usual install locations.
+// startup table; --quality limits the FPS pass to one setting. Chrome: $CHROME_PATH, else the usual install locations.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -80,13 +80,17 @@ const PROBE = `window.__cst = new Promise((resolve) => {
 });`;
 
 function parseArgs(argv) {
-  const args = { base: null, runs: 3, fps: false };
+  const args = { base: null, runs: 3, fps: false, qualities: FPS_QUALITIES };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
     else if (argv[i] === '--fps') args.fps = true;
     else if (argv[i] === '--fps-only') args.fps = args.fpsOnly = true;
-    else throw new Error(`Unknown argument: ${argv[i]}`);
+    else if (argv[i] === '--quality') {
+      const q = argv[++i];
+      if (!FPS_QUALITIES.includes(q)) throw new Error(`--quality must be one of ${FPS_QUALITIES.join(', ')}`);
+      args.qualities = [q];
+    } else throw new Error(`Unknown argument: ${argv[i]}`);
   }
   return args;
 }
@@ -387,7 +391,7 @@ async function main() {
       const v = FPS_VIEW;
       console.log(`\nFPS at the peak of day 1 (Easy, 4x), ${FPS_SECONDS} s × ${args.runs} runs per cell, builds taking turns, ${v.width}×${v.height} @${v.deviceScaleFactor}x\n`);
       const rows = [];
-      for (const quality of FPS_QUALITIES) {
+      for (const quality of args.qualities) {
         const cells = builds.map((build) => ({ build, quality, averages: [], each: [] }));
         // Taking turns spreads any drift (heat, background work) over both builds.
         for (let i = 0; i < args.runs; i++) {
@@ -408,7 +412,7 @@ async function main() {
       console.log('| Build | Quality | Average FPS (median of runs) | Runs | p5 FPS | Frames |\n| --- | --- | --- | --- | --- | --- |');
       for (const r of rows) console.log(`| ${r.build.label} | ${r.quality} | ${fps(r.average)} | ${r.averages.map(fps).join(' / ')} | ${fps(r.p5)} | ${r.each.length} |`);
       if (builds.length > 1) {
-        for (const quality of FPS_QUALITIES) {
+        for (const quality of args.qualities) {
           const [base, cur] = builds.map((b) => rows.find((r) => r.build === b && r.quality === quality));
           if (!base?.average || !cur?.average) continue;
           const drop = (1 - cur.average / base.average) * 100;
