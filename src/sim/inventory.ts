@@ -145,19 +145,33 @@ function referenceDay(state: GameState): DayStats | undefined {
   return state.history[state.history.length - 1];
 }
 
-/** Expected servings per enabled item for the next day. */
+/** Servings a day asked for: sold, plus orders lost to empty stock or missed while an item could not be made. */
+function observedDemand(day: DayStats): Partial<Record<MenuItemId, number>> {
+  const demand: Partial<Record<MenuItemId, number>> = {};
+  for (const counts of [day.sold, day.outOfStock, day.missedDemand ?? {}]) {
+    for (const [id, n] of Object.entries(counts) as [MenuItemId, number | undefined][]) demand[id] = (demand[id] ?? 0) + (n ?? 0);
+  }
+  return demand;
+}
+
+/**
+ * Expected servings per enabled item for the next day: what the reference
+ * day asked for. An enabled item it did not ask for at all (just switched on,
+ * or never offered) gets its popularity share of that day's servings, or of
+ * the day-1 default before there is a day with servings.
+ */
 export function expectedDemand(state: GameState): Partial<Record<MenuItemId, number>> {
   const enabled = state.menu.filter((m) => m.enabled).map((m) => m.id);
-  const demand: Partial<Record<MenuItemId, number>> = {};
   const ref = referenceDay(state);
-  if (ref) {
-    // Orders lost to empty stock were demand too.
-    for (const id of enabled) demand[id] = (ref.sold[id] ?? 0) + (ref.outOfStock[id] ?? 0);
-    return demand;
-  }
-  const total = DAY_ONE_SERVINGS[state.difficulty];
+  const observed = ref ? observedDemand(ref) : {};
+  const servings = Object.values(observed).reduce<number>((s, n) => s + (n ?? 0), 0);
+  const total = servings > 0 ? servings : DAY_ONE_SERVINGS[state.difficulty];
   const weight = enabled.reduce((s, id) => s + getMenuItem(id).popularity, 0);
-  for (const id of enabled) demand[id] = weight > 0 ? (total * getMenuItem(id).popularity) / weight : 0;
+  const demand: Partial<Record<MenuItemId, number>> = {};
+  for (const id of enabled) {
+    const seen = observed[id] ?? 0;
+    demand[id] = seen > 0 ? seen : weight > 0 ? (total * getMenuItem(id).popularity) / weight : 0;
+  }
   return demand;
 }
 
@@ -261,12 +275,17 @@ export interface RestockResult {
   spent: number;
 }
 
-/** Buys the suggested lines in order; lines the money cannot cover are skipped. */
+/**
+ * Buys the suggested lines in order; lines the money cannot cover are skipped
+ * and the notice names them with the money still short.
+ */
 export function applyRestockSuggestion(state: GameState): RestockResult {
   const result: RestockResult = { bought: [], skipped: [], spent: 0 };
+  let skippedCost = 0;
   for (const line of autoRestockSuggestion(state).items) {
     if (state.money < line.cost) {
       result.skipped.push(line.id);
+      skippedCost += line.cost;
       continue;
     }
     const r = buyIngredient(state, line.id, line.qty);
@@ -277,7 +296,8 @@ export function applyRestockSuggestion(state: GameState): RestockResult {
   }
   if (result.skipped.length > 0) {
     const names = result.skipped.map((id) => getIngredient(id).name).join(', ');
-    state.events.push({ type: 'notify', level: 'warning', text: `Không đủ tiền nhập: ${names}` });
+    const short = String(Math.max(0, skippedCost - state.money)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    state.events.push({ type: 'notify', level: 'warning', text: `Thiếu ${short}đ để nhập ${names}` });
   } else if (result.bought.length > 0) {
     state.events.push({ type: 'notify', level: 'success', text: 'Đã nhập hàng theo gợi ý' });
   }
