@@ -461,10 +461,12 @@ Tiến độ cảnh 3D là danh sách thành phần (`LOAD_COMPONENTS` trong `sr
 
 Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`, `src/save`: làm vậy kéo three.js trở lại chunk chính.
 
-| Chunk (`npm run build`) | Raw | Gzip | Tải khi |
+Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon ghi theo file nguồn `public/icons3d/…`; `npm run build` chép nguyên tên sang `dist/icons3d/…`, trang tải qua URL tương đối `icons3d/…`.
+
+| Chunk (`npm run build`) hoặc file nguồn | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 218,9 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 83,2 kB | 13,6 kB | Ngay khi mở trang |
+| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 219,1 kB | 75,8 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 83,6 kB | 13,7 kB | Ngay khi mở trang |
 | `index-*.js` (`src/render`) | 98,7 kB | 36,3 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 504,5 kB | 126,5 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `confetti-*.js` (`src/ui/fx/confetti.ts`) | 2,3 kB | 1,2 kB | Daily Report đầu tiên có lên cấp, khi không giảm chuyển động |
