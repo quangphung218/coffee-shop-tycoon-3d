@@ -330,20 +330,25 @@ npm run media:p24
 
 Lệnh build bản hiện tại, xuất P23 `3a08fe2` ra thư mục tạm và build nó, mở `vite preview` cho bản hiện tại ở `4173` và P23 ở `4174`, rồi `scripts/capture-p24.mjs` chụp cả hai bản ở 390×844 và 1280×800. P23 khoanh nét đứt cam, P24 nét liền xanh; nhãn ghi chỗ đã đổi, số px (bóng, viền, cỡ chữ, chiều cao) đọc từ style tính được của mỗi bản. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `3a08fe2`.
 
-1. Sim của mỗi bản chơi ván Vừa của chính nó tới ngày 7 (seed `MEDIA_SEED >>> 0`, nhập hàng theo gợi ý, tự phục vụ; sáng ngày 3 bật Nước cam, sáng ngày 6 bật Bánh ngọt) và in bảng ngày cùng gợi ý nhập của hai buổi sáng đó. Ván lưu ở sáng ngày 3 (Hội chợ, chưa nhập hàng), báo cáo ngày 3 và báo cáo ngày 7, nạp qua **Tiếp tục**.
-2. Sáng ngày 3: chụp HUD và dock pha chuẩn bị ở hai khổ, **Mở cửa** ở 4x tới cao điểm, về 1x rồi chụp HUD ở hai khổ.
-3. Sáng ngày 3, mỗi khổ: mở Menu (cuộn tới Nước cam), Nhân viên, Nâng cấp; Kho → **Gợi ý nhập tự động** (cuộn tới Cam); **Nhập hàng**, thêm 1 gói Ly, **Nhập hàng** lần nữa rồi chụp cả toast.
-4. Báo cáo ngày 3 vừa mở, cuộn về đầu, cửa sổ không nới thêm. Báo cáo ngày 7 → **Xem tổng kết tuần**, cửa sổ nới cao cho vừa cả hộp.
+1. Sim của mỗi bản chơi ván Vừa của chính nó tới ngày 7 (seed `MEDIA_SEED >>> 0`, nhập hàng theo gợi ý, tự phục vụ) và in bảng ngày. Ván lưu ở sáng ngày 3 và sáng ngày 6 (chưa bật món mới của ngày, chưa nhập hàng), báo cáo ngày 3 và báo cáo ngày 7, nạp qua **Tiếp tục**. Sau mỗi save buổi sáng, sim bật Nước cam (ngày 3) hoặc Bánh ngọt (ngày 6) để các ngày sau có bán, và in gợi ý nhập của sim để đối chiếu.
+2. Sáng ngày 3: chụp HUD và dock pha chuẩn bị ở hai khổ, **Mở cửa** ở 4x tới cao điểm, về 1x rồi chụp HUD ở hai khổ; bấm pill pha rồi chụp danh sách pha ở hai khổ.
+3. Sáng ngày 3, mỗi khổ: Menu → bấm công tắc **Bán Nước cam** (cuộn tới Nước cam); Nhân viên, Nâng cấp; Kho → **Gợi ý nhập tự động** (cuộn tới Cam); **Nhập hàng**, thêm 1 gói Ly, **Nhập hàng** lần nữa rồi chụp cả toast.
+4. Sáng ngày 6, mỗi khổ: Menu → bấm công tắc **Bán Bánh ngọt**; Kho → **Gợi ý nhập tự động** → **Nhập hàng**; không chụp.
+5. Báo cáo ngày 3 vừa mở, cuộn về đầu, cửa sổ không nới thêm. Báo cáo ngày 7 → **Xem tổng kết tuần**, cửa sổ nới cao cho vừa cả hộp.
 
-Hai mươi bảng JPEG chất lượng 75 trong `docs/reports/p24-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
+Bước 3 và 4 in một dòng `playtest` cho mỗi bản và mỗi khổ: công tắc có bật không, số gói và nhãn "gợi ý" của Cam, Bột bánh, Bơ, các toast "Đã nhập …". Bản hiện tại phải bật được công tắc, gắn nhãn "gợi ý" cho Cam (ngày 3), Bột bánh và Bơ (ngày 6) và hiện đúng 1 toast mỗi lượt nhập; thiếu điều nào thì in `!!`.
+
+Hai mươi bốn bảng JPEG chất lượng 75 trong `docs/reports/p24-review/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
 
 | File | Nội dung |
 | --- | --- |
 | `hud-prep-<w>-p24.jpg`, `hud-peak-<w>-p24.jpg` | HUD pha chuẩn bị và giờ cao điểm: dải chấm pha (P23) cạnh pill tên pha và "tới HH:MM" (P24); viền, bóng và chiều cao cụm Tiến độ. |
+| `phases-<w>-p24.jpg` | Giờ cao điểm: dải chấm pha (P23) cạnh danh sách 4 pha kèm giờ mở từ pill (P24). |
 | `dock-<w>-p24.jpg` | Dock: chiều cao nút, cỡ chữ nhãn, bóng và viền. |
+| `menu-<w>-p24.jpg` | Menu, hàng Nước cam sau khi bấm công tắc: công tắc khóa và "Khóa" (P23) cạnh công tắc bật, "Thiếu Cam" và link "Mở Kho" (P24). |
+| `panel-<w>-p24.jpg` | Bảng bên (Menu): bóng và viền khung. |
 | `kho-<w>-p24.jpg` | Kho sau Gợi ý, hàng Cam: số ở ô nhập và nhãn "gợi ý" của mỗi bản. |
 | `toast-<w>-p24.jpg` | Sau 2 lần Nhập hàng: câu "Đã nhập …" trong bảng (P23) cạnh toast gộp (P24). |
-| `menu-<w>-p24.jpg` | Menu, hàng Nước cam: "Khóa" và chấm phổ biến (P23) cạnh "Thiếu Cam" và link "Mở Kho" (P24). |
 | `staff-<w>-p24.jpg`, `upgrades-<w>-p24.jpg` | Hàng đầu của Nhân viên và Nâng cấp: khung riêng nhiều dòng (P23) cạnh hàng chung một dòng meta (P24). |
 | `report-<w>-p24.jpg` | Báo cáo ngày 3: dòng phụ, dải kết quả và nút chính. |
 | `week1-<w>-p24.jpg` | Tổng kết tuần 1: viền và bóng hộp, tiêu đề, nút **Sang tuần 2**. |
@@ -398,7 +403,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | `no P22 board for <id>: add a builder in scripts/capture-p22.mjs` | `fixed-ui.json` hoặc `fixed-actors.json` có mục mới; thêm hàm dựng bảng cho id đó trong `fixedBoards()`. |
 | `git archive f720b6f failed` hoặc `vite build of f720b6f failed` | Như dòng `d643d89` ở trên: `git fetch --unshallow`, hoặc `npm ci` rồi thử lại. |
 | `npm run media:p23` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện đã đổi; sửa selector trong `scripts/capture-p23.mjs` (`HUD_SELS`, `REPORT_SELS`, `WEEK_SELS`, `LOADING_SELS`, `[data-action="week-end"]`, `[data-speed]`). `git archive f9508d8 failed`: `git fetch --unshallow`. |
-| `npm run media:p24` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện đã đổi; sửa selector trong `scripts/capture-p24.mjs` (`HUD_SELS`, `HUD_STYLES`, `MENU_SELS`, `KHO_SELS`, `STAFF_SELS`, `UPGRADE_SELS`, `REPORT_SELS`, `WEEK_SELS`, `[data-action="suggest"]`, `[data-action="buy"]`). `cannot switch on orange_juice`: lịch mở khoá tuần 1 đã đổi, sửa `ENABLE`. `git archive 3a08fe2 failed`: `git fetch --unshallow`. |
+| `npm run media:p24` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện đã đổi; sửa selector trong `scripts/capture-p24.mjs` (`HUD_SELS`, `HUD_STYLES`, `MENU_SELS`, `KHO_SELS`, `STAFF_SELS`, `UPGRADE_SELS`, `REPORT_SELS`, `WEEK_SELS`, `PHASE_SELS`, `[data-action="suggest"]`, `[data-action="buy"]`, `[data-action="phases"]`, `li[data-item] .toggle`). `cannot switch on orange_juice`: lịch mở khoá tuần 1 đã đổi, sửa `ENABLE`. `!! P24 day N at W: …`: playtest qua giao diện không đạt (công tắc không bật, Gợi ý thiếu nguyên liệu hoặc số toast khác 1); đọc dòng `playtest` ngay trên. `git archive 3a08fe2 failed`: `git fetch --unshallow`. |
 | `!! <bảng>-p22.png: no subject within 150 s` | Cao điểm không có khách hợp cận cảnh (cá tính, mặt sốt ruột, đứng yên); chạy lại, hoặc đổi `P22_SEED`. |
 
 ## Kiểm lề và CLS

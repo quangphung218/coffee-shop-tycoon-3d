@@ -34,16 +34,30 @@ Không có dụng ý: món đã mở khoá và đã bật thì phải được n
 
 "Chưa mở nhà cung cấp" không tồn tại trong game: lý do duy nhất không nhập được là thiếu tiền.
 
-### Playtest
+### Playtest qua giao diện
 
-Ván Vừa, seed `1760400000000 >>> 0`, tự phục vụ, mỗi sáng bấm Gợi ý rồi Nhập hàng; sáng ngày 3 bật Nước cam, sáng ngày 6 bật Bánh ngọt, đọc gợi ý ngay sau khi bật.
+Lần đo trước ghi **PASS là sai**. `scripts/capture-p24.mjs` bật Nước cam và Bánh ngọt bằng lệnh gửi thẳng vào sim, không qua công tắc Menu. Trên giao diện, công tắc của món thiếu nguyên liệu còn bị khóa (`sw.set(enabled, levelLocked || (!!locked && !enabled))` trong `src/ui/panels/menu.ts`), nên người chơi không bật được Nước cam khi kho chưa có Cam và Gợi ý không bao giờ có Cam. Công tắc giờ chỉ khóa món chưa mở khóa (commit `b3c55d9`).
+
+`npm run media:p24` chơi lại qua giao diện, ván Vừa seed `1760400000000 >>> 0`, ở 390×844 và 1280×800, trên cả hai bản:
+
+1. Nạp save sáng ngày 3 (Nước cam đã mở khóa, chưa bật, Cam 0) qua **Tiếp tục**.
+2. Mở **Menu**, bấm công tắc **Bán Nước cam**.
+3. Mở **Kho**, bấm **Gợi ý nhập tự động**, đọc số gói và nhãn "gợi ý" của Cam, Bột bánh, Bơ.
+4. Bấm **Nhập hàng**, thêm 1 gói Ly, bấm **Nhập hàng** lần nữa, đếm toast "Đã nhập …".
+5. Nạp save sáng ngày 6 (Bánh ngọt chưa bật, Bột bánh 0, Bơ 0), lặp bước 2–4 với công tắc **Bán Bánh ngọt** và một lần Nhập hàng.
+
+Đạt khi bản P24 bật được cả hai công tắc, Gợi ý gắn nhãn Cam (ngày 3), Bột bánh và Bơ (ngày 6) với số gói > 0, và mỗi lượt nhập hiện đúng 1 toast gộp; sai một điều thì script in `!!` và thoát mã 1.
+
+Kết quả qua giao diện: **chưa có**. Lượt `npm run media:p24` theo các bước trên chưa chạy; mục này và [mục 4](#4-kết-quả-kiểm) chỉ ghi PASS khi lượt đó in dòng `playtest` của P24 không kèm `!!`.
+
+Gợi ý do sim tính khi món đã bật (`P24_SAVES_ONLY=1 node scripts/capture-p24.mjs`, cùng ván), đo ở `f4d81bc`, trước `c8796a7` (nhu cầu món thay thế) và `a754d0f` (giá máy đá), nên số có thể đổi khi chạy lại:
 
 | Sáng | Gợi ý nhập P23 `3a08fe2` | Gợi ý nhập P24 | P24 trong ngày |
 | --- | --- | --- | --- |
 | Ngày 3, bật Nước cam (Cam 0) | Cà phê hạt 1000, Sữa tươi 8000, Ly 50; thiếu Cam | Cà phê hạt 1000, Sữa tươi 7000, **Cam 48**, Ly 50 | Bán 16 ly Nước cam |
 | Ngày 6, bật Bánh ngọt (Bột bánh 0, Bơ 0) | Cà phê hạt 1000, Sữa tươi 5000, Ly 50; thiếu Cam, Bột bánh, Bơ | Cà phê hạt 500, Sữa tươi 3000, Bột cacao 200, **Cam 12**, **Bột bánh 2000**, **Bơ 500**, Ly 50 | Bán 25 bánh, 7 ly Nước cam |
 
-Kết quả: **PASS**, gợi ý P24 có Cam, Bột bánh và Bơ. Cột P23 lấy từ `npm run media:p24`, sim mỗi bản chơi cùng ván; P23 không nhập Cam lần nào nên ngày 6 kho vẫn hết Cam. Tuần 1 của ván này: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.605.000đ, 91 điểm, 3 cúp.
+Tuần 1 của ván này theo sim: P23 20.890.000đ, 87 điểm, 2 cúp; P24 22.605.000đ, 91 điểm, 3 cúp.
 
 ### Mục tiêu tuần sau khi sửa gợi ý nhập
 
@@ -102,11 +116,12 @@ Thang chung đặt một lần trong `src/ui/styles/tokens.css` (ghi trong `desi
 
 | Vùng | Đã sửa |
 | --- | --- |
-| HUD | Dải 4 chấm pha thành một pill có icon và tên pha, thêm "tới HH:MM" khi đang mở cửa; danh sách 4 pha chỉ còn cho trình đọc màn hình và trong title. Các cụm cùng cao `--size-hud-row`, viền 2 px, `--frame-shadow`; tốc độ đang chọn chỉ còn nền mật ong. |
+| HUD | Dải 4 chấm pha thành một pill có icon và tên pha, thêm "tới HH:MM" khi đang mở cửa; bấm pill (hoặc Enter) mở danh sách 4 pha kèm giờ, pha hiện tại ghi "bây giờ"; Esc, bấm ra ngoài hoặc bấm lại pill để đóng. Các cụm cùng cao `--size-hud-row`, viền 2 px, `--frame-shadow`; tốc độ đang chọn chỉ còn nền mật ong. |
 | Dock | Nút 56 px, nhãn 14 px, viền 2 px, `--frame-shadow`. |
+| Bảng bên | `--frame-shadow` thay `--shadow-lg` (vệt đen dưới khung 6 → 1 px); đầu bảng cao theo `--size-hud-row`. |
 | Toast | Mỗi sự kiện `spend` thành một toast thành công; các lần mua liền nhau gộp một toast: cộng tiền, tối đa 3 tên, số dư mới, đếm lại 4 s. |
 | Kho | Bỏ câu "Đã nhập … Còn …" và kết quả gợi ý trong bảng; hàng gợi ý có nhãn "gợi ý" (bỏ nền tô); chân bảng ghi khi không cần nhập hoặc còn thiếu bao nhiêu đ; dòng dưới Gợi ý là một câu giới thiệu cố định. |
-| Kho, Menu | Một mẫu hàng: icon 32 \| tên + một dòng meta \| một nhãn trạng thái \| ô nhập hoặc công tắc. Menu ghi "Thiếu Cam" kèm link "Mở Kho" thay cho "Khóa" và chấm độ phổ biến. Ô nhập và nút trong bảng theo `--size-control-md/lg`. |
+| Kho, Menu | Một mẫu hàng: icon 32 \| tên + một dòng meta \| một nhãn trạng thái \| ô nhập hoặc công tắc. Menu ghi "Thiếu Cam" kèm link "Mở Kho" thay cho "Khóa" và chấm độ phổ biến; công tắc chỉ khóa món chưa mở khóa, món thiếu hàng vẫn bật được. Ô nhập và nút trong bảng theo `--size-control-md/lg`. |
 | Nhân viên | Ảnh đại diện ở ô icon, lương và tốc độ trên một dòng meta ("Lương …/ngày · tốc độ ×1,15"); bỏ thanh tốc độ và nhãn "Vai"; Bận/Rảnh là nhãn trạng thái; menu vai và "Cho nghỉ" chung ô điều khiển. |
 | Marketing | Giá vào dòng meta ("Giá … · +N% khách · N ngày"), bỏ dòng mô tả và cột giá; "Đang chạy" là nhãn duy nhất. |
 | Nâng cấp | Một dòng meta "Giá … · Cấp n/max · mỗi cấp …", bỏ dòng mô tả và cột giá; nhãn chỉ còn "Mở ngày N"/"Mở ở cấp N" và "Tối đa"; "Gỡ (+…)" nằm dưới hàng cùng lý do. |
@@ -121,10 +136,12 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 | --- | --- | --- |
 | HUD pha chuẩn bị | ![HUD chuẩn bị 390](p24-review/hud-prep-390-p24.jpg) | ![HUD chuẩn bị 1280](p24-review/hud-prep-1280-p24.jpg) |
 | HUD giờ cao điểm | ![HUD cao điểm 390](p24-review/hud-peak-390-p24.jpg) | ![HUD cao điểm 1280](p24-review/hud-peak-1280-p24.jpg) |
+| Pill pha mở danh sách | ![Pha 390](p24-review/phases-390-p24.jpg) | ![Pha 1280](p24-review/phases-1280-p24.jpg) |
 | Dock | ![Dock 390](p24-review/dock-390-p24.jpg) | ![Dock 1280](p24-review/dock-1280-p24.jpg) |
+| Menu, bấm công tắc Nước cam khi thiếu Cam | ![Menu 390](p24-review/menu-390-p24.jpg) | ![Menu 1280](p24-review/menu-1280-p24.jpg) |
+| Bảng bên, bóng mới | ![Bảng bên 390](p24-review/panel-390-p24.jpg) | ![Bảng bên 1280](p24-review/panel-1280-p24.jpg) |
 | Kho sau Gợi ý | ![Kho 390](p24-review/kho-390-p24.jpg) | ![Kho 1280](p24-review/kho-1280-p24.jpg) |
 | Sau 2 lần Nhập hàng | ![Toast 390](p24-review/toast-390-p24.jpg) | ![Toast 1280](p24-review/toast-1280-p24.jpg) |
-| Menu, Nước cam thiếu Cam | ![Menu 390](p24-review/menu-390-p24.jpg) | ![Menu 1280](p24-review/menu-1280-p24.jpg) |
 | Nhân viên | ![Nhân viên 390](p24-review/staff-390-p24.jpg) | ![Nhân viên 1280](p24-review/staff-1280-p24.jpg) |
 | Nâng cấp | ![Nâng cấp 390](p24-review/upgrades-390-p24.jpg) | ![Nâng cấp 1280](p24-review/upgrades-1280-p24.jpg) |
 | Báo cáo ngày 3 | ![Báo cáo 390](p24-review/report-390-p24.jpg) | ![Báo cáo 1280](p24-review/report-1280-p24.jpg) |
@@ -134,12 +151,12 @@ Khung trái là P23 `3a08fe2` (khoanh nét đứt cam), khung phải là P24 (n�
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| Playtest Cam, Bột bánh, Bơ trong gợi ý | Có cả ba | PASS (mục 1) |
-| `npm run check` | tsc, test, build xanh | PASS: 80 file, 1117 test |
-| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | PASS, 48/48: 6 bảng, Daily Report, Đánh giá không tràn ở 390/768/1440; CLS Kho 0,000000 ở cả ba khổ; HUD 2 hàng cao 104 px ở 390 và 768, 1 hàng cao 56 px ở 1280 và 1440, kể cả ngày "Tăng giá nhập"; mọi nút HUD ≥ 44 px |
-| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL so với mốc: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
+| Playtest qua giao diện: bật bằng công tắc, Cam, Bột bánh, Bơ trong gợi ý, 1 toast mỗi lượt nhập | Cả ba có nhãn "gợi ý", 1 toast | Chưa có kết quả. Lần ghi PASS trước sai: script bật món qua sim, công tắc trên giao diện còn khóa (mục 1) |
+| `npm run check` | tsc, test, build xanh | PASS: 81 file, 1172 test |
+| `npm run layout` ở 390/768/1280/1440 | Không tràn ngang, CLS Kho = 0, HUD 1 hàng từ 1280 px | Chưa chạy lại sau `b3c55d9` (công tắc) và `2392932` (pill pha, bóng bảng bên). Lượt trước ở `4d90c20`: PASS, 48/48 |
+| Main Menu, hồ sơ Mobile (150 ms RTT, 1,6 Mbps, CPU 4x) | < 1 s | FAIL, nợ từ P23: 1107 ms (lượt đơn), 1132 ms (lượt so); không lùi so với `3a08fe2` (1216 ms cùng lượt) |
 | `npm run perf:frames` | Không tệ hơn P23 ([p23-loading-frames.md](p23-loading-frames.md)) | PASS: 0 long task ở cả hai hồ sơ; khung > 50 ms headless 34 (máy bàn), 49 (di động), cùng khoảng với P23 |
-| `npm run media:p24` | Không cảnh báo `!!` | PASS: 20 bảng, không cảnh báo |
+| `npm run media:p24` | Không cảnh báo `!!`, playtest P24 đạt | Chưa chạy lại với script mới (24 bảng, có playtest qua giao diện). Lượt trước: 20 bảng, không cảnh báo |
 
 Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple M2), trung vị 3 lần, chỉ đo bản hiện tại.
 
@@ -152,7 +169,7 @@ Số đo khởi động và khung hình: Chrome 155 headless, ANGLE Metal (Apple
 | Khung > 50 ms (3 lần) | 34 (42/34/33) | 49 (49/45/56) |
 | Long task | 0 | 0 |
 
-- Main Menu di động đã trên 1 s từ trước P24 ([p23-loading-frames.md](p23-loading-frames.md): 1067 ms ở `f9508d8`, 1045 ms ở `0205afe`). P24 không làm chậm thêm, theo lượt so cùng lúc bên dưới.
+- Main Menu di động là nợ từ P23: đã trên 1 s từ trước P24 ([p23-loading-frames.md](p23-loading-frames.md): 1067 ms ở `f9508d8`, 1045 ms ở `0205afe`). P24 không làm chậm thêm, theo lượt so cùng lúc bên dưới.
 
 `measure-startup.mjs --base 3a08fe2 --runs 5`, cùng máy, trung vị 5 lần:
 
