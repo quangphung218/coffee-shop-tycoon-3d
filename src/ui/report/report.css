@@ -2,8 +2,11 @@
    tab states per design/p17-states). Shared tokens come from src/ui/styles.
    P24 scale: titles --font-size-screen-title / --font-size-panel-title,
    figures --font-size-value, everything else --font-size-label or
-   --font-size-caption; one 2px frame outline, --shadow-card on the dialog only. */
-.rpt-layer {
+   --font-size-caption; one 2px frame outline, --shadow-card on the dialog only.
+   This file ships in game-*.css, which loads before ui.css in the cascade, so
+   a rule that must beat an equal ui.css rule repeats its class. */
+/* Beats the .ui-screen padding, so the summary fits 1280×720. */
+.rpt-layer.rpt-layer {
   padding: var(--space-4);
 }
 /* Head and footer stay in view; only the tab body scrolls, so the main
@@ -962,7 +965,7 @@
 }
 
 @media (max-width: 640px) {
-  .rpt-layer {
+  .rpt-layer.rpt-layer {
     padding: var(--space-4) var(--space-2);
   }
   .rpt-head,
