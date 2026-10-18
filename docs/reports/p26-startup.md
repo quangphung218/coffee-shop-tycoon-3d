@@ -13,7 +13,7 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 ## 1. Tóm tắt
 
 - Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 765 ms, base 1225 ms (−460 ms, −38%).
-- JS chính `index-*.js`: 75,8 → 14,9 kB gzip. Sim, HUD, panel, báo cáo, save, audio nằm ở chunk `game-*.js` (40,7 kB) và `iconMap-*.js` (23,9 kB), tải bằng `import()` sau khung hình đầu của menu.
+- JS chính `index-*.js`: 75,8 → 15,0 kB gzip. Sim, HUD, panel, báo cáo, save, audio nằm ở chunk `game-*.js` (40,8 kB) và `iconMap-*.js` (24,0 kB), tải bằng `import()` sau khung hình đầu của menu.
 - Cảnh 3D chậm hơn base 0,1% trên Phone 390×844 và 6,1% trên Mobile, trong ngưỡng 10%.
 - Khung hình máy bàn headed: p95 20 ms (base 23 ms), chưa đạt 16,7 ms. Không còn long task sau `cst:world` ở di động headless qua 5 lượt ([mục 3](#3-số-đo)).
 - Layout 68/68: thẻ lên cấp ở 1280×720 vừa một màn. Màn chờ, dòng tiến độ, nút khoá và Thử lại vẫn đúng.
@@ -23,18 +23,19 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| `npm run check` | tsc, test, build xanh | PASS: 94 file, 1414 test |
+| `npm run check` | tsc, test, build xanh | PASS: 95 file, 1425 test |
 | Main Menu, Phone 390×844 | < 1000 ms | PASS: 765 ms (base 1225 ms) |
 | Main Menu, Mobile | Không chậm hơn base | PASS: 820 ms (base 1190 ms) |
-| Cảnh 3D so với `57d7559` | ≤ base + 10% | PASS: Phone 3260 / 3256 ms (+0,1%), Mobile 3392 / 3198 ms (+6,1%), Desktop 324 / 353 ms (−8,2%) |
-| JS chính gzip | Tăng ≤ 2 kB | PASS: 75,8 → 14,9 kB (−60,9 kB) |
-| CSS chính gzip | Không tăng | PASS: 13,6 → 9,5 kB |
+| Cảnh 3D so với `57d7559` | ≤ base + 10% | PASS: Phone 3260 / 3256 ms (+0,1%), Mobile 3392 / 3198 ms (+6,1%), Desktop 324 / 353 ms (−8,2%). Lượt đầu FAIL: Phone +10,7%, máy bàn +17,7% khi base lệch xa; lượt đo lại ngay sau đạt ([mục 3](#3-số-đo)) |
+| JS chính gzip | Tăng ≤ 2 kB | PASS: 75,8 → 15,0 kB (−60,8 kB) |
+| CSS chính gzip | Không tăng | PASS: 13,6 → 9,6 kB |
 | `perf:frames`, máy bàn headless | 0 long task | PASS: 0 ở cả 5 lượt (base 0) |
 | `perf:frames`, di động headless | 0 long task | PASS: 0 ở cả 5 lượt (lượt 0 / 0 / 0 / 0 / 0 ms); base cùng lượt 0 / 0 / 0 / 0 / 0 ms |
 | p95 máy bàn (`--headed`) | ≤ 16,7 ms | FAIL: 20 ms (lượt 22 / 20 / 20 / 21 / 19 ms); base cùng lượt 23 ms. Nợ từ P25 (P25 đo 18 ms), chờ anh quyết |
 | Long task máy bàn (`--headed`) | 0 long task | PASS: trung vị 0, lượt 0 / 1 / 0 / 0 / 0 ms; base trung vị 0, lượt 84 / 0 / 0 / 56 / 0 ms |
 | `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 68/68. Thẻ lên cấp ở 1280×720 cao 54 px, vừa một màn. Tràn ngang 0, CLS Kho 0, nút ≥ 44 px, Menu gọn PASS |
-| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 6 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
+| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 8 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
+| Chunk game lỗi rồi Thử lại (`media:loading`) | Main Menu vẫn hiện, "Mã cảnh 3D" có Thử lại, nút vào quán khoá; sau Thử lại vào được HUD | PASS: 10/10 kiểm. Ván mới bấm lúc lỗi mở form khi chunk tới; Thử lại tải lại chunk ngay trên trang, không tải lại trang |
 
 ## 3. Số đo
 
@@ -55,14 +56,16 @@ Di động và Phone dùng mạng 150 ms RTT, 1,6 Mbps.
 
 | Chunk | `57d7559` gzip | P26 gzip | Tải lúc |
 | --- | --- | --- | --- |
-| JS chính `index-*.js` | 75,8 kB | 14,9 kB | Trước Main Menu |
-| CSS `index-*.css` | 13,6 kB | 9,5 kB | Trước Main Menu |
-| `game-*.js` | – | 40,7 kB | Sau khung hình đầu của menu |
+| JS chính `index-*.js` | 75,8 kB | 15,0 kB | Trước Main Menu |
+| CSS `index-*.css` | 13,6 kB | 9,6 kB | Trước Main Menu |
+| `game-*.js` | – | 40,8 kB | Sau khung hình đầu của menu |
 | `game-*.css` | – | 5,2 kB | Cùng `game-*.js` |
-| `iconMap-*.js` | – | 23,9 kB | Cùng `game-*.js` |
+| `iconMap-*.js` | – | 24,0 kB | Cùng `game-*.js` |
 | `src/render` `index-*.js` | 36,3 kB | 36,4 kB | Sau khung hình đầu của menu |
-| `three-*.js` | 126,1 kB | 126,1 kB | Cùng `src/render` |
+| `three-*.js` | 126,1 kB | 126,5 kB | Cùng `src/render` |
 | `confetti-*.js` | 1,2 kB | 1,2 kB | Khi báo cáo có lên cấp |
+
+Cột P26 lấy từ output `npm run build` (gzip của Vite), khớp bảng chunk ở [architecture.md](../architecture.md#khởi-động). Cột `57d7559` lấy từ `measure-startup.mjs` (gzip mức 9), nên `three-*.js` lệch 0,4 kB dù không đổi.
 
 `perf:frames --base 57d7559 --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
 
@@ -92,3 +95,5 @@ Di động và Phone dùng mạng 150 ms RTT, 1,6 Mbps.
 | Cảnh 3D tải lỗi | Dòng đỏ "Không tải được quán 3D…", "Mã cảnh 3D" báo lỗi kèm nút Thử lại | ![Lỗi tải](../media/loading-error.png) |
 | Sau Thử lại khi có mạng | Dòng tiến độ ẩn, quán 3D hiện sau menu | ![Sau Thử lại](../media/loading-retried.png) |
 | Script game lỗi lúc mở | Màn chờ báo "Không tải được game…" và nút Thử lại | ![Màn chờ lỗi](../media/loading-boot-error.png) |
+| Chunk game lỗi | Main Menu vẫn hiện; khung đỏ: dòng lỗi "Không tải được quán 3D…" và nút Thử lại của "Mã cảnh 3D"; Font, Icon 100% | ![Chunk game lỗi](../media/loading-game-error.png) |
+| Sau Thử lại chunk game | Form Ván mới đã bấm lúc lỗi tự mở; khung đỏ: "Bắt đầu ngày 1" đã mở khoá, quán 3D hiện phía sau | ![Sau Thử lại chunk game](../media/loading-game-retried.png) |
