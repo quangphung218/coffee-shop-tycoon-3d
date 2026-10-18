@@ -16,7 +16,7 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 - JS chính `index-*.js`: 75,8 → 14,7 kB gzip. Sim, HUD, panel, báo cáo, save, audio nằm ở chunk `game-*.js` (40,9 kB) và `iconMap-*.js` (23,9 kB), tải bằng `import()` sau khung hình đầu của menu.
 - Cảnh 3D chậm hơn base 3,5% trên Phone 390×844 và 3,6% trên Mobile, trong ngưỡng 10%.
 - Khung hình máy bàn headed: p95 28 ms (base 46 ms), chưa đạt 16,7 ms. Còn long task sau `cst:world` ở di động headless và ở headed, base cũng có ([mục 3](#3-số-đo)).
-- Layout 67/68: thẻ lên cấp ở 1280×720 cuộn thêm 57 px. Màn chờ, dòng tiến độ, nút khoá và Thử lại vẫn đúng.
+- Layout 68/68: thẻ lên cấp ở 1280×720 vừa một màn. Màn chờ, dòng tiến độ, nút khoá và Thử lại vẫn đúng.
 - Font Nunito ở màn chờ và định dạng save giữ nguyên.
 
 ## 2. Kết quả kiểm
@@ -32,7 +32,7 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 | `perf:frames`, di động headless | 0 long task | FAIL: trung vị 2 long task, 128 ms (lượt 0 / 128 / 240 ms); base cùng lượt trung vị 1 long task, 0 ms (lượt 0 / 0 / 628 ms) |
 | p95 máy bàn (`--headed`) | ≤ 16,7 ms | FAIL: 28 ms; base cùng lượt 46 ms. Nợ từ P25 (P25 đo 18 ms) |
 | Long task máy bàn (`--headed`) | 0 long task | FAIL: trung vị 2 long task, 125 ms; base 7 long task, 473 ms |
-| `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | FAIL: 67/68. Thẻ lên cấp ở 1280×720 cuộn thêm 57 px, phải vừa một màn (P25 đạt). P26 tách CSS của báo cáo sang `game-*.css`, nạp sau `index-*.css`. Các mục còn lại PASS: tràn ngang, CLS Kho 0, nút ≥ 44 px, Menu gọn |
+| `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 68/68. Thẻ lên cấp ở 1280×720 cao 54 px, vừa một màn. Tràn ngang 0, CLS Kho 0, nút ≥ 44 px, Menu gọn PASS |
 | `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 6 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
 
 ## 3. Số đo
