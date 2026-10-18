@@ -74,7 +74,7 @@ Atlas bậc nâng cấp (`tiers`) là atlas thứ hai, chỉ bảng Nâng cấp 
 | Phần | Chi tiết |
 | --- | --- |
 | File | `public/icons3d/tiers@1x.webp`, `public/icons3d/tiers@2x.webp`, `public/icons3d/tiers.json` (`TIER_ATLAS_URLS`). Dựng bằng `npm run icons -- --set tiers`; lệnh luôn vẽ lại cả atlas này, không nhận `--only` hay `--sheet`, không đụng atlas chính. |
-| Ô | Bậc 2 và 3 của mỗi icon trong `UPGRADE_ICONS`, id `<id>-t2`, `<id>-t3` (`TIER_IDS`, `tierIconId` trong `src/icon-studio/atlas.ts`; mô hình ở `src/icon-studio/models/tiers.ts`). Bậc 1 là icon của atlas chính. |
+| Ô | Bậc 2 và 3 của mỗi icon trong `UPGRADE_ICONS`, id `<id>-t2`, `<id>-t3`; nâng cấp dùng chung icon thì dùng chung ô (biển neon, kệ sách, máy hát đĩa, góc sofa mượn icon đèn, quầy bar cửa sổ, tranh, bàn ghế) (`TIER_IDS`, `tierIconId` trong `src/icon-studio/atlas.ts`; mô hình ở `src/icon-studio/models/tiers.ts`). Bậc 1 là icon của atlas chính. |
 | `loadTierAtlas()` | `renderUpgradesPanel` gọi khi mở bảng Nâng cấp. Lần đầu `fetch` `tiers.json` và ảnh @1x (@2x khi `<html>` đã có `icons-hd`), giải mã, gán `--ic-tiers` (`TIER_ATLAS_VAR`) lên `<html>`. Đã tải @1x mà sau đó `enableHdIcons` thêm `icons-hd` thì tải @2x đúng một lần rồi đổi `--ic-tiers` (`upgradeTierAtlas`); @2x lỗi thì giữ @1x. Lỗi thì giữ icon bậc 1 và thử lại ở lần gọi sau. `tiers.json` được `fetch`, không import, nên chunk chính không chứa nó. |
 | `tierIcon(id, tier, opts)` | Như `icon()`; bậc 2–3 khi atlas `tiers` đã tải thì đổi ô sang `<id>-t<n>` và gắn `data-atlas="tiers"` (`ui.css` vẽ bằng `--ic-tiers`). Icon vẽ lúc atlas đang tải hiện bậc 1 rồi tự đổi khi tải xong, kích thước ô không đổi. |
 
@@ -128,7 +128,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. `apply_restock` mua từng dòng gợi ý theo thứ tự danh mục, bỏ dòng không đủ tiền và gửi `notify` "Thiếu X đ để nhập …" kèm tên các nguyên liệu bị bỏ; mỗi dòng mua được phát một `spend`. |
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
-| `remove_decor` | Gỡ 1 cấp cây, tranh hay đèn, hoàn 50% giá cấp đó; cấp 0 hay món không gỡ được trả `false`. |
+| `remove_decor` | Gỡ 1 cấp trang trí không có chỗ ngồi (cây, tranh, đèn, biển neon, kệ sách, máy hát đĩa, góc sofa), hoàn 50% tiền cấp đó; cấp 0 hay món không gỡ được trả `false`. |
 | `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). Chỉ trong pha `preparation`; pha khác trả `false` kèm `notify`. |
 | `set_speed`, `set_paused` | Nhịp game. |
 | `take_order`, `brew`, `deliver`, `collect_cash`, `clean_table` | Người chơi tự phục vụ (từ cảnh 3D). |
@@ -175,7 +175,7 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 
 | Khái niệm | Chi tiết |
 | --- | --- |
-| Cấp (`state.shopLevel`, 1–10) | Cấp 1–6 mở thêm món và nâng cấp, tới cấp 6 (`FULL_UNLOCK_LEVEL`) đủ 11 món và 15 nâng cấp. Cấp 7–10 không mở gì mới; mỗi cấp nâng trần một số nâng cấp lên 1 (`maxLevelBonus`): 7 máy cao cấp + máy xay hạt, 8 bàn ghế + tủ bánh, 9 đèn + máy sinh tố, 10 máy cao cấp + máy rửa ly. `maxUpgradeLevel(state, id)` = `maxLevel` + phần cộng; cấp vượt `maxLevel` đắt gấp `BONUS_LEVEL_PRICE_MULT` (3) lần ([báo cáo](reports/p23-long-economy.md)). Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần 1 đã tới ngày mở theo lịch (từ tuần 2 cả lịch đã mở) ([spec/week-7-days.md](spec/week-7-days.md)). |
+| Cấp (`state.shopLevel`, 1–10) | Cấp 1–6 mở thêm món và nâng cấp, tới cấp 6 (`FULL_UNLOCK_LEVEL`) đủ 11 món và 18 trong 19 nâng cấp; góc sofa mở ở cấp 8, mọi cấp 7–10 khác không mở gì mới. Mỗi cấp 7–10 nâng trần một số nâng cấp lên 1 (`maxLevelBonus`): 7 máy cao cấp + máy xay hạt + mở rộng diện tích (cấp 3), 8 bàn ghế + tủ bánh, 9 đèn + máy sinh tố + mở rộng diện tích (cấp 4), 10 máy cao cấp + máy rửa ly. Mỗi cấp mở rộng thêm một cột 3 bàn vào khu mở rộng, khu rộng thêm 2 đơn vị (`expansionArea`). `maxUpgradeLevel(state, id)` = `maxLevel` + phần cộng; cấp vượt `maxLevel` đắt gấp `BONUS_LEVEL_PRICE_MULT` (3) lần ([báo cáo](reports/p23-long-economy.md)). Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần 1 đã tới ngày mở theo lịch (từ tuần 2 cả lịch đã mở) ([spec/week-7-days.md](spec/week-7-days.md)). |
 | Tuần (`state.week`) | Ván mới chơi liên tục từng tuần 7 ngày; tuần 1 mở khóa thêm theo lịch `WEEK_UNLOCKS` ([Tuần 7 ngày](#tuần-7-ngày)). Save không có `week` chỉ mở khóa theo cấp. |
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP; tổng nhân `xpMult` của độ khó (Dễ 1,25 · Vừa 1 · Khó 0,8). Cộng lúc `closeDay`; qua ngưỡng `xpToReach` (cấp 2–10: 1100, 3500, 7000, 12000, 19000, 27000, 37000, 49000, 63000) thì lên cấp và phát `level_up`. Mốc thiết kế: chiến lược mẫu ở Vừa lên cấp 2 vào ngày 2–4, cấp 6 vào ngày 20–35 (`tests/integration/level-balance.test.ts`). |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng 50–70 XP và 80.000–120.000 đ. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính; `food_cost` cần có doanh thu mới tính đạt. |
@@ -201,7 +201,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 
 ### Nâng cấp và dụng cụ
 
-10 nâng cấp và 5 dụng cụ ở `src/sim/data/upgrades.ts`; mỗi loại có `category` (`equipment` / `space` / `decor`) và `effectPerLevel`. `totalUpgradeEffect(state.upgrades)` cộng dồn hiệu ứng mọi cấp đã mua:
+14 nâng cấp và 5 dụng cụ ở `src/sim/data/upgrades.ts`; mỗi loại có `category` (`equipment` / `space` / `decor`) và `effectPerLevel`. `totalUpgradeEffect(state.upgrades)` cộng dồn hiệu ứng mọi cấp đã mua:
 
 | Trường hiệu ứng | Tác dụng trong sim | Áp ở |
 | --- | --- | --- |
@@ -218,7 +218,18 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 
 Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 60k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
 
-Gỡ trang trí (`removeDecor`) chỉ áp cho `plants`, `paintings`, `lights` (`isRemovableDecor`: `decor` không có `capacity`): giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% giá của cấp đó theo `priceMult`. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
+Nội thất (`category: 'decor'`, `appeal` và `ratingBonus` nhỏ):
+
+| Nội thất | Cấp quán mở | Cấp tối đa | Chỗ đặt (`DECOR_SLOTS`) | Tem mỗi cấp (`ticketCost`) |
+| --- | --- | --- | --- | --- |
+| `neon_sign` Biển neon | 3 | 2 | Tường trước, hai bên cửa | — |
+| `bookshelf` Kệ sách | 4 | 2 | Sát tường trái cạnh quầy | — |
+| `record_player` Máy hát đĩa | 6 | 1 | Đầu phải quầy sau | 3 |
+| `sofa_corner` Góc sofa | 8 | 1 | Tường sau khu mở rộng; cần `expand_area` ≥ 1 | 5 |
+
+`buyUpgrade` từ chối theo thứ tự: cấp tối đa, thiếu nâng cấp cần trước (`upgradeBlockedReason`, ví dụ góc sofa khi chưa mở rộng), thiếu tiền, thiếu Tem (`notify` "Thiếu N Tem"). Đủ thì trừ tiền và trừ Tem ở `ensureRetention(state).tickets`; nâng cấp không có `ticketCost` không đụng tới `state.retention`. UI đọc giá Tem của cấp kế tiếp bằng `nextUpgradeTicketCost(state, id)` (0 khi không cần, `null` ở cấp tối đa).
+
+Gỡ trang trí (`removeDecor`) áp cho mọi `decor` không có `capacity` (`isRemovableDecor`): cây, tranh, đèn và 4 nội thất trên; `window_bar` có bàn nên không gỡ được. Gỡ giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% tiền của cấp đó theo `priceMult`, không hoàn Tem. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
 
 ### Lên cấp, bậc nâng cấp và mục mới
 
@@ -232,7 +243,7 @@ Phản hồi khi quán tiến bộ nằm ở render và UI, sim không đổi; s
 | `counter.tier` | `big_counter` |
 | `furnitureTier` | `tables` (bàn, ghế) |
 | `outdoorTier` | `outdoor_seating` (dù) |
-| `decorTier` | `plants`, `paintings`, `lights` theo `plant`, `painting`, `light` |
+| `decorTier` | Mỗi `DecorKind`: `plants`, `paintings`, `lights`, `neon_sign`, `bookshelf`, `record_player`, `sofa_corner` theo `plant`, `painting`, `light`, `neon`, `bookshelf`, `record_player`, `sofa` |
 | `windowBarTier` | `window_bar`; cảnh 3D không có vật thể riêng cho nâng cấp này |
 
 | Phần | Module | Cách chạy |
@@ -370,7 +381,7 @@ Sim giữ mọi người trên sàn trống: không xuyên tường, quầy, má
 
 | Phần | Cách làm |
 | --- | --- |
-| Footprint | `layoutFootprints(layout)` (`nav/footprints.ts`) trả hình chiếu sàn của tường, khung cửa, hai chậu cây hai bên cửa (`doorPlanters`), quầy, quầy sau, máy, bàn, ghế, cột dù, chậu cây. Bậc thềm và thảm thấp, đi qua được, không có footprint. Render vẽ bằng cùng hằng số kích thước. |
+| Footprint | `layoutFootprints(layout)` (`nav/footprints.ts`) trả hình chiếu sàn của tường, khung cửa, hai chậu cây hai bên cửa (`doorPlanters`), quầy, quầy sau, máy, bàn, ghế, cột dù, chậu cây, kệ sách (`BOOKSHELF_SIZE`), góc sofa (`SOFA_SIZE`). Biển neon treo tường và máy hát đĩa đặt trên quầy sau không có footprint; `backCounterSpan` kéo quầy sau tới dưới máy hát (`RECORD_PLAYER_MARGIN`). Bậc thềm và thảm thấp, đi qua được, không có footprint. Render vẽ bằng cùng hằng số kích thước. |
 | Lưới | `buildNavGrid(layout)`: ô `NAV_CELL` = 0,25; ô bị chặn khi tâm ô nằm ngoài sàn hoặc cách footprint dưới `AGENT_RADIUS` = 0,2. Lưới cache theo `navLayoutKey`, chỉ dựng lại khi bố cục đổi (mua nâng cấp). |
 | Tìm đường | `findPath(grid, from, to)`: A* 8 hướng, không cắt góc ô chặn, hòa thì chọn chỉ số ô nhỏ hơn; đường được rút gọn theo tầm nhìn và cache LRU 128 đường. Đầu mút bị chặn được dời tới ô trống gần nhất (`nearestFree`). |
 | Đi bộ của khách | Mỗi tick khách đi 4 đơn vị bằng `walkToward(grid, pos, target, 4)`: lần theo bản đồ khoảng cách (Dijkstra 8 hướng) tới ô đích, chỉ xét đoạn đi được trong tick và cắt góc khi tầm nhìn thông. Bản đồ dựng một lần cho mỗi ô đích, cache LRU 96 bản đồ cho bố cục hiện tại và xóa khi bố cục đổi; sim không chạy A* mỗi tick. `navSearchCount()` đếm số lần chạy A* và dựng bản đồ. Đường không lưu vào state. Khách ngồi dừng ở ô trống cạnh ghế; render vẽ họ trên ghế. |

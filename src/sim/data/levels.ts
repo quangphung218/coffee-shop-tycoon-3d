@@ -3,7 +3,7 @@ import type { LevelDef, MenuItemId, ToolId, Unlocks, UpgradeId } from '../types'
 /** The highest shop level the game defines. */
 export const MAX_SHOP_LEVEL = 10;
 
-/** The level at which every menu item and upgrade is unlocked; levels above it only raise upgrade caps. */
+/** The level at which every menu item and upgrade but the sofa corner (level 8) is unlocked; levels above it mostly raise upgrade caps. */
 export const FULL_UNLOCK_LEVEL = 6;
 
 /** Price multiplier on upgrade levels above the upgrade's own maxLevel (the ones shop levels 7..10 open). */
@@ -15,12 +15,14 @@ export type ShopLevelDef = LevelDef & { maxLevelBonus?: Partial<Record<UpgradeId
 /**
  * Ten shop levels, from a corner stall to a legend of the street. Levels 1..6
  * newly unlock menu items, upgrades and tools and together cover every menu
- * item and every upgrade. `tools` are equipment upgrades (a subset of
- * UpgradeId): they gate buying the same way as `upgrades` but stay a separate
- * list so the UI can present them as equipment. Levels 7..10 unlock nothing
- * new; each raises the cap of a few owned upgrades by one (`maxLevelBonus`),
- * only on upgrades whose extra level needs no new model or floor spot.
- * Thresholds and picks are explained in docs/reports/p23-long-economy.md.
+ * item and every upgrade but the sofa corner, which level 8 opens. `tools` are
+ * equipment upgrades (a subset of UpgradeId): they gate buying the same way as
+ * `upgrades` but stay a separate list so the UI can present them as
+ * equipment. Each of levels 7..10 raises the cap of a few owned upgrades by
+ * one (`maxLevelBonus`): upgrades whose extra level needs no new model or
+ * floor spot, and expand_area at 7 and 9, whose third and fourth levels add a
+ * column of tables to the side room. Thresholds and picks are explained in
+ * docs/reports/p23-long-economy.md.
  */
 export const LEVELS: readonly ShopLevelDef[] = [
   {
@@ -43,13 +45,13 @@ export const LEVELS: readonly ShopLevelDef[] = [
     level: 3,
     name: 'Quán đông khách',
     xpToReach: 3500,
-    unlocks: { menu: ['orange_juice'], upgrades: ['better_machine', 'big_counter'], tools: ['pastry_case'] },
+    unlocks: { menu: ['orange_juice'], upgrades: ['better_machine', 'big_counter', 'neon_sign'], tools: ['pastry_case'] },
   },
   {
     level: 4,
     name: 'Thương hiệu khu phố',
     xpToReach: 7000,
-    unlocks: { menu: ['mocha', 'frappe'], upgrades: ['paintings', 'lights'], tools: ['blender'] },
+    unlocks: { menu: ['mocha', 'frappe'], upgrades: ['paintings', 'lights', 'bookshelf'], tools: ['blender'] },
   },
   {
     level: 5,
@@ -61,20 +63,20 @@ export const LEVELS: readonly ShopLevelDef[] = [
     level: 6,
     name: 'Chuỗi nổi tiếng',
     xpToReach: 19000,
-    unlocks: { menu: [], upgrades: ['expand_area'], tools: ['dishwasher'] },
+    unlocks: { menu: [], upgrades: ['expand_area', 'record_player'], tools: ['dishwasher'] },
   },
   {
     level: 7,
     name: 'Điểm hẹn của quận',
     xpToReach: 27000,
     unlocks: { menu: [], upgrades: [], tools: [] },
-    maxLevelBonus: { better_machine: 1, grinder: 1 },
+    maxLevelBonus: { better_machine: 1, grinder: 1, expand_area: 1 },
   },
   {
     level: 8,
     name: 'Thương hiệu được săn đón',
     xpToReach: 37000,
-    unlocks: { menu: [], upgrades: [], tools: [] },
+    unlocks: { menu: [], upgrades: ['sofa_corner'], tools: [] },
     maxLevelBonus: { tables: 1, pastry_case: 1 },
   },
   {
@@ -82,7 +84,7 @@ export const LEVELS: readonly ShopLevelDef[] = [
     name: 'Biểu tượng cà phê phố',
     xpToReach: 49000,
     unlocks: { menu: [], upgrades: [], tools: [] },
-    maxLevelBonus: { lights: 1, blender: 1 },
+    maxLevelBonus: { lights: 1, blender: 1, expand_area: 1 },
   },
   {
     level: 10,

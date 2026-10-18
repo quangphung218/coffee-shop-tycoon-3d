@@ -299,7 +299,7 @@ const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
 const DECOR_FOR_UPGRADE = { plants: 'plant', paintings: 'painting', lights: 'light' } as const satisfies Partial<Record<UpgradeId, DecorKind>>;
 
 /** Sparkle height over each decor kind: the foliage, the painting hook, the bulb. */
-const DECOR_SPARKLE_Y: Record<DecorKind, number> = { plant: 1, painting: 1.45, light: 2.28 };
+const DECOR_SPARKLE_Y: Record<(typeof DECOR_FOR_UPGRADE)[keyof typeof DECOR_FOR_UPGRADE], number> = { plant: 1, painting: 1.45, light: 2.28 };
 
 interface Wall {
   mesh: Mesh;
