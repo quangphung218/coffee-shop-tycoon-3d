@@ -1,4 +1,4 @@
-import { listSlots, type SaveSlot, type SlotInfo } from '../../save/save';
+import { listSlotSummaries, type SaveSlot, type SlotInfo } from '../../save/slots';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
@@ -117,7 +117,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
   const el = screenLayer(card, { variant: 'menu', label: 'Menu chính' });
 
   function refresh(): void {
-    const slots = listSlots(storage);
+    const slots = listSlotSummaries(storage);
     const latest = latestSave(slots);
     continueSlot = latest?.slot ?? null;
     continueBtn.hidden = !latest;
