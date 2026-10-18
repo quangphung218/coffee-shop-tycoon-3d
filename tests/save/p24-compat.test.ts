@@ -194,7 +194,8 @@ describe('P24 save with upgrades and the P25 look tiers', () => {
     expect(layout.counter.tier).toBe(1);
     expect(layout.furnitureTier).toBe(2);
     expect(layout.outdoorTier).toBe(1);
-    expect(layout.decorTier).toEqual({ plant: 2, painting: 1, light: 2 });
+    // P27 furniture did not exist in a P24 save: tier 0.
+    expect(layout.decorTier).toEqual({ plant: 2, painting: 1, light: 2, neon: 0, bookshelf: 0, record_player: 0, sofa: 0 });
     expect(layout.windowBarTier).toBe(1);
     for (const m of layout.machines) expect(() => machineGeometry(m).dispose(), m.kind).not.toThrow();
     expect(() => counterGeometry(layout.counter.width, layout.counter.level, layout.counter.tier).dispose()).not.toThrow();

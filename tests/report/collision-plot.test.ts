@@ -84,6 +84,8 @@ const FILL: Readonly<Record<FootprintKind, string>> = {
   chair: '#f6e7d2',
   parasol: '#ff8a7a',
   plant: '#8fcf5f',
+  bookshelf: '#a0704c',
+  sofa: '#d9822b',
 };
 const KIND_NAME: Readonly<Record<FootprintKind, string>> = {
   wall: 'tường',
@@ -96,6 +98,8 @@ const KIND_NAME: Readonly<Record<FootprintKind, string>> = {
   chair: 'ghế',
   parasol: 'cột dù',
   plant: 'chậu cây',
+  bookshelf: 'kệ sách',
+  sofa: 'góc sofa',
 };
 
 /** World units to px. */
@@ -281,11 +285,14 @@ function plot(layout: ShopLayout, c: PlotCase): string {
   return out.join('\n');
 }
 
+const P27_FURNITURE: ReadonlySet<string> = new Set(['neon_sign', 'bookshelf', 'record_player', 'sofa_corner']);
+
 /** Every upgrade at its last level: both table rows, the side room, the patio, the long counter. */
 function maxedState(): GameState {
   const state = createNewGame('Quán Va Chạm', 'normal', SEED);
   state.money = 1e12;
-  for (const def of UPGRADES) {
+  // The plots show the P18 floor: the P27 furniture is left out.
+  for (const def of UPGRADES.filter((u) => !P27_FURNITURE.has(u.id))) {
     while (nextUpgradeCost(state, def.id) !== null) {
       if (!buyUpgrade(state, def.id).ok) throw new Error(`cannot buy ${def.id}`);
     }

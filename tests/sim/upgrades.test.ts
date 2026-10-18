@@ -119,7 +119,7 @@ describe('getShopLayout', () => {
     expect(fresh.counter.tier).toBe(0);
     expect(fresh.furnitureTier).toBe(0);
     expect(fresh.outdoorTier).toBe(0);
-    expect(fresh.decorTier).toEqual({ plant: 0, painting: 0, light: 0 });
+    expect(fresh.decorTier).toEqual({ plant: 0, painting: 0, light: 0, neon: 0, bookshelf: 0, record_player: 0, sofa: 0 });
     expect(fresh.windowBarTier).toBe(0);
 
     s.upgrades = { better_machine: 2, fast_machine: 1, grinder: 3, blender: 1, big_counter: 2, tables: 3, outdoor_seating: 1, plants: 2, paintings: 3, lights: 1, window_bar: 2 };
@@ -134,7 +134,7 @@ describe('getShopLayout', () => {
     expect(layout.counter).toMatchObject({ level: 2, tier: 2 });
     expect(layout.furnitureTier).toBe(2);
     expect(layout.outdoorTier).toBe(1);
-    expect(layout.decorTier).toEqual({ plant: 2, painting: 3, light: 1 });
+    expect(layout.decorTier).toEqual({ plant: 2, painting: 3, light: 1, neon: 0, bookshelf: 0, record_player: 0, sofa: 0 });
     expect(layout.windowBarTier).toBe(2);
   });
 
