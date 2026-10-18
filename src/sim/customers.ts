@@ -20,6 +20,7 @@ import {
 } from './nav';
 import { priceArrivalMult, sellPriceMult } from './policies';
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
+import { onServed } from './specialOrders';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
 import { dayArrivalMult } from './week';
@@ -458,6 +459,7 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
   if (customer.extraItem) state.today.sold[customer.extraItem] = (state.today.sold[customer.extraItem] ?? 0) + 1;
   recordWait(state, customer);
   state.events.push({ type: 'served', customerId: customer.id, itemId });
+  onServed(state, itemId, customer.id);
   if (seatCustomer(state, customer)) {
     customer.state = 'drinking';
     const sitMult = customer.persona ? PERSONAS[customer.persona].sitMult : 1;
