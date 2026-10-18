@@ -90,10 +90,10 @@ describe('P27 staff panel', () => {
 
     member.exp = 600.7;
     member.level = 3;
-    handle!.update(state);
+    handle!.update!(state);
     expect(row.textContent).toContain(`Cấp 3/${MAX_STAFF_LEVEL} · KN 600/${STAFF_LEVEL_EXP[3]}`);
     member.level = MAX_STAFF_LEVEL;
-    handle!.update(state);
+    handle!.update!(state);
     expect(row.textContent).toContain(`Cấp ${MAX_STAFF_LEVEL}/${MAX_STAFF_LEVEL} · KN tối đa`);
     expect(bar.getAttribute('aria-valuenow')).toBe('100');
   });
@@ -110,22 +110,22 @@ describe('P27 staff panel', () => {
 
     member.exp = STAFF_LEVEL_EXP[1];
     state.money = 0;
-    handle!.update(state);
+    handle!.update!(state);
     expect(reasonOf(body, btn)).toContain('Không đủ tiền đào tạo');
 
     state.money = 10_000_000;
     member.level = 3;
     member.exp = STAFF_LEVEL_EXP[3];
-    handle!.update(state);
+    handle!.update!(state);
     expect(btn.textContent).toBe(`Đào tạo · ${formatMoney(trainCost(member).money)} · 3 Tem`);
     expect(reasonOf(body, btn)).toContain('Cần 3 Tem để đào tạo lên cấp 4');
 
     state.phase = 'opening';
-    handle!.update(state);
+    handle!.update!(state);
     expect(reasonOf(body, btn)).toContain('Chỉ đào tạo nhân viên lúc chuẩn bị');
 
     member.level = MAX_STAFF_LEVEL;
-    handle!.update(state);
+    handle!.update!(state);
     expect(reasonOf(body, btn)).toContain('đã đạt cấp tối đa');
   });
 
@@ -173,7 +173,7 @@ describe('P27 staff panel', () => {
     for (let i = 0; i < cap; i++) {
       state.staff.push({ ...state.candidates[0]!, id: 1000 + i, role: 'none' });
     }
-    handle!.update(state);
+    handle!.update!(state);
     expect(body.textContent).toContain(`Đang có ${cap}/${cap} người`);
     const hire = q<HTMLButtonElement>(body, '[data-action="hire"]');
     expect(hire.getAttribute('aria-disabled')).toBe('true');
@@ -185,7 +185,7 @@ describe('P27 staff panel', () => {
     const { body, handle } = mount(state);
     const row = q(body, `li[data-staff="${member.id}"]`);
     member.exp = 30;
-    handle!.update(state);
+    handle!.update!(state);
     expect(q(body, `li[data-staff="${member.id}"]`)).toBe(row);
     expect(row.textContent).toContain('KN 30/');
   });
