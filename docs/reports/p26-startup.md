@@ -16,6 +16,7 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 - JS chính `index-*.js`: 75,8 → 14,7 kB gzip. Sim, HUD, panel, báo cáo, save, audio nằm ở chunk `game-*.js` (40,9 kB) và `iconMap-*.js` (23,9 kB), tải bằng `import()` sau khung hình đầu của menu.
 - Cảnh 3D chậm hơn base 3,5% trên Phone 390×844 và 3,6% trên Mobile, trong ngưỡng 10%.
 - Khung hình máy bàn headed: p95 28 ms (base 46 ms), chưa đạt 16,7 ms. Còn long task sau `cst:world` ở di động headless và ở headed, base cũng có ([mục 3](#3-số-đo)).
+- Layout 67/68: thẻ lên cấp ở 1280×720 cuộn thêm 57 px. Màn chờ, dòng tiến độ, nút khoá và Thử lại vẫn đúng.
 - Font Nunito ở màn chờ và định dạng save giữ nguyên.
 
 ## 2. Kết quả kiểm
@@ -31,8 +32,8 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 | `perf:frames`, di động headless | 0 long task | FAIL: trung vị 2 long task, 128 ms (lượt 0 / 128 / 240 ms); base cùng lượt trung vị 1 long task, 0 ms (lượt 0 / 0 / 628 ms) |
 | p95 máy bàn (`--headed`) | ≤ 16,7 ms | FAIL: 28 ms; base cùng lượt 46 ms. Nợ từ P25 (P25 đo 18 ms) |
 | Long task máy bàn (`--headed`) | 0 long task | FAIL: trung vị 2 long task, 125 ms; base 7 long task, 473 ms |
-| `npm run layout` | PASS | Chờ số đo |
-| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | Chờ số đo |
+| `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | FAIL: 67/68. Thẻ lên cấp ở 1280×720 cuộn thêm 57 px, phải vừa một màn (P25 đạt). P26 tách CSS của báo cáo sang `game-*.css`, nạp sau `index-*.css`. Các mục còn lại PASS: tràn ngang, CLS Kho 0, nút ≥ 44 px, Menu gọn |
+| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 6 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
 
 ## 3. Số đo
 
@@ -75,3 +76,16 @@ Di động và Phone dùng mạng 150 ms RTT, 1,6 Mbps.
 
 - Số đo headed dao động mạnh giữa các lượt: p95 base máy bàn 46 / 184 / 37 ms, P26 di động 66 / 83 / 18 ms.
 - Long task sau `cst:world` có ở cả base và P26 trong cùng lượt đo. P26 không sửa `src/render`, nơi chứa warm-up `world.prepare()`.
+
+## 4. Màn chờ và Main Menu lúc tải
+
+`npm run media:loading`: 390×844, mạng 150 ms RTT, 1,6 Mbps, CPU 4x. Ảnh P26.
+
+| Cảnh | Chỗ cần nhìn | Ảnh |
+| --- | --- | --- |
+| Màn chờ | Thanh và dòng "Đang mở quán… 59%", mẹo bên dưới | ![Màn chờ](../media/loading-boot.png) |
+| Main Menu khi cảnh 3D đang tải | Dòng "Đang chuẩn bị quán 3D… 7%", thanh tiến độ, danh sách 6 thành phần; Tải game khoá vì chưa có bản lưu. Icon nút còn là ô trống tới khi atlas @1x tải xong | ![Main Menu lúc tải](../media/loading-menu.png) |
+| Ván mới khi cảnh 3D chưa xong | Nút "Bắt đầu ngày 1" khoá, viền đứt, phần đã tô và chữ "Đang chuẩn bị 31%"; dòng "Mạng đang chậm, game vẫn đang tải… 31%" | ![Ván mới lúc tải](../media/loading-start.png) |
+| Cảnh 3D tải lỗi | Dòng đỏ "Không tải được quán 3D…", "Mã cảnh 3D" báo lỗi kèm nút Thử lại | ![Lỗi tải](../media/loading-error.png) |
+| Sau Thử lại khi có mạng | Dòng tiến độ ẩn, quán 3D hiện sau menu | ![Sau Thử lại](../media/loading-retried.png) |
+| Script game lỗi lúc mở | Màn chờ báo "Không tải được game…" và nút Thử lại | ![Màn chờ lỗi](../media/loading-boot-error.png) |
