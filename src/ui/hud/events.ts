@@ -1,11 +1,14 @@
 import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
+import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { stockOutlook } from '../../sim/inventory';
 import { weekIndex } from '../../sim/progression';
+import { VIP_TICKETS } from '../../sim/specialOrders';
 import type { GameEvent, GameState, SpendKind, Unlocks } from '../../sim/types';
-import { INGREDIENT_ICONS, LEVEL_ICON } from '../core/iconMap';
+import { formatMoney } from '../core/format';
+import { INGREDIENT_ICONS, LEVEL_ICON, MENU_ICONS } from '../core/iconMap';
 import type { IconId } from '../core/icons';
 import type { ToastInput } from '../core/toast';
 
@@ -89,6 +92,52 @@ export function toastForEvent(event: GameEvent, state: GameState): ToastInput | 
         merge: { verb: title, label: event.label, amount: event.amount, moneyLeft: event.moneyLeft },
       };
     }
+    case 'gift_claimed':
+      return {
+        level: 'success',
+        icon: 'i-sparkle',
+        title: `Quà ngày ${event.streak}`,
+        text: `+${formatMoney(event.money)} · +${event.tickets} Tem`,
+        key: 'gift',
+      };
+    case 'achievement_unlocked': {
+      const def = ACHIEVEMENTS[event.id];
+      const tickets = def.tiers[event.tier - 1]?.tickets ?? 0;
+      return {
+        level: 'success',
+        icon: 'i-trophy',
+        title: `Thành tựu: ${def.name} mốc ${event.tier}`,
+        text: tickets > 0 ? `+${tickets} Tem` : undefined,
+        key: `achievement:${event.id}:${event.tier}`,
+      };
+    }
+    case 'special_order': {
+      const name = getMenuItem(event.itemId).name;
+      if (event.status === 'failed') {
+        return { level: 'info', icon: MENU_ICONS[event.itemId], title: `Hụt đơn đặc biệt: ${name}`, text: 'Hết giờ trước khi giao đủ.', key: 'special_order' };
+      }
+      const order = state.specialOrder ?? state.lastReport?.specialOrder;
+      return {
+        level: 'success',
+        icon: MENU_ICONS[event.itemId],
+        title: `Xong đơn đặc biệt: ${name}`,
+        text: order?.itemId === event.itemId ? `+${formatMoney(order.rewardMoney)} · +${order.rewardTickets} Tem` : undefined,
+        key: 'special_order',
+      };
+    }
+    case 'vip_arrived':
+      return { level: 'info', icon: 'i-star', title: 'Khách VIP vừa tới!', text: `Phục vụ để nhận +${VIP_TICKETS} Tem.`, key: 'vip' };
+    case 'staff_promoted': {
+      const member = state.staff.find((m) => m.id === event.staffId);
+      return {
+        level: 'success',
+        icon: LEVEL_ICON,
+        title: `${member?.name ?? 'Nhân viên'} lên cấp ${event.level}`,
+        key: `promoted:${event.staffId}`,
+      };
+    }
+    // Tickets are already on the gift, achievement, order and VIP toasts of the same frame.
+    case 'tickets_earned':
     default:
       return null;
   }

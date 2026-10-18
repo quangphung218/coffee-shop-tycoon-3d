@@ -3,13 +3,17 @@ import { getCampaign } from '../../sim/data/marketing';
 import { getMenuItem } from '../../sim/data/menu';
 import { DAY_EVENTS, weekUnlockDay } from '../../sim/data/week';
 import { autoRestockSuggestion, canMake } from '../../sim/inventory';
+import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { missionProgress } from '../../sim/progression';
-import type { GameState, Mission, MissionId, SuggestionKind } from '../../sim/types';
+import { achievementProgress, giftPreview, parseDateKey, type AchievementProgress } from '../../sim/retention';
+import { isVipDay, SPECIAL_ORDER_FROM_DAY } from '../../sim/specialOrders';
+import type { GameState, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
-import { h, isAriaDisabled, setAriaDisabled, setChildren, Watcher } from '../core/dom';
-import { formatMoney, formatRating } from '../core/format';
-import { DAY_EVENT_ICONS, MISSION_ICON, UPGRADE_ICONS, WEATHER_ICONS } from '../core/iconMap';
+import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
+import { formatClock, formatMoney, formatRating } from '../core/format';
+import { DAY_EVENT_ICONS, MENU_ICONS, MISSION_ICON, UPGRADE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { localDateKey } from '../core/today';
 import { unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDayLabel } from '../hud/hud';
 import type { PanelContext, PanelHandle } from '../hud/panels';
@@ -158,6 +162,132 @@ function missionCard(state: GameState, m: Mission): HTMLElement {
   );
 }
 
+export type GiftStatus = 'ready' | 'claimed' | 'reset' | 'blocked';
+
+export interface GiftView {
+  status: GiftStatus;
+  /** Days of the 7-day row that show a tick. */
+  claimed: number;
+  /** Streak day lit as the next gift; null when nothing can be claimed today. */
+  next: number | null;
+  /** Gift the button claims, e.g. "+50.000đ · +1 Tem". */
+  reward: string;
+  /** Line under the button; null when the gift is simply ready. */
+  note: string | null;
+}
+
+/**
+ * The "Quà hằng ngày" card for the machine's day `dateKey`, read from
+ * giftPreview: ready, already claimed today, streak broken (back to day 1),
+ * or blocked (clock moved back, bad date) with the sim's reason.
+ */
+export function giftView(state: GameState, dateKey: string): GiftView {
+  const preview = giftPreview(state, dateKey);
+  const login = state.retention?.login ?? { lastDate: null, streak: 0 };
+  const reward = `+${formatMoney(preview.reward.money)} · +${preview.reward.tickets} Tem`;
+  const today = parseDateKey(dateKey);
+  const last = login.lastDate === null ? null : parseDateKey(login.lastDate);
+  if (!preview.canClaim) {
+    const claimedToday = today !== null && today === last;
+    return {
+      status: claimedToday ? 'claimed' : 'blocked',
+      claimed: login.streak,
+      next: null,
+      reward,
+      note: claimedToday ? 'Quay lại ngày mai' : preview.reason!,
+    };
+  }
+  const broken = last !== null && login.streak > 0 && today !== last + 1;
+  return {
+    status: broken ? 'reset' : 'ready',
+    claimed: preview.nextStreak - 1,
+    next: preview.nextStreak,
+    reward,
+    note: broken ? 'Chuỗi bắt đầu lại từ ngày 1' : null,
+  };
+}
+
+export type SpecialOrderLineId = 'order' | 'hint' | 'vip';
+
+/**
+ * Lines of the "Đơn đặc biệt" block: today's order (running, done or
+ * missed), the day-1 hint while there is none, and the VIP of the day.
+ * Empty (block hidden) from day 2 while there is no order and no VIP.
+ */
+export function specialOrderLines(state: GameState): SpecialOrderLineId[] {
+  const lines: SpecialOrderLineId[] = [];
+  if (state.specialOrder) lines.push('order');
+  else if (state.day < SPECIAL_ORDER_FROM_DAY) lines.push('hint');
+  if (isVipDay(state.seed, state.day)) lines.push('vip');
+  return lines;
+}
+
+const ORDER_STATE: Record<SpecialOrder['status'], { label: string; badge: string; icon: IconId }> = {
+  active: { label: 'Đang làm', badge: 'badge-neutral', icon: 'i-clock' },
+  completed: { label: 'Xong', badge: 'badge-ok', icon: 'i-ok' },
+  failed: { label: 'Hụt', badge: 'badge-warn', icon: 'i-warning' },
+};
+
+/** Special order row: item icon | "3 Latte trước 13:00 · 1/3" + result | status, then the bar and the reward. */
+function specialOrderCard(order: SpecialOrder): HTMLElement {
+  const name = getMenuItem(order.itemId).name;
+  const by = formatClock(order.byMinute);
+  const st = ORDER_STATE[order.status];
+  const now = order.target > 0 ? Math.round(Math.min(1, order.progress / order.target) * 100) : 0;
+  const title = `${order.target} ${name} trước ${by} · ${order.progress}/${order.target}`;
+  const reward = `+${formatMoney(order.rewardMoney)} · +${order.rewardTickets} Tem`;
+  const result =
+    order.status === 'completed'
+      ? `Đã giao đủ, nhận ${reward}.`
+      : order.status === 'failed'
+        ? `Hết giờ, giao được ${order.progress}/${order.target} ${name}.`
+        : null;
+  return h(
+    'li',
+    { class: 'item item-row', attrs: { 'data-special-order': order.itemId, 'data-status': order.status } },
+    h('span', { class: 'item-icon' }, icon(MENU_ICONS[order.itemId], { size: 32 })),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: title }), result ? h('p', { class: 'item-meta', text: result }) : null),
+    h('span', { class: 'item-status' }, h('span', { class: `badge ${st.badge}` }, ...withIcon(st.icon, st.label))),
+    h(
+      'div',
+      { class: 'item-actions' },
+      h(
+        'div',
+        { class: 'progress', attrs: { role: 'progressbar', 'aria-label': 'Đơn đặc biệt', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(now), 'aria-valuetext': `${order.progress}/${order.target} ${name}` } },
+        h('span', { attrs: { style: `width:${now}%` } }),
+      ),
+      order.status === 'active' ? h('p', { class: 'item-meta mission-reward' }, ...withIcon('i-coin', `Thưởng ${reward}`)) : null,
+    ),
+  );
+}
+
+/** "1.200.000đ" for the revenue achievement, plain counts for the others. */
+function achievementAmount(a: AchievementProgress, n: number): string {
+  return a.id === 'revenue' ? formatMoney(n) : String(n);
+}
+
+/** Achievement row: trophy | name + "Mốc 1/3 · 120/500" | bar toward the next tier. */
+function achievementCard(a: AchievementProgress): HTMLElement {
+  const tiers = ACHIEVEMENTS[a.id].tiers.length;
+  const now = a.next === null ? 100 : a.next > 0 ? Math.round(Math.min(1, a.value / a.next) * 100) : 0;
+  const meta = a.next === null ? `Mốc ${a.tier}/${tiers} · Đã đạt mọi mốc` : `Mốc ${a.tier}/${tiers} · ${achievementAmount(a, a.value)}/${achievementAmount(a, a.next)}`;
+  return h(
+    'li',
+    { class: 'item item-row', attrs: { 'data-achievement': a.id, 'data-tier': String(a.tier) } },
+    h('span', { class: 'item-icon' }, icon('i-trophy', { size: 32 })),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: a.name }), h('p', { class: 'item-meta', text: meta })),
+    h(
+      'div',
+      { class: 'item-actions' },
+      h(
+        'div',
+        { class: 'progress', attrs: { role: 'progressbar', 'aria-label': a.name, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(now), 'aria-valuetext': meta } },
+        h('span', { attrs: { style: `width:${now}%` } }),
+      ),
+    ),
+  );
+}
+
 export interface WeekTodayLine {
   id: 'weather' | 'event' | 'unlocks' | 'expand' | 'tomorrow';
   icon: IconId;
@@ -192,8 +322,9 @@ export function weekTodayLines(state: GameState): WeekTodayLine[] {
 }
 
 /**
- * Task Board: today's week lines, the checklist with done/not-done state,
- * today's daily missions, yesterday's report suggestions, and "Mở cửa"
+ * Task Board: the daily gift card, today's week lines, the checklist with
+ * done/not-done state, today's daily missions, the special order and VIP,
+ * the achievements (shown in place), yesterday's report suggestions, and "Mở cửa"
  * (start_day). Checklist, mission and suggestion rows share the Kho row
  * template (icon | title + meta | one status label | link). Unfinished tasks
  * only remind.
@@ -201,6 +332,44 @@ export function weekTodayLines(state: GameState): WeekTodayLine[] {
 export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
+
+  const giftTitle = h('h3', { class: 'section-title' }, ...withIcon('i-sparkle', 'Quà hằng ngày', 24));
+  const giftDays = h('div', { class: 'gift-days', attrs: { role: 'list', 'aria-label': 'Chuỗi quà 7 ngày' } });
+  const giftReward = h('p', { class: 'item-meta' });
+  const giftBtn = h('button', { class: 'btn btn-primary btn-block', attrs: { type: 'button', 'data-action': 'claim-gift' } });
+  const giftWhy = reasonLine(false);
+  const gift = h('div', { class: 'gift' }, giftDays, giftReward, giftBtn, giftWhy);
+  giftBtn.addEventListener('click', () => {
+    if (!isAriaDisabled(giftBtn)) send({ type: 'claim_daily_gift', dateKey: localDateKey() });
+  });
+  w.watch(
+    (s) => JSON.stringify(giftView(s, localDateKey())),
+    (key) => {
+      const v = JSON.parse(key) as GiftView;
+      gift.setAttribute('data-gift', v.status);
+      setChildren(
+        giftDays,
+        ...Array.from({ length: 7 }, (_, i) => {
+          const day = i + 1;
+          const done = day <= v.claimed;
+          const next = day === v.next;
+          return h(
+            'div',
+            {
+              class: `gift-day${done ? ' is-claimed' : ''}${next ? ' is-next' : ''}`,
+              attrs: { role: 'listitem', 'data-day': String(day), 'aria-label': `Ngày ${day}${done ? ', đã nhận' : next ? ', quà kế tiếp' : ''}` },
+            },
+            icon(done ? 'i-check' : day === 7 ? 'i-trophy' : 'i-coin', { size: 16 }),
+            h('span', { attrs: { 'aria-hidden': 'true' }, text: String(day) }),
+          );
+        }),
+      );
+      giftReward.textContent = v.next === null ? `Đã nhận ${v.claimed}/7 ngày liền` : `Quà ngày ${v.next}: ${v.reward}`;
+      setChildren(giftBtn, icon('i-sparkle'), v.next === null ? 'Đã nhận quà hôm nay' : `Nhận quà ngày ${v.next}`);
+      setAriaDisabled(giftBtn, v.next === null);
+      setReason(giftWhy, giftBtn, v.note, v.status === 'claimed' ? 'i-ok' : v.status === 'reset' ? 'i-info' : 'i-lock');
+    },
+  );
 
   const weekTitle = h('h3', { class: 'section-title' });
   const weekList = h('ul', { class: 'stack week-today', attrs: { 'aria-label': 'Hôm nay' } });
@@ -272,6 +441,49 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       setChildren(missionList, ...s.missions.map((m) => missionCard(s, m)));
     },
   );
+
+  const orderTitle = h('h3', { class: 'section-title' }, ...withIcon('i-cup-hot', 'Đơn đặc biệt', 24));
+  const orderList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Đơn đặc biệt' } });
+  const orderHint = h('p', { class: 'intro intro-icon', attrs: { 'data-order-line': 'hint' } }, icon('i-info', { size: 16 }), h('span', { text: `Từ ngày ${SPECIAL_ORDER_FROM_DAY} có đơn đặc biệt` }));
+  const vipLine = h('p', { class: 'intro intro-icon', attrs: { 'data-order-line': 'vip' } }, icon('i-star', { size: 16 }), h('span', { text: 'Khách VIP ghé hôm nay' }));
+  w.watch(
+    (s) => `${specialOrderLines(s).join(',')}|${JSON.stringify(s.specialOrder ?? null)}`,
+    (_, s) => {
+      const lines = specialOrderLines(s);
+      orderTitle.hidden = lines.length === 0;
+      orderList.hidden = !lines.includes('order');
+      orderHint.hidden = !lines.includes('hint');
+      vipLine.hidden = !lines.includes('vip');
+      setChildren(orderList, s.specialOrder ? specialOrderCard(s.specialOrder) : null);
+    },
+  );
+
+  const achListId = uid('ach');
+  const achLabel = h('span');
+  const achBtn = h(
+    'button',
+    { class: 'btn btn-secondary btn-block ach-toggle', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': achListId, 'data-action': 'achievements' } },
+    icon('i-trophy'),
+    achLabel,
+    icon('i-chevron-down', { size: 16, class: 'ach-chevron' }),
+  );
+  const achList = h('ul', { id: achListId, class: 'stack', hidden: true, attrs: { 'aria-label': 'Thành tựu' } });
+  achBtn.addEventListener('click', () => {
+    const open = achBtn.getAttribute('aria-expanded') !== 'true';
+    achBtn.setAttribute('aria-expanded', String(open));
+    achList.hidden = !open;
+  });
+  w.watch(
+    (s) => JSON.stringify(achievementProgress(s)),
+    (key) => {
+      const all = JSON.parse(key) as AchievementProgress[];
+      const reached = all.reduce((n, a) => n + a.tier, 0);
+      const total = all.reduce((n, a) => n + ACHIEVEMENTS[a.id].tiers.length, 0);
+      achLabel.textContent = `Thành tựu · ${reached}/${total} mốc`;
+      setChildren(achList, ...all.map(achievementCard));
+    },
+  );
+
   w.watch(
     (s) => s.lastReport ?? null,
     (report) => {
@@ -296,6 +508,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     h(
       'div',
       { class: 'prep' },
+      giftTitle,
+      gift,
       weekTitle,
       weekList,
       h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar)),
@@ -303,6 +517,12 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       missionTitle,
       missionEmpty,
       missionList,
+      orderTitle,
+      orderHint,
+      vipLine,
+      orderList,
+      achBtn,
+      achList,
       sugTitle,
       sugList,
       h('div', { class: 'panel-foot' }, openBtn, why),
