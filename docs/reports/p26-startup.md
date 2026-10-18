@@ -23,7 +23,7 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| `npm run check` | tsc, test, build xanh | PASS: 93 file, 1312 test |
+| `npm run check` | tsc, test, build xanh | PASS: 94 file, 1414 test |
 | Main Menu, Phone 390×844 | < 1000 ms | PASS: 896 ms (base 1324 ms) |
 | Main Menu, Mobile | Không chậm hơn base | PASS: 862 ms (base 1262 ms) |
 | Cảnh 3D so với `57d7559` | ≤ base + 10% | PASS: Phone 3644 / 3521 ms (+3,5%), Mobile 3532 / 3408 ms (+3,6%), Desktop 534 / 554 ms (−3,6%) |
