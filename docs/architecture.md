@@ -433,17 +433,17 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 
 1. `index.html` vẽ màn hình chờ `#boot` (CSS và SVG inline: linh vật ly, thanh tiến độ, %, một mẹo chơi; không chờ font) ngay khi HTML tới. Bản build dời `<link rel="stylesheet">` xuống dưới `#boot`, nên màn chờ không đợi CSS; JS vẫn chỉ chạy khi CSS đã tải.
 2. Script inline dưới `#boot` lấp thanh theo file đã tải xong (Resource Timing), tính theo dung lượng: chunk chính và CSS. Sau 5 s chưa xong thì đổi dòng chữ thành "Mạng đang chậm…"; script hoặc stylesheet tải lỗi thì hiện "Không tải được game" và nút **Thử lại** (tải lại trang).
-3. Chunk chính (UI, sim, save, audio) chạy `createShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`.
-4. Khi menu đã vẽ (`afterPaint()`), `main.ts` mới gọi `import('./render/scene')`; chunk này tải xong (hoặc lỗi) thì `watchIconAtlas()` mới tải atlas @1x. Tiếp đó `createWorld` dựng cảnh, `world.prepare()` làm sẵn nhãn của mọi icon (`LABEL_BUBBLES`, `LABEL_FACES`), `WARM_BODIES` nhân vật và `WARM_COINS` popup xu vào pool, biên dịch shader bằng `compileAsync`, nạp texture nhãn bằng `renderer.initTexture`, rồi vẽ một khung warm-up trên canvas còn ẩn (nhân vật đủ kiểu khách và tâm trạng, kèm nhãn, hơi, xu) để nạp geometry và shader bóng đổ lên GPU. Sau đó canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
+3. Chunk chính chỉ có UI của menu: `src/ui/screens/menuShell.ts`, `mainMenu.ts`, `settings.ts`, phần `src/ui/core` các màn đó dùng, và `src/save/settings.ts`, `slots.ts`, `storage.ts`, `playlog.ts`. `main.ts` chạy `createMenuShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`. Main Menu đọc tóm tắt slot bằng `listSlotSummaries` (tên quán, ngày, tiền, giờ lưu), không nâng cấp hay ghi save; bấm **Tiếp tục** mới đọc đầy đủ qua `loadGame`.
+4. Khi menu đã vẽ (`afterPaint()`), `main.ts` gọi song song `import('./game')` và `import('./render/scene')`, rồi `watchIconAtlas()` tải atlas @1x. Chunk game (`src/game.ts`: sim, HUD, Daily Report, panel, màn chơi `mountGame`, `src/save/save.ts`, âm thanh) tới thì `main.ts` tạo âm thanh (`createAudio`) và cảnh nền menu (`createMenuScene`), rồi gắn phần game vào menu bằng `attachGame`. Bấm **Ván mới** hay **Tải game** trước lúc đó thì màn ấy mở khi chunk game tới, nếu người chơi vẫn ở Main Menu. Khi cả hai chunk đã tới, `createWorld` dựng cảnh, `world.prepare()` làm sẵn nhãn của mọi icon (`LABEL_BUBBLES`, `LABEL_FACES`), `WARM_BODIES` nhân vật và `WARM_COINS` popup xu vào pool, biên dịch shader bằng `compileAsync`, nạp texture nhãn bằng `renderer.initTexture`, rồi vẽ một khung warm-up trên canvas còn ẩn (nhân vật đủ kiểu khách và tâm trạng, kèm nhãn, hơi, xu) để nạp geometry và shader bóng đổ lên GPU. Sau đó canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
 5. Sau `cst:world`, `enableHdIcons()` tải atlas @2x cho icon trên màn 2x và nhãn 3D ([Icon và font](#icon-và-font)).
 
-Danh sách file và dung lượng do plugin `cst-loading-screen` trong `vite.config.ts` ghi vào `window.__cstAssets` lúc build: `boot` (cho Main Menu) và `scene` (chunk `src/render` và `three`). Lúc `npm run dev` hai danh sách rỗng: thanh màn chờ đứng yên, thanh cảnh 3D chỉ nhảy theo bước.
+Danh sách file và dung lượng do plugin `cst-loading-screen` trong `vite.config.ts` ghi vào `window.__cstAssets` lúc build: `boot` (cho Main Menu) và `scene` (mọi file đến từ `import()` của chunk chính: chunk game kèm CSS của nó, chunk dùng chung, `src/render` và `three`). Lúc `npm run dev` hai danh sách rỗng: thanh màn chờ đứng yên, thanh cảnh 3D chỉ nhảy theo bước.
 
 Tiến độ cảnh 3D là danh sách thành phần (`LOAD_COMPONENTS` trong `src/ui/core/loadProgress.ts`, hiện bằng `src/ui/core/sceneGate.ts`). Mỗi mục có trạng thái chờ, đang tải, xong hoặc lỗi và tiến độ 0–1; tổng % là trung bình có trọng số.
 
 | Mục (`id`) | Trọng số | Tiến độ lấy từ |
 | --- | --- | --- |
-| Mã cảnh 3D (`code`) | 55 | `watchDownloads`: dung lượng file `scene` đã xong; lúc dev nhảy thẳng từ 0 lên xong |
+| Mã cảnh 3D (`code`) | 55 | `watchDownloads`: dung lượng file `scene` (chunk game, chunk dùng chung, `src/render`, `three`) đã xong; lúc dev nhảy thẳng từ 0 lên xong |
 | Font (`fonts`) | 5 | `loadFonts()`: `document.fonts.load` cho Nunito 400 và 700, cả hai subset |
 | Icon (`icons`) | 5 | `onIconAtlas()`: atlas @1x của `watchIconAtlas()` |
 | Dựng quán (`world`) | 10 | `createWorld` xong |
@@ -452,22 +452,27 @@ Tiến độ cảnh 3D là danh sách thành phần (`LOAD_COMPONENTS` trong `sr
 
 Âm thanh tổng hợp bằng Web Audio, không có file, nên không có trong danh sách.
 
-- Trong lúc tải, Main Menu, Ván mới và Tải game có dòng tiến độ: thanh tổng %, mỗi thành phần một dòng (icon trạng thái, tên, %) và một mẹo. Các nút vào quán (**Tiếp tục**, **Bắt đầu ngày 1**, **Tải slot**) bị `aria-disabled`, tô dần theo tổng % và ghi "Đang chuẩn bị N%". **Ván mới** vẫn mở form.
+- Trong lúc tải, Main Menu, Ván mới và Tải game có dòng tiến độ: thanh tổng %, mỗi thành phần một dòng (icon trạng thái, tên, %) và một mẹo. Các nút vào quán (**Tiếp tục**, **Bắt đầu ngày 1**, **Tải slot**) bị `aria-disabled`, tô dần theo tổng % và ghi "Đang chuẩn bị N%". **Ván mới** và **Tải game** mở màn của mình ngay khi chunk game đã tới.
 - Cảnh sẵn sàng (100%, mở nút vào quán) chỉ khi mọi mục đã xong.
 - Sau 8 s chưa xong: dòng chữ đổi thành "Mạng đang chậm, game vẫn đang tải…".
-- Một mục lỗi: dòng tiến độ báo lỗi, mục đó có nút **Thử lại**. Font và Icon tải lại riêng mục đó. Bốn mục còn lại tải lại cùng nhau: gọi lại `import()`; trình duyệt có thể giữ lỗi của module cũ, nên nếu vẫn lỗi mà trang trả lời được thì tải lại trang. Lỗi khi dựng quán hay biên dịch shader (WebGL) báo riêng.
+- Một mục lỗi: dòng tiến độ báo lỗi, mục đó có nút **Thử lại**. Font và Icon tải lại riêng mục đó. Bốn mục còn lại tải lại cùng nhau: gọi lại `import()` cho cả chunk game và chunk cảnh (`retryModule`); trình duyệt có thể giữ lỗi của module cũ, nên nếu vẫn lỗi mà trang trả lời được thì tải lại trang. Lỗi khi dựng quán hay biên dịch shader (WebGL) báo riêng.
 - Khi đang chơi, quán, mở rộng, khu mới và hình theo bậc đều dựng bằng code. Chỉ hai thứ tải giữa game, không có chỉ báo tải: chunk confetti khi Daily Report đầu tiên có lên cấp, và atlas `tiers` khi mở bảng Nâng cấp lần đầu. Cả hai lỗi thì bỏ qua: không confetti, icon giữ bậc 1.
 - Main Menu không tải thêm file nào cho phần lên cấp và bậc: `equipment.ts`, `upgradeFx.ts` nằm trong chunk `src/render`; confetti và atlas `tiers` chỉ tải như trên. `fresh.ts` và phần atlas bậc của `icons.ts` nằm trong chunk chính nhưng không tải gì khi menu hiện.
 
 Không import `src/render` hay `three` tĩnh từ `main.ts`, `src/ui`, `src/sim`, `src/save`: làm vậy kéo three.js trở lại chunk chính.
 
+Không import tĩnh `src/sim`, `src/ui/hud`, `src/ui/report`, `src/ui/panels`, `src/audio` hay `src/save/save.ts` từ `main.ts` và các màn của menu (`menuShell.ts`, `mainMenu.ts`, `settings.ts`): làm vậy kéo phần game trở lại chunk chính. Chỉ `import type` được phép. `tests/scripts/startup-graph.test.ts` chặn việc này.
+
 Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon ghi theo file nguồn `public/icons3d/…`; `npm run build` chép nguyên tên sang `dist/icons3d/…`, trang tải qua URL tương đối `icons3d/…`.
 
 | Chunk (`npm run build`) hoặc file nguồn | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 219,1 kB | 75,7 kB | Ngay khi mở trang, cần cho Main Menu |
-| `index-*.css` | 83,6 kB | 13,6 kB | Ngay khi mở trang |
-| `index-*.js` (`src/render`) | 98,7 kB | 36,3 kB | Sau khi Main Menu đã vẽ |
+| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 37,4 kB | 14,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.css` | 53,3 kB | 9,6 kB | Ngay khi mở trang |
+| `game-*.js` (`src/game.ts`) | 120,6 kB | 40,9 kB | Sau khi Main Menu đã vẽ |
+| `game-*.css` (`src/ui/panels/panels.css`, `src/ui/report/report.css`) | 30,4 kB | 5,2 kB | Cùng chunk game |
+| `iconMap-*.js` (chunk dùng chung của chunk game và `src/render`: phần `src/sim` cả hai cần, `src/ui/core/iconMap.ts`) | 66,0 kB | 24,0 kB | Sau khi Main Menu đã vẽ |
+| `index-*.js` (`src/render`) | 98,8 kB | 36,4 kB | Sau khi Main Menu đã vẽ |
 | `three-*.js` | 504,5 kB | 126,5 kB | Sau khi Main Menu đã vẽ; tách riêng để giữ cache giữa các lần deploy |
 | `confetti-*.js` (`src/ui/fx/confetti.ts`) | 2,3 kB | 1,2 kB | Daily Report đầu tiên có lên cấp, khi không giảm chuyển động |
 | `nunito-*.woff2` (4 file: latin, vietnamese × 400, 700) | 44,6 kB | (đã nén) | Khi trang dùng tới chữ; không chặn Main Menu |
