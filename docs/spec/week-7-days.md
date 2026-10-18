@@ -125,13 +125,13 @@ Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp nh
 
 ## Cấp quán 7–10
 
-Tới cấp 6 quán đã mở mọi món và nâng cấp. Cấp 7–10 (`LEVELS` trong `src/sim/data/levels.ts`) không mở gì mới; mỗi cấp cho mua thêm 1 cấp của hai nâng cấp đã có (`maxLevelBonus`). Cấp vượt trần gốc đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`).
+Tới cấp 6 quán đã mở mọi món và mọi nâng cấp trừ Góc sofa. Cấp 7–10 (`LEVELS` trong `src/sim/data/levels.ts`) cho mua thêm 1 cấp của vài nâng cấp đã có (`maxLevelBonus`); cấp 8 mở thêm Góc sofa. Cấp vượt trần gốc đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`). Mở rộng diện tích cấp 3–4: [p27-retention.md](p27-retention.md#mở-rộng-diện-tích).
 
 | Cấp | Tên | KN cần | Thêm 1 cấp cho |
 | --- | --- | --- | --- |
-| 7 | Điểm hẹn của quận | 27.000 | Máy espresso cao cấp, Máy xay hạt |
+| 7 | Điểm hẹn của quận | 27.000 | Máy espresso cao cấp, Máy xay hạt, Mở rộng diện tích |
 | 8 | Thương hiệu được săn đón | 37.000 | Thêm bàn ghế, Tủ bánh |
-| 9 | Biểu tượng cà phê phố | 49.000 | Đèn trang trí, Máy xay sinh tố |
+| 9 | Biểu tượng cà phê phố | 49.000 | Đèn trang trí, Máy xay sinh tố, Mở rộng diện tích |
 | 10 | Huyền thoại thành phố | 63.000 | Máy espresso cao cấp, Máy rửa ly |
 
 Số đo 4 tuần dùng để chọn ngưỡng: [reports/p23-long-economy.md](../reports/p23-long-economy.md).

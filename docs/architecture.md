@@ -102,7 +102,7 @@ Font chữ:
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
 5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` giữ id món và nâng cấp vừa mở ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
-Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên → khách → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
+Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên (kèm kinh nghiệm, `onStaffTick`) → khách → hạn đơn đặc biệt (`tickSpecialOrders`) → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
 ### Camera
 
@@ -129,7 +129,9 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). Tuần đã chấm điểm (`week.result`) thì mở luôn tuần tiếp theo. |
 | `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu; bật món chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. `apply_restock` mua từng dòng gợi ý theo thứ tự danh mục, bỏ dòng không đủ tiền và gửi `notify` "Thiếu X đ để nhập …" kèm tên các nguyên liệu bị bỏ; mỗi dòng mua được phát một `spend`. |
-| `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. |
+| `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. `hire_staff` trả `false` khi đội đã đủ `maxStaff(state)`. |
+| `train_staff` | Đào tạo một nhân viên lên cấp kế tiếp (`trainStaff`). Chỉ trong pha `preparation`, cần đủ kinh nghiệm, tiền và Tem; không được thì trả `false` kèm `notify` lý do từ `canTrain` ([Nhân viên: đặc điểm và cấp](#nhân-viên-đặc-điểm-và-cấp)). |
+| `claim_daily_gift` | Nhận quà ngày (`claimDailyGift`), mọi pha. `dateKey` là ngày trên máy `'YYYY-MM-DD'` do UI gửi; đã nhận hôm nay, ngày sai hay lùi lại thì trả `false` kèm `notify` ([Quà ngày, Tem và thành tựu](#quà-ngày-tem-và-thành-tựu)). |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `remove_decor` | Gỡ 1 cấp trang trí không có chỗ ngồi (cây, tranh, đèn, biển neon, kệ sách, máy hát đĩa, góc sofa), hoàn 50% tiền cấp đó; cấp 0 hay món không gỡ được trả `false`. |
 | `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). Chỉ trong pha `preparation`; pha khác trả `false` kèm `notify`. |
@@ -146,6 +148,12 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `phase` | Đổi pha trong ngày. |
 | `dayEnded` | Báo cáo đã nằm trong `state.lastReport`; shell tự lưu vào slot `auto` và chuyển kết quả cho Daily Report. |
 | `week_ended` | Ngày 7 của tuần vừa đóng, ngay sau `dayEnded`; kèm `result` (cũng nằm trong `state.week.result`). |
+| `staff_promoted` | `train_staff` thành công; kèm `staffId` và `level` mới. Toast. |
+| `gift_claimed` | `claim_daily_gift` thành công; kèm `streak` (ngày 1–7 của chuỗi), `money`, `tickets`. Toast. |
+| `tickets_earned` | Mỗi lần cộng Tem; kèm `amount`, `total` (số dư sau khi cộng) và `reason` (`gift`, `achievement`, `special_order`, `vip`). Không có toast riêng: toast của quà, thành tựu, đơn đặc biệt và VIP cùng khung đã ghi số Tem. |
+| `achievement_unlocked` | Lúc `closeDay`, mỗi mốc thành tựu mới đạt; kèm `id` và `tier` (1–3). Toast. |
+| `special_order` | Đơn đặc biệt xong (`status: 'completed'`, lúc giao đủ) hoặc hụt (`failed`, quá hạn hay hết ngày); kèm `itemId`. Toast. |
+| `vip_arrived` | Khách VIP vào cửa, ngay sau `doorbell`; kèm `customerId`. Toast. |
 
 Thêm tính năng mới: thêm biến thể vào `Command`, xử lý trong `dispatch` (`src/sim/index.ts`), viết test ở `tests/sim/`, rồi mới nối UI. UI cần biết chuyện gì vừa xảy ra thì thêm biến thể `GameEvent` thay vì so sánh state giữa hai khung hình.
 
@@ -168,9 +176,17 @@ stateDiagram-v2
 | `opening` | Chạy | Khách đến theo tốc độ cơ bản. |
 | `peak` | Chạy | Khách đến nhiều hơn. |
 | `closing` | Chạy | Không nhận khách mới. |
-| `report` | Dừng | `closeDay` đã trả lương, cập nhật rating, chấm nhiệm vụ ngày, cộng XP và lên cấp, dựng `DailyReport`; UI hiện Daily Report (`src/ui/report`). |
+| `report` | Dừng | `closeDay` đã trả lương, cập nhật rating, chấm nhiệm vụ ngày, cộng XP và lên cấp, dựng `DailyReport`, chốt đơn đặc biệt và chấm thành tựu; UI hiện Daily Report (`src/ui/report`). |
 
-Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. `next_day` đẩy `state.today` vào `state.history` (giữ `HISTORY_DAYS` = 28 ngày gần nhất), tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing, phân vai nhân viên và rút nhiệm vụ mới cho ngày mới. Ván có tuần thì trong tuần 1, sáng ngày có mở khóa phát `week_unlocks`; sáng ngày 7 tặng cấp 1 Mở rộng diện tích nếu quán chưa có. Tối ngày 7 mỗi tuần, `closeDay` chấm điểm tuần vào `state.week.result`, thêm một dòng vào `state.week.archive` và sim phát `week_ended`; `next_day` sau đó mở tuần tiếp theo ([Mục tiêu tuần](spec/week-7-days.md#mục-tiêu-tuần)).
+Khi quán trống trong pha `closing`, sim gom tiền trên bàn, dọn bàn, gọi `closeDay` (`src/sim/report.ts`) rồi phát `dayEnded`. Thứ tự trong `closeDay`:
+
+1. `settleDay` (ghi giá vốn, trả lương), `updateRating`, `scoreProgression` (nhiệm vụ, XP, lên cấp), dựng `DailyReport` vào `state.lastReport`.
+2. Ngày cuối tuần: `scoreWeek`, `summarizeWeek`, `grantWeekReward`.
+3. `endOfDayStaffGrowth`: chưa làm gì (cấp chỉ lên khi đào tạo).
+4. `endOfDaySpecialOrder`: đơn còn `active` thành `failed`, chép đơn vào `report.specialOrder`, xóa `state.specialOrder`.
+5. `endOfDayRetention`: cộng ngày vào `retention.lifetime`, chấm thành tựu, ghi `report.achievements`. Chạy sau bước 2 nên tuần 3 cúp được tính ngay tối ngày 7.
+
+`next_day` đẩy `state.today` vào `state.history` (giữ `HISTORY_DAYS` = 28 ngày gần nhất), tăng ngày, chọn thời tiết mới, chạy tiếp chiến dịch marketing, phân vai nhân viên và rút nhiệm vụ mới cho ngày mới. Ván có tuần thì trong tuần 1, sáng ngày có mở khóa phát `week_unlocks`; sáng ngày 7 tặng cấp 1 Mở rộng diện tích nếu quán chưa có. Tối ngày 7 mỗi tuần, `closeDay` chấm điểm tuần vào `state.week.result`, thêm một dòng vào `state.week.archive` và sim phát `week_ended`; `next_day` sau đó mở tuần tiếp theo ([Mục tiêu tuần](spec/week-7-days.md#mục-tiêu-tuần)).
 
 ### Cấp quán và nhiệm vụ
 
@@ -234,6 +250,8 @@ Nội thất (`category: 'decor'`, `appeal` và `ratingBonus` nhỏ):
 
 Gỡ trang trí (`removeDecor`) áp cho mọi `decor` không có `capacity` (`isRemovableDecor`): cây, tranh, đèn và 4 nội thất trên; `window_bar` có bàn nên không gỡ được. Gỡ giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% tiền của cấp đó theo `priceMult`, không hoàn Tem. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
 
+Mở rộng diện tích (`expand_area`, `category: 'space'`) có 4 cấp: `maxLevel` 2, cấp 3 mở ở cấp quán 7 và cấp 4 ở cấp quán 9 (`maxLevelBonus`), giá cấp 3–4 nhân `BONUS_LEVEL_PRICE_MULT`. Mỗi cấp thêm một cột 3 bàn vào khu `expansion` (`zoneTablePosition`) và nới khu thêm 2 đơn vị (`expansionArea`). Cấp 3 và 4 mỗi cấp thêm 1 chỗ nhân viên: `maxStaff(state)` = `BASE_MAX_STAFF` (6) + số cấp trên 2, tối đa `TOP_MAX_STAFF` (8). Giá từng cấp: [spec/p27-retention.md](spec/p27-retention.md#mở-rộng-diện-tích).
+
 ### Lên cấp, bậc nâng cấp và mục mới
 
 Phản hồi khi quán tiến bộ nằm ở render và UI, sim không đổi; save giữ `SAVE_VERSION` 3 vì bậc tính lại từ `state.upgrades`, còn mục "Mới" không vào save.
@@ -276,6 +294,45 @@ Phản hồi khi quán tiến bộ nằm ở render và UI, sim không đổi; s
 Tổng `ratingBonus` + sao của giá âm thì mỗi review có cơ hội bị trừ 1 sao (tối đa 50%), dương thì cơ hội cộng 1 sao như cũ.
 
 Thời gian pha (`brewMinutes`) và dọn bàn (`cleanMinutes`) là phút lẻ, giữ 2 chữ số thập phân. Người chơi và nhân viên làm theo ngân sách phút (`workMinute` trong `orders.ts`): việc xong giữa phút thì phần còn lại chuyển sang việc kế tiếp, nên mọi mức tăng tốc, kể cả cấp 1, đều rút ngắn thời gian thật.
+
+### Nhân viên: đặc điểm và cấp
+
+Code ở `src/sim/staffGrowth.ts` và `src/sim/data/staffTraits.ts`; con số ở [spec/p27-retention.md](spec/p27-retention.md#nhân-viên-đặc-điểm-và-cấp).
+
+| Phần | Chi tiết |
+| --- | --- |
+| Đặc điểm (`Staff.trait`) | 4 loại trong `STAFF_TRAITS`, mỗi loại nhân tốc độ của vài loại việc (`taskMult`). `staffTrait(seed, id)` chọn bằng hash của seed và id nhân viên, không rút từ `rngState`; `withTraits` gắn cho ứng viên lúc tạo ván và mỗi sáng (`startStaffDay`). Nhân viên của save cũ không có `trait` thì `staffTraitOf` tính từ cùng hash mà không ghi vào state. |
+| Kinh nghiệm (`Staff.exp`) | `onStaffTick` cộng 1 mỗi phút game nhân viên đang bận (`busy`), trừ pha `preparation` và `report`; chặn ở mốc cấp cuối của `STAFF_LEVEL_EXP`. |
+| Cấp (`Staff.level`, 1–5) | Chỉ lên khi đào tạo (`train_staff`). Mỗi cấp trên 1 cộng `LEVEL_SPEED_STEP` (6%) tốc độ. |
+| Tốc độ làm | `workSpeed` = `speed` × `staffSpeedMult` (mức lương) × `growthSpeedMult(state, member, kind)` (cấp × đặc điểm theo việc đang làm). Thu hút khách của người tiếp thị (`customerMultiplier`, `src/sim/marketing.ts`) nhân thêm `growthSpeedMult(…, 'promote')`. |
+| Đào tạo | `canTrain` kiểm theo thứ tự: có nhân viên, chưa cấp tối đa, đang `preparation`, đủ kinh nghiệm cho cấp kế tiếp, đủ tiền, đủ Tem. `trainCost(member)`: tiền = 2 × lương ngày × cấp hiện tại (làm tròn 10.000 đ), Tem theo `TRAIN_TICKETS`. `trainStaff` trừ tiền và Tem, tăng cấp, nhân lương ngày `PROMOTION_WAGE_MULT` (1,08, làm tròn 1.000 đ), phát `spend` (`kind: 'upgrade'`) rồi `staff_promoted`. |
+| Số chỗ | `hireStaff` từ chối khi đủ `maxStaff(state)` (6, thêm 1 mỗi cấp Mở rộng diện tích trên 2, tối đa 8). `MAX_STAFF` trong `staff.ts` là `BASE_MAX_STAFF`. |
+| UI | Bảng Nhân viên (`src/ui/panels/staff.ts`): dòng thứ ba mỗi người ghi đặc điểm, "Cấp n/5" và kinh nghiệm, thanh tiến độ, nút **Đào tạo · giá** xác nhận tại chỗ, lý do không đào tạo được lấy từ `canTrain`. |
+
+### Quà ngày, Tem và thành tựu
+
+Code ở `src/sim/retention.ts` và `src/sim/data/retention.ts`; mọi thứ nằm trong `state.retention` (`RetentionState`). Con số ở [spec/p27-retention.md](spec/p27-retention.md#quà-ngày).
+
+| Phần | Chi tiết |
+| --- | --- |
+| Tem (`retention.tickets`) | Tiền phụ, chỉ kiếm trong game: quà ngày, thành tựu, đơn đặc biệt, khách VIP. Tiêu cho đào tạo cấp 4–5 và nội thất có `ticketCost`. Mọi lần cộng qua `addTickets` và phát `tickets_earned`. |
+| Ngày trên máy | UI đọc đồng hồ: `localDateKey()` (`src/ui/core/today.ts`) trả ngày địa phương `'YYYY-MM-DD'` và gửi trong `claim_daily_gift`. Sim không đọc đồng hồ: `parseDateKey` đổi khóa thành số ngày (không dùng `Date`), nên cùng state và cùng lệnh luôn ra cùng kết quả. |
+| Chuỗi quà (`retention.login`) | `giftPreview(state, dateKey)` tính không đổi state: ngày sai, trùng `lastDate` hay sớm hơn `lastDate` thì không nhận được (chuỗi giữ nguyên); đúng ngày sau `lastDate` thì chuỗi + 1, quay về 1 sau ngày 7; cách hơn một ngày hay lần đầu thì ngày 1. `claimDailyGift` ghi `streak`, `lastDate`, `claimed`, cộng tiền (`GIFT_REWARDS` × `priceMult`, làm tròn 1.000 đ) và Tem. Mỗi save một chuỗi riêng. |
+| Bộ đếm (`retention.lifetime`) | `served`, `revenue`, `fiveStar`, `perfectDays`, `threeCupWeeks`; `endOfDayRetention` cộng mỗi tối. |
+| Thành tựu (`retention.achievements`) | 6 thành tựu trong `ACHIEVEMENTS`, mỗi cái 3 mốc. `endOfDayRetention` so giá trị với mốc; mỗi mốc mới trả Tem đúng một lần, phát `achievement_unlocked` và ghi vào `report.achievements`. `staff_master` đếm nhân viên đang có ở cấp ≥ `STAFF_MASTER_LEVEL` (3). Thành tựu không cho XP. |
+| Tạo state | `ensureRetention(state)` tạo `retention` khi cần lần đầu (nhận quà, cộng hay tiêu Tem, `closeDay`). Đọc mà không tạo: `giftPreview`, `achievementProgress`. |
+| UI | Bảng Việc (`src/ui/panels/tasks.ts`): thẻ **Quà hằng ngày** (`giftView`), khối Đơn đặc biệt, danh sách Thành tựu thu gọn (`achievementProgress`). HUD có chip Tem cạnh tiền (`retention?.tickets ?? 0`). Main Menu ghi "Quà ngày N đang chờ" dưới **Tiếp tục** ([Khởi động](#khởi-động)). |
+
+### Đơn đặc biệt và khách VIP
+
+Code ở `src/sim/specialOrders.ts`. Món, giờ hạn và ngày có VIP chọn bằng `dayHash(seed, day, salt)`, không rút từ `rngState`, nên chuỗi ngẫu nhiên của ngày (khách, thời tiết, ứng viên) giữ như khi chưa có tính năng này. Con số ở [spec/p27-retention.md](spec/p27-retention.md#đơn-đặc-biệt).
+
+| Phần | Chi tiết |
+| --- | --- |
+| Tạo đơn | `dispatch` `start_day` gọi `startDaySpecialOrder` sau `openShop`, từ ngày `SPECIAL_ORDER_FROM_DAY` (2): một món đang bật và làm được (`canMake`) lúc mở cửa, hạn 13:00 hoặc 19:00 (`SPECIAL_ORDER_DEADLINES`), cần `3 + floor(shopLevel / 2)` phần. Không món nào đủ điều kiện thì `state.specialOrder` là `null`; ngày 1 không đụng tới trường này. |
+| Tiến độ | `onServed` (gọi từ `serveCustomer`) cộng 1 cho đồ uống trùng món và 1 cho món kèm (`extraItem`) trùng món, khi chưa quá hạn. Đủ thì `completed`, cộng tiền và Tem, phát `special_order`. |
+| Hụt | `tickSpecialOrders` mỗi tick, và `endOfDaySpecialOrder` lúc `closeDay`, đổi đơn `active` quá hạn thành `failed` và phát `special_order`. |
+| VIP | `isVipDay(seed, day)`: từ ngày `VIP_FROM_DAY` (3), khoảng `VIP_DAY_CHANCE` (35%) số ngày. Ngày có VIP, khách đầu tiên vào cửa từ 10:00 (`isNextArrivalVip`, đọc `today.arrivalsByHour`) có `vip: true`, kiên nhẫn × `VIP_PATIENCE_MULT`; `spawnCustomer` phát `vip_arrived`. Phục vụ khách VIP cộng `VIP_TICKETS` Tem. Cảnh 3D vẽ ngôi sao `VIP_ICON` trên đầu khách. |
 
 ### Trạng thái kho
 
@@ -423,6 +480,16 @@ Mỗi slot là JSON:
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - `week` và `policies` là trường tùy chọn: save không có `week` chơi không lịch tuần, không màn kết tuần ([Tuần 7 ngày](#tuần-7-ngày)); thiếu `policies` thì cả giá và lương là `standard`.
 - Bậc hình nâng cấp (`upgradeTier`) tính lại từ `state.upgrades` mỗi lần dựng bố cục, mục "Mới" (`fresh`) chỉ sống trong phiên: không trường nào được lưu, save vẫn là phiên bản 3 và save cũ hiện đúng bậc theo cấp đã mua.
+- Nhân viên, quà ngày, đơn đặc biệt và VIP chỉ thêm trường tùy chọn, save vẫn là phiên bản 3 và không có migration mới:
+
+  | Trường | Thiếu thì |
+  | --- | --- |
+  | `GameState.retention` | Tạo bằng `ensureRetention` lần đầu cần tới: Tem 0, chưa nhận quà (`lastDate: null`, chuỗi 0), chưa có thành tựu. HUD hiện Tem 0. |
+  | `GameState.specialOrder` | Không có đơn hôm nay; ngày mở cửa tiếp theo rút đơn mới. |
+  | `Staff.trait`, `Staff.level`, `Staff.exp` | Đặc điểm tính từ hash của seed và id (không ghi vào save), cấp 1, kinh nghiệm 0. |
+  | `Customer.vip` | Không phải VIP. |
+
+  `retention.lifetime` của save cũ được điền khi tạo (`backfillLifetime`): `served` và `revenue` cộng từ các tuần đã xong trong `week.archive`, rồi các ngày trong `history` không thuộc tuần đó, cộng hôm nay nếu đang ở pha `report`. `fiveStar`, `perfectDays`, `threeCupWeeks` bắt đầu từ 0. Mốc thành tựu đã đủ nhờ phần điền này được trả Tem ở `closeDay` đầu tiên.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
 
 ### Số liệu chơi
@@ -447,7 +514,7 @@ Shell ghi một dòng vào `cst3d:playlog` qua `appendPlayLog` khi: bắt đầu
 
 1. `index.html` vẽ màn hình chờ `#boot` (CSS và SVG inline: linh vật ly, thanh tiến độ, %, một mẹo chơi; không chờ font) ngay khi HTML tới. Bản build dời `<link rel="stylesheet">` xuống dưới `#boot`, nên màn chờ không đợi CSS; JS vẫn chỉ chạy khi CSS đã tải.
 2. Script inline dưới `#boot` lấp thanh theo file đã tải xong (Resource Timing), tính theo dung lượng: chunk chính và CSS. Sau 5 s chưa xong thì đổi dòng chữ thành "Mạng đang chậm…"; script hoặc stylesheet tải lỗi thì hiện "Không tải được game" và nút **Thử lại** (tải lại trang).
-3. Chunk chính chỉ có UI của menu: `src/ui/screens/menuShell.ts`, `mainMenu.ts`, `settings.ts`, phần `src/ui/core` các màn đó dùng, và `src/save/settings.ts`, `slots.ts`, `storage.ts`, `playlog.ts`. `main.ts` chạy `createMenuShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`. Main Menu đọc tóm tắt slot bằng `listSlotSummaries` (tên quán, ngày, tiền, giờ lưu, ngày nhận quà gần nhất và chuỗi quà trong `retention.login`), không nâng cấp hay ghi save; dòng "Quà ngày N đang chờ" dưới **Tiếp tục** so ngày đó với ngày trên máy (`src/ui/core/today.ts`) mà không import sim; bấm **Tiếp tục** mới đọc đầy đủ qua `loadGame`.
+3. Chunk chính chỉ có UI của menu: `src/ui/screens/menuShell.ts`, `mainMenu.ts`, `settings.ts`, phần `src/ui/core` các màn đó dùng, và `src/save/settings.ts`, `slots.ts`, `storage.ts`, `playlog.ts`. `main.ts` chạy `createMenuShell`, hiện Main Menu rồi làm mờ `#boot`; đánh dấu `performance.mark('cst:menu')`. Main Menu đọc tóm tắt slot bằng `listSlotSummaries` (tên quán, ngày, tiền, giờ lưu, ngày nhận quà gần nhất và chuỗi quà trong `retention.login`), không nâng cấp hay ghi save; dòng "Quà ngày N đang chờ" dưới **Tiếp tục** so ngày đó với ngày trên máy (`localDateKey` trong `src/ui/core/today.ts`, `pendingGiftDay` trong `mainMenu.ts`) mà không import sim. Phần quà ngày chỉ thêm vào chunk chính việc đọc `retention.login.lastDate` và `streak` trong `slots.ts` cùng hai hàm nhỏ đó; bấm **Tiếp tục** mới đọc đầy đủ qua `loadGame`.
 4. Khi menu đã vẽ (`afterPaint()`), `main.ts` gọi song song `import('./game')` và `import('./render/scene')`, rồi `watchIconAtlas()` tải atlas @1x. Chunk game (`src/game.ts`: sim, HUD, Daily Report, panel, màn chơi `mountGame`, `src/save/save.ts`, âm thanh) tới thì `main.ts` tạo âm thanh (`createAudio`) và cảnh nền menu (`createMenuScene`), rồi gắn phần game vào menu bằng `attachGame`. Bấm **Ván mới** hay **Tải game** trước lúc đó thì màn ấy mở khi chunk game tới, nếu người chơi vẫn ở Main Menu. Khi cả hai chunk đã tới, `createWorld` dựng cảnh, `world.prepare()` làm sẵn nhãn của mọi icon (`LABEL_BUBBLES`, `LABEL_FACES`, gồm ngôi sao `VIP_ICON` trên đầu khách `vip`), `WARM_BODIES` nhân vật và `WARM_COINS` popup xu vào pool, biên dịch shader bằng `compileAsync`, nạp texture nhãn bằng `renderer.initTexture`, rồi vẽ một khung warm-up trên canvas còn ẩn (nhân vật đủ kiểu khách và tâm trạng, kèm nhãn, hơi, xu) để nạp geometry và shader bóng đổ lên GPU. Sau đó canvas `#scene` hiện dần (`is-ready`) và đánh dấu `cst:world`. Trước lúc đó vòng khung hình vẫn chạy sim, chỉ bỏ qua phần vẽ.
 5. Sau `cst:world`, `enableHdIcons()` tải atlas @2x cho icon trên màn 2x và nhãn 3D ([Icon và font](#icon-và-font)).
 

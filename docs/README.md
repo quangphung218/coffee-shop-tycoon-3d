@@ -3,6 +3,7 @@
 - [architecture.md](architecture.md): ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, tuần cuốn chiếu trong code, thống kê ngày và tuần, FSM khách, định dạng save v3 và số liệu chơi, thành phần tải và warm-up lúc khởi động, mẹo hiệu năng.
 - [deploy.md](deploy.md): build, tự tăng version theo Conventional Commits và deploy lên GitHub Pages.
 - [spec/week-7-days.md](spec/week-7-days.md): luật tuần: lịch mở khoá tuần 1, mở rộng quán ngày 7, sự kiện và thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, nâng save cũ.
+- [spec/p27-retention.md](spec/p27-retention.md): nhân viên có đặc điểm và lên cấp, quà ngày và Tem, thành tựu, đơn đặc biệt, khách VIP, nội thất mới, mở rộng quán 4 cấp: luật và bảng con số.
 - [media.md](media.md): tạo lại ảnh chụp, GIF và mp4 demo trong `docs/media/`, các bảng ảnh trước/sau, review tuần 7 ngày (`review:p22`), và atlas icon 3D trong `public/icons3d/`.
 
 ## Báo cáo
