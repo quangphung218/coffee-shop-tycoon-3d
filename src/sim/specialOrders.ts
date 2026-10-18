@@ -43,11 +43,11 @@ function addTickets(state: GameState, amount: number, reason: 'special_order' | 
 /**
  * Rolls today's special order when the shop opens, from day 2: an enabled
  * item the shop can make now, picked by a hash of the seed and the day (never
- * from rngState). Null when no item qualifies.
+ * from rngState). Null when no item qualifies; left untouched on day 1.
  */
 export function startDaySpecialOrder(state: GameState): void {
-  state.specialOrder = null;
   if (state.day < SPECIAL_ORDER_FROM_DAY) return;
+  state.specialOrder = null;
   const items = state.menu.filter((m) => m.enabled && canMake(state, m.id)).map((m) => m.id);
   if (items.length === 0) return;
   const deadline = dayHash(state.seed, state.day, DEADLINE_SALT) % SPECIAL_ORDER_DEADLINES.length;

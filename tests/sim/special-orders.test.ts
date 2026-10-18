@@ -61,7 +61,7 @@ function addCustomer(s: GameState, itemId: GameState['menu'][number]['id']): num
 describe('special order', () => {
   it('has none on day 1', () => {
     const s = openOnDay(1);
-    expect(s.specialOrder).toBeNull();
+    expect(s.specialOrder).toBeUndefined();
   });
 
   it('is the same for the same seed and day, and never draws from rngState', () => {
