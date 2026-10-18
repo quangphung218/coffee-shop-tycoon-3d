@@ -613,7 +613,7 @@ export class ShopView {
     this.neons = instanced(this.tiered('neon', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
     // The tubes glow with the window glass in the evening (ambient.ts), without a light of their own.
     this.neonTubes = instanced(this.tiered('neonTube', 1), GLASS_MATERIAL, DECOR_CAPACITY, false);
-    this.bookshelves = instanced(this.tiered('bookshelf', 1), WOOD_MATERIAL, DECOR_CAPACITY, true);
+    this.bookshelves = instanced(this.tiered('bookshelf', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
     this.recordPlayers = instanced(this.tiered('recordPlayer', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
     this.sofas = instanced(this.tiered('sofa', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
     this.root.add(this.plants, this.paintings, this.lamps, this.bulbs, this.neons, this.neonTubes, this.bookshelves, this.recordPlayers, this.sofas);
