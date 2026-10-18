@@ -73,6 +73,10 @@ export type UpgradeId =
   | 'paintings'
   | 'lights'
   | 'window_bar'
+  | 'neon_sign'
+  | 'bookshelf'
+  | 'record_player'
+  | 'sofa_corner'
   | ToolId;
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
@@ -188,6 +192,8 @@ export interface UpgradeDef {
   costGrowth: number;
   /** Effect added per level owned. */
   effectPerLevel: UpgradeEffect;
+  /** Loyalty tickets ('Tem') each level costs on top of the money, by level from 1 (index 0); absent = none. */
+  ticketCost?: number[];
 }
 
 export interface MarketingDef {

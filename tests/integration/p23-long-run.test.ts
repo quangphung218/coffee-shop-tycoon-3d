@@ -5,7 +5,7 @@ import { WEEK_LENGTH, weekReward } from '../../src/sim/data/week';
 import { totalWages } from '../../src/sim/economy';
 import { MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
 import { dispatch, nextUpgradeCost } from '../../src/sim/index';
-import { upgradeLevel } from '../../src/sim/upgrades';
+import { nextUpgradeTicketCost, upgradeBlockedReason, upgradeLevel } from '../../src/sim/upgrades';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { isUnlocked, weekIndex } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
@@ -83,6 +83,8 @@ function buyCheapest(state: GameState, track: () => void): void {
       if (!isUnlocked(state, 'upgrade', def.id)) continue;
       const cost = nextUpgradeCost(state, def.id);
       if (cost === null || state.money - reserve(state) < cost) continue;
+      // P27 furniture priced in tickets, or needing the side room first, waits until it can be bought.
+      if ((nextUpgradeTicketCost(state, def.id) ?? 0) > (state.retention?.tickets ?? 0) || upgradeBlockedReason(state, def.id)) continue;
       if (best === null || cost < best.cost) best = { id: def.id, cost };
     }
     if (!best) return;

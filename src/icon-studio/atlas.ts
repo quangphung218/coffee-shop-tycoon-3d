@@ -19,8 +19,11 @@ export type UpgradeTier = (typeof UPGRADE_TIERS)[number];
 /** Id of an upgrade icon's tier look in the tiers atlas: `i-machine` → `i-machine-t2`. */
 export const tierIconId = (id: IconId, tier: UpgradeTier): string => `${id}-t${tier}`;
 
-/** Every cell of the tiers atlas (public/icons3d/tiers*), loaded lazily: tiers 2 and 3 of each UPGRADE_ICONS icon, in its order. */
-export const TIER_IDS: readonly string[] = Object.values(UPGRADE_ICONS).flatMap((id) => UPGRADE_TIERS.map((tier) => tierIconId(id, tier)));
+/**
+ * Every cell of the tiers atlas (public/icons3d/tiers*), loaded lazily: tiers 2 and 3 of each UPGRADE_ICONS icon, in its order.
+ * Upgrades that share an icon share its cells.
+ */
+export const TIER_IDS: readonly string[] = [...new Set(Object.values(UPGRADE_ICONS))].flatMap((id) => UPGRADE_TIERS.map((tier) => tierIconId(id, tier)));
 
 /** Icons that sit alone in a button, with only an aria-label: HUD camera, settings, pause, speeds, the reset tick, close. */
 export const ICON_ONLY_IDS: readonly string[] = ['i-camera', 'i-settings', 'i-pause', 'i-speed-1', 'i-speed-2', 'i-speed-4', 'i-check', 'i-close'];

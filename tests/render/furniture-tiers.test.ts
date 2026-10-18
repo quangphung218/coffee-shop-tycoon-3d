@@ -50,7 +50,7 @@ function meshes(shop: ShopView): Record<TieredPiece, InstancedMesh> {
 
 /** Same layout with every furniture and decor tier set to `tier`. */
 function atTier(layout: ShopLayout, tier: LookTier): ShopLayout {
-  return { ...layout, furnitureTier: tier, outdoorTier: tier, decorTier: { plant: tier, painting: tier, light: tier } };
+  return { ...layout, furnitureTier: tier, outdoorTier: tier, decorTier: { ...layout.decorTier, plant: tier, painting: tier, light: tier } };
 }
 
 function triangles(geo: BufferGeometry): number {

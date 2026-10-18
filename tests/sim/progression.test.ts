@@ -14,6 +14,7 @@ import { WEEK_REWARDS, weekReward } from '../../src/sim/data/week';
 import { dispatch, isUnlocked, missionProgress, rollMissions, scoreProgression } from '../../src/sim/index';
 import { validateLayout } from '../../src/sim/nav/validate';
 import { MISSION_POOL, XP_PER_SERVED, grantWeekReward, makeMission } from '../../src/sim/progression';
+import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import type { DayStats, GameState, MissionId, UpgradeId, WeekResult } from '../../src/sim/types';
 import {
@@ -61,6 +62,8 @@ describe('shop levels 7–10', () => {
     s.shopLevel = level;
     s.xp = xpToReach(level);
     s.money = 1e9;
+    // The P27 record player and sofa corner also cost tickets.
+    ensureRetention(s).tickets = 1000;
     return s;
   }
 
@@ -69,17 +72,20 @@ describe('shop levels 7–10', () => {
     while (nextUpgradeCost(s, id) !== null) expect(buyUpgrade(s, id).ok).toBe(true);
   }
 
-  it('unlocks nothing new but raises the cap of some upgrades by one level each', () => {
+  it('unlocks only the sofa corner (level 8) and raises the cap of some upgrades by one level each', () => {
     expect(MAX_SHOP_LEVEL).toBe(10);
     for (const def of LEVELS.filter((l) => l.level > FULL_UNLOCK_LEVEL)) {
-      expect(def.unlocks, `level ${def.level}`).toEqual({ menu: [], upgrades: [], tools: [] });
+      // P27: the sofa corner stands in the side room, so it opens after the side room's third level (shop level 7).
+      const upgrades = def.level === 8 ? ['sofa_corner'] : [];
+      expect(def.unlocks, `level ${def.level}`).toEqual({ menu: [], upgrades, tools: [] });
       expect(Object.keys(def.maxLevelBonus ?? {}).length, `level ${def.level}`).toBeGreaterThan(0);
     }
     for (const def of LEVELS.filter((l) => l.level <= FULL_UNLOCK_LEVEL)) expect(def.maxLevelBonus).toBeUndefined();
     expect(maxLevelBonus(FULL_UNLOCK_LEVEL, 'better_machine')).toBe(0);
     expect(maxLevelBonus(7, 'better_machine')).toBe(1);
     expect(maxLevelBonus(MAX_SHOP_LEVEL, 'better_machine')).toBe(2);
-    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'expand_area')).toBe(0);
+    // P27: levels 7 and 9 each open one more side room level.
+    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'expand_area')).toBe(2);
   });
 
   it('opens the extra level only from the shop level that grants it, at BONUS_LEVEL_PRICE_MULT times the price', () => {

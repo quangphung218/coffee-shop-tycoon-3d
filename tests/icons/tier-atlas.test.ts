@@ -48,10 +48,12 @@ function meshes(model: Object3D): Mesh[] {
 }
 
 const colours = (model: Object3D) => new Set(meshes(model).map((m) => m.material));
-const UPGRADE_ICON_IDS = Object.values(UPGRADE_ICONS);
+// P27: the 4 new furniture upgrades reuse existing upgrade icons, so 19 upgrades share 15 icons.
+const UPGRADE_ICON_IDS = [...new Set(Object.values(UPGRADE_ICONS))];
 
 describe('tier ids', () => {
   it('give each of the 15 upgrade icons a -t2 and a -t3 id, in UPGRADE_ICONS order', () => {
+    expect(Object.values(UPGRADE_ICONS)).toHaveLength(19);
     expect(UPGRADE_ICON_IDS).toHaveLength(15);
     expect(TIER_IDS).toHaveLength(30);
     expect(TIER_IDS).toEqual(UPGRADE_ICON_IDS.flatMap((id) => [`${id}-t2`, `${id}-t3`]));
