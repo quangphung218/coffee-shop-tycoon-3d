@@ -21,8 +21,8 @@ export const ROAD = { minZ: 12.4, maxZ: 19.6 } as const;
 export const FAR_WALK = { minZ: 19.6, maxZ: 22.6 } as const;
 /** Front of the buildings across the road. */
 export const FAR_BUILDINGS_Z = 23.4;
-/** Buildings on the shop's side stand beyond this |x| so they never cover a grown shop. */
-export const NEAR_BUILDINGS_MIN_X = 13;
+/** Buildings on the shop's side stand beyond this |x| so they never cover a grown shop (the level 4 side room's wall ends at x = 13.7). */
+export const NEAR_BUILDINGS_MIN_X = 15;
 export const CENTER_LINE_Z = (ROAD.minZ + ROAD.maxZ) / 2;
 
 export type VehicleKind = 'car' | 'bike' | 'bus';

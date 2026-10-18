@@ -19,10 +19,13 @@ import {
   BACK_COUNTER_TOP_DEPTH,
   BACK_COUNTER_TOP_EXTRA,
   BACK_COUNTER_Z,
+  BOOKSHELF_SIZE,
   CHAIR_OFFSET,
   CHAIR_SIZE,
   PARASOL_POLE_RADIUS,
   PLANT_RADIUS,
+  RECORD_PLAYER_MARGIN,
+  SOFA_SIZE,
   TABLE_RADIUS,
   WALL_THICKNESS,
   backCounterSpan,
@@ -247,6 +250,152 @@ function bulbGeometry(tier: LookTier): BufferGeometry {
   return merge([part(new OctahedronGeometry(r, 0), PALETTE.bulb, -TWIN_LAMP_X, 0, 0), part(new OctahedronGeometry(r, 0), PALETTE.bulb, TWIN_LAMP_X, 0, 0)]);
 }
 
+/** Centre height of the neon board: level with the middle of the front windows it hangs in front of. */
+const NEON_Y = 1.45;
+const NEON_WIDTH = 1.1;
+const NEON_HEIGHT = 0.5;
+/** Neon cords reach up to here (there is no ceiling; matches the lamp cords). */
+const NEON_CORD_TOP = 3.4;
+
+/**
+ * Board of a neon sign, hung on two cords just inside the front wall so it
+ * still shows when that wall lowers; centred on its slot at floor level. The
+ * glowing tubes are neonTubeGeometry(). Tier 2 adds a steel frame and cords, tier 3 a gold one.
+ */
+function neonGeometry(tier: LookTier): BufferGeometry {
+  const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+  const cord = NEON_CORD_TOP - (NEON_Y + NEON_HEIGHT / 2);
+  const parts = [part(box(NEON_WIDTH, NEON_HEIGHT, 0.04), PALETTE.chalkboard, 0, NEON_Y, 0)];
+  for (const side of [-1, 1]) {
+    parts.push(part(tube(0.012, 0.012, cord, 4), tier === 1 ? PALETTE.woodDark : trim, side * (NEON_WIDTH / 2 - 0.1), NEON_Y + NEON_HEIGHT / 2 + cord / 2, 0));
+  }
+  if (tier >= 2) parts.push(part(box(NEON_WIDTH + 0.08, NEON_HEIGHT + 0.08, 0.03), trim, 0, NEON_Y, 0));
+  return merge(parts);
+}
+
+/**
+ * Glowing tubes of a neon sign (a coffee cup with steam and two lines of
+ * script), drawn with GLASS_MATERIAL so they light up with the evening glow.
+ * They pass through the board, so both faces show. Tier 2 underlines the
+ * script, tier 3 adds a gold star.
+ */
+function neonTubeGeometry(tier: LookTier): BufferGeometry {
+  const t = 0.035;
+  const d = 0.08;
+  const y = NEON_Y;
+  const cx = -0.22;
+  const parts = [
+    part(box(t, 0.24, d), PALETTE.coral, cx - 0.13, y - 0.02, 0),
+    part(box(t, 0.24, d), PALETTE.coral, cx + 0.13, y - 0.02, 0),
+    part(box(0.26 + t, t, d), PALETTE.coral, cx, y - 0.14, 0),
+    part(box(t, 0.1, d), PALETTE.coral, cx + 0.21, y, 0),
+    part(box(t, 0.1, d), PALETTE.cream, cx - 0.05, y + 0.17, 0, 0, 0, 0.35),
+    part(box(t, 0.1, d), PALETTE.cream, cx + 0.05, y + 0.17, 0, 0, 0, 0.35),
+    part(box(0.36, t, d), PALETTE.mint, 0.25, y + 0.06, 0),
+    part(box(0.26, t, d), PALETTE.mint, 0.2, y - 0.06, 0),
+  ];
+  if (tier >= 2) parts.push(part(box(0.9, t * 0.7, d), PALETTE.coral, 0, y - 0.21, 0));
+  if (tier === 3) parts.push(part(new OctahedronGeometry(0.06, 0), PALETTE.gold, 0.43, y + 0.15, 0));
+  return merge(parts);
+}
+
+const BOOKSHELF_HEIGHT = 1.7;
+/** Centre heights of the bottom, middle and top shelf boards. */
+const BOOKSHELF_BOARDS: readonly number[] = [0.06, 0.6, 1.14, BOOKSHELF_HEIGHT - 0.02];
+
+/**
+ * Bookshelf facing +z, `BOOKSHELF_SIZE.length` wide and `depth` deep, with
+ * three rows of books; turned to face the room against a side wall. Tier 2
+ * adds a steel plinth and cap and more books, tier 3 a gold plinth and cap and a small plant on top.
+ */
+function bookshelfGeometry(tier: LookTier): BufferGeometry {
+  const w = BOOKSHELF_SIZE.length;
+  const d = BOOKSHELF_SIZE.depth;
+  const h = BOOKSHELF_HEIGHT;
+  const t = 0.04;
+  const frame = tier === 3 ? PALETTE.woodDark : PALETTE.wood;
+  const parts = [
+    part(box(t, h, d), frame, -w / 2 + t / 2, h / 2, 0),
+    part(box(t, h, d), frame, w / 2 - t / 2, h / 2, 0),
+    part(box(w - 2 * t, h, t), PALETTE.woodDark, 0, h / 2, -d / 2 + t / 2),
+  ];
+  for (const y of BOOKSHELF_BOARDS) parts.push(part(box(w - 2 * t, t, d - t), frame, 0, y, t / 2));
+  const spines = [PALETTE.coral, PALETTE.mint, PALETTE.gold, PALETTE.cream];
+  for (let row = 0; row < 3; row++) {
+    const base = BOOKSHELF_BOARDS[row]! + t / 2;
+    parts.push(
+      part(box(0.42, 0.36, d - 0.1), spines[row % spines.length]!, -0.22, base + 0.18, t / 2),
+      part(box(0.28, 0.3, d - 0.1), spines[(row + 1) % spines.length]!, 0.2, base + 0.15, t / 2),
+    );
+  }
+  if (tier >= 2) {
+    const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+    parts.push(part(box(w, 0.06, d), trim, 0, 0.03, 0), part(box(w, 0.04, d), trim, 0, h + 0.02, 0));
+  }
+  if (tier === 2) {
+    const base = BOOKSHELF_BOARDS[0]! + t / 2;
+    parts.push(part(box(0.12, 0.32, d - 0.12), PALETTE.coral, 0.42, base + 0.16, t / 2), part(box(0.14, 0.26, d - 0.12), PALETTE.mint, 0.42, BOOKSHELF_BOARDS[1]! + t / 2 + 0.13, t / 2));
+  } else if (tier === 3) {
+    parts.push(part(new IcosahedronGeometry(0.13, 0), PALETTE.plant, 0.35, h + 0.15, 0), part(box(0.12, 0.32, d - 0.12), PALETTE.coral, 0.42, BOOKSHELF_BOARDS[0]! + t / 2 + 0.16, t / 2));
+  }
+  return merge(parts);
+}
+
+/** Record player body, narrow enough to stay on the back counter that runs RECORD_PLAYER_MARGIN past its centre. */
+const RECORD_PLAYER_WIDTH = 2 * RECORD_PLAYER_MARGIN - 0.06;
+
+/**
+ * Record player facing +z, standing on its base (placed on the back counter
+ * top). Tier 2 adds a steel plate and a steel horn, tier 3 a gold plate and a bigger gold horn.
+ */
+function recordPlayerGeometry(tier: LookTier): BufferGeometry {
+  const parts = [
+    part(box(RECORD_PLAYER_WIDTH, 0.1, 0.4), tier === 3 ? PALETTE.woodDark : PALETTE.woodLight, 0, 0.05, 0),
+    part(cyl(0.16, 0.16, 0.02, 10), PALETTE.chalkboard, -0.06, 0.11, 0.02),
+    part(cyl(0.05, 0.05, 0.025, 6), PALETTE.coral, -0.06, 0.115, 0.02),
+    part(box(0.03, 0.03, 0.22), PALETTE.steelDark, 0.17, 0.13, 0, 0.4),
+  ];
+  if (tier >= 2) {
+    const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+    const r = tier === 2 ? 0.12 : 0.14;
+    // Horn mouth turned up and toward the room.
+    parts.push(
+      part(box(RECORD_PLAYER_WIDTH + 0.02, 0.02, 0.42), trim, 0, 0.01, 0),
+      part(tube(0.015, 0.015, 0.2, 4), trim, 0.14, 0.2, -0.13),
+      part(new ConeGeometry(r, 0.24, 8, 1, true), trim, 0.14, 0.38, -0.08, 0, -2.5),
+    );
+  }
+  return merge(parts);
+}
+
+/**
+ * Sofa `SOFA_SIZE.width` wide and `depth` deep, its back toward -z (the side
+ * room's back wall). Tier 2 stands on steel rails with a cushion, tier 3 is
+ * brown leather on gold rails with a gold top rail.
+ */
+function sofaGeometry(tier: LookTier): BufferGeometry {
+  const w = SOFA_SIZE.width;
+  const d = SOFA_SIZE.depth;
+  const body = tier === 3 ? PALETTE.coffee : PALETTE.coral;
+  const lift = tier === 1 ? 0 : 0.08;
+  const seat = 0.4;
+  const parts = [
+    part(box(w, seat - lift, d), body, 0, lift + (seat - lift) / 2, 0),
+    part(box(w, 0.5, 0.18), body, 0, seat + 0.25, -d / 2 + 0.09),
+    part(box(0.16, 0.25, d - 0.18), body, -w / 2 + 0.08, seat + 0.125, 0.09),
+    part(box(0.16, 0.25, d - 0.18), body, w / 2 - 0.08, seat + 0.125, 0.09),
+  ];
+  const cushion = (w - 0.32) / 2 - 0.02;
+  for (const side of [-1, 1]) parts.push(part(box(cushion, 0.1, d - 0.22), PALETTE.cream, (side * (w - 0.32)) / 4, seat + 0.05, 0.1));
+  if (tier >= 2) {
+    const trim = tier === 2 ? PALETTE.steel : PALETTE.gold;
+    for (const side of [-1, 1]) parts.push(part(box(w - 0.1, lift, 0.06), trim, 0, lift / 2, side * (d / 2 - 0.08)));
+  }
+  if (tier === 2) parts.push(part(box(0.3, 0.26, 0.1), PALETTE.mint, -w / 2 + 0.36, seat + 0.2, -d / 2 + 0.24));
+  else if (tier === 3) parts.push(part(box(w, 0.05, 0.2), PALETTE.gold, 0, seat + 0.52, -d / 2 + 0.1));
+  return merge(parts);
+}
+
 /** Pieces drawn per look tier; geometry for each (piece, tier) is built once on first use. */
 const TIERED_GEOMETRY = {
   table: tableGeometry,
@@ -256,6 +405,11 @@ const TIERED_GEOMETRY = {
   painting: paintingGeometry,
   lamp: lampGeometry,
   bulb: bulbGeometry,
+  neon: neonGeometry,
+  neonTube: neonTubeGeometry,
+  bookshelf: bookshelfGeometry,
+  recordPlayer: recordPlayerGeometry,
+  sofa: sofaGeometry,
 } as const satisfies Record<string, (tier: LookTier) => BufferGeometry>;
 
 export type TieredPiece = keyof typeof TIERED_GEOMETRY;
@@ -296,10 +450,26 @@ const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
   dishwasher: 'dishwasher',
 };
 
-const DECOR_FOR_UPGRADE = { plants: 'plant', paintings: 'painting', lights: 'light' } as const satisfies Partial<Record<UpgradeId, DecorKind>>;
+const DECOR_FOR_UPGRADE = {
+  plants: 'plant',
+  paintings: 'painting',
+  lights: 'light',
+  neon_sign: 'neon',
+  bookshelf: 'bookshelf',
+  record_player: 'record_player',
+  sofa_corner: 'sofa',
+} as const satisfies Partial<Record<UpgradeId, DecorKind>>;
 
-/** Sparkle height over each decor kind: the foliage, the painting hook, the bulb. */
-const DECOR_SPARKLE_Y: Record<(typeof DECOR_FOR_UPGRADE)[keyof typeof DECOR_FOR_UPGRADE], number> = { plant: 1, painting: 1.45, light: 2.28 };
+/** Sparkle height over each decor kind: the foliage, the painting hook, the bulb, the neon board, the shelves, the turntable, the seat. */
+const DECOR_SPARKLE_Y: Record<(typeof DECOR_FOR_UPGRADE)[keyof typeof DECOR_FOR_UPGRADE], number> = {
+  plant: 1,
+  painting: 1.45,
+  light: 2.28,
+  neon: NEON_Y,
+  bookshelf: 1,
+  record_player: BACK_COUNTER_HEIGHT + 0.3,
+  sofa: 0.7,
+};
 
 interface Wall {
   mesh: Mesh;
@@ -339,7 +509,7 @@ export class ShopView {
   readonly root = new Group();
   /** Objects the picker raycasts against. */
   readonly pickables: Object3D[] = [];
-  /** Centre and extent of the built shop, for the camera. */
+  /** Centre of the building (indoor room and side room) and extent of the built shop with its patio, for the camera. */
   readonly center = { x: 0, z: 0 };
   readonly extent = { minX: -5, maxX: 5, minZ: -5, maxZ: 9 };
 
@@ -389,6 +559,11 @@ export class ShopView {
   private readonly paintings: InstancedMesh;
   private readonly lamps: InstancedMesh;
   private readonly bulbs: InstancedMesh;
+  private readonly neons: InstancedMesh;
+  private readonly neonTubes: InstancedMesh;
+  private readonly bookshelves: InstancedMesh;
+  private readonly recordPlayers: InstancedMesh;
+  private readonly sofas: InstancedMesh;
 
   /** Windows, awning, sign, planters and interior details. */
   readonly facade: FacadeView;
@@ -435,7 +610,13 @@ export class ShopView {
     this.paintings = instanced(this.tiered('painting', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
     this.lamps = instanced(this.tiered('lamp', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
     this.bulbs = instanced(this.tiered('bulb', 1), GLOW_MATERIAL, DECOR_CAPACITY, false);
-    this.root.add(this.plants, this.paintings, this.lamps, this.bulbs);
+    this.neons = instanced(this.tiered('neon', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    // The tubes glow with the window glass in the evening (ambient.ts), without a light of their own.
+    this.neonTubes = instanced(this.tiered('neonTube', 1), GLASS_MATERIAL, DECOR_CAPACITY, false);
+    this.bookshelves = instanced(this.tiered('bookshelf', 1), WOOD_MATERIAL, DECOR_CAPACITY, true);
+    this.recordPlayers = instanced(this.tiered('recordPlayer', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.sofas = instanced(this.tiered('sofa', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
+    this.root.add(this.plants, this.paintings, this.lamps, this.bulbs, this.neons, this.neonTubes, this.bookshelves, this.recordPlayers, this.sofas);
 
     this.facade = new FacadeView(quality);
     this.root.add(this.facade.root);
@@ -500,7 +681,11 @@ export class ShopView {
       }
       case 'plants':
       case 'paintings':
-      case 'lights': {
+      case 'lights':
+      case 'neon_sign':
+      case 'bookshelf':
+      case 'record_player':
+      case 'sofa_corner': {
         const decor = DECOR_FOR_UPGRADE[id];
         const items = layout.decor.filter((d) => d.kind === decor).slice(0, DECOR_CAPACITY);
         const last = items[items.length - 1];
@@ -547,7 +732,14 @@ export class ShopView {
       coins: this.coins.count,
       cups: this.cups.count,
       machines: this.machines.children.length,
-      decor: this.plants.count + this.paintings.count + this.lamps.count,
+      decor:
+        this.plants.count +
+        this.paintings.count +
+        this.lamps.count +
+        this.neons.count +
+        this.bookshelves.count +
+        this.recordPlayers.count +
+        this.sofas.count,
     };
   }
 
@@ -641,8 +833,9 @@ export class ShopView {
     });
     this.door.position.set(door.x, 0, maxZ + t / 2);
 
-    this.center.x = (indoor.minX + indoor.maxX) / 2;
-    this.center.z = (indoor.minZ + indoor.maxZ) / 2;
+    // The camera's home: the middle of the building, side room included, so a reset frames a grown shop too.
+    this.center.x = (minX + maxX) / 2;
+    this.center.z = (minZ + maxZ) / 2;
     this.extent.minX = minX;
     this.extent.maxX = Math.max(maxX, outdoor?.maxX ?? maxX);
     this.extent.minZ = minZ;
@@ -673,7 +866,9 @@ export class ShopView {
   }
 
   private buildMachines(layout: ShopLayout): void {
-    const sig = layout.machines.map((m) => `${m.kind}${m.quality}t${m.tier}@${m.pos.x},${m.pos.z}`).join(';');
+    const span = backCounterSpan(layout);
+    // The span is in the signature: the record player stretches the back counter without changing the machines.
+    const sig = `${layout.machines.map((m) => `${m.kind}${m.quality}t${m.tier}@${m.pos.x},${m.pos.z}`).join(';')}|${span?.minX},${span?.maxX}`;
     if (sig === this.machineSig) return;
     this.machineSig = sig;
     this.clearMachines();
@@ -684,7 +879,6 @@ export class ShopView {
       mesh.userData.pick = 'machine';
       this.machines.add(mesh);
     }
-    const span = backCounterSpan(layout);
     if (!span) return;
     const geo = backCounterGeometry(span.minX, span.maxX);
     if (this.backCounter) {
@@ -764,15 +958,24 @@ export class ShopView {
   }
 
   private buildDecor(layout: ShopLayout): void {
-    const { plant, painting, light } = layout.decorTier;
+    const { plant, painting, light, neon, bookshelf, record_player, sofa } = layout.decorTier;
     this.setTier(this.plants, 'plant', plant);
     this.setTier(this.paintings, 'painting', painting);
     this.setTier(this.lamps, 'lamp', light);
     this.setTier(this.bulbs, 'bulb', light);
+    this.setTier(this.neons, 'neon', neon);
+    this.setTier(this.neonTubes, 'neonTube', neon);
+    this.setTier(this.bookshelves, 'bookshelf', bookshelf);
+    this.setTier(this.recordPlayers, 'recordPlayer', record_player);
+    this.setTier(this.sofas, 'sofa', sofa);
     const d = this.dummy;
     let plants = 0;
     let paintings = 0;
     let lamps = 0;
+    let neons = 0;
+    let shelves = 0;
+    let players = 0;
+    let sofas = 0;
     for (const item of layout.decor) {
       d.rotation.set(0, 0, 0);
       if (item.kind === 'plant' && plants < DECOR_CAPACITY) {
@@ -793,12 +996,36 @@ export class ShopView {
         d.position.y = 2.28;
         d.updateMatrix();
         this.bulbs.setMatrixAt(lamps++, d.matrix);
+      } else if (item.kind === 'neon' && neons < DECOR_CAPACITY) {
+        d.position.set(item.pos.x, 0, item.pos.z);
+        d.updateMatrix();
+        this.neons.setMatrixAt(neons, d.matrix);
+        this.neonTubes.setMatrixAt(neons++, d.matrix);
+      } else if (item.kind === 'bookshelf' && shelves < DECOR_CAPACITY) {
+        // Against a side wall, the shelves facing the room.
+        d.position.set(item.pos.x, 0, item.pos.z);
+        d.rotation.set(0, item.pos.x < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+        d.updateMatrix();
+        this.bookshelves.setMatrixAt(shelves++, d.matrix);
+      } else if (item.kind === 'record_player' && players < DECOR_CAPACITY) {
+        d.position.set(item.pos.x, BACK_COUNTER_HEIGHT, item.pos.z);
+        d.updateMatrix();
+        this.recordPlayers.setMatrixAt(players++, d.matrix);
+      } else if (item.kind === 'sofa' && sofas < DECOR_CAPACITY) {
+        d.position.set(item.pos.x, 0, item.pos.z);
+        d.updateMatrix();
+        this.sofas.setMatrixAt(sofas++, d.matrix);
       }
     }
     finishInstances(this.plants, plants);
     finishInstances(this.paintings, paintings);
     finishInstances(this.lamps, lamps);
     finishInstances(this.bulbs, lamps);
+    finishInstances(this.neons, neons);
+    finishInstances(this.neonTubes, neons);
+    finishInstances(this.bookshelves, shelves);
+    finishInstances(this.recordPlayers, players);
+    finishInstances(this.sofas, sofas);
   }
 
   // ---------- per frame (no allocation) ----------
