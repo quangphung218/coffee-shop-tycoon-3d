@@ -107,6 +107,18 @@ function parseArgs(argv) {
   return args;
 }
 
+/** First port to serve builds from: $PORT, or 4173 when it is not set. Exits on a bad $PORT. */
+function basePort() {
+  const raw = process.env.PORT;
+  if (raw === undefined) return 4173;
+  const port = /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    console.error(`PORT must be a whole number from 1 to 65535, got ${JSON.stringify(raw)}`);
+    process.exit(1);
+  }
+  return port;
+}
+
 function findChrome() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -357,6 +369,7 @@ const fps = (x) => (x === null ? 'n/a' : x.toFixed(1));
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const port = basePort();
   const chromePath = findChrome();
   const temps = [];
   const builds = [];
@@ -377,7 +390,7 @@ async function main() {
       b.outDir = resolve(b.root, 'dist');
       await build({ root: b.root, logLevel: 'warn', build: { outDir: b.outDir } });
       b.chunks = chunkSizes(b.outDir);
-      const server = await preview({ root: b.root, logLevel: 'silent', build: { outDir: b.outDir }, preview: { port: Number(process.env.PORT ?? 4173) + servers.length, open: false } });
+      const server = await preview({ root: b.root, logLevel: 'silent', build: { outDir: b.outDir }, preview: { port: port + servers.length, open: false } });
       servers.push(server);
       b.url = server.resolvedUrls.local[0];
     }

@@ -7,7 +7,7 @@ import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progress
 import { createDayStats } from '../sim/state';
 import type { GameState, MenuEntry, UpgradeId, WeekSummary } from '../sim/types';
 import { relayoutTables } from '../sim/upgrades';
-import { SAVE_SLOTS, SAVE_VERSION, saveKey, type SaveErrorKind, type SaveSlot, type SlotInfo } from './slots';
+import { SAVE_SLOTS, SAVE_VERSION, isObject, isValidState, saveKey, type SaveErrorKind, type SaveSlot, type SlotInfo } from './slots';
 import { defaultStorage, type StorageLike } from './storage';
 
 export { SAVE_KEY_PREFIX, SAVE_SLOTS, SAVE_VERSION, saveKey } from './slots';
@@ -33,12 +33,10 @@ function fail<T>(kind: SaveErrorKind, message: string): Result<T> {
 
 type Raw = Record<string, unknown>;
 
-function isObject(v: unknown): v is Raw {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 /**
- * Upgrades from version N to N+1, keyed by N.
+ * Upgrades from version N to N+1, keyed by N. Required fields a step always
+ * sets are listed in FILLED_BY_MIGRATION (slots.ts), so the Main Menu summary
+ * agrees with listSlots.
  * Version 0 is the prototype format: a bare GameState without wrapper and
  * without the events/campaigns/orders/history/reviews fields.
  */
@@ -182,33 +180,6 @@ function addMissingMenuItems(state: GameState): void {
     ...MENU.map((item) => saved.get(item.id) ?? { id: item.id, enabled: false, price: item.price }),
     ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)),
   ];
-}
-
-function isValidState(s: unknown): s is GameState {
-  if (!isObject(s)) return false;
-  return (
-    typeof s.shopName === 'string' &&
-    typeof s.difficulty === 'string' &&
-    typeof s.day === 'number' &&
-    typeof s.minute === 'number' &&
-    typeof s.phase === 'string' &&
-    typeof s.money === 'number' &&
-    typeof s.rating === 'number' &&
-    typeof s.rngState === 'number' &&
-    typeof s.seed === 'number' &&
-    typeof s.shopLevel === 'number' &&
-    typeof s.xp === 'number' &&
-    typeof s.nextId === 'number' &&
-    Array.isArray(s.missions) &&
-    Array.isArray(s.menu) &&
-    Array.isArray(s.inventory) &&
-    Array.isArray(s.customers) &&
-    Array.isArray(s.staff) &&
-    Array.isArray(s.tables) &&
-    Array.isArray(s.events) &&
-    isObject(s.upgrades) &&
-    isObject(s.today)
-  );
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {

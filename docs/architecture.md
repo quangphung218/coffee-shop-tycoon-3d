@@ -400,7 +400,7 @@ Mỗi slot là JSON:
 { "version": 3, "savedAt": 1760364000000, "state": { "...": "GameState, events = []" } }
 ```
 
-- `SAVE_VERSION` trong `src/save/save.ts` là phiên bản hiện tại (3). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán; phiên bản 2 chưa có số tuần (`week.index`) và `week.archive`.
+- `SAVE_VERSION` khai trong `src/save/slots.ts` (`src/save/save.ts` xuất lại) là phiên bản hiện tại (3). Phiên bản 0 là `GameState` trần không có vỏ bọc; phiên bản 1 chưa có cấp quán; phiên bản 2 chưa có số tuần (`week.index`) và `week.archive`.
 - Migration 1→2 thêm `shopLevel`, `xp`, `missions` và `seed`: cấp tính từ số khách đã phục vụ trong `history`, nhưng không thấp hơn cấp đủ để mọi món đang bật và nâng cấp đã mua vẫn mở khóa, nên save cũ không mất quyền đã có. `xp` được nâng lên ít nhất `xpToReach(shopLevel)`.
 - Migration 2→3 cho `week` có sẵn thêm `index = 1` (nếu thiếu) và `archive`. Tuần đã có `result` được ghi một dòng `WeekSummary` vào `archive` (lợi nhuận và khách cộng từ các ngày của tuần trong `history` và `today`, không có thì 0) và giữ `result`, nên màn kết tuần vẫn hiện và `next_day` mở tuần 2. `history` dài hơn `HISTORY_DAYS` (28) bị cắt còn 28 ngày cuối. Save không có `week` giữ nguyên.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
@@ -512,7 +512,7 @@ Số đo thứ tải hiện tại so với v0.4.0 `f720b6f`: [p22-review.md](rep
 node scripts/measure-startup.mjs --base <git-ref> --runs 3
 ```
 
-Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless không cache, in bảng kích thước chunk và trung vị thời gian tới first paint, Main Menu và cảnh 3D, ở hai cấu hình: máy bàn không giới hạn và di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần).
+Script build cả hai bản, chạy `vite preview`, mở bằng Chrome headless không cache, in bảng kích thước chunk và trung vị thời gian tới first paint, Main Menu và cảnh 3D, ở ba cấu hình: máy bàn không giới hạn, di động (150 ms RTT, 1,6 Mbps, CPU chậm 4 lần) và Phone 390×844 @3x (cùng mạng và CPU, màn hình cảm ứng 390×844, tỉ lệ điểm ảnh 3). Các bản build chạy ở cổng `PORT` (mặc định 4173) trở lên, mỗi bản một cổng; `PORT` rỗng, không phải số nguyên hoặc ngoài 1–65535 thì script báo lỗi và thoát mã 1.
 
 Đo frame time và long task 5 s đầu sau `cst:world`, để kiểm phần warm-up của `world.prepare()` còn chặn giật:
 
