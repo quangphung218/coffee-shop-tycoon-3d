@@ -160,7 +160,7 @@ Chi tiết các lớp: [docs/architecture.md](docs/architecture.md).
 | `npm run build` | Kiểm tra kiểu và build ra `dist/`. |
 | `npm run preview` | Mở bản build. |
 | `npm run media` | Build rồi chụp lại ảnh, GIF, mp4 và ảnh trước/sau vào `docs/media/` ([docs/media.md](docs/media.md)). |
-| `npm run layout` | Build rồi kiểm tràn ngang, CLS bảng Kho ở 390/768/1440 px và số hàng HUD ở 390/768/1280/1440 px. |
+| `npm run layout` | Build rồi kiểm tràn ngang, CLS bảng Kho ở 390/768/1440 px, số hàng HUD và các bảng Menu, Việc, Nhân viên, Nâng cấp ở 390/768/1280/1440 px. |
 | `npm run perf:frames` | Build rồi đo frame time và long task 5 s đầu sau khi cảnh 3D hiện; thêm `-- --base <commit>` để so với bản cũ ([báo cáo](docs/reports/p23-loading-frames.md)). |
 | `npm run icons` | Dựng lại atlas icon 3D trong `public/icons3d/`. |
 
@@ -193,6 +193,7 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
 | [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần: lịch mở khoá tuần 1, sự kiện, thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, save cũ. |
 | [docs/spec/p27-retention.md](docs/spec/p27-retention.md) | Nhân viên lên cấp, quà ngày và Tem, thành tựu, đơn đặc biệt, khách VIP, nội thất và mở rộng 4 cấp: luật và bảng con số. |
+| [docs/reports/p27-retention.md](docs/reports/p27-retention.md) | Kiểm chứng P27: check, khởi động và khung hình so với P26, layout, ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng, khách VIP. |
 | [docs/reports/p25-progression.md](docs/reports/p25-progression.md) | Menu gọn với công tắc nhỏ, thẻ lên cấp, đồ vật và icon đổi theo bậc nâng cấp: ảnh trước/sau, kiểm layout, khởi động và khung hình. |
 | [docs/reports/p24-ui.md](docs/reports/p24-ui.md) | Lỗi gợi ý nhập bỏ sót nguyên liệu của món mới bật, thang cỡ chữ/nút/viền/bóng chung, ảnh trước/sau HUD, dock, các bảng, toast, báo cáo. |
 | [docs/reports/p23-ui.md](docs/reports/p23-ui.md) | Ảnh trước/sau HUD 3 cụm, Daily Report gọn, Tổng kết tuần 1 và 2, danh sách thành phần lúc tải. |
