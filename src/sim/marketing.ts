@@ -1,5 +1,6 @@
 import { getCampaign } from './data/marketing';
 import { payMarketing } from './economy';
+import { growthSpeedMult } from './staffGrowth';
 import type { GameState, MarketingId } from './types';
 
 /** Extra arrivals each marketer brings in at speed 1 (0.12 = +12%). */
@@ -44,6 +45,6 @@ export function customerMultiplier(state: GameState): number {
     .reduce((m, c) => m * getCampaign(c.id).customerMult, 1);
   const marketers = state.staff
     .filter((s) => s.role === 'marketer')
-    .reduce((sum, s) => sum + MARKETER_BONUS * s.speed, 0);
+    .reduce((sum, s) => sum + MARKETER_BONUS * s.speed * growthSpeedMult(state, s, 'promote'), 0);
   return campaigns * (1 + marketers);
 }

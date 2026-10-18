@@ -2,6 +2,7 @@ import { DIFFICULTIES } from './data/difficulty';
 import { INGREDIENTS } from './data/ingredients';
 import { MENU } from './data/menu';
 import { STAFF_NAMES } from './data/staffNames';
+import { staffTrait } from './data/staffTraits';
 import { WEEK_LENGTH, weekGoal } from './data/week';
 import { rollMissions } from './progression';
 import { normalizeSeed, pick, randInt, randRange, type RngHolder } from './rng';
@@ -92,6 +93,12 @@ export function generateCandidates(rng: RngHolder, firstId: number, count: numbe
   return out;
 }
 
+/** Gives each candidate the trait hashed from the seed and their id; draws nothing from rngState. */
+export function withTraits(seed: number, candidates: Staff[]): Staff[] {
+  for (const c of candidates) c.trait = staffTrait(seed, c.id);
+  return candidates;
+}
+
 export function createNewGame(shopName: string, difficulty: Difficulty, seed: number): GameState {
   const diff = DIFFICULTIES[difficulty];
   const normSeed = normalizeSeed(seed);
@@ -103,7 +110,7 @@ export function createNewGame(shopName: string, difficulty: Difficulty, seed: nu
     tables.push({ id: nextId++, seats: SEATS_PER_TABLE, cash: 0, trash: 0, pos: tablePosition(i), occupants: [] });
   }
 
-  const candidates = generateCandidates(rng, nextId, CANDIDATE_COUNT, diff.priceMult);
+  const candidates = withTraits(normSeed, generateCandidates(rng, nextId, CANDIDATE_COUNT, diff.priceMult));
   nextId += candidates.length;
 
   const name = shopName.trim() || 'Quán của tôi';

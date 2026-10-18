@@ -4,8 +4,8 @@ import { buildNavGrid, cellAt, nearestFree } from './nav';
 import { TASK_MINUTES, cleanMinutes, finishTask, isClaimed, workMinute } from './orders';
 import { staffSpeedMult } from './policies';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
-import { BASE_MAX_STAFF, maxStaff, onStaffTick } from './staffGrowth';
-import { CANDIDATE_COUNT, generateCandidates } from './state';
+import { BASE_MAX_STAFF, growthSpeedMult, maxStaff, onStaffTick } from './staffGrowth';
+import { CANDIDATE_COUNT, generateCandidates, withTraits } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
 
@@ -268,9 +268,9 @@ export function placeStaff(state: GameState): void {
   for (const member of state.staff) member.pos = spots.get(member.id) ?? member.pos;
 }
 
-/** Work done per minute: the member's speed times the wage policy multiplier. */
+/** Work done per minute: the member's speed times the wage policy, level and trait multipliers for the current task. */
 export function workSpeed(state: GameState, member: Staff): number {
-  return member.speed * staffSpeedMult(state);
+  return member.speed * staffSpeedMult(state) * growthSpeedMult(state, member, member.task?.kind ?? 'idle');
 }
 
 /** One game minute of work for one staff member, at their speed. */
@@ -325,7 +325,10 @@ export function clearStaffTasks(state: GameState): void {
 
 /** Morning of a new day: fresh candidates, idle staff, and roles from yesterday's bottleneck when auto-assign is on. */
 export function startStaffDay(state: GameState): void {
-  state.candidates = generateCandidates(state, state.nextId, CANDIDATE_COUNT, DIFFICULTIES[state.difficulty].priceMult);
+  state.candidates = withTraits(
+    state.seed,
+    generateCandidates(state, state.nextId, CANDIDATE_COUNT, DIFFICULTIES[state.difficulty].priceMult),
+  );
   state.nextId += state.candidates.length;
   clearStaffTasks(state);
   if (state.autoAssign) autoAssignRoles(state);
