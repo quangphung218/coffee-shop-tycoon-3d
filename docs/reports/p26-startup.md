@@ -12,9 +12,9 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 
 ## 1. Tóm tắt
 
-- Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 852 ms, base 1037 ms (−185 ms, −18%).
+- Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 765 ms, base 1225 ms (−460 ms, −38%).
 - JS chính `index-*.js`: 75,8 → 14,9 kB gzip. Sim, HUD, panel, báo cáo, save, audio nằm ở chunk `game-*.js` (40,7 kB) và `iconMap-*.js` (23,9 kB), tải bằng `import()` sau khung hình đầu của menu.
-- Cảnh 3D chậm hơn base 10,7% trên Phone 390×844 và 17,7% trên máy bàn, vượt ngưỡng 10%; trên Mobile nhanh hơn 19,1%. Base dao động mạnh giữa hai lượt đo ([mục 3](#3-số-đo)).
+- Cảnh 3D chậm hơn base 0,1% trên Phone 390×844 và 6,1% trên Mobile, trong ngưỡng 10%.
 - Khung hình máy bàn headed: p95 20 ms (base 23 ms), chưa đạt 16,7 ms. Không còn long task sau `cst:world` ở di động headless qua 5 lượt ([mục 3](#3-số-đo)).
 - Layout 68/68: thẻ lên cấp ở 1280×720 vừa một màn. Màn chờ, dòng tiến độ, nút khoá và Thử lại vẫn đúng.
 - Font Nunito ở màn chờ và định dạng save giữ nguyên.
@@ -24,9 +24,9 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
 | `npm run check` | tsc, test, build xanh | PASS: 94 file, 1414 test |
-| Main Menu, Phone 390×844 | < 1000 ms | PASS: 852 ms (base 1037 ms) |
-| Main Menu, Mobile | Không chậm hơn base | PASS: 828 ms (base 1614 ms) |
-| Cảnh 3D so với `57d7559` | ≤ base + 10% | FAIL: Phone 3425 / 3094 ms (+10,7%), Desktop 1412 / 1200 ms (+17,7%); Mobile 3420 / 4228 ms (−19,1%) |
+| Main Menu, Phone 390×844 | < 1000 ms | PASS: 765 ms (base 1225 ms) |
+| Main Menu, Mobile | Không chậm hơn base | PASS: 820 ms (base 1190 ms) |
+| Cảnh 3D so với `57d7559` | ≤ base + 10% | PASS: Phone 3260 / 3256 ms (+0,1%), Mobile 3392 / 3198 ms (+6,1%), Desktop 324 / 353 ms (−8,2%) |
 | JS chính gzip | Tăng ≤ 2 kB | PASS: 75,8 → 14,9 kB (−60,9 kB) |
 | CSS chính gzip | Không tăng | PASS: 13,6 → 9,5 kB |
 | `perf:frames`, máy bàn headless | 0 long task | PASS: 0 ở cả 5 lượt (base 0) |
@@ -42,17 +42,16 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 
 | Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
 | --- | --- | --- | --- | --- |
-| Máy bàn | `57d7559` | 184 ms | 263 ms | 1200 ms |
-| Máy bàn | P26 | 284 ms | 301 ms | 1412 ms |
-| Di động, CPU 4x | `57d7559` | 452 ms | 1614 ms | 4228 ms |
-| Di động, CPU 4x | P26 | 392 ms | 828 ms | 3420 ms |
-| Phone 390×844 @3x, CPU 4x | `57d7559` | 396 ms | 1037 ms | 3094 ms |
-| Phone 390×844 @3x, CPU 4x | P26 | 424 ms | 852 ms | 3425 ms |
+| Máy bàn | `57d7559` | 132 ms | 140 ms | 353 ms |
+| Máy bàn | P26 | 88 ms | 103 ms | 324 ms |
+| Di động, CPU 4x | `57d7559` | 400 ms | 1190 ms | 3198 ms |
+| Di động, CPU 4x | P26 | 400 ms | 820 ms | 3392 ms |
+| Phone 390×844 @3x, CPU 4x | `57d7559` | 376 ms | 1225 ms | 3256 ms |
+| Phone 390×844 @3x, CPU 4x | P26 | 364 ms | 765 ms | 3260 ms |
 
 Di động và Phone dùng mạng 150 ms RTT, 1,6 Mbps.
 
-- Lượt đo trước trên cùng máy: Phone base 1324 / P26 896 ms tới Main Menu, cảnh 3D 3521 / 3644 ms (+3,5%); máy bàn cảnh 3D 554 / 534 ms. Base lượt này lệch xa lượt trước (máy bàn 1200 so với 554 ms, Mobile tới Main Menu 1614 so với 1262 ms).
-- `perf:frames` headless cùng ngày, hồ sơ Di động: cảnh 3D 3284 / 3151 ms (+4,2%).
+- Lượt chạy ngay trước trên cùng máy cho base lệch xa (máy bàn cảnh 3D 1200 ms, Mobile tới Main Menu 1614 ms): Phone 852 / 1037 ms tới Main Menu, cảnh 3D 3425 / 3094 ms (+10,7%), máy bàn 1412 / 1200 ms (+17,7%). Bảng trên là lượt đo lại ngay sau đó.
 
 | Chunk | `57d7559` gzip | P26 gzip | Tải lúc |
 | --- | --- | --- | --- |
