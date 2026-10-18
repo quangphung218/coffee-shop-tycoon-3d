@@ -6,11 +6,13 @@ import { drawIcon, loadIconAtlas, type IconId } from '../../ui/core/icons';
 /**
  * Floating tags above customers: a sticker bubble with the ordered item, a
  * face and a patience bar while they wait, an angry face when they storm
- * out. Sprites always face the camera and ignore depth so tags stay readable
+ * out, and a small star over a VIP. Sprites always face the camera and ignore depth so tags stay readable
  * behind walls and tables.
  */
 
 export const ANGRY_ICON: IconId = 'i-face-angry';
+/** Small star over a VIP customer's head. */
+export const VIP_ICON: IconId = 'i-star';
 /** Patience bar colours from design/tokens.json (color.patience.*). */
 export const PATIENCE_COLORS = { high: 0x2fb898, mid: 0xf2a516, low: 0xf2675b, track: 0x5c3a26 } as const;
 const BAR_WIDTH = 0.6;
@@ -18,6 +20,9 @@ const BAR_HEIGHT = 0.08;
 const ICON_SIZE = 0.38;
 const FACE_SIZE = 0.2;
 const FACE_GAP = 0.04;
+const STAR_SIZE = 0.17;
+/** The VIP star sits on the bubble's top-right corner, this far from its middle (world units at the label). */
+const STAR_CORNER = { x: ICON_SIZE * 0.42, y: ICON_SIZE * 0.42 } as const;
 const ICON_PX = 128;
 /** Bubble pop-in (scale overshoot), design/t237-cartoon motion notes. */
 export const POP_SECONDS = 0.36;
@@ -55,20 +60,24 @@ export interface LabelContent {
   ready: boolean;
   /** Mood face beside the bar; absent or null hides it. */
   face?: IconId | null;
+  /** VIP customer: a small star over the head, on the bubble's corner when there is one. */
+  vip?: boolean;
 }
 
 /** Every bubble a tag can show: each menu item, and the angry face. */
 export const LABEL_BUBBLES: readonly IconId[] = [...new Set<IconId>([...Object.values(MENU_ICONS), ANGRY_ICON])];
-/** Every icon drawn on its own: the mood faces beside the bar, and the coin of the cash popups. */
-export const LABEL_FACES: readonly IconId[] = ['i-face-happy', 'i-face-ok', 'i-face-worried', 'i-coin'];
+/** Every icon drawn on its own: the mood faces beside the bar, the coin of the cash popups and the VIP star. */
+export const LABEL_FACES: readonly IconId[] = ['i-face-happy', 'i-face-ok', 'i-face-worried', 'i-coin', VIP_ICON];
 
 export function labelFor(state: GameState, c: Customer): LabelContent {
-  if (c.state === 'angry_leave') return { icon: ANGRY_ICON, patience: null, ready: false, face: null };
-  if (c.state !== 'queueing' && c.state !== 'ordering' && c.state !== 'waiting') return { icon: null, patience: null, ready: false, face: null };
+  // Left out (undefined) for everyone else, like a save from before VIPs.
+  const vip = c.vip === true ? true : undefined;
+  if (c.state === 'angry_leave') return { icon: ANGRY_ICON, patience: null, ready: false, face: null, vip };
+  if (c.state !== 'queueing' && c.state !== 'ordering' && c.state !== 'waiting') return { icon: null, patience: null, ready: false, face: null, vip };
   const ratio = c.maxPatience > 0 ? Math.max(0, Math.min(1, c.patience / c.maxPatience)) : 0;
   const ready = c.state === 'waiting' && state.orders.some((o) => o.customerId === c.id && o.status === 'ready');
   const patience = c.state === 'ordering' ? null : ratio;
-  return { icon: c.order ? MENU_ICONS[c.order] : null, patience, ready, face: patience === null ? null : faceFor(ratio) };
+  return { icon: c.order ? MENU_ICONS[c.order] : null, patience, ready, face: patience === null ? null : faceFor(ratio), vip };
 }
 
 /**
@@ -230,6 +239,7 @@ export class Label {
   private readonly faceSprite: Sprite;
   private readonly track: Sprite;
   private readonly fill: Sprite;
+  private readonly star: Sprite;
   private iconKey: IconId | null = null;
   private faceKey: IconId | null = null;
   /** `time` the current bubble appeared, for the pop-in. */
@@ -250,9 +260,14 @@ export class Label {
     this.track.renderOrder = 10;
     this.fill = new Sprite(assets.fills[PATIENCE_COLORS.high]);
     this.fill.renderOrder = 11;
-    this.group.add(this.iconSprite, this.faceSprite, this.track, this.fill);
+    // Material made in LabelAssets.prebuild (LABEL_FACES), so a VIP arriving draws no canvas mid-frame.
+    this.star = new Sprite(assets.face(VIP_ICON));
+    this.star.scale.set(STAR_SIZE, STAR_SIZE, 1);
+    this.star.position.y = 0.2;
+    this.star.renderOrder = 13;
+    this.group.add(this.iconSprite, this.faceSprite, this.track, this.fill, this.star);
     // Tags are drawn, never picked (sprite raycasts need a camera on the ray).
-    for (const s of [this.iconSprite, this.faceSprite, this.track, this.fill]) s.raycast = () => {};
+    for (const s of [this.iconSprite, this.faceSprite, this.track, this.fill, this.star]) s.raycast = () => {};
     this.set({ icon: null, patience: null, ready: false }, 0);
   }
 
@@ -288,7 +303,14 @@ export class Label {
       // Anchor the fill's left edge to the track's left edge in screen space.
       this.fill.center.set(1 / (2 * patience), 0.5);
     }
-    this.group.visible = this.iconSprite.visible || showBar;
+    const vip = content.vip === true;
+    this.star.visible = vip;
+    if (vip) {
+      // On the bubble's top-right corner in screen space, or alone over the head.
+      if (this.iconSprite.visible) this.star.center.set(0.5 - STAR_CORNER.x / STAR_SIZE, 0.5 - STAR_CORNER.y / STAR_SIZE);
+      else this.star.center.set(0.5, 0.5);
+    }
+    this.group.visible = this.iconSprite.visible || showBar || vip;
   }
 
   get visible(): boolean {
@@ -301,5 +323,10 @@ export class Label {
 
   get faceShown(): IconId | null {
     return this.faceSprite.visible ? this.faceKey : null;
+  }
+
+  /** Whether the VIP star shows. */
+  get vipShown(): boolean {
+    return this.star.visible;
   }
 }

@@ -13,6 +13,7 @@ import {
 } from 'three';
 import type { Quality } from '../../save/settings';
 import {
+  BOOKSHELF_SIZE,
   DOOR_FRAME_DEPTH,
   DOOR_LEAF_THICKNESS,
   DOOR_LEAF_WIDTH,
@@ -83,6 +84,8 @@ const PENDANTS = 3;
 const PENDANT_Y = 2.3;
 const FAN_Y = 2.6;
 const FAN_BLADE = 0.62;
+/** Width of side room each ceiling fan covers. */
+const FAN_SPACING = 4.5;
 /** Cords and fan rods reach up to here (there is no ceiling; matches the decor lamps). */
 const HANG_TOP = 3.4;
 
@@ -126,10 +129,11 @@ export interface FacadePlan {
   fans: Vec2[];
 }
 
-/** Window centres along the side and front walls, skipping spots taken by a painting. */
+/** Window centres along the side and front walls, skipping spots taken by a painting or a bookshelf. */
 export function windowSpots(layout: ShopLayout): WindowSpot[] {
   const spans = wallSpans(layout);
   const paintings = layout.decor.filter((d) => d.kind === 'painting');
+  const shelves = layout.decor.filter((d) => d.kind === 'bookshelf');
   const out: WindowSpot[] = [];
   for (const wall of [1, 2, 3, 4]) {
     const [cx, cz, sx, sz] = spans[wall]!;
@@ -146,7 +150,9 @@ export function windowSpots(layout: ShopLayout): WindowSpot[] {
           ? Math.abs(p.pos.z - z) < 0.5 && Math.abs(p.pos.x - x) < WINDOW_WIDTH / 2 + 0.6
           : Math.abs(p.pos.x - x) < 0.5 && Math.abs(p.pos.z - z) < WINDOW_WIDTH / 2 + 0.6,
       );
-      if (!covered) out.push({ wall, x, z, yaw });
+      // Bookshelves stand against a side wall, as tall as the window.
+      const shelved = !alongX && shelves.some((s) => Math.abs(s.pos.x - x) < 0.5 && Math.abs(s.pos.z - z) < (WINDOW_WIDTH + BOOKSHELF_SIZE.length) / 2);
+      if (!covered && !shelved) out.push({ wall, x, z, yaw });
     }
   }
   return out;
@@ -179,7 +185,12 @@ export function facadePlan(layout: ShopLayout, quality: Quality): FacadePlan {
   }
 
   const fans: Vec2[] = [{ x: roomX, z: 0.5 }];
-  if (expansion) fans.push({ x: (expansion.minX + expansion.maxX) / 2, z: 0.5 });
+  if (expansion) {
+    // About one fan per FAN_SPACING of side room, spread evenly: one up to level 2, two at levels 3 and 4.
+    const width = expansion.maxX - expansion.minX;
+    const n = Math.max(1, Math.round(width / FAN_SPACING));
+    for (let k = 0; k < n; k++) fans.push({ x: expansion.minX + ((k + 0.5) * width) / n, z: 0.5 });
+  }
 
   return {
     windows: windowSpots(layout),
