@@ -15,7 +15,7 @@ import { h, setChildren, uid } from '../core/dom';
 import { formatClock, formatSavedAt } from '../core/format';
 import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
-import { phaseLabel } from '../hud/hud';
+import { phaseLabel } from '../core/phase';
 
 export interface SettingsActions {
   /** Called after every change, already saved; apply it to audio, renderer and game. */
