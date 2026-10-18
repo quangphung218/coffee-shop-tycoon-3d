@@ -36,6 +36,8 @@ describe('P27 save compatibility', () => {
     expect(SAVE_VERSION).toBe(3);
     const state = openGame();
     const raw = JSON.parse(JSON.stringify(state)) as GameState;
+    // A version 3 save from before P27: staff and candidates carry no trait.
+    for (const m of [...raw.staff, ...raw.candidates]) delete m.trait;
     expect(raw.retention).toBeUndefined();
     expect(raw.specialOrder).toBeUndefined();
     const storage = createMemoryStorage();
