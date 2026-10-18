@@ -54,7 +54,7 @@ function withoutShopName(): string {
   return JSON.stringify({ version: 3, savedAt: 44, state: raw });
 }
 
-const LOADED = { slot: '2', empty: false, shopName: 'Quán Test', day: 4, money: 1234000 };
+const LOADED: SlotInfo = { slot: '2', empty: false, shopName: 'Quán Test', day: 4, money: 1234000 };
 
 /** Each fixture sits in slot 2, with the summary listSlots gives for that slot. */
 const FIXTURES: Record<string, [string | null, SlotInfo]> = {
@@ -99,8 +99,8 @@ describe('listSlotSummaries', () => {
 
   it('never writes to storage', () => {
     const inner = createMemoryStorage();
-    const texts = [v0Text(), v1Text(), v2Text(), '{oops'];
-    SAVE_SLOTS.forEach((slot, i) => inner.setItem(saveKey(slot), texts[i]));
+    const texts: string[] = [v0Text(), v1Text(), v2Text(), '{oops'];
+    SAVE_SLOTS.forEach((slot, i) => inner.setItem(saveKey(slot), texts[i]!));
     const writes: string[] = [];
     const storage: StorageLike = {
       getItem: (key) => inner.getItem(key),
