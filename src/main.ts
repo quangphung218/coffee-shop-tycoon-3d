@@ -9,20 +9,14 @@ import '@fontsource/nunito/vietnamese-700.css';
 import './ui/styles/tokens.css';
 import './ui/styles/ui.css';
 import './ui/styles/scrollbar.css';
-import { createAudio } from './audio';
 import type { World } from './render/scene';
 import { loadSettings } from './save/settings';
 import { defaultStorage } from './save/storage';
-import { dispatch, step } from './sim';
-import { createNewGame } from './sim/state';
-import type { GameState } from './sim/types';
 import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
-import { registerPrepPanels } from './ui/panels';
-import { registerReviewsPanel } from './ui/report';
-import { createShell } from './ui/screens/shell';
+import { createMenuShell, type ShellOptions } from './ui/screens/menuShell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
 const GAME_MINUTES_PER_SECOND = 2;
@@ -36,19 +30,10 @@ const BOOT_FADE_MS = 300;
 const SCENE_SLOW_MS = 8000;
 
 type WorldModule = typeof import('./render/scene');
+type GameModule = typeof import('./game');
 
-/** Loading-list items that come with the 3D scene chunk; one Thử lại redoes them all. */
+/** Loading-list items that come with the game and 3D scene chunks; one Thử lại redoes them all. */
 const WORLD_COMPONENTS: readonly LoadComponentId[] = ['code', 'world', 'shaders', 'labels'];
-
-/** A busy lunchtime shop that plays itself behind the main menu. */
-function createMenuScene(): GameState {
-  const state = createNewGame('Coffee Shop', 'normal', Date.now() >>> 0);
-  state.rating = 4.5;
-  dispatch(state, { type: 'start_day' });
-  state.minute = 11 * 60;
-  state.events.length = 0;
-  return state;
-}
 
 /** Resolves after the browser has painted the current DOM. */
 function afterPaint(): Promise<void> {
@@ -72,14 +57,14 @@ async function online(): Promise<boolean> {
 }
 
 /**
- * Imports the scene chunk again after a failure. Browsers may keep a failed
+ * Imports a lazy chunk again after a failure. Browsers may keep a failed
  * module fetch for the life of the page (whatwg/html#6768), so when the
  * import fails again but the site answers, reload: the menu is cached and no
  * game is running yet (the play buttons wait for the scene).
  */
-async function retryWorldModule(): Promise<WorldModule> {
+async function retryModule<T>(load: () => Promise<T>): Promise<T> {
   try {
-    return await import('./render/scene');
+    return await load();
   } catch (err) {
     if (await online()) location.reload();
     throw err;
@@ -87,9 +72,11 @@ async function retryWorldModule(): Promise<WorldModule> {
 }
 
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
-  // three.js and the 3D world load as a separate chunk, asked for once the
-  // menu has painted so its parse never lands in the menu's first frame.
+  // The game (sim, HUD, panels, report, audio) and three.js with the 3D world
+  // load as separate chunks, asked for once the menu has painted so their
+  // parse never lands in the menu's first frame.
   const painted = afterPaint();
+  const gameModule = painted.then(() => import('./game'));
   const worldModule = painted.then(() => import('./render/scene'));
   // Menu icons use the small @1x atlas, asked for right after the scene
   // chunk at low priority: it must be in before the 3D scene starts drawing,
@@ -113,13 +100,14 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   const assets = readAssets();
   const storage = defaultStorage();
   const settings = loadSettings(storage);
-  const audio = createAudio({ music: settings.musicVolume, sfx: settings.sfxVolume });
-  audio.setMusic(true);
   let world: World | null = null;
+  // Set once the game chunk is in.
+  let sim: GameModule | null = null;
+  let audio: ReturnType<GameModule['createAudio']> | null = null;
+  let game: ReturnType<GameModule['mountGame']> | null = null;
+  let menuScene: ReturnType<GameModule['createMenuScene']> | null = null;
 
-  registerPrepPanels();
-  registerReviewsPanel();
-  const shell = createShell({
+  const options: ShellOptions = {
     root: ui,
     storage,
     settings,
@@ -128,7 +116,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       world?.setCameraKeys(s.cameraKeys);
       world?.setCameraRotateSpeed(s.cameraRotateSpeed);
       world?.setReducedMotion(s.reducedMotion === 'reduce');
-      audio.setVolumes(s.musicVolume, s.sfxVolume);
+      audio?.setVolumes(s.musicVolume, s.sfxVolume);
     },
     onResetCamera: () => world?.resetCamera(),
     onGameStart: () => {
@@ -137,12 +125,15 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       world?.resetCamera();
     },
     scene,
-  });
+  };
+  const shell = createMenuShell(options);
   hideBoot();
   performance.mark('cst:menu');
 
-  // Browsers only allow audio after a user gesture.
+  // Browsers only allow audio after a user gesture. A tap before the game
+  // chunk (and so the audio) is in keeps the listeners for the next one.
   const unlock = (): void => {
+    if (!audio) return;
     audio.unlock();
     window.removeEventListener('pointerdown', unlock, true);
     window.removeEventListener('keydown', unlock, true);
@@ -150,23 +141,39 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   window.addEventListener('pointerdown', unlock, true);
   window.addEventListener('keydown', unlock, true);
 
-  let menuScene = createMenuScene();
+  /** Plugs the game chunk into the menu, once; returns the game part. */
+  const useGame = (m: GameModule): ReturnType<GameModule['mountGame']> => {
+    if (game) return game;
+    sim = m;
+    m.registerPrepPanels();
+    m.registerReviewsPanel();
+    const s = shell.settings;
+    audio = m.createAudio({ music: s.musicVolume, sfx: s.sfxVolume });
+    audio.setMusic(true);
+    menuScene = m.createMenuScene();
+    game = m.mountGame(shell, options);
+    shell.attachGame(game);
+    return game;
+  };
+  // Errors show on the loading list through loadWorld.
+  gameModule.then(useGame).catch(() => undefined);
+
   let last = performance.now();
   const frame = (now: number): void => {
     const dt = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
-    const game = shell.state;
-    if (game) {
-      step(game, dt * GAME_MINUTES_PER_SECOND * game.speed);
-      world?.update(game, game.tickAccumulator);
-      shell.update();
-      audio.handleEvents(game.events);
-      fresh.handleEvents(game.events);
-      shell.handleEvents(game.events);
-      game.events.length = 0;
-    } else {
-      step(menuScene, dt * GAME_MINUTES_PER_SECOND);
-      if (menuScene.phase === 'report') menuScene = createMenuScene();
+    const state = game?.state;
+    if (sim && game && state) {
+      sim.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed);
+      world?.update(state, state.tickAccumulator);
+      game.update();
+      audio?.handleEvents(state.events);
+      fresh.handleEvents(state.events);
+      game.handleEvents(state.events);
+      state.events.length = 0;
+    } else if (sim && menuScene) {
+      sim.step(menuScene, dt * GAME_MINUTES_PER_SECOND);
+      if (menuScene.phase === 'report') menuScene = sim.createMenuScene();
       world?.rotateCamera(MENU_SPIN * dt);
       world?.update(menuScene, menuScene.tickAccumulator);
       menuScene.events.length = 0;
@@ -177,7 +184,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
 
   // Build the scene only after the menu is on screen, then fade it in. The
   // play buttons wait on `scene`, which follows the real downloads and steps.
-  const loadWorld = (module: Promise<WorldModule>): void => {
+  const loadWorld = (modules: Promise<[GameModule, WorldModule]>): void => {
     for (const id of WORLD_COMPONENTS) scene.setComponent(id, { status: 'waiting', progress: 0 });
     scene.setComponent('code', { status: 'loading' });
     scene.set({ slow: false });
@@ -185,8 +192,9 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     const slowTimer = setTimeout(() => scene.set({ slow: true }), SCENE_SLOW_MS);
     /** The item running when something throws. */
     let step: LoadComponentId = 'code';
-    void Promise.all([module, afterPaint()])
-      .then(async ([{ createWorld }]) => {
+    void Promise.all([modules, afterPaint()])
+      .then(async ([[m, { createWorld }]]) => {
+        const g = useGame(m);
         scene.setComponent('code', { status: 'done' });
         step = 'world';
         scene.setComponent('world', { status: 'loading' });
@@ -200,9 +208,10 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         scene.setComponent('world', { status: 'done' });
         step = 'shaders';
         // Clicks in the scene go through the same dispatch as the UI.
-        w.onCommand((cmd) => shell.dispatch(cmd));
+        w.onCommand((cmd) => g.dispatch(cmd));
         try {
-          await w.prepare(shell.state ?? menuScene, (id, fraction) => {
+          // useGame() has set menuScene.
+          await w.prepare(g.state ?? menuScene!, (id, fraction) => {
             step = id;
             scene.setComponent(id, { status: fraction >= 1 ? 'done' : 'loading', progress: fraction });
           });
@@ -235,9 +244,9 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   scene.onRetry = (id) => {
     if (id === 'fonts') fetchFonts();
     else if (id === 'icons') retryIconAtlas();
-    else loadWorld(retryWorldModule());
+    else loadWorld(Promise.all([retryModule(() => import('./game')), retryModule(() => import('./render/scene'))]));
   };
-  loadWorld(worldModule);
+  loadWorld(Promise.all([gameModule, worldModule]));
 }
 
 const ui = document.getElementById('ui');

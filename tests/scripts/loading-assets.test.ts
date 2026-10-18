@@ -86,6 +86,38 @@ describe('loadingAssets (vite.config.ts)', () => {
     ]);
   });
 
+  it('puts the game and 3D scene chunks and what they share in the scene list', () => {
+    const chunk = (fileName: string, code: string, extra: Record<string, unknown> = {}) => ({
+      type: 'chunk',
+      fileName,
+      code,
+      isEntry: false,
+      imports: [],
+      dynamicImports: [],
+      viteMetadata: { importedCss: new Set<string>(), importedAssets: new Set<string>() },
+      ...extra,
+    });
+    const bundle = {
+      'assets/main.js': chunk('assets/main.js', 'aaaa', {
+        isEntry: true,
+        dynamicImports: ['assets/scene.js', 'assets/game.js'],
+      }),
+      'assets/scene.js': chunk('assets/scene.js', 'scene', { imports: ['assets/sim.js', 'assets/three.js'] }),
+      'assets/game.js': chunk('assets/game.js', 'gamegame', { imports: ['assets/sim.js'] }),
+      'assets/sim.js': chunk('assets/sim.js', 'sim'),
+      'assets/three.js': chunk('assets/three.js', 'threethree'),
+    };
+    const lists = loadingAssets(bundle as never);
+    expect(lists.boot).toEqual([['assets/main.js', 4]]);
+    // The shared sim chunk is counted once.
+    expect(lists.scene).toEqual([
+      ['assets/scene.js', 5],
+      ['assets/sim.js', 3],
+      ['assets/three.js', 10],
+      ['assets/game.js', 8],
+    ]);
+  });
+
   it('gives empty lists without an entry chunk', () => {
     expect(loadingAssets({} as never)).toEqual({ boot: [], scene: [] });
   });
