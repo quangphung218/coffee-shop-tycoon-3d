@@ -36,7 +36,11 @@ Game web 3D low-poly quản lý quán cà phê (Three.js), chơi ngay trên trì
 | Trang trí | Đặt trang trí (Cây xanh, Tranh treo tường, Đèn trang trí…) ở nhóm Trang trí của bảng Nâng cấp để quán hút khách và được thêm sao. Trang trí không kèm chỗ ngồi có nút **Gỡ** (bấm hai lần): gỡ cấp trên cùng, hoàn lại một nửa tiền đã trả. |
 | Mức giá và Mức lương | **Mức giá** (Rẻ / Chuẩn / Cao, bảng Menu): giá bán cao hơn thì sao và lượng khách giảm. **Mức lương** (Thấp / Chuẩn / Cao, bảng Nhân viên): lương cao hơn thì nhân viên làm nhanh hơn. Chỉ đổi được lúc chuẩn bị. |
 | Mục tiêu tuần | Mục tiêu doanh thu 7 ngày và số sao theo độ khó; mục tiêu doanh thu tăng 50% mỗi tuần, tối đa gấp 3 tuần 1. Hết ngày 7 của tuần, màn Tổng kết tuần chấm điểm 0–100 và 0–3 cúp, tuần được 2 cúp trở lên thưởng tiền, so với tuần trước, rồi **Sang tuần N+1**. |
-| Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–10. Cấp 1–6 mở thêm món, nâng cấp và dụng cụ; cấp 7–10 nâng trần cấp của vài nâng cấp đã có. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
+| Cấp quán và nhiệm vụ | Phục vụ khách, review cao và nhiệm vụ ngày cộng XP để lên cấp 1–10. Cấp 1–6 mở thêm món, nâng cấp và dụng cụ; cấp 7–10 nâng trần cấp của vài nâng cấp đã có, cấp 8 mở thêm Góc sofa. Mỗi ngày có 3 nhiệm vụ, tự chấm cuối ngày. |
+| Nhân viên lên cấp | Mỗi nhân viên có một đặc điểm (Nhanh nhẹn, Tay pha cứng, Gọn gàng, Duyên dáng) và cấp 1–5. Làm việc tích kinh nghiệm; đủ thì **Đào tạo** lúc chuẩn bị bằng tiền (cấp 4–5 thêm Tem) để làm nhanh hơn, lương cao hơn. |
+| Quà mỗi ngày và Tem | Mỗi ngày thật mở game nhận quà ở bảng Việc, chuỗi 7 ngày liền quà lớn dần. Tem là tiền phụ kiếm từ quà, thành tựu, đơn đặc biệt, khách VIP; dùng để đào tạo nhân viên cấp cao và mua nội thất đặc biệt. 6 thành tựu, mỗi cái 3 mốc. |
+| Đơn đặc biệt và VIP | Từ ngày 2 mỗi ngày có một đơn: giao đủ số phần một món trước 13:00 hoặc 19:00 để nhận tiền và Tem. Từ ngày 3 thỉnh thoảng có khách VIP (ngôi sao trên đầu), ít kiên nhẫn hơn, phục vụ được Tem. |
+| Nội thất và mở rộng 4 cấp | Biển neon, Kệ sách, Máy hát đĩa, Góc sofa ở nhóm Trang trí. Mở rộng diện tích có 4 cấp (cấp 3 mở ở cấp quán 7, cấp 4 ở cấp quán 9), mỗi cấp thêm 3 bàn; cấp 3–4 thêm chỗ cho nhân viên thứ 7 và 8. |
 | Thống kê ngày và tuần | Daily Report so lãi, doanh thu, khách và sao với hôm qua và với trung bình tuần, kèm doanh thu tuần so mục tiêu. Tab Chỉ số: food cost, lương, prime cost, lấp ghế, thời gian chờ… kèm nhãn Tốt / Cần chú ý và gợi ý sửa. |
 | Tự phục vụ | Bấm khách, quầy hay bàn trong cảnh để nhận order, pha, mang đồ, thu tiền, dọn bàn. |
 | Khách và đánh giá | Khách có cá tính (văn phòng, sinh viên, khách quen, sành cà phê, gia đình) đổi gu món và độ kiên nhẫn; xếp hàng, bỏ về khi chờ lâu, để lại review 1–5 sao. |
@@ -75,7 +79,7 @@ Build bản tĩnh và deploy lên GitHub Pages: xem [docs/deploy.md](docs/deploy
 ## Cách chơi một ngày
 
 1. **Main Menu** → **Ván mới**: đặt tên quán, chọn độ khó Dễ/Thường/Khó.
-2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD trên cùng gồm ba cụm: **Hôm nay** (ngày, tuần, thời tiết, sự kiện, giờ, pha), **Tiến độ** (tiền, Tem, sao, cấp quán và thanh XP) và **Điều khiển** (Mở cửa hoặc tốc độ, Dừng, menu camera và cài đặt). Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có 3 nhiệm vụ ngày; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
+2. **Chuẩn bị** (đồng hồ dừng ở 07:00): HUD trên cùng gồm ba cụm: **Hôm nay** (ngày, tuần, thời tiết, sự kiện, giờ, pha), **Tiến độ** (tiền, Tem, sao, cấp quán và thanh XP) và **Điều khiển** (Mở cửa hoặc tốc độ, Dừng, menu camera và cài đặt). Dock giữa đáy chia hai nhóm — Vận hành (Việc, Menu, Kho, Nhân viên) và Phát triển (Marketing, Nâng cấp). Bảng **Việc** có thẻ **Quà hằng ngày** (bấm nhận mỗi ngày thật), 3 nhiệm vụ ngày, đơn đặc biệt và thành tựu; món và dụng cụ mở theo cấp quán hoặc theo ngày trong tuần, mốc nào tới trước thì mở; bảng **Menu** và **Nâng cấp** khóa thứ chưa mở với nhãn "Mở ngày N" hoặc "Mở ở cấp N". **Mức giá** (bảng Menu) và **Mức lương** (bảng Nhân viên) chỉ đổi được lúc chuẩn bị. Xong thì bấm **Mở cửa** trên HUD.
 3. **Mở cửa** và **Cao điểm** (11:00–13:00, 17:00–19:00): khách vào, xếp hàng, gọi món; thiếu nhân viên thì tự bấm vào khách, quầy, bàn để phục vụ.
 4. **Đóng cửa** (từ 20:00): không nhận khách mới; ngày kết thúc khi khách cuối rời quán.
 5. **Daily Report** (ba tab Tổng kết · Chỉ số · Đánh giá). Tab Tổng kết vừa một màn:
@@ -126,6 +130,8 @@ Version đang chạy (vd `v0.1.0`) hiện ở chân Main Menu và cuối màn C�
 - Lưu trong `localStorage` của trình duyệt: slot tự động (ghi cuối mỗi ngày) và 3 slot lưu tay trong menu Tạm dừng.
 - **Tải game** ở Main Menu mở mọi slot; slot hỏng được báo, không bị xóa.
 - Định dạng lưu là phiên bản 3. Save từ bản cũ tự nâng khi tải, giữ nguyên tiền và mọi món, nâng cấp đã mua: save v1 được tính cấp quán từ lịch sử đã chơi và thêm nhiệm vụ ngày; save v2 đã hết tuần 1 mở được tuần 2 và chơi tiếp (chi tiết ở [docs/architecture.md](docs/architecture.md#save-schema)).
+- Save từ trước khi có Tem và quà ngày tải bình thường: Tem 0, chuỗi quà bắt đầu từ ngày 1, nhân viên ở cấp 1 và có đặc điểm theo seed của ván.
+- Mỗi save có chuỗi quà ngày riêng. Main Menu ghi "Quà ngày N đang chờ" dưới **Tiếp tục** khi save gần nhất chưa nhận quà hôm nay.
 
 ## Cấu trúc thư mục
 
@@ -186,6 +192,7 @@ Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](
 | [docs/deploy.md](docs/deploy.md) | Build, version và deploy lên GitHub Pages. |
 | [docs/media.md](docs/media.md) | Tạo lại ảnh chụp, GIF/mp4 demo, ảnh trước/sau và atlas icon 3D. |
 | [docs/spec/week-7-days.md](docs/spec/week-7-days.md) | Luật tuần: lịch mở khoá tuần 1, sự kiện, thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, save cũ. |
+| [docs/spec/p27-retention.md](docs/spec/p27-retention.md) | Nhân viên lên cấp, quà ngày và Tem, thành tựu, đơn đặc biệt, khách VIP, nội thất và mở rộng 4 cấp: luật và bảng con số. |
 | [docs/reports/p25-progression.md](docs/reports/p25-progression.md) | Menu gọn với công tắc nhỏ, thẻ lên cấp, đồ vật và icon đổi theo bậc nâng cấp: ảnh trước/sau, kiểm layout, khởi động và khung hình. |
 | [docs/reports/p24-ui.md](docs/reports/p24-ui.md) | Lỗi gợi ý nhập bỏ sót nguyên liệu của món mới bật, thang cỡ chữ/nút/viền/bóng chung, ảnh trước/sau HUD, dock, các bảng, toast, báo cáo. |
 | [docs/reports/p23-ui.md](docs/reports/p23-ui.md) | Ảnh trước/sau HUD 3 cụm, Daily Report gọn, Tổng kết tuần 1 và 2, danh sách thành phần lúc tải. |
