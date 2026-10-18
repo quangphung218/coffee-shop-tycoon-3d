@@ -5,6 +5,7 @@ import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
 import { icon } from '../core/icons';
 import { SceneGate } from '../core/sceneGate';
 import { screenLayer, type Screen } from '../core/screens';
+import { localDateKey } from '../core/today';
 
 /** Cup mascot from design/t237-cartoon (#mascot); the #boot screen in index.html draws the same cup. */
 const MASCOT_SVG =
@@ -43,8 +44,32 @@ export function latestSave(slots: readonly SlotInfo[]): SlotInfo | null {
   return best;
 }
 
+/** Days in the daily gift cycle (GIFT_REWARDS in src/sim/data/retention.ts, not imported to keep the sim out of the main chunk). */
+const GIFT_DAYS = 7;
+
+/** Days since 1970-01-01 of a 'YYYY-MM-DD' key; NaN when it is not one. */
+function dayNumber(key: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000 : NaN;
+}
+
 /**
- * Main Menu: Tiếp tục (only with a save), Ván mới, Tải game, Cài đặt.
+ * Streak day of the daily gift the slot can claim on `today` ('YYYY-MM-DD'),
+ * or null when it was claimed today or the clock went back (as giftPreview in
+ * src/sim/retention.ts): the next day of the streak after yesterday's gift, else 1.
+ */
+export function pendingGiftDay(slot: SlotInfo, today: string): number | null {
+  const now = dayNumber(today);
+  if (Number.isNaN(now)) return null;
+  const last = slot.giftLastDate ? dayNumber(slot.giftLastDate) : NaN;
+  if (Number.isNaN(last)) return 1;
+  if (now <= last) return null;
+  return now === last + 1 ? ((slot.giftStreak ?? 0) % GIFT_DAYS) + 1 : 1;
+}
+
+/**
+ * Main Menu: Tiếp tục (only with a save, with "Quà ngày N đang chờ" under it
+ * while that save's daily gift is unclaimed today), Ván mới, Tải game, Cài đặt.
  * "Tải game" stays visible but aria-disabled with a reason when no slot holds
  * anything. ↑ ↓ move between the buttons.
  */
@@ -66,6 +91,9 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
   );
   // Continuing drops straight into the shop, so it waits for the 3D scene.
   scene.bind(continueBtn);
+  const giftId = uid('r-gift');
+  const giftLine = h('p', { class: 'card-sub', id: giftId, attrs: { 'data-menu-line': 'gift' } });
+  const continueRow = h('div', {}, continueBtn, giftLine);
   const newBtn = h('button', { class: 'btn btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => actions.onNewGame() } }, icon('i-sparkle'), 'Ván mới');
   const loadBtn = h(
     'button',
@@ -85,7 +113,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
     'Cài đặt',
   );
 
-  const list = h('div', { class: 'menu-list' }, continueBtn, newBtn, h('div', {}, loadBtn, loadReason), settingsBtn);
+  const list = h('div', { class: 'menu-list' }, continueRow, newBtn, h('div', {}, loadBtn, loadReason), settingsBtn);
   list.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const buttons = [...list.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !b.hidden);
@@ -121,7 +149,13 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
     const latest = latestSave(slots);
     continueSlot = latest?.slot ?? null;
     continueBtn.hidden = !latest;
+    continueRow.hidden = !latest;
     continueDetail.textContent = latest ? `${latest.shopName} · Ngày ${latest.day}` : '';
+    const gift = latest ? pendingGiftDay(latest, localDateKey()) : null;
+    giftLine.textContent = gift === null ? '' : `Quà ngày ${gift} đang chờ`;
+    giftLine.hidden = gift === null;
+    if (gift === null) continueBtn.removeAttribute('aria-describedby');
+    else continueBtn.setAttribute('aria-describedby', giftId);
     // "Ván mới" is the main action until there is something to continue.
     newBtn.className = `btn ${latest ? 'btn-secondary' : 'btn-primary'} btn-lg btn-block`;
     const hasAny = slots.some((s) => !s.empty);
