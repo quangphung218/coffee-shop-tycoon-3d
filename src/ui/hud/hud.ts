@@ -9,6 +9,7 @@ import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
 import { fresh } from '../core/fresh';
+import { PHASE_STEPS, phaseLabel } from '../core/phase';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
@@ -46,13 +47,6 @@ export function nextSpeed(speed: number): number {
 
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
-
-const PHASE_STEPS: readonly { phase: Phase; label: string }[] = [
-  { phase: 'preparation', label: 'Chuẩn bị' },
-  { phase: 'opening', label: 'Mở cửa' },
-  { phase: 'peak', label: 'Cao điểm' },
-  { phase: 'closing', label: 'Đóng cửa' },
-];
 
 /**
  * Minute of the next phase change while open and before closing (the end or
@@ -93,9 +87,7 @@ export function phaseHours(phase: Phase): string {
   }
 }
 
-export function phaseLabel(phase: Phase): string {
-  return phase === 'report' ? 'Tổng kết' : (PHASE_STEPS.find((s) => s.phase === phase)?.label ?? phase);
-}
+export { phaseLabel };
 
 export const WEATHER_LABELS: Readonly<Record<Weather, string>> = { sunny: 'Nắng', rainy: 'Mưa', hot: 'Nóng' };
 
