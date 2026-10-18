@@ -467,9 +467,9 @@ Chunk JS, CSS và font do `npm run build` sinh trong `dist/assets/`. Atlas icon 
 
 | Chunk (`npm run build`) hoặc file nguồn | Raw | Gzip | Tải khi |
 | --- | --- | --- | --- |
-| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 37,4 kB | 14,7 kB | Ngay khi mở trang, cần cho Main Menu |
+| `index-*.js` (chunk chính; từ `public/icons3d/atlas.json` chỉ lấy số đo lưới) | 38,2 kB | 15,0 kB | Ngay khi mở trang, cần cho Main Menu |
 | `index-*.css` | 53,3 kB | 9,6 kB | Ngay khi mở trang |
-| `game-*.js` (`src/game.ts`) | 120,6 kB | 40,9 kB | Sau khi Main Menu đã vẽ |
+| `game-*.js` (`src/game.ts`) | 120,0 kB | 40,8 kB | Sau khi Main Menu đã vẽ |
 | `game-*.css` (`src/ui/panels/panels.css`, `src/ui/report/report.css`) | 30,4 kB | 5,2 kB | Cùng chunk game |
 | `iconMap-*.js` (chunk dùng chung của chunk game và `src/render`: phần `src/sim` cả hai cần, `src/ui/core/iconMap.ts`) | 66,0 kB | 24,0 kB | Sau khi Main Menu đã vẽ |
 | `index-*.js` (`src/render`) | 98,8 kB | 36,4 kB | Sau khi Main Menu đã vẽ |
