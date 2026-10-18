@@ -16,6 +16,7 @@ import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
+import { once, restartWorldLoad, retryModule, watchAudioUnlock } from './ui/core/startup';
 import { createMenuShell, type ShellOptions } from './ui/screens/menuShell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
@@ -31,9 +32,6 @@ const SCENE_SLOW_MS = 8000;
 
 type WorldModule = typeof import('./render/scene');
 type GameModule = typeof import('./game');
-
-/** Loading-list items that come with the game and 3D scene chunks; one Thử lại redoes them all. */
-const WORLD_COMPONENTS: readonly LoadComponentId[] = ['code', 'world', 'shaders', 'labels'];
 
 /** Resolves after the browser has painted the current DOM. */
 function afterPaint(): Promise<void> {
@@ -56,20 +54,7 @@ async function online(): Promise<boolean> {
   }
 }
 
-/**
- * Imports a lazy chunk again after a failure. Browsers may keep a failed
- * module fetch for the life of the page (whatwg/html#6768), so when the
- * import fails again but the site answers, reload: the menu is cached and no
- * game is running yet (the play buttons wait for the scene).
- */
-async function retryModule<T>(load: () => Promise<T>): Promise<T> {
-  try {
-    return await load();
-  } catch (err) {
-    if (await online()) location.reload();
-    throw err;
-  }
-}
+const reload = (): void => location.reload();
 
 function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // The game (sim, HUD, panels, report, audio) and three.js with the 3D world
@@ -130,20 +115,11 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   hideBoot();
   performance.mark('cst:menu');
 
-  // Browsers only allow audio after a user gesture. A tap before the game
-  // chunk (and so the audio) is in keeps the listeners for the next one.
-  const unlock = (): void => {
-    if (!audio) return;
-    audio.unlock();
-    window.removeEventListener('pointerdown', unlock, true);
-    window.removeEventListener('keydown', unlock, true);
-  };
-  window.addEventListener('pointerdown', unlock, true);
-  window.addEventListener('keydown', unlock, true);
+  // A tap before the game chunk (and so the audio) is in keeps the listeners for the next one.
+  watchAudioUnlock(window, () => audio);
 
   /** Plugs the game chunk into the menu, once; returns the game part. */
-  const useGame = (m: GameModule): ReturnType<GameModule['mountGame']> => {
-    if (game) return game;
+  const useGame = once((m: GameModule): ReturnType<GameModule['mountGame']> => {
     sim = m;
     m.registerPrepPanels();
     m.registerReviewsPanel();
@@ -154,7 +130,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     game = m.mountGame(shell, options);
     shell.attachGame(game);
     return game;
-  };
+  });
   // Errors show on the loading list through loadWorld.
   gameModule.then(useGame).catch(() => undefined);
 
@@ -185,9 +161,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // Build the scene only after the menu is on screen, then fade it in. The
   // play buttons wait on `scene`, which follows the real downloads and steps.
   const loadWorld = (modules: Promise<[GameModule, WorldModule]>): void => {
-    for (const id of WORLD_COMPONENTS) scene.setComponent(id, { status: 'waiting', progress: 0 });
-    scene.setComponent('code', { status: 'loading' });
-    scene.set({ slow: false });
+    restartWorldLoad(scene);
     const stopWatch = watchDownloads(assets.scene, (f) => scene.setComponent('code', { progress: f }));
     const slowTimer = setTimeout(() => scene.set({ slow: true }), SCENE_SLOW_MS);
     /** The item running when something throws. */
@@ -244,7 +218,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   scene.onRetry = (id) => {
     if (id === 'fonts') fetchFonts();
     else if (id === 'icons') retryIconAtlas();
-    else loadWorld(Promise.all([retryModule(() => import('./game')), retryModule(() => import('./render/scene'))]));
+    else loadWorld(Promise.all([retryModule(() => import('./game'), online, reload), retryModule(() => import('./render/scene'), online, reload)]));
   };
   loadWorld(Promise.all([gameModule, worldModule]));
 }
