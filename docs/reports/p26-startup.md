@@ -34,7 +34,8 @@ Báo cáo P26 so với `57d7559`: thời gian tới Main Menu và cảnh 3D, kí
 | p95 máy bàn (`--headed`) | ≤ 16,7 ms | FAIL: 20 ms (lượt 22 / 20 / 20 / 21 / 19 ms); base cùng lượt 23 ms. Nợ từ P25 (P25 đo 18 ms), chờ anh quyết |
 | Long task máy bàn (`--headed`) | 0 long task | PASS: trung vị 0, lượt 0 / 1 / 0 / 0 / 0 ms; base trung vị 0, lượt 84 / 0 / 0 / 56 / 0 ms |
 | `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 68/68. Thẻ lên cấp ở 1280×720 cao 54 px, vừa một màn. Tràn ngang 0, CLS Kho 0, nút ≥ 44 px, Menu gọn PASS |
-| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 6 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
+| `npm run media:loading` | Màn chờ có %, dòng tiến độ, nút khoá "Đang chuẩn bị n%", Thử lại khi lỗi | PASS: 8 ảnh, xem [mục 4](#4-màn-chờ-và-main-menu-lúc-tải) |
+| Chunk game lỗi rồi Thử lại (`media:loading`) | Main Menu vẫn hiện, "Mã cảnh 3D" có Thử lại, nút vào quán khoá; sau Thử lại vào được HUD | PASS: 10/10 kiểm. Ván mới bấm lúc lỗi mở form khi chunk tới; Thử lại tải lại chunk ngay trên trang, không tải lại trang |
 
 ## 3. Số đo
 
@@ -94,3 +95,5 @@ Cột P26 lấy từ output `npm run build` (gzip của Vite), khớp bảng chu
 | Cảnh 3D tải lỗi | Dòng đỏ "Không tải được quán 3D…", "Mã cảnh 3D" báo lỗi kèm nút Thử lại | ![Lỗi tải](../media/loading-error.png) |
 | Sau Thử lại khi có mạng | Dòng tiến độ ẩn, quán 3D hiện sau menu | ![Sau Thử lại](../media/loading-retried.png) |
 | Script game lỗi lúc mở | Màn chờ báo "Không tải được game…" và nút Thử lại | ![Màn chờ lỗi](../media/loading-boot-error.png) |
+| Chunk game lỗi | Main Menu vẫn hiện; khung đỏ: dòng lỗi "Không tải được quán 3D…" và nút Thử lại của "Mã cảnh 3D"; Font, Icon 100% | ![Chunk game lỗi](../media/loading-game-error.png) |
+| Sau Thử lại chunk game | Form Ván mới đã bấm lúc lỗi tự mở; khung đỏ: "Bắt đầu ngày 1" đã mở khoá, quán 3D hiện phía sau | ![Sau Thử lại chunk game](../media/loading-game-retried.png) |
