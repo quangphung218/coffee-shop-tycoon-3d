@@ -5,7 +5,10 @@
 //
 // Builds the working tree (and <git-ref> with --base), serves each build with
 // `vite preview`, loads it with an empty cache and prints chunk sizes and the
-// median time to first paint, Main Menu on screen and 3D scene on screen.
+// median time to first paint, Main Menu on screen and 3D scene on screen for
+// each PROFILES entry: desktop unthrottled, mobile network + CPU 4x, and the
+// same on a 390×844 @3x touch phone screen. Builds are served from $PORT
+// (default 4173) upwards, one port per build.
 // --fps also plays day 1 on Easy at 4x up to the peak phase at each FPS_QUALITIES
 // graphics setting, <n> times per build taking turns between builds, and prints
 // the median over runs of the average frame rate across FPS_SECONDS of play and
@@ -22,6 +25,15 @@ const PROFILES = [
   { name: 'Desktop, no throttling' },
   // Lighthouse's mobile preset: slow 4G and a 4x slower CPU.
   { name: 'Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x', latency: 150, down: (1.6 * 1024 * 1024) / 8, up: (750 * 1024) / 8, cpu: 4 },
+  // The same network and CPU on a phone screen with touch.
+  {
+    name: 'Phone 390×844 @3x: 150 ms RTT, 1.6 Mbps, CPU 4x',
+    latency: 150,
+    down: (1.6 * 1024 * 1024) / 8,
+    up: (750 * 1024) / 8,
+    cpu: 4,
+    view: { width: 390, height: 844, deviceScaleFactor: 3, mobile: true },
+  },
 ];
 const TIMEOUT_MS = 60_000;
 
@@ -205,6 +217,11 @@ async function measureOnce(cdp, url, profile) {
       });
     }
     if (profile.cpu) await s('Emulation.setCPUThrottlingRate', { rate: profile.cpu });
+    if (profile.view) {
+      const { width, height, deviceScaleFactor, mobile } = profile.view;
+      await s('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor, mobile });
+      await s('Emulation.setTouchEmulationEnabled', { enabled: true });
+    }
     await s('Page.addScriptToEvaluateOnNewDocument', { source: PROBE });
     await s('Page.navigate', { url });
     const deadline = Date.now() + TIMEOUT_MS;
@@ -360,7 +377,7 @@ async function main() {
       b.outDir = resolve(b.root, 'dist');
       await build({ root: b.root, logLevel: 'warn', build: { outDir: b.outDir } });
       b.chunks = chunkSizes(b.outDir);
-      const server = await preview({ root: b.root, logLevel: 'silent', build: { outDir: b.outDir }, preview: { port: 4173 + servers.length, open: false } });
+      const server = await preview({ root: b.root, logLevel: 'silent', build: { outDir: b.outDir }, preview: { port: Number(process.env.PORT ?? 4173) + servers.length, open: false } });
       servers.push(server);
       b.url = server.resolvedUrls.local[0];
     }
