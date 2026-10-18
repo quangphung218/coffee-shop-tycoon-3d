@@ -12,6 +12,9 @@ import { buyUpgrade, getShopLayout, removeDecor } from './upgrades';
 import { setPolicy } from './policies';
 import { getMenuItem } from './data/menu';
 import { getUpgrade } from './data/upgrades';
+import { claimDailyGift } from './retention';
+import { startDaySpecialOrder, tickSpecialOrders } from './specialOrders';
+import { trainStaff } from './staffGrowth';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -36,6 +39,7 @@ function tick(state: GameState): void {
   updatePlayerTasks(state);
   updateStaff(state);
   updateCustomers(state);
+  tickSpecialOrders(state);
   // Customers who just started waiting got their takeaway spot after staff were placed; keep staff off it.
   placeStaff(state);
   recordExperiencesSince(state, eventsBefore);
@@ -88,7 +92,9 @@ export function settleActors(state: GameState): void {
 export function dispatch(state: GameState, cmd: Command): boolean {
   switch (cmd.type) {
     case 'start_day':
-      return openShop(state);
+      if (!openShop(state)) return false;
+      startDaySpecialOrder(state);
+      return true;
     case 'next_day':
       if (!startNextDay(state)) return false;
       advanceCampaigns(state);
@@ -147,6 +153,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       return setPolicy(state, cmd.policy, cmd.level);
     case 'start_campaign':
       return runCampaign(state, cmd.campaignId).ok;
+    case 'train_staff':
+      return trainStaff(state, cmd.staffId);
+    case 'claim_daily_gift':
+      return claimDailyGift(state, cmd.dateKey);
     default:
       return false;
   }

@@ -4,11 +4,13 @@ import { buildNavGrid, cellAt, nearestFree } from './nav';
 import { TASK_MINUTES, cleanMinutes, finishTask, isClaimed, workMinute } from './orders';
 import { staffSpeedMult } from './policies';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
+import { BASE_MAX_STAFF, maxStaff, onStaffTick } from './staffGrowth';
 import { CANDIDATE_COUNT, generateCandidates } from './state';
 import type { DayStats, GameState, Staff, StaffRole, StaffTask, StaffTaskKind, Vec2 } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
 
-export const MAX_STAFF = 6;
+/** Base team size cap; hireStaff checks maxStaff(state), which expansions can raise. */
+export const MAX_STAFF = BASE_MAX_STAFF;
 /** A marketer's promote task restarts every this many minutes (only for display). */
 export const PROMOTE_MINUTES = 30;
 
@@ -78,8 +80,9 @@ function releaseTask(state: GameState, member: Staff): void {
 export function hireStaff(state: GameState, candidateId: number, role: StaffRole = 'none'): Staff | null {
   const index = state.candidates.findIndex((c) => c.id === candidateId);
   if (index < 0) return null;
-  if (state.staff.length >= MAX_STAFF) {
-    notify(state, 'error', `Tối đa ${MAX_STAFF} nhân viên`);
+  const cap = maxStaff(state);
+  if (state.staff.length >= cap) {
+    notify(state, 'error', `Tối đa ${cap} nhân viên`);
     return null;
   }
   const [member] = state.candidates.splice(index, 1);
@@ -304,7 +307,10 @@ function work(state: GameState, member: Staff): void {
 
 /** One game minute for every staff member: pick up free work for their role, progress it, step to its spot. */
 export function updateStaff(state: GameState): void {
-  for (const member of state.staff) work(state, member);
+  for (const member of state.staff) {
+    work(state, member);
+    onStaffTick(state, member, 1);
+  }
   placeStaff(state);
 }
 
