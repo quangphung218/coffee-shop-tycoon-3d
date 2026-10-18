@@ -174,7 +174,8 @@ describe('compact switch CSS', () => {
   });
 
   it('draws "Thiếu X" as a button: ink frame, bottom shadow, no pill', () => {
-    const btn = rule('.badge-btn');
+    // Class repeated to beat .badge (game-*.css loads before ui.css).
+    const btn = rule('.badge-btn.badge-btn');
     expect(btn).toMatch(/border:\s*var\(--size-outline-sm\) solid var\(--border-outline\)/);
     expect(btn).toMatch(/box-shadow:\s*var\(--shadow-sm\)/);
     expect(btn).toMatch(/border-radius:\s*var\(--btn-radius\)/);
