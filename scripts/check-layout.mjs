@@ -29,6 +29,14 @@
 // ("Thiếu …", "Mở …", "Mới") 96 px; at every width no Menu name or meta line
 // may be cut (scrollWidth > clientWidth or "…"); at 1280×720 the level-up
 // report must fit without scrolling.
+// P27, at the same four sizes, from saves of scripts/capture-p27.mjs: Việc
+// with the gift card, special order and opened achievements, Nhân viên with
+// the Đào tạo confirm open, Nâng cấp with the Tem-priced furniture. Each must
+// not overflow, must show those parts and every button must be at least
+// --size-target.
+// LAYOUT_ONLY (day, hud, event, p25, p27, comma-separated) runs those parts
+// only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
+// can be split; the default runs everything.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -756,6 +764,72 @@ async function checkLevelUpReport(browser, viewport, save, day, results) {
   }
 }
 
+/** Saves of scripts/capture-p27.mjs: GIFT_DAY morning (staff to train), 09:00 of that day (special order), top shop level (Tem prices). */
+async function p27Saves() {
+  const { playSaves } = await import('./capture-p27.mjs');
+  const s = await playSaves(ROOT);
+  return { morning: s.saves.morning, tasks: s.saves.tasks, shop: s.saves.shop };
+}
+
+/**
+ * P27 panels: Việc with the gift card, the special order and the
+ * achievements list opened; Nhân viên with the Đào tạo confirm open; Nâng cấp
+ * with the Tem-priced furniture in view. Each must not overflow and every
+ * button must be at least --size-target.
+ */
+async function checkP27Panels(browser, viewport, saves, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const panel = '#ui > .panel:not([hidden])';
+  const buttons = async (page, screen, extra) => {
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: panel, target, eps: EPS });
+    const fails = [...small.out, ...extra.fails];
+    results.push({ viewport: size, screen, pass: fails.length === 0, detail: `${extra.detail}; ${small.count} nút ≥ ${target} px`, fails });
+  };
+  const needs = async (page, sels) => {
+    const missing = await page.evaluate((list) => list.filter((s) => ![...document.querySelectorAll(s)].some((e) => e.checkVisibility())), sels);
+    return missing.map((s) => `${s} not shown`);
+  };
+  {
+    const { context, page } = await resumeSave(browser, viewport, saves.tasks, 'nav.dock');
+    try {
+      await openPanel(page, 'tasks');
+      await page.locator(`${panel} [data-action="achievements"]`).click();
+      await page.locator(`${panel} [data-achievement]`).first().waitFor();
+      await checkScreen(page, results, size, 'Việc P27: quà, đơn đặc biệt, thành tựu', PANEL_FRAME);
+      const fails = await needs(page, [`${panel} .gift`, `${panel} [data-special-order]`, `${panel} [data-achievement]`]);
+      await buttons(page, 'Việc P27: nút', { fails, detail: 'thẻ quà, đơn đặc biệt, thành tựu sổ ra' });
+    } finally {
+      await context.close();
+    }
+  }
+  {
+    const { context, page } = await resumeSave(browser, viewport, saves.morning, '.hud [data-action="open"]');
+    try {
+      await openPanel(page, 'staff');
+      await page.locator(`${panel} [data-action="train"]`).first().click();
+      await page.locator(`${panel} .item[data-staff] .confirm`).first().waitFor();
+      await checkScreen(page, results, size, 'Nhân viên P27: đặc điểm, cấp, xác nhận Đào tạo', PANEL_FRAME);
+      const fails = await needs(page, [`${panel} [data-trait]`, `${panel} .item[data-staff] [role="progressbar"]`, `${panel} .item[data-staff] .confirm`]);
+      await buttons(page, 'Nhân viên P27: nút', { fails, detail: 'chip đặc điểm, thanh KN, xác nhận Đào tạo mở' });
+    } finally {
+      await context.close();
+    }
+  }
+  {
+    const { context, page } = await resumeSave(browser, viewport, saves.shop, '.hud [data-action="open"]');
+    try {
+      await openPanel(page, 'upgrades');
+      await page.evaluate((sel) => document.querySelector(sel)?.scrollIntoView({ block: 'center' }), `${panel} li[data-upgrade="record_player"]`);
+      await checkScreen(page, results, size, 'Nâng cấp P27: giá Tem', PANEL_FRAME);
+      const tem = await page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((e) => /\d+ Tem/.test(e.textContent ?? '')).length, `${panel} li[data-upgrade] .item-meta`);
+      await buttons(page, 'Nâng cấp P27: nút', { fails: tem >= 2 ? [] : [`${tem} rows priced in Tem, want ≥ 2`], detail: `${tem} dòng giá có Tem` });
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -776,8 +850,12 @@ async function main() {
   });
   const overflow = [];
   const shift = [];
+  // LAYOUT_ONLY=day,hud,event,p25,p27 runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  const only = process.env.LAYOUT_ONLY?.split(',');
+  const part = (name) => !only || only.includes(name);
+  const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    for (const viewport of VIEWPORTS) {
+    for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
       const t0 = Date.now();
       try {
@@ -789,7 +867,7 @@ async function main() {
         overflow.push({ viewport: size, screen: 'chạy kịch bản', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
-    for (const viewport of HUD_ONLY) {
+    for (const viewport of part('hud') ? HUD_ONLY : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
         await runHudOnly(browser, viewport, overflow);
@@ -798,8 +876,8 @@ async function main() {
         overflow.push({ viewport: size, screen: 'HUD', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
-    const eventSave = await eventDaySave();
-    for (const viewport of EVENT_DAY) {
+    const eventSave = part('event') ? await eventDaySave() : null;
+    for (const viewport of part('event') ? EVENT_DAY : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
         await runEventDay(browser, viewport, overflow, eventSave);
@@ -808,8 +886,8 @@ async function main() {
         overflow.push({ viewport: size, screen: 'HUD (ngày sự kiện)', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
-    const p25 = await p25Saves();
-    for (const viewport of P25_VIEWPORTS) {
+    const p25 = part('p25') ? await p25Saves() : null;
+    for (const viewport of part('p25') ? P25_VIEWPORTS : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
         await checkMenuCompact(browser, viewport, p25.morning, overflow);
@@ -817,6 +895,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'P25: Menu gọn, thẻ lên cấp', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const p27 = part('p27') ? await p27Saves() : null;
+    for (const viewport of part('p27') ? P25_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkP27Panels(browser, viewport, p27, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'P27: Việc, Nhân viên, Nâng cấp', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
