@@ -7,12 +7,11 @@ import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progress
 import { createDayStats } from '../sim/state';
 import type { GameState, MenuEntry, UpgradeId, WeekSummary } from '../sim/types';
 import { relayoutTables } from '../sim/upgrades';
+import { SAVE_SLOTS, SAVE_VERSION, saveKey, type SaveErrorKind, type SaveSlot, type SlotInfo } from './slots';
 import { defaultStorage, type StorageLike } from './storage';
 
-export const SAVE_VERSION = 3;
-export const SAVE_KEY_PREFIX = 'cst3d:save:';
-export const SAVE_SLOTS = ['auto', '1', '2', '3'] as const;
-export type SaveSlot = (typeof SAVE_SLOTS)[number];
+export { SAVE_KEY_PREFIX, SAVE_SLOTS, SAVE_VERSION, saveKey } from './slots';
+export type { SaveErrorKind, SaveSlot, SlotInfo } from './slots';
 
 export interface SaveFile {
   version: number;
@@ -21,8 +20,6 @@ export interface SaveFile {
   state: GameState;
 }
 
-export type SaveErrorKind = 'not_found' | 'corrupt' | 'invalid' | 'version_unsupported' | 'storage';
-
 export interface SaveError {
   kind: SaveErrorKind;
   message: string;
@@ -30,23 +27,8 @@ export interface SaveError {
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: SaveError };
 
-export interface SlotInfo {
-  slot: SaveSlot;
-  empty: boolean;
-  shopName?: string;
-  day?: number;
-  money?: number;
-  savedAt?: number;
-  /** Set when the slot holds data that cannot be loaded. */
-  error?: SaveErrorKind;
-}
-
 function fail<T>(kind: SaveErrorKind, message: string): Result<T> {
   return { ok: false, error: { kind, message } };
-}
-
-export function saveKey(slot: SaveSlot): string {
-  return SAVE_KEY_PREFIX + slot;
 }
 
 type Raw = Record<string, unknown>;
