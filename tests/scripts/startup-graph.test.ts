@@ -1,11 +1,30 @@
 // @vitest-environment node
 // Static import graph of the main chunk: everything src/main.ts reaches
 // without import() lands in the JS the menu waits for.
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, normalize } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+// The project has no Node types, so node:fs comes through a dynamically
+// named import; paths are from the project root (vitest's cwd).
+const FS_MODULE = 'node:fs';
+const { existsSync, readFileSync, statSync } = (await import(/* @vite-ignore */ FS_MODULE)) as {
+  existsSync(path: string): boolean;
+  readFileSync(path: string, encoding: 'utf8'): string;
+  statSync(path: string): { isFile(): boolean };
+};
+
 const ENTRY = 'src/main.ts';
+
+/** `dir` joined with `rel`, with `.` and `..` folded away (POSIX separators). */
+function join(dir: string, rel: string): string {
+  const out: string[] = [];
+  for (const part of `${dir}/${rel}`.split('/')) {
+    if (part === '..') out.pop();
+    else if (part !== '.' && part !== '') out.push(part);
+  }
+  return out.join('/');
+}
+
+const dirname = (path: string): string => path.slice(0, path.lastIndexOf('/'));
 
 /** Import clause: default, `{ ... }`, `* as x`, or a default followed by one of those. */
 const CLAUSE = String.raw`(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?|[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+[\w$]+))?)`;
@@ -16,8 +35,8 @@ const BARE = /\bimport\s*['"]([^'"]+)['"]/g;
 function staticImports(source: string): string[] {
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const specs: string[] = [];
-  for (const m of code.matchAll(FROM)) if (!m[2]) specs.push(m[3]);
-  for (const m of code.matchAll(BARE)) specs.push(m[1]);
+  for (const m of code.matchAll(FROM)) if (!m[2]) specs.push(m[3]!);
+  for (const m of code.matchAll(BARE)) specs.push(m[1]!);
   return specs;
 }
 
@@ -25,7 +44,7 @@ const isFile = (path: string): boolean => existsSync(path) && statSync(path).isF
 
 /** Repo-relative file a relative specifier points at, trying `.ts` and `/index.ts`. */
 function resolve(from: string, spec: string, has: (path: string) => boolean = isFile): string | null {
-  const base = normalize(join(dirname(from), spec));
+  const base = join(dirname(from), spec);
   return [base, `${base}.ts`, join(base, 'index.ts')].find(has) ?? null;
 }
 
@@ -94,12 +113,12 @@ describe('import walker', () => {
     'src/e.ts': "import { x } from './sim/types';",
     'src/sim/types.ts': '',
   };
-  const read = (path: string): string => files[path];
+  const read = (path: string): string => files[path] ?? '';
   const has = (path: string): boolean => path in files;
 
   it('keeps value imports and re-exports, skips type-only, dynamic and commented ones', () => {
-    expect(staticImports(files['src/a.ts'])).toEqual(['./b', './c', 'three', './style.css']);
-    expect(staticImports(files['src/b.ts'])).toEqual(['./d/index', './e']);
+    expect(staticImports(read('src/a.ts'))).toEqual(['./b', './c', 'three', './style.css']);
+    expect(staticImports(read('src/b.ts'))).toEqual(['./d/index', './e']);
   });
 
   it('does not count `import type` from src/sim as a dependency', () => {
@@ -111,6 +130,7 @@ describe('import walker', () => {
     expect(resolve('src/main.ts', './game')).toBe('src/game.ts');
     expect(resolve('src/main.ts', './render/scene')).toBe('src/render/scene/index.ts');
     expect(resolve('src/main.ts', './ui/styles/ui.css')).toBe('src/ui/styles/ui.css');
+    expect(resolve('src/ui/screens/mainMenu.ts', '../../save/./slots')).toBe('src/save/slots.ts');
     expect(resolve('src/main.ts', './missing')).toBeNull();
   });
 
