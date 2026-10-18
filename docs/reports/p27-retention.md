@@ -14,7 +14,7 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 
 - `npm run check` xanh: 107 file, 1616 test; 12 file test P27 có 190 test.
 - Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 660 / 657 / 850 ms qua 3 lượt, đều dưới 1 s.
-- Main Menu trên Mobile so với base: +91 / −1 / +42 ms. Lượt có P27 chậm hơn base cũng là lượt máy bàn và Phone lệch theo, nên không có dấu hiệu chậm thật ([mục 3](#3-khởi-động)).
+- Main Menu trên Mobile so với base: +91 / −1 / +42 ms. Phone cùng mạng và CPU lệch −11 / +16 / +109 ms (lượt 1 ngược chiều Mobile), lượt 3 cả máy bàn cũng chậm hơn base, và lượt 2 với 9 lần đo cho Mobile bằng base, nên chênh lệch là nhiễu đo chứ không phải chậm thật ([mục 3](#3-khởi-động)).
 - JS chính `index-*.js`: 15,0 → 15,4 kB gzip (+0,4 kB). CSS chính không đổi (cùng file `index-BD2jmB4N.css`, 9,55 kB).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
 - Layout 92/92: 68 mục cũ và 24 mục mới cho bảng Việc, Nhân viên, Nâng cấp của P27.
