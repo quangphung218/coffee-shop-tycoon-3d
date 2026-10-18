@@ -1,4 +1,4 @@
-import { upgradeUnlockLevel } from '../../sim/data/levels';
+import { LEVELS, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
 import { getUpgrade, UPGRADE_TIERS, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import {
@@ -6,6 +6,8 @@ import {
   isRemovableDecor,
   maxUpgradeLevel,
   nextUpgradeCost,
+  nextUpgradeTicketCost,
+  upgradeBlockedReason,
   upgradeLevel,
   upgradeLevelPrice,
 } from '../../sim/upgrades';
@@ -66,6 +68,17 @@ export function tierText(id: UpgradeId, level: number, canBuy: boolean): string 
   return `Bậc ${tier}/${UPGRADE_TIERS} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
 }
 
+/** Next shop level (7..10) that raises the upgrade's cap, or null when none is left. */
+export function nextBonusShopLevel(state: GameState, id: UpgradeId): number | null {
+  const now = maxLevelBonus(state.shopLevel, id);
+  return LEVELS.find((def) => def.level > state.shopLevel && maxLevelBonus(def.level, id) > now)?.level ?? null;
+}
+
+/** "50.000đ" or "50.000đ + 5 Tem" for the next level's price. */
+function priceText(cost: number, tickets: number): string {
+  return tickets > 0 ? `${formatMoney(cost)} + ${tickets} Tem` : formatMoney(cost);
+}
+
 /** How long "Gỡ" stays armed waiting for a second click, ms (as "Về mặc định" in Cài đặt). */
 export const REMOVE_CONFIRM_MS = 3000;
 
@@ -78,8 +91,10 @@ export function decorRefund(state: GameState, id: UpgradeId): number {
 
 /**
  * Nâng cấp by group, one row per upgrade (icon of the current tier | name +
- * price of the next level, current level and the effect per level, then
- * "Bậc n/3" once bought | "Mở ngày N" / "Tối đa" | Mua). "Mua" asks for an in-place confirm, then sends buy_upgrade.
+ * price of the next level (money, plus Tem when it has a ticketCost), current
+ * level and the effect per level, then "Bậc n/3" once bought | "Mở ngày N" /
+ * "Mở ở cấp quán N" / "Tối đa" | Mua). Mua is aria-disabled with the reason
+ * (an upgrade it needs, money, then Tem) when it cannot be bought. "Mua" asks for an in-place confirm, then sends buy_upgrade.
  * Owned decor without seats has "Gỡ (+X)": the first click arms it for
  * REMOVE_CONFIRM_MS, a second click sends remove_decor.
  */
@@ -158,7 +173,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       showBuy(false);
       li.append(
         inlineConfirm(
-          `Mua ${def.name} cấp ${upgradeLevel(s, id) + 1} với ${formatMoney(cost)}? Còn lại ${formatMoney(s.money - cost)}.`,
+          `Mua ${def.name} cấp ${upgradeLevel(s, id) + 1} với ${priceText(cost, nextUpgradeTicketCost(s, id) ?? 0)}? Còn lại ${formatMoney(s.money - cost)}.`,
           'Mua',
           'btn-primary',
           () => {
@@ -173,12 +188,13 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       );
     });
     w.watch(
-      (s) => `${s.shopLevel}|${weekDay(s)}|${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}`,
+      (s) => `${s.shopLevel}|${weekDay(s)}|${upgradeLevel(s, id)}|${nextUpgradeCost(s, id)}|${s.money}|${s.retention?.tickets ?? 0}|${upgradeBlockedReason(s, id) ?? ''}`,
       (_, s) => {
         const lv = upgradeLevel(s, id);
         const cost = nextUpgradeCost(s, id);
         const max = maxUpgradeLevel(s, id);
-        meta.textContent = `${cost === null ? '' : `Giá ${formatMoney(cost)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}mỗi cấp ${effectText(def.effectPerLevel)}`;
+        const tickets = nextUpgradeTicketCost(s, id) ?? 0;
+        meta.textContent = `${cost === null ? '' : `Giá ${priceText(cost, tickets)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}mỗi cấp ${effectText(def.effectPerLevel)}`;
         // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
@@ -190,11 +206,17 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
           setAriaDisabled(buy, true);
           setReason(why, buy, opens.reason);
         } else if (cost === null) {
-          badge.className = 'badge badge-ok';
-          setIconText(badge, 'i-ok', 'Tối đa');
+          // At the cap: a later shop level (7..10) may still raise it.
+          const bonusAt = nextBonusShopLevel(s, id);
+          badge.className = `badge ${bonusAt === null ? 'badge-ok' : 'badge-neutral'}`;
+          setIconText(badge, bonusAt === null ? 'i-ok' : 'i-lock', bonusAt === null ? 'Tối đa' : `Mở ở cấp quán ${bonusAt}`);
           setReason(why, buy, null);
         } else {
-          const short = s.money < cost ? shortOfMoney(cost, s.money, formatMoney) : null;
+          const have = s.retention?.tickets ?? 0;
+          const short =
+            upgradeBlockedReason(s, id) ??
+            (s.money < cost ? shortOfMoney(cost, s.money, formatMoney) : null) ??
+            (have < tickets ? `Thiếu ${tickets - have} Tem` : null);
           setAriaDisabled(buy, short !== null);
           setReason(why, buy, short);
         }
