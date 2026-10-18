@@ -93,6 +93,11 @@ async function markedShot(page, name, marks) {
       layer.append(frame, label);
     }
     document.body.append(layer);
+    // Keep each label inside the viewport.
+    for (const label of layer.querySelectorAll('span')) {
+      const over = label.getBoundingClientRect().right - (innerWidth - 4);
+      if (over > 0) label.style.left = `${Math.max(4, label.offsetLeft - over)}px`;
+    }
   }, boxes);
   await shot(page, name);
   await page.evaluate(() => document.getElementById('capture-marks')?.remove());
@@ -202,7 +207,7 @@ async function main() {
       check((await start.count()) === 0 && (await menu.isVisible()), 'Ván mới before Thử lại: stays on the Main Menu until the game chunk is in');
       await markedShot(page, 'loading-game-error.png', [
         { locator: menu.locator('.scene-load-msg'), text: 'Dòng lỗi' },
-        { locator: codeRetry, text: 'Thử lại của "Mã cảnh 3D"' },
+        { locator: codeRetry, text: 'Thử lại "Mã cảnh 3D"' },
       ]);
       await page.unroute(GAME);
       // Thử lại may import the chunk again or, when the browser kept the failed module, reload the page.
