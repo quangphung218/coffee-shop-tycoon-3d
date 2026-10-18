@@ -149,6 +149,31 @@ describe('P27 staff panel', () => {
     expect(q(body, `li[data-staff="${member.id}"]`).textContent).toContain('Cấp 2/5');
   });
 
+  it('brings Đào tạo back after confirming so the next level can be trained', () => {
+    const { state, member } = withHire();
+    member.exp = STAFF_LEVEL_EXP[1];
+    state.money = 10_000_000;
+    const { body, sent, handle } = mount(state);
+    const btn = q<HTMLButtonElement>(body, `li[data-staff="${member.id}"] [data-action="train"]`);
+    btn.click();
+    q<HTMLButtonElement>(body, '.confirm [data-action="confirm"]').click();
+    expect(member.level).toBe(2);
+    expect(q(body, `li[data-staff="${member.id}"] [data-action="train"]`)).toBe(btn);
+    expect(btn.hidden).toBe(false);
+    expect(document.activeElement).toBe(btn);
+
+    member.exp = STAFF_LEVEL_EXP[2];
+    handle!.update!(state);
+    expect(btn.getAttribute('aria-disabled')).toBeNull();
+    btn.click();
+    const confirm = q(body, `li[data-staff="${member.id}"] .confirm`);
+    expect(confirm.textContent).toContain(`Đào tạo ${member.name} lên cấp 3?`);
+    q<HTMLButtonElement>(confirm, '[data-action="confirm"]').click();
+    expect(sent.filter((c) => c.type === 'train_staff')).toHaveLength(2);
+    expect(member.level).toBe(3);
+    expect(btn.hidden).toBe(false);
+  });
+
   it('cancel closes the confirm and sends nothing', () => {
     const { state, member } = withHire();
     member.exp = STAFF_LEVEL_EXP[1];

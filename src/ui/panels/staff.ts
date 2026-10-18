@@ -178,7 +178,12 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
           `Đào tạo ${m.name} lên cấp ${staffLevel(m) + 1}? Lương +${WAGE_STEP_PCT}%, làm nhanh +${SPEED_STEP_PCT}%.`,
           'Đào tạo',
           'btn-primary',
-          () => keepFocus(li, body, () => send({ type: 'train_staff', staffId: member.id })),
+          () => {
+            // The row is not rebuilt on training, so bring Đào tạo back for the next level.
+            trainBtn.hidden = false;
+            trainBtn.focus();
+            keepFocus(li, body, () => send({ type: 'train_staff', staffId: member.id }));
+          },
           () => {
             trainBtn.hidden = false;
             trainBtn.focus();
