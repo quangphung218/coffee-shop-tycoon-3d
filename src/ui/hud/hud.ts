@@ -205,8 +205,9 @@ export function createHud(actions: HudActions): Hud {
 
   // Today's weather (an icon) and event (icon and word, only on a special
   // day), during a week. The title and accessible name say what they do;
-  // below 1440 px the event shows its icon only (ui.css), as a word like
-  // "Tăng giá nhập" pushed Điều khiển to a second row at 1280 px.
+  // below 1440 px, or when the row is full (.is-compact, fitRow), the event
+  // shows its icon only (ui.css), as a word like "Tăng giá nhập" pushed
+  // Điều khiển to a second row.
   const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'img', 'data-chip': 'weather' } });
   const eventChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'event' } });
   const weekChips = h('span', { class: 'hud-week', hidden: true }, weatherChip, eventChip);
@@ -787,9 +788,32 @@ export function createHud(actions: HudActions): Hud {
     host.style.setProperty('--hud-h', `${hudH}px`);
     host.style.setProperty('--dock-h', `${dockH}px`);
   }
-  const edges = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measureEdges()) : null;
+  // From 1024 px up the three clusters must share one row (ui.css). Their
+  // widths follow the data (a nine-digit sum, Tem, an event's name), so no
+  // breakpoint can promise that: lay them out in full, and while a cluster
+  // starts below Hôm nay try .is-compact (the short words), then .is-stacked
+  // (the tablet's two rows). Classes switch before paint, so nothing jumps.
+  const clusters = [...bar.querySelectorAll<HTMLElement>(':scope > .hud-cluster')];
+  const stackedMq = typeof matchMedia === 'function' ? matchMedia('(max-width: 1023px)') : null;
+  function fitRow(): void {
+    bar.classList.remove('is-compact', 'is-stacked');
+    if (el.hidden || !stackedMq || stackedMq.matches) return;
+    const oneRow = (): boolean => clusters.every((c) => Math.abs(c.offsetTop - clusters[0]!.offsetTop) < 1);
+    if (oneRow()) return;
+    bar.classList.add('is-compact');
+    if (oneRow()) return;
+    bar.classList.add('is-stacked');
+  }
+  const edges =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          fitRow();
+          measureEdges();
+        })
+      : null;
   edges?.observe(bar);
   edges?.observe(dock);
+  for (const c of clusters) edges?.observe(c);
 
   return {
     el,

@@ -1565,6 +1565,14 @@ legend {
     display: none;
   }
 }
+/* From 1024 px up, hud.ts sets .is-compact when the clusters would not fit
+   one row as they are (a late-game sum, Tem, an event's name at 1440 px):
+   the same words hide as below 1440 px. */
+.hud.is-compact .hud-level .xp-num,
+.hud.is-compact .week-chip-label,
+.hud.is-compact .hud-btn .lbl-long {
+  display: none;
+}
 /* Tablet and phone: Hôm nay over Tiến độ on the left, Điều khiển on the
    right across both rows (the phase action or speed group on top, pause and
    the menu below), so the HUD takes two rows. */
@@ -1615,6 +1623,55 @@ legend {
   .hud-controls > .hud-menu-wrap {
     grid-area: menu;
   }
+}
+/* From 1024 px up, when the compact clusters still do not fit one row,
+   hud.ts sets .is-stacked: the same two rows as above, so Điều khiển never
+   wraps on its own under Tiến độ. */
+.hud.is-stacked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'today controls'
+    'progress controls';
+  align-items: center;
+  justify-items: start;
+}
+.hud.is-stacked::after {
+  display: none;
+}
+.hud.is-stacked .hud-today {
+  grid-area: today;
+}
+.hud.is-stacked .hud-progress {
+  grid-area: progress;
+}
+.hud.is-stacked .hud-note {
+  grid-column: 1 / -1;
+}
+.hud.is-stacked .hud-controls {
+  grid-area: controls;
+  align-self: stretch;
+  height: auto;
+  display: grid;
+  grid-template-areas:
+    'main main'
+    'pause menu';
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+  margin-left: 0;
+  border-radius: var(--radius-xl);
+}
+.hud.is-stacked .hud-controls > .hud-btn-cta,
+.hud.is-stacked .hud-controls > .speed,
+.hud.is-stacked .hud-controls > .speed-cycle {
+  grid-area: main;
+}
+.hud.is-stacked .hud-controls > [data-action='pause'] {
+  grid-area: pause;
+}
+.hud.is-stacked .hud-controls > .hud-menu-wrap {
+  grid-area: menu;
 }
 
 /* Dock: the seven panel buttons, bottom centre. Ghost buttons in one frame,
