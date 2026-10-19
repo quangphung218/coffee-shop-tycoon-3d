@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng và khách VIP bằng `npm run media:p27` (mục [Ảnh P27](#ảnh-p27)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -409,6 +409,38 @@ npm run perf:frames -- --fx
 
 Mỗi dòng in p50, p95, khung dài nhất, số khung > 50 ms và long task (trung vị `--runs` lượt, mặc định 3). Chrome headless cấp khung theo bội số nhịp màn hình (thường 83 ms), nên p95 headless chỉ để so khoảng; thêm `--headed` để có thời gian khung thật trong cửa sổ Chrome. `--base <ref>` đo cả bản đó, hai bản xen kẽ.
 
+## Ảnh P27
+
+```sh
+npm run media:p27
+```
+
+Lệnh build bản hiện tại, xuất P26 `d58350b` ra thư mục tạm và build nó, mở `vite preview` cho bản hiện tại ở `MEDIA_PORT` (mặc định `$PORT`, rồi `4173`) và P26 ở cổng kế tiếp, rồi `scripts/capture-p27.mjs` chụp ở 390×844 và 1280×720 bằng Chromium headless, mỗi khổ một trình duyệt mới. Chỗ mới được khoanh đỏ, nhãn đỏ chữ trắng luôn nằm trong khung ảnh. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `d58350b`.
+
+1. Sim của mỗi bản chơi ván Vừa của chính nó (seed `MEDIA_SEED >>> 0`, tuyển 1 pha chế và 1 phục vụ ngày 1, nhập hàng theo gợi ý, tự phục vụ). Sáng ngày 3: nhận quà với ngày hôm qua của máy, tiền nâng lên ít nhất 3.000.000đ, lưu save sáng. Lưu save lúc 09:00 ngày 3 và (P27) save lúc khách VIP đầu tiên đang xếp hàng.
+2. Hai save cấp quán 10: một save chỉ mua Mở rộng diện tích cấp 1, 12 Tem; một save mua Mở rộng diện tích, bàn, Biển neon, Kệ sách, Máy hát đĩa, Góc sofa, cây, tranh, đèn, máy espresso, quầy tới cấp tối đa.
+3. Mỗi khổ: Main Menu, HUD và bảng Nhân viên (bấm **Đào tạo**) trên save sáng của cả hai bản; bảng Việc lúc 09:00 (bấm **Thành tựu**), Nâng cấp cuộn tới Máy hát đĩa, cảnh quán mở rộng và khách VIP trên bản hiện tại. Ảnh VIP chờ camera dừng, phóng khoảng 2x vào khách VIP (về camera mặc định nếu ngôi sao ra ngoài khung) rồi cắt sát ngôi sao.
+
+Mười bốn ảnh JPEG chất lượng 80 trong `docs/media/`, ghi đè mỗi lần chạy (`<w>` là `390` hoặc `1280`):
+
+| File | Nội dung |
+| --- | --- |
+| `menu-gift-<w>-p27.jpg` | Main Menu P26 cạnh P27: dòng "Quà ngày 2 đang chờ" dưới **Tiếp tục**. |
+| `hud-tem-<w>-p27.jpg` | HUD P26 cạnh P27: chip Tem sau tiền trong cụm Tiến độ. |
+| `staff-<w>-p27.jpg` | Nhân viên P26 cạnh P27: chip đặc điểm, "Cấp n/5 · KN", thanh KN, xác nhận Đào tạo tại chỗ. |
+| `tasks-<w>-p27.jpg` | Việc ở đầu bảng và cuộn xuống: thẻ Quà hằng ngày, đơn đặc biệt, thành tựu đã sổ ra. |
+| `upgrades-tem-<w>-p27.jpg` | Nâng cấp: giá Máy hát đĩa và Góc sofa có Tem, chip Tem trên HUD. |
+| `expand-<w>-p27.jpg` | Quán mở rộng cấp 4 với camera mặc định: phòng bên, Biển neon, Kệ sách, Máy hát đĩa, Góc sofa (ở 390 px chỉ khoanh món nằm trong khung). |
+| `vip-<w>-p27.jpg` | Cận cảnh khách VIP: ngôi sao trên bong bóng. |
+
+Ảnh dùng trong [báo cáo P27](reports/p27-retention.md). Lệnh in `!!` khi một nhãn không có gì để khoanh, vòng khoanh dưới 60% nằm trong khung, nhãn không còn chỗ trống, hoặc bảng Việc thiếu thẻ quà, đơn đặc biệt hay thành tựu; có `!!` thì lệnh kết thúc với mã 1. Chỉ chơi và in các save:
+
+```sh
+P27_SAVES_ONLY=1 node scripts/capture-p27.mjs
+```
+
+Chỉ chụp một khổ (lệnh ngắn hơn): `P27_WIDTHS=390 npm run media:p27`.
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -431,6 +463,10 @@ Mỗi dòng in p50, p95, khung dài nhất, số khung > 50 ms và long task (tr
 | `P25_BASE` | `5d33195` | Commit "trước" mà `npm run media:p25` so với bản hiện tại. |
 | `P25_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p25` chơi trên sim mỗi bản. |
 | `P25_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p25.mjs` chỉ chơi ván, in cấp và bậc của các save rồi dừng. |
+| `P27_BASE` | `d58350b` | Commit "trước" mà `npm run media:p27` so với bản hiện tại. |
+| `P27_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p27` chơi trên sim mỗi bản. |
+| `P27_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p27.mjs` chỉ chơi ván, in các save rồi dừng. |
+| `P27_WIDTHS` | `390,1280` | Khổ mà `npm run media:p27` chụp. |
 | `MEDIA_CHROMIUM` | (trống) | `1` để `scripts/capture-p25.mjs` dùng Chromium của Playwright thay cho Chrome cài sẵn. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
@@ -467,7 +503,17 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 npm run layout
 ```
 
-Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. HUD được đo lúc Chuẩn bị, lúc mở menu camera và lúc mở cửa (thêm khổ 1280×800 chỉ đo HUD): đủ 3 cụm, nằm trong màn, không chồng nhau, nội dung không lòi khỏi khung, 1 hàng từ 1280 px trở lên và tối đa 2 hàng ở khổ hẹp hơn. Ở 390×844, 768×1024, 1280×720 và 1440×900, lệnh còn nạp save của `scripts/capture-p25.mjs`: Menu sáng ngày 3 sau khi bấm công tắc Nước cam (thiếu Cam) và Daily Report của ngày lên cấp đầu tiên; cả hai không được tràn, mọi nút ≥ 44 px (tính cả vùng chạm `::before`); ở 390 px dòng Menu bán được ≤ 72 px, dòng thiếu hàng ≤ 96 px; ở 1280×720 báo cáo có thẻ lên cấp vừa một màn. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p19-layout-check.md](reports/p19-layout-check.md).
+Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. HUD được đo lúc Chuẩn bị, lúc mở menu camera và lúc mở cửa (thêm khổ 1280×800 chỉ đo HUD): đủ 3 cụm, nằm trong màn, không chồng nhau, nội dung không lòi khỏi khung, 1 hàng từ 1280 px trở lên và tối đa 2 hàng ở khổ hẹp hơn. Ở 390×844, 768×1024, 1280×720 và 1440×900, lệnh còn nạp save của `scripts/capture-p25.mjs`: Menu sáng ngày 3 sau khi bấm công tắc Nước cam (thiếu Cam) và Daily Report của ngày lên cấp đầu tiên; cả hai không được tràn, mọi nút ≥ 44 px (tính cả vùng chạm `::before`); ở 390 px dòng Menu bán được ≤ 72 px, dòng thiếu hàng ≤ 96 px; ở 1280×720 báo cáo có thẻ lên cấp vừa một màn. Ở cùng bốn khổ, lệnh nạp save của `scripts/capture-p27.mjs`: bảng Việc lúc 09:00 ngày 3 với thành tựu đã sổ ra, bảng Nhân viên với xác nhận Đào tạo đang mở, bảng Nâng cấp ở cấp quán 10; mỗi bảng không được tràn, phải hiện thẻ quà, đơn đặc biệt, thành tựu (Việc), chip đặc điểm, thanh KN, xác nhận (Nhân viên), ít nhất 2 dòng giá có Tem (Nâng cấp), và mọi nút ≥ 44 px. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p27-retention.md](reports/p27-retention.md#2-kết-quả-kiểm).
+
+Chạy từng phần khi cả lượt dài quá giới hạn lệnh (`npm run build` một lần trước):
+
+```sh
+LAYOUT_ONLY=day LAYOUT_DAY_WIDTHS=390,768 node scripts/check-layout.mjs
+LAYOUT_ONLY=day LAYOUT_DAY_WIDTHS=1440 node scripts/check-layout.mjs
+LAYOUT_ONLY=hud,event node scripts/check-layout.mjs
+LAYOUT_ONLY=p25 node scripts/check-layout.mjs
+LAYOUT_ONLY=p27 node scripts/check-layout.mjs
+```
 
 ## Icon 3D
 

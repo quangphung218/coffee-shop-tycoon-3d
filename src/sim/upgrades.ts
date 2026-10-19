@@ -2,7 +2,8 @@ import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { BONUS_LEVEL_PRICE_MULT, maxLevelBonus } from './data/levels';
 import { getUpgrade, upgradeCost, upgradeTier } from './data/upgrades';
-import { CHAIR_OFFSET } from './nav/footprints';
+import { BOOKSHELF_SIZE, CHAIR_OFFSET, SOFA_SIZE } from './nav/footprints';
+import { ensureRetention } from './retention';
 import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
 import type { GameState, Table, UpgradeId, Vec2 } from './types';
 
@@ -35,7 +36,8 @@ export interface LayoutMachine {
   tier: number;
 }
 
-export type DecorKind = 'plant' | 'painting' | 'light';
+/** Decor on the floor plan; neon signs hang on a wall and the record player stands on the back counter, so neither has a footprint. */
+export type DecorKind = 'plant' | 'painting' | 'light' | 'neon' | 'bookshelf' | 'record_player' | 'sofa';
 
 export interface LayoutDecor {
   kind: DecorKind;
@@ -108,8 +110,35 @@ const DECOR_SLOTS: Readonly<Record<DecorKind, readonly Vec2[]>> = {
     { x: 1.5, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
     { x: -1.5, z: TABLE_ROW_Z },
   ],
+  // Inside the front wall, either side of the door.
+  neon: [
+    { x: -2.6, z: 5.9 },
+    { x: 2.6, z: 5.9 },
+  ],
+  // Against the left wall beside the counter, clear of the back-left planter and the walk around the counter end.
+  bookshelf: [
+    { x: INDOOR_AREA.minX + 0.02 + BOOKSHELF_SIZE.depth / 2, z: -2.85 },
+    { x: INDOOR_AREA.minX + 0.02 + BOOKSHELF_SIZE.depth / 2, z: -1.65 },
+  ],
+  // Right end of the back counter, past the dishwasher; backCounterSpan runs the counter under it.
+  record_player: [{ x: 3.95, z: MACHINE_POS.z }],
+  // Against the back wall of the side room, behind its first column of tables.
+  sofa: [{ x: INDOOR_AREA.maxX + 1.3, z: INDOOR_AREA.minZ + 0.02 + SOFA_SIZE.depth / 2 }],
 };
-const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = { plant: 'plants', painting: 'paintings', light: 'lights' };
+const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = {
+  plant: 'plants',
+  painting: 'paintings',
+  light: 'lights',
+  neon: 'neon_sign',
+  bookshelf: 'bookshelf',
+  record_player: 'record_player',
+  sofa: 'sofa_corner',
+};
+
+/** Upgrades that need another one owned first: the sofa corner stands in the side room. */
+const UPGRADE_REQUIRES: Partial<Record<UpgradeId, { id: UpgradeId; level: number }>> = {
+  sofa_corner: { id: 'expand_area', level: 1 },
+};
 
 function expansionArea(level: number): Area {
   return { minX: INDOOR_AREA.maxX, maxX: 5.5 + 2 * level, minZ: INDOOR_AREA.minZ, maxZ: INDOOR_AREA.maxZ };
@@ -214,6 +243,20 @@ export function nextUpgradeCost(state: GameState, id: UpgradeId): number | null 
   return level >= maxUpgradeLevel(state, id) ? null : upgradeLevelPrice(state, id, level + 1);
 }
 
+/** Tickets ('Tem') the next level costs on top of the money (0 when none); null at max level. */
+export function nextUpgradeTicketCost(state: GameState, id: UpgradeId): number | null {
+  const level = upgradeLevel(state, id);
+  if (level >= maxUpgradeLevel(state, id)) return null;
+  return getUpgrade(id).ticketCost?.[level] ?? 0;
+}
+
+/** Why the upgrade cannot be bought whatever the money and tickets (an upgrade it needs is missing), or null. */
+export function upgradeBlockedReason(state: GameState, id: UpgradeId): string | null {
+  const need = UPGRADE_REQUIRES[id];
+  if (!need || upgradeLevel(state, need.id) >= need.level) return null;
+  return `Cần ${getUpgrade(need.id).name} trước khi mua ${getUpgrade(id).name}`;
+}
+
 /**
  * Raises an upgrade one level without charging for it, adding the tables a
  * seating upgrade brings. Returns the new level. The caller checks the max level.
@@ -227,18 +270,31 @@ export function grantUpgradeLevel(state: GameState, id: UpgradeId): number {
 
 export type UpgradeResult = { ok: true; cost: number; level: number } | { ok: false; reason: string };
 
+function refuse(state: GameState, reason: string): UpgradeResult {
+  state.events.push({ type: 'notify', level: 'error', text: reason });
+  return { ok: false, reason };
+}
+
 /**
  * Buys the next level of an upgrade. Upgrades with capacity (seating, and
  * decor such as the window bar) add tables to `state.tables`; rating, appeal and brew speed take effect through the upgrade
- * levels. Refused at max level or when the money does not cover the price.
+ * levels. Refused at max level, while an upgrade it needs is missing
+ * (upgradeBlockedReason), or when the money or the tickets (ticketCost) do
+ * not cover the price.
  */
 export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   const def = getUpgrade(id);
   const cost = nextUpgradeCost(state, id);
-  if (cost === null || state.money < cost) {
-    const reason = cost === null ? `${def.name} đã ở cấp tối đa` : `Không đủ tiền mua ${def.name}`;
-    state.events.push({ type: 'notify', level: 'error', text: reason });
-    return { ok: false, reason };
+  if (cost === null) return refuse(state, `${def.name} đã ở cấp tối đa`);
+  const blocked = upgradeBlockedReason(state, id);
+  if (blocked) return refuse(state, blocked);
+  if (state.money < cost) return refuse(state, `Không đủ tiền mua ${def.name}`);
+  const tickets = nextUpgradeTicketCost(state, id) ?? 0;
+  if (tickets > 0) {
+    // Only upgrades priced in tickets create the retention state of an older save.
+    const retention = ensureRetention(state);
+    if (retention.tickets < tickets) return refuse(state, `Thiếu ${tickets - retention.tickets} Tem`);
+    retention.tickets -= tickets;
   }
   state.money -= cost;
   state.today.upgradeCost += cost;
@@ -250,7 +306,7 @@ export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
 /** Share of a level's price given back when the decor is taken down. */
 export const DECOR_REFUND_SHARE = 0.5;
 
-/** Decor without seats (plants, paintings, lights) can be taken down; the window bar has tables. */
+/** Decor without seats (plants, paintings, lights, the P27 furniture) can be taken down; the window bar has tables. */
 export function isRemovableDecor(id: UpgradeId): boolean {
   const def = getUpgrade(id);
   return def.category === 'decor' && !def.effectPerLevel.capacity;
@@ -282,6 +338,8 @@ export function removeDecor(state: GameState, id: UpgradeId): RemoveDecorResult 
 function decorFor(state: GameState): LayoutDecor[] {
   const out: LayoutDecor[] = [];
   for (const kind of Object.keys(DECOR_SLOTS) as DecorKind[]) {
+    // The sofa's spot is in the side room; without it (an edited save) it is not placed.
+    if (upgradeBlockedReason(state, DECOR_UPGRADE[kind])) continue;
     const level = upgradeLevel(state, DECOR_UPGRADE[kind]);
     for (const pos of DECOR_SLOTS[kind].slice(0, level)) out.push({ kind, pos: { ...pos } });
   }
@@ -303,6 +361,8 @@ export function getShopLayout(state: GameState): ShopLayout {
     if (level > 0) machines.push({ pos: { ...EQUIPMENT_SPOTS[kind] }, kind, quality: level, tier: tier(kind) });
   }
   const expandLevel = upgradeLevel(state, 'expand_area');
+  const decorTier = {} as Record<DecorKind, number>;
+  for (const kind of Object.keys(DECOR_UPGRADE) as DecorKind[]) decorTier[kind] = tier(DECOR_UPGRADE[kind]);
   return {
     indoor: { ...INDOOR_AREA },
     expansion: expandLevel > 0 ? expansionArea(expandLevel) : null,
@@ -321,7 +381,7 @@ export function getShopLayout(state: GameState): ShopLayout {
     totalSeats: totalSeats(state),
     furnitureTier: tier('tables'),
     outdoorTier: tier('outdoor_seating'),
-    decorTier: { plant: tier(DECOR_UPGRADE.plant), painting: tier(DECOR_UPGRADE.painting), light: tier(DECOR_UPGRADE.light) },
+    decorTier,
     windowBarTier: tier('window_bar'),
   };
 }

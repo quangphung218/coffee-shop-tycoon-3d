@@ -1,6 +1,8 @@
 import { totalWages } from '../../sim/economy';
 import { canChangePolicy, policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
-import { MAX_STAFF, ROLE_NAMES, rolePlan } from '../../sim/staff';
+import { STAFF_TRAITS } from '../../sim/data/staffTraits';
+import { ROLE_NAMES, rolePlan } from '../../sim/staff';
+import { canTrain, LEVEL_SPEED_STEP, MAX_STAFF_LEVEL, maxStaff, PROMOTION_WAGE_MULT, STAFF_LEVEL_EXP, staffExp, staffLevel, staffTraitOf, trainCost } from '../../sim/staffGrowth';
 import type { GameState, PolicyLevel, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -52,14 +54,45 @@ function staffMeta(wage: number, speed: number): string {
   return `Lương ${formatMoney(wage)}/ngày · tốc độ ×${speed.toFixed(2).replace('.', ',')}`;
 }
 
+/** Trait chip: the Vietnamese name, with what it does as the tooltip. */
+function traitChip(state: GameState, member: Staff): HTMLElement {
+  const t = STAFF_TRAITS[staffTraitOf(state, member)];
+  return h('span', { class: 'badge badge-neutral', attrs: { 'data-trait': t.id, title: t.description }, text: t.name });
+}
+
+/** Why the member cannot be trained, or null. Reads a copy when the save has no retention yet, so the panel never writes state. */
+export function trainBlock(state: GameState, staffId: number): string | null {
+  return canTrain(state.retention ? state : { ...state }, staffId);
+}
+
+/** Experience toward the next level: whole minutes, the next threshold (null at the top level) and the 0..100 fill. */
+export function expView(member: Staff): { exp: number; next: number | null; pct: number } {
+  const level = staffLevel(member);
+  const exp = Math.floor(staffExp(member));
+  if (level >= MAX_STAFF_LEVEL) return { exp, next: null, pct: 100 };
+  const next = STAFF_LEVEL_EXP[level]!;
+  return { exp, next, pct: next > 0 ? Math.min(100, Math.round((exp / next) * 100)) : 100 };
+}
+
+/** "Đào tạo · 400.000đ · 3 Tem": the price of the next level on the button. */
+function trainLabel(member: Staff): string {
+  if (staffLevel(member) >= MAX_STAFF_LEVEL) return 'Đào tạo';
+  const cost = trainCost(member);
+  return `Đào tạo · ${formatMoney(cost.money)}${cost.tickets > 0 ? ` · ${cost.tickets} Tem` : ''}`;
+}
+
+const WAGE_STEP_PCT = Math.round((PROMOTION_WAGE_MULT - 1) * 100);
+const SPEED_STEP_PCT = Math.round(LEVEL_SPEED_STEP * 100);
+
 /** Role a new hire starts in: the next free slot of the default plan. */
 export function roleForHire(state: GameState): StaffRole {
   return rolePlan(null, state.staff.length + 1)[state.staff.length] ?? 'none';
 }
 
 /**
- * Nhân viên: staff with wage, speed, busy/free badge, a role dropdown and an
- * in-place "Cho nghỉ" confirm; today's candidates with "Tuyển"; the
+ * Nhân viên: staff with trait, level, experience bar, wage, speed, busy/free
+ * badge, a role dropdown and in-place "Đào tạo" and "Cho nghỉ" confirms;
+ * today's candidates with their trait and "Tuyển"; the
  * Auto-assign switch and the Mức lương choice. Wages are shown at the chosen
  * Mức lương. Usable in every phase; Mức lương changes only while preparing.
  */
@@ -111,15 +144,20 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
   const teamCount = h('span');
-  w.text(teamCount, (s) => `Đang có ${s.staff.length}/${MAX_STAFF} người`);
+  w.text(teamCount, (s) => `Đang có ${s.staff.length}/${maxStaff(s)} người`);
 
-  function staffRow(member: Staff): HTMLElement {
+  function staffRow(member: Staff, state: GameState): HTMLElement {
     const badge = h('span');
     const meta = h('p', { class: 'item-meta' });
+    const levelText = h('span');
     const why = reasonLine(false);
+    const trainWhy = reasonLine(false);
     const dd = dropdown<StaffRole>(`Vai của ${member.name}`, ROLE_OPTIONS, (role) => send({ type: 'assign_role', staffId: member.id, role }));
     dd.el.setAttribute('data-staff', String(member.id));
-    const fireBtn = h('button', { class: 'btn btn-danger btn-sm', attrs: { type: 'button', 'data-action': 'fire' }, text: 'Cho nghỉ' });
+    const fireBtn = h('button', { class: 'btn btn-danger btn-sm', attrs: { type: 'button', 'data-action': 'fire', 'aria-label': `Cho ${member.name} nghỉ` }, text: 'Cho nghỉ' });
+    const trainBtn = h('button', { class: 'btn btn-secondary btn-sm', attrs: { type: 'button', 'data-action': 'train' } });
+    const barFill = h('span');
+    const bar = h('div', { class: 'progress', attrs: { role: 'progressbar', 'aria-label': `Kinh nghiệm của ${member.name}`, 'aria-valuemin': '0', 'aria-valuemax': '100' } }, barFill);
     const li = h(
       'li',
       { class: 'item item-row', attrs: { 'data-staff': member.id } },
@@ -127,7 +165,53 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: member.name }), meta),
       h('span', { class: 'item-status' }, badge),
       h('div', { class: 'item-control' }, dd.el, fireBtn),
-      h('div', { class: 'item-actions' }, why),
+      // Third line: trait, level and experience, then Đào tạo, the bar and the reasons.
+      h('div', { class: 'item-actions' }, h('p', { class: 'item-meta' }, traitChip(state, member), ' ', levelText), trainBtn, bar, why, trainWhy),
+    );
+    trainBtn.addEventListener('click', () => {
+      const s = ctx.getState();
+      const m = s?.staff.find((x) => x.id === member.id);
+      if (!s || !m || isAriaDisabled(trainBtn)) return;
+      trainBtn.hidden = true;
+      li.append(
+        inlineConfirm(
+          `Đào tạo ${m.name} lên cấp ${staffLevel(m) + 1}? Lương +${WAGE_STEP_PCT}%, làm nhanh +${SPEED_STEP_PCT}%.`,
+          'Đào tạo',
+          'btn-primary',
+          () => {
+            // The row is not rebuilt on training, so bring Đào tạo back for the next level.
+            trainBtn.hidden = false;
+            trainBtn.focus();
+            keepFocus(li, body, () => send({ type: 'train_staff', staffId: member.id }));
+          },
+          () => {
+            trainBtn.hidden = false;
+            trainBtn.focus();
+          },
+        ),
+      );
+    });
+    rowsW.watch(
+      (s) => {
+        const m = s.staff.find((x) => x.id === member.id);
+        return m ? `${staffLevel(m)}|${Math.floor(staffExp(m))}|${m.wagePerDay}|${trainBlock(s, m.id) ?? ''}` : '';
+      },
+      (_, s) => {
+        const m = s.staff.find((x) => x.id === member.id);
+        if (!m) return;
+        const level = staffLevel(m);
+        const { exp, next, pct } = expView(m);
+        const expText = next === null ? 'KN tối đa' : `KN ${exp}/${next}`;
+        levelText.textContent = `Cấp ${level}/${MAX_STAFF_LEVEL} · ${expText}`;
+        barFill.style.width = `${pct}%`;
+        bar.setAttribute('aria-valuenow', String(pct));
+        bar.setAttribute('aria-valuetext', `Cấp ${level}/${MAX_STAFF_LEVEL}, ${expText}`);
+        trainBtn.textContent = trainLabel(m);
+        trainBtn.setAttribute('aria-label', level >= MAX_STAFF_LEVEL ? `Đào tạo ${m.name}` : `Đào tạo ${m.name} lên cấp ${level + 1}, ${trainLabel(m).slice('Đào tạo · '.length)}`);
+        const block = trainBlock(s, m.id);
+        setAriaDisabled(trainBtn, !!block);
+        setReason(trainWhy, trainBtn, block ? `${block}.` : null);
+      },
     );
     fireBtn.addEventListener('click', () => {
       fireBtn.hidden = true;
@@ -177,8 +261,8 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     return li;
   }
 
-  function candidateRow(c: Staff): HTMLElement {
-    const hire = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'hire' }, text: 'Tuyển' });
+  function candidateRow(c: Staff, state: GameState): HTMLElement {
+    const hire = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'hire', 'aria-label': `Tuyển ${c.name}` }, text: 'Tuyển' });
     const why = reasonLine(false);
     hire.addEventListener('click', () => {
       const s = ctx.getState();
@@ -186,10 +270,10 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       keepFocus(li, body, () => send({ type: 'hire_staff', candidateId: c.id, role: roleForHire(s) }));
     });
     rowsW.watch(
-      (s) => s.staff.length >= MAX_STAFF,
-      (full) => {
-        setAriaDisabled(hire, full);
-        setReason(why, hire, full ? `Đã đủ ${MAX_STAFF} người. Cho bớt một người nghỉ để tuyển.` : null);
+      (s) => (s.staff.length >= maxStaff(s) ? maxStaff(s) : 0),
+      (cap) => {
+        setAriaDisabled(hire, cap > 0);
+        setReason(why, hire, cap > 0 ? `Đã đủ ${cap} người. Cho bớt một người nghỉ để tuyển.` : null);
       },
     );
     const meta = h('p', { class: 'item-meta' });
@@ -200,7 +284,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       avatar(c.look),
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: c.name }), meta),
       hire,
-      h('div', { class: 'item-actions' }, why),
+      h('div', { class: 'item-actions' }, h('p', { class: 'item-meta' }, traitChip(state, c)), why),
     );
     return li;
   }
@@ -221,9 +305,9 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
             h('p', { class: 'item-meta', text: 'Bạn đang tự làm mọi việc, sẽ chậm khi đông khách. Người đầu tiên nên là Pha chế.' }),
           ),
         );
-      } else setChildren(staffList, ...s.staff.map(staffRow));
+      } else setChildren(staffList, ...s.staff.map((m) => staffRow(m, s)));
       if (s.candidates.length === 0) setChildren(candList, h('li', { class: 'item-meta', text: 'Hết ứng viên hôm nay. Ngày mai có người mới.' }));
-      else setChildren(candList, ...s.candidates.map(candidateRow));
+      else setChildren(candList, ...s.candidates.map((c) => candidateRow(c, s)));
       rowsW.run(s);
     },
   );

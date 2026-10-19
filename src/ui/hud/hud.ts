@@ -181,7 +181,7 @@ function countDuration(el: Element): number {
 /**
  * HUD in three clusters over the scene (P23), each one cream frame:
  * Hôm nay (day, week line, weather and event, clock, phase pill), Tiến độ
- * (money, rating, level with its XP bar) and Điều khiển (the phase action
+ * (money, Tem, rating, level with its XP bar) and Điều khiển (the phase action
  * "Mở cửa" / "Sang ngày mới" or the speed group (one cycling button on a
  * phone), pause, and a menu with the
  * camera reset and settings). Values carry icons; their names are read from
@@ -404,6 +404,10 @@ export function createHud(actions: HudActions): Hud {
     countFrame = requestAnimationFrame(tick);
   }
   w.watch((s) => s.money, showMoney);
+
+  // Tem (tickets) beside the money; older saves without retention show 0.
+  const tickets = h('b', { attrs: { 'data-stat': 'tickets' } });
+  w.text(tickets, (s) => String(s.retention?.tickets ?? 0));
 
   const ratingValue = h('b', { attrs: { role: 'img' } });
   w.watch(
@@ -764,7 +768,7 @@ export function createHud(actions: HudActions): Hud {
         phaseBox,
       ),
     ),
-    cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-star', 'Đánh giá', ratingValue), levelChip),
+    cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-sparkle', 'Tem', tickets), value('i-star', 'Đánh giá', ratingValue), levelChip),
     cluster('controls', 'Điều khiển', openBtn, nextDayBtn, speedGroup, speedCycle, pauseBtn, menuWrap),
     note,
     resetLive,

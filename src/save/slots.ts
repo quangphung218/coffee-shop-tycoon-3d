@@ -15,6 +15,10 @@ export interface SlotInfo {
   day?: number;
   money?: number;
   savedAt?: number;
+  /** 'YYYY-MM-DD' of the last daily gift claimed (retention.login.lastDate); absent when never claimed or in an older save. */
+  giftLastDate?: string;
+  /** Daily gift streak day last claimed (retention.login.streak). */
+  giftStreak?: number;
   /** Set when the slot holds data that cannot be loaded. */
   error?: SaveErrorKind;
 }
@@ -105,12 +109,19 @@ function summarize(slot: SaveSlot, storage: StorageLike): SlotInfo {
   const state = isObject(file.state) ? file.state : version === 0 ? file : null;
   if (!state || !hasRequiredFields(state, version)) return { slot, empty: false, error: 'invalid' };
   const savedAt = typeof file.savedAt === 'number' ? file.savedAt : 0;
-  return { slot, empty: false, shopName: state.shopName as string, day: state.day as number, money: state.money as number, savedAt };
+  const info: SlotInfo = { slot, empty: false, shopName: state.shopName as string, day: state.day as number, money: state.money as number, savedAt };
+  const login = isObject(state.retention) ? state.retention.login : undefined;
+  if (isObject(login)) {
+    if (typeof login.lastDate === 'string') info.giftLastDate = login.lastDate;
+    if (typeof login.streak === 'number') info.giftStreak = login.streak;
+  }
+  return info;
 }
 
 /**
  * Slot list for the Main Menu without loading the game code: reads only the
- * name, day, money and save time, never upgrades or writes the save. Checks
+ * name, day, money, save time and the daily gift's last date and streak,
+ * never upgrades or writes the save. Checks
  * the same required fields as listSlots, leaving out those migration fills
  * in, so both report the same slots as loadable.
  */

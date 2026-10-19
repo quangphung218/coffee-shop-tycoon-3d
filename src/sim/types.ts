@@ -73,6 +73,10 @@ export type UpgradeId =
   | 'paintings'
   | 'lights'
   | 'window_bar'
+  | 'neon_sign'
+  | 'bookshelf'
+  | 'record_player'
+  | 'sofa_corner'
   | ToolId;
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
@@ -188,6 +192,8 @@ export interface UpgradeDef {
   costGrowth: number;
   /** Effect added per level owned. */
   effectPerLevel: UpgradeEffect;
+  /** Loyalty tickets ('Tem') each level costs on top of the money, by level from 1 (index 0); absent = none. */
+  ticketCost?: number[];
 }
 
 export interface MarketingDef {
@@ -261,6 +267,8 @@ export interface Customer {
   extraItem?: MenuItemId;
   /** Game minute the customer came through the door; used to measure wait time. Absent in old saves. */
   arrivedMinute?: number;
+  /** Regular who pays out tickets when served. Absent (old saves) = not a VIP. */
+  vip?: boolean;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';
@@ -275,6 +283,9 @@ export interface StaffTask {
   remaining: number;
 }
 
+/** Staff perk, chosen by a hash of the seed and the staff id (never from rngState). */
+export type StaffTraitId = 'quick' | 'barista_pro' | 'tidy' | 'charming';
+
 export interface Staff {
   id: number;
   name: string;
@@ -286,6 +297,12 @@ export interface Staff {
   task: StaffTask | null;
   pos: Vec2;
   look: number;
+  /** Perk of this staff member. Absent (old saves) = no perk. */
+  trait?: StaffTraitId;
+  /** Skill level, 1..5. Absent (old saves) = 1. */
+  level?: number;
+  /** Experience toward the next level. Absent (old saves) = 0. */
+  exp?: number;
 }
 
 export interface Table {
@@ -479,6 +496,41 @@ export interface DailyReport {
   xpGained?: number;
   /** Set when the shop reached a new level at the end of today. */
   levelUp?: { level: number; unlocks: Unlocks };
+  /** Today's special order with its final progress and status; absent when there was none. */
+  specialOrder?: SpecialOrder;
+  /** Achievement tiers reached at the end of today; absent when none. */
+  achievements?: { id: AchievementId; tier: number }[];
+}
+
+export type AchievementId = 'served' | 'revenue' | 'five_star' | 'perfect_day' | 'three_cups' | 'staff_master';
+
+/** Daily gift, lifetime counters and achievements; absent in older saves (ensureRetention fills defaults). */
+export interface RetentionState {
+  /** Loyalty tickets ('Tem'), the side currency. */
+  tickets: number;
+  login: {
+    /** Local date key 'YYYY-MM-DD' of the last gift claimed, sent by the UI; null before the first. */
+    lastDate: string | null;
+    /** Consecutive days with a gift claimed. */
+    streak: number;
+    /** Gifts claimed in total. */
+    claimed: number;
+  };
+  lifetime: { served: number; revenue: number; fiveStar: number; perfectDays: number; threeCupWeeks: number };
+  /** Highest tier reached per achievement. */
+  achievements: Partial<Record<AchievementId, number>>;
+}
+
+/** A one-day order: serve `target` of an item before `byMinute` for a reward. */
+export interface SpecialOrder {
+  itemId: MenuItemId;
+  target: number;
+  /** Game minute the order is due by. */
+  byMinute: number;
+  progress: number;
+  rewardTickets: number;
+  rewardMoney: number;
+  status: 'active' | 'completed' | 'failed';
 }
 
 /** Event of a week day; shifts arrivals or ingredient prices (DAY_EVENTS in src/sim/data/week.ts). */
@@ -615,6 +667,10 @@ export interface GameState {
   week?: WeekState;
   /** Price and wage decisions; absent (older saves) = standard. */
   policies?: Policies;
+  /** Daily gift, lifetime counters and achievements; absent in older saves. */
+  retention?: RetentionState;
+  /** Today's special order; absent or null when there is none. */
+  specialOrder?: SpecialOrder | null;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -641,7 +697,10 @@ export type Command =
   | { type: 'brew'; orderId: number }
   | { type: 'deliver'; orderId: number }
   | { type: 'collect_cash'; tableId: number }
-  | { type: 'clean_table'; tableId: number };
+  | { type: 'clean_table'; tableId: number }
+  | { type: 'train_staff'; staffId: number }
+  /** `dateKey` is the player's local date 'YYYY-MM-DD'; the sim only compares keys. */
+  | { type: 'claim_daily_gift'; dateKey: string };
 
 export type NotifyLevel = 'info' | 'success' | 'warning' | 'error';
 
@@ -666,4 +725,11 @@ export type GameEvent =
   /** The daily report is in `state.lastReport`; the UI autosaves on this. */
   | { type: 'dayEnded'; day: number }
   /** Week day 7 closed; the score is also in `state.week.result` and the week's row in `archive`. Comes after 'dayEnded'. */
-  | { type: 'week_ended'; result: WeekResult };
+  | { type: 'week_ended'; result: WeekResult }
+  | { type: 'staff_promoted'; staffId: number; level: number }
+  | { type: 'gift_claimed'; streak: number; money: number; tickets: number }
+  /** Tickets were added; `total` is the balance after it. */
+  | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' }
+  | { type: 'achievement_unlocked'; id: AchievementId; tier: number }
+  | { type: 'special_order'; status: 'completed' | 'failed'; itemId: MenuItemId }
+  | { type: 'vip_arrived'; customerId: number };

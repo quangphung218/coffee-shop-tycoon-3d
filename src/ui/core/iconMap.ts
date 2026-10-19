@@ -58,6 +58,11 @@ export const UPGRADE_ICONS: Readonly<Record<UpgradeId, IconId>> = {
   blender: 'i-blender',
   ice_maker: 'i-ice-maker',
   dishwasher: 'i-dishwasher',
+  // P27 furniture borrows the nearest upgrade icon, so its tiers 2–3 reuse that icon's tier cells (no new atlas).
+  neon_sign: 'i-lights',
+  bookshelf: 'i-window-bar',
+  record_player: 'i-paintings',
+  sofa_corner: 'i-tables',
 };
 
 /** HUD chip of the shop level, and the daily-mission cards. */

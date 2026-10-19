@@ -49,6 +49,10 @@ const REST = 1e-3;
 export const MAX_CAMERA_DT = 0.1;
 /** Extra room around the shop that the orbit centre may pan into. */
 const BOUNDS_MARGIN = 6;
+/** Room kept around the shop when zoomed all the way out: the walls and a little ground. */
+const FIT_MARGIN = 1;
+/** Height of the shop's walls (parts.ts WALL_HEIGHT), counted when fitting the shop on screen. */
+const FIT_HEIGHT = 2.2;
 
 export function clamp(v: number, min: number, max: number): number {
   return v < min ? min : v > max ? max : v;
@@ -61,6 +65,20 @@ export function clampZoom(zoom: number, min = MIN_ZOOM, max = MAX_ZOOM): number 
 /** Zoom after one wheel event; scrolling down (positive deltaY) zooms out. */
 export function zoomFromWheel(zoom: number, deltaY: number, min = MIN_ZOOM, max = MAX_ZOOM): number {
   return clampZoom(zoom * Math.exp(-deltaY * 0.0015), min, max);
+}
+
+/**
+ * Zoom at which a `width` × `depth` ground rectangle, `height` tall, fits a
+ * view of `aspect` from any yaw at `pitch`, with the orbit centre on the
+ * rectangle's middle. From any yaw the rectangle spans at most its diagonal
+ * across the screen, and the diagonal × sin(pitch) plus the height × cos(pitch) up it.
+ */
+export function fitZoom(width: number, depth: number, height: number, aspect: number, pitch = DEFAULT_PITCH): number {
+  const diag = Math.hypot(width, depth);
+  if (!(diag > 0) || !(aspect > 0)) return MIN_ZOOM;
+  const across = (VIEW_HEIGHT * aspect) / diag;
+  const up = VIEW_HEIGHT / (diag * Math.sin(pitch) + height * Math.cos(pitch));
+  return Math.min(across, up);
 }
 
 export function clampPitch(pitch: number): number {
@@ -306,6 +324,9 @@ export class CameraController {
   private readonly lastTarget: Pose;
   private readonly home = { x: 0, z: 0 };
   private readonly bounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+  /** Size of the shop given to setBounds (0 before), for the zoom-out limit. */
+  private readonly shopSize = { width: 0, depth: 0 };
+  private zoomMin = MIN_ZOOM;
   private readonly held: Record<CameraAction, boolean> = {
     rotateLeft: false,
     rotateRight: false,
@@ -355,12 +376,32 @@ export class CameraController {
     this.home.z = z;
   }
 
-  /** Ground rectangle the orbit centre stays near. */
+  /**
+   * Ground rectangle of the shop: the orbit centre stays near it, and zooming
+   * out goes far enough to see all of it (minZoom).
+   */
   setBounds(minX: number, maxX: number, minZ: number, maxZ: number): void {
     this.bounds.minX = minX - BOUNDS_MARGIN;
     this.bounds.maxX = maxX + BOUNDS_MARGIN;
     this.bounds.minZ = minZ - BOUNDS_MARGIN;
     this.bounds.maxZ = maxZ + BOUNDS_MARGIN;
+    this.shopSize.width = maxX - minX + 2 * FIT_MARGIN;
+    this.shopSize.depth = maxZ - minZ + 2 * FIT_MARGIN;
+    this.updateZoomMin();
+  }
+
+  /**
+   * Furthest zoom-out: MIN_ZOOM, or less when the shop given to setBounds
+   * would not fit the view at MIN_ZOOM (a grown shop on a narrow phone).
+   */
+  get minZoom(): number {
+    return this.zoomMin;
+  }
+
+  private updateZoomMin(): void {
+    const { width, depth } = this.shopSize;
+    this.zoomMin = width > 0 ? Math.min(MIN_ZOOM, fitZoom(width, depth, FIT_HEIGHT, this.aspect)) : MIN_ZOOM;
+    this.target.zoom = clampZoom(this.target.zoom, this.zoomMin);
   }
 
   /** Returns to the default angle, zoom and centre; smoothly unless `snap`. */
@@ -399,6 +440,7 @@ export class CameraController {
 
   setAspect(aspect: number): void {
     this.aspect = aspect > 0 ? aspect : 1;
+    this.updateZoomMin();
     this.apply();
   }
 
@@ -575,7 +617,7 @@ export class CameraController {
     e.preventDefault();
     // Line-mode wheels (Firefox) report deltas in lines, not px.
     const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-    this.target.zoom = zoomFromWheel(this.target.zoom, delta);
+    this.target.zoom = zoomFromWheel(this.target.zoom, delta, this.zoomMin);
   };
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {

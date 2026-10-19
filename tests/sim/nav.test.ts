@@ -21,6 +21,7 @@ import {
 } from '../../src/sim/nav';
 import { FULL_UNLOCK_LEVEL, MAX_SHOP_LEVEL } from '../../src/sim/data/levels';
 import { UPGRADES } from '../../src/sim/data/upgrades';
+import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, getShopLayout, maxUpgradeLevel, upgradeLevel, type ShopLayout } from '../../src/sim/upgrades';
 import type { UpgradeId, Vec2 } from '../../src/sim/types';
@@ -431,6 +432,8 @@ function maxedLevels(shopLevel: number): Levels {
   const s = createNewGame('Nav', 'normal', 1);
   s.shopLevel = shopLevel;
   s.money = 1e15;
+  // The P27 record player and sofa corner also cost tickets.
+  ensureRetention(s).tickets = 1000;
   const levels: Levels = {};
   for (const u of UPGRADES) {
     while (upgradeLevel(s, u.id) < maxUpgradeLevel(s, u.id)) expect(buyUpgrade(s, u.id).ok, u.id).toBe(true);
@@ -444,6 +447,7 @@ function layoutAt(shopLevel: number, levels: Levels): ShopLayout {
   const s = createNewGame('Nav', 'normal', 1);
   s.shopLevel = shopLevel;
   s.money = 1e15;
+  ensureRetention(s).tickets = 1000;
   for (const [id, n] of Object.entries(levels) as [UpgradeId, number][]) {
     for (let i = 0; i < n; i++) expect(buyUpgrade(s, id).ok).toBe(true);
   }
@@ -461,7 +465,9 @@ describe('shop levels 7–10', () => {
     expect(top.better_machine).toBe(5);
     const base = maxedLevels(FULL_UNLOCK_LEVEL);
     const raised = UPGRADES.filter((u) => top[u.id]! > base[u.id]!).map((u) => u.id);
-    expect(raised.sort()).toEqual(['better_machine', 'blender', 'dishwasher', 'grinder', 'lights', 'pastry_case', 'tables']);
+    // P27 adds expand_area levels 3–4 (shop levels 7 and 9).
+    expect(top.expand_area).toBe(4);
+    expect(raised.sort()).toEqual(['better_machine', 'blender', 'dishwasher', 'expand_area', 'grinder', 'lights', 'pastry_case', 'tables']);
   });
 
   it('keep the layout valid and every table and the counter reachable from the door at each level', () => {

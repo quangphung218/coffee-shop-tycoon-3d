@@ -3,12 +3,14 @@
 - [architecture.md](architecture.md): ba lớp sim/render/ui, lệnh và sự kiện, vòng ngày, tuần cuốn chiếu trong code, thống kê ngày và tuần, FSM khách, định dạng save v3 và số liệu chơi, thành phần tải và warm-up lúc khởi động, mẹo hiệu năng.
 - [deploy.md](deploy.md): build, tự tăng version theo Conventional Commits và deploy lên GitHub Pages.
 - [spec/week-7-days.md](spec/week-7-days.md): luật tuần: lịch mở khoá tuần 1, mở rộng quán ngày 7, sự kiện và thời tiết, mục tiêu tuần N, chấm điểm và cúp, sang tuần mới, cấp quán 7–10, nâng save cũ.
+- [spec/p27-retention.md](spec/p27-retention.md): nhân viên có đặc điểm và lên cấp, quà ngày và Tem, thành tựu, đơn đặc biệt, khách VIP, nội thất mới, mở rộng quán 4 cấp: luật và bảng con số.
 - [media.md](media.md): tạo lại ảnh chụp, GIF và mp4 demo trong `docs/media/`, các bảng ảnh trước/sau, review tuần 7 ngày (`review:p22`), và atlas icon 3D trong `public/icons3d/`.
 
 ## Báo cáo
 
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.
 - [reports/startup-under-1s-plan.md](reports/startup-under-1s-plan.md): Main Menu trên di động ở 390×844: dòng thời gian tải, chunk chính chứa gì, kế hoạch đưa xuống dưới 1 s.
+- [reports/p27-retention.md](reports/p27-retention.md): P27, kiểm chứng nhân viên lên cấp, quà ngày và Tem, đơn đặc biệt, khách VIP, quán mở rộng 4 cấp: check, khởi động và khung hình so với `d58350b`, layout 92 mục, ảnh có khoanh.
 - [reports/p26-startup.md](reports/p26-startup.md): P26, Main Menu dưới 1 s ở 390×844: thời gian tới Main Menu và cảnh 3D so với `57d7559`, chunk gzip trước/sau, kết quả kiểm các ngưỡng.
 - [reports/p25-progression.md](reports/p25-progression.md): P25, Menu gọn, thẻ lên cấp, hình và icon theo bậc nâng cấp, hiệu ứng mua, chấm "Mới"; ý đã làm và để sau; ảnh trước/sau P24→P25 ở 390 và 1280 px; kết quả kiểm layout, khởi động, khung hình lúc có hiệu ứng.
 - [reports/p24-ui.md](reports/p24-ui.md): P24, nguyên nhân gốc và cách sửa lỗi gợi ý nhập bỏ sót Cam, Bột bánh, Bơ; thang cỡ chữ, nút, viền, bóng chung và các chỗ đã thiết kế lại; ảnh trước/sau P23→P24 ở 390 và 1280 px; kết quả kiểm layout, khởi động, khung hình.

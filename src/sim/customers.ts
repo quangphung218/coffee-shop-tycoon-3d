@@ -20,6 +20,7 @@ import {
 } from './nav';
 import { priceArrivalMult, sellPriceMult } from './policies';
 import { randInt, randRange, weightedIndex, type RngHolder } from './rng';
+import { VIP_PATIENCE_MULT, isNextArrivalVip, onServed } from './specialOrders';
 import type { Customer, GameState, MenuItemId, Table, Vec2, Weather } from './types';
 import { getShopLayout, type ShopLayout } from './upgrades';
 import { dayArrivalMult } from './week';
@@ -327,8 +328,13 @@ export function spawnCustomer(state: GameState): Customer | null {
   const persona = PERSONAS[pickPersona(state.seed, state.nextId, state.minute, state.weather)];
   const order = pickOrder(state, persona);
   if (!order) return null;
+  const vip = isNextArrivalVip(state);
   const patience = Math.round(
-    BASE_PATIENCE * DIFFICULTIES[state.difficulty].patienceMult * persona.patienceMult * randRange(state, 0.8, 1.2),
+    BASE_PATIENCE *
+      DIFFICULTIES[state.difficulty].patienceMult *
+      persona.patienceMult *
+      randRange(state, 0.8, 1.2) *
+      (vip ? VIP_PATIENCE_MULT : 1),
   );
   const customer: Customer = {
     id: state.nextId++,
@@ -344,12 +350,14 @@ export function spawnCustomer(state: GameState): Customer | null {
     persona: persona.id,
     arrivedMinute: state.minute,
   };
+  if (vip) customer.vip = true;
   state.customers.push(customer);
   state.today.customersArrived += 1;
   const hour = hourOf(state.minute);
   const byHour = state.today.arrivalsByHour;
   if (byHour && hour >= 0 && hour < 24) byHour[hour] = (byHour[hour] ?? 0) + 1;
   state.events.push({ type: 'doorbell', customerId: customer.id });
+  if (vip) state.events.push({ type: 'vip_arrived', customerId: customer.id });
   return customer;
 }
 
@@ -458,6 +466,7 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
   if (customer.extraItem) state.today.sold[customer.extraItem] = (state.today.sold[customer.extraItem] ?? 0) + 1;
   recordWait(state, customer);
   state.events.push({ type: 'served', customerId: customer.id, itemId });
+  onServed(state, itemId, customer.id);
   if (seatCustomer(state, customer)) {
     customer.state = 'drinking';
     const sitMult = customer.persona ? PERSONAS[customer.persona].sitMult : 1;

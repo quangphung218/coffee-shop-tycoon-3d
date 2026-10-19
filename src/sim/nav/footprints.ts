@@ -48,6 +48,12 @@ export const CHAIR_OFFSET = 0.62;
 export const CHAIR_SIZE = 0.44;
 export const PARASOL_POLE_RADIUS = 0.03;
 export const PLANT_RADIUS = 0.42;
+/** Bookshelf against the left wall: `depth` out from the wall (x), `length` along it (z). */
+export const BOOKSHELF_SIZE = { depth: 0.36, length: 1.1 } as const;
+/** Sofa corner against the back wall of the side room: `width` along it (x), `depth` out from it (z). */
+export const SOFA_SIZE = { width: 1.6, depth: 0.8 } as const;
+/** The back counter runs this far past the record player on its top. */
+export const RECORD_PLAYER_MARGIN = 0.3;
 /** Square planter with a small tree on each side of the door, outside; this is half its side. */
 export const PLANTER_HALF = 0.26;
 /** Planter centres sit this far left and right of the door centre, and this far out from the front wall's outer face. */
@@ -67,7 +73,19 @@ export type Shape =
   /** A thin slab seen from above: segment a–b thickened by r. */
   | { type: 'segment'; ax: number; az: number; bx: number; bz: number; r: number };
 
-export type FootprintKind = 'wall' | 'door' | 'planter' | 'counter' | 'back_counter' | 'machine' | 'table' | 'chair' | 'parasol' | 'plant';
+export type FootprintKind =
+  | 'wall'
+  | 'door'
+  | 'planter'
+  | 'counter'
+  | 'back_counter'
+  | 'machine'
+  | 'table'
+  | 'chair'
+  | 'parasol'
+  | 'plant'
+  | 'bookshelf'
+  | 'sofa';
 
 export interface Footprint {
   kind: FootprintKind;
@@ -101,7 +119,7 @@ export function wallSpans(layout: ShopLayout): (readonly [number, number, number
   ];
 }
 
-/** x range of the back counter under the machines, or null without machines. */
+/** x range of the back counter under the machines and the record player, or null without machines. */
 export function backCounterSpan(layout: ShopLayout): { minX: number; maxX: number } | null {
   if (layout.machines.length === 0) return null;
   let minX = Infinity;
@@ -110,7 +128,14 @@ export function backCounterSpan(layout: ShopLayout): { minX: number; maxX: numbe
     minX = Math.min(minX, m.pos.x);
     maxX = Math.max(maxX, m.pos.x);
   }
-  return { minX: minX - BACK_COUNTER_MARGIN_LEFT, maxX: maxX + BACK_COUNTER_MARGIN_RIGHT };
+  minX -= BACK_COUNTER_MARGIN_LEFT;
+  maxX += BACK_COUNTER_MARGIN_RIGHT;
+  for (const d of layout.decor) {
+    if (d.kind !== 'record_player') continue;
+    minX = Math.min(minX, d.pos.x - RECORD_PLAYER_MARGIN);
+    maxX = Math.max(maxX, d.pos.x + RECORD_PLAYER_MARGIN);
+  }
+  return { minX, maxX };
 }
 
 /** Centres of the two planters flanking the door outside, left then right. */
@@ -128,8 +153,9 @@ function rect(cx: number, cz: number, sx: number, sz: number): Shape {
 
 /**
  * Everything standing on the floor that people must walk around. Paintings,
- * windows, shelves and the menu board hang on walls and lamps and fans from
- * the ceiling; the step and mats are walked over: none has a footprint.
+ * neon signs, windows, wall shelves and the menu board hang on walls, lamps
+ * and fans from the ceiling, the record player stands on the back counter;
+ * the step and mats are walked over: none has a footprint.
  */
 export function layoutFootprints(layout: ShopLayout): Footprint[] {
   const out: Footprint[] = [];
@@ -187,9 +213,19 @@ export function layoutFootprints(layout: ShopLayout): Footprint[] {
     }
   }
 
+  // Bookshelves and sofas are numbered within their kind, so a light or plant bought later does not rename them.
+  let shelves = 0;
+  let sofas = 0;
   layout.decor.forEach((d, i) => {
-    if (d.kind !== 'plant') return;
-    out.push({ kind: 'plant', id: `plant:${i}`, group: `plant:${i}`, shape: { type: 'circle', x: d.pos.x, z: d.pos.z, r: PLANT_RADIUS } });
+    if (d.kind === 'plant') {
+      out.push({ kind: 'plant', id: `plant:${i}`, group: `plant:${i}`, shape: { type: 'circle', x: d.pos.x, z: d.pos.z, r: PLANT_RADIUS } });
+    } else if (d.kind === 'bookshelf') {
+      const id = `bookshelf:${shelves++}`;
+      out.push({ kind: 'bookshelf', id, group: id, shape: rect(d.pos.x, d.pos.z, BOOKSHELF_SIZE.depth, BOOKSHELF_SIZE.length) });
+    } else if (d.kind === 'sofa') {
+      const id = `sofa:${sofas++}`;
+      out.push({ kind: 'sofa', id, group: id, shape: rect(d.pos.x, d.pos.z, SOFA_SIZE.width, SOFA_SIZE.depth) });
+    }
   });
   return out;
 }

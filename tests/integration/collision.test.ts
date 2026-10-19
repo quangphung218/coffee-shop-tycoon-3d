@@ -35,11 +35,12 @@ import {
   type Footprint,
   type NavGrid,
 } from '../../src/sim/nav';
+import { ensureRetention } from '../../src/sim/retention';
 import { staffSpots } from '../../src/sim/staff';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, Difficulty, GameState, UpgradeId, Vec2 } from '../../src/sim/types';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { buyUpgrade, getShopLayout, nextUpgradeCost, type ShopLayout } from '../../src/sim/upgrades';
+import { buyUpgrade, getShopLayout, nextUpgradeCost, upgradeBlockedReason, type ShopLayout } from '../../src/sim/upgrades';
 import { autoPlay, playDay } from './helpers';
 
 /**
@@ -103,9 +104,14 @@ function lineCrosses(a: Vec2, b: Vec2, fp: Footprint): boolean {
 function buyEverything(state: GameState): void {
   const money = state.money;
   state.money = 1e12;
+  // The P27 record player and sofa corner also cost tickets.
+  const retention = ensureRetention(state);
+  const tickets = retention.tickets;
+  retention.tickets = 1000;
   for (const def of UPGRADES) {
     while (nextUpgradeCost(state, def.id) !== null) expect(buyUpgrade(state, def.id).ok, def.id).toBe(true);
   }
+  retention.tickets = tickets;
   state.money = money;
   state.events = [];
 }
@@ -661,6 +667,9 @@ describe('collision cases', () => {
       for (const seating of ['tables', 'expand_area', 'outdoor_seating'] as const) {
         const state = createNewGame('Quán Va Chạm', 'normal', SEED);
         state.money = 1e12;
+        ensureRetention(state).tickets = 1000;
+        // The P27 sofa corner needs the side room first.
+        if (upgradeBlockedReason(state, decor.id)) expect(buyUpgrade(state, 'expand_area').ok).toBe(true);
         while (nextUpgradeCost(state, decor.id) !== null) {
           expect(buyUpgrade(state, decor.id).ok).toBe(true);
           expect(validateLayout(getShopLayout(state)), decor.id).toEqual([]);

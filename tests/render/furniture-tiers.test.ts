@@ -36,6 +36,11 @@ type Internals = {
   paintings: InstancedMesh;
   lamps: InstancedMesh;
   bulbs: InstancedMesh;
+  neons: InstancedMesh;
+  neonTubes: InstancedMesh;
+  bookshelves: InstancedMesh;
+  recordPlayers: InstancedMesh;
+  sofas: InstancedMesh;
 };
 
 function internals(shop: ShopView): Internals {
@@ -45,12 +50,26 @@ function internals(shop: ShopView): Internals {
 /** The instanced mesh drawing each piece. */
 function meshes(shop: ShopView): Record<TieredPiece, InstancedMesh> {
   const v = internals(shop);
-  return { table: v.tables, chair: v.chairs, parasol: v.parasols, plant: v.plants, painting: v.paintings, lamp: v.lamps, bulb: v.bulbs };
+  return {
+    table: v.tables,
+    chair: v.chairs,
+    parasol: v.parasols,
+    plant: v.plants,
+    painting: v.paintings,
+    lamp: v.lamps,
+    bulb: v.bulbs,
+    neon: v.neons,
+    neonTube: v.neonTubes,
+    bookshelf: v.bookshelves,
+    recordPlayer: v.recordPlayers,
+    sofa: v.sofas,
+  };
 }
 
 /** Same layout with every furniture and decor tier set to `tier`. */
 function atTier(layout: ShopLayout, tier: LookTier): ShopLayout {
-  return { ...layout, furnitureTier: tier, outdoorTier: tier, decorTier: { plant: tier, painting: tier, light: tier } };
+  const decorTier = { plant: tier, painting: tier, light: tier, neon: tier, bookshelf: tier, record_player: tier, sofa: tier };
+  return { ...layout, furnitureTier: tier, outdoorTier: tier, decorTier };
 }
 
 function triangles(geo: BufferGeometry): number {

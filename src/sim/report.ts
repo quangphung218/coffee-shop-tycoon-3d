@@ -8,6 +8,9 @@ import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { grantWeekReward, scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
+import { endOfDayRetention } from './retention';
+import { endOfDaySpecialOrder } from './specialOrders';
+import { endOfDayStaffGrowth } from './staffGrowth';
 import type { DailyReport, GameState, Insights, MenuItemId, Suggestion } from './types';
 import { isLastWeekDay, scoreWeek, summarizeWeek } from './week';
 
@@ -150,5 +153,8 @@ export function closeDay(state: GameState): DailyReport {
       if (result.reward > 0) report.money = state.money;
     }
   }
+  endOfDayStaffGrowth(state);
+  endOfDaySpecialOrder(state, report);
+  endOfDayRetention(state, report);
   return report;
 }

@@ -77,13 +77,24 @@ describe('ingredients', () => {
 });
 
 describe('upgrades', () => {
-  it('have multiple levels with growing cost and a non-empty effect', () => {
+  it('has the 15 P23 upgrades and the 4 P27 furniture items with unique ids', () => {
+    // P27 adds neon_sign, bookshelf, record_player and sofa_corner (decor) to the 15 earlier upgrades.
+    expect(UPGRADES).toHaveLength(19);
+    expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(19);
+    for (const id of ['neon_sign', 'bookshelf', 'record_player', 'sofa_corner']) {
+      expect(UPGRADES.find((u) => u.id === id)?.category, id).toBe('decor');
+    }
+  });
+
+  it('have levels with growing cost and a non-empty effect', () => {
     for (const u of UPGRADES) {
-      expect(u.maxLevel, u.id).toBeGreaterThanOrEqual(2);
+      // The record player and the sofa corner (P27) are single pieces: one level.
+      expect(u.maxLevel, u.id).toBeGreaterThanOrEqual(u.id === 'record_player' || u.id === 'sofa_corner' ? 1 : 2);
       const c0 = upgradeCost(u, 0)!;
-      const c1 = upgradeCost(u, 1)!;
       expect(c0).toBeGreaterThan(0);
-      expect(c1).toBeGreaterThan(c0);
+      if (u.maxLevel >= 2) expect(upgradeCost(u, 1)!).toBeGreaterThan(c0);
+      for (const t of u.ticketCost ?? []) expect(t, u.id).toBeGreaterThan(0);
+      expect(u.ticketCost?.length ?? u.maxLevel, u.id).toBe(u.maxLevel);
       expect(upgradeCost(u, u.maxLevel)).toBeNull();
       expect(Object.keys(u.effectPerLevel).length).toBeGreaterThan(0);
     }
