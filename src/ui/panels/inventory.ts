@@ -1,5 +1,5 @@
 import { INGREDIENTS, getIngredient } from '../../sim/data/ingredients';
-import { autoRestockSuggestion, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
+import { autoRestockSuggestion, canBuyOnCredit, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
 import type { GameState, IngredientDef, IngredientId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -120,17 +120,34 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       .map((r) => ({ id: r.def.id, packs: r.step.value, cost: ingredientPrice(s, r.def.id, r.step.value * r.def.packSize) }));
   }
 
+  /**
+   * Walks the lines in buy order as the sim pays them: cash while it lasts,
+   * else on credit (canBuyOnCredit). Short when a line gets neither.
+   */
+  function payment(s: GameState, lines: ReturnType<typeof order>): { short: boolean; credit: boolean } {
+    let money = s.money;
+    let credit = false;
+    for (const l of lines) {
+      if (money < l.cost) {
+        if (!canBuyOnCredit(s, l.id, l.packs * getIngredient(l.id).packSize)) return { short: true, credit };
+        credit = true;
+      }
+      money -= l.cost;
+    }
+    return { short: false, credit };
+  }
+
   let footKey = '';
   function refreshFoot(s: GameState): void {
     const lines = order(s);
     const sum = lines.reduce((a, l) => a + l.cost, 0);
-    const key = `${s.money}|${nothingToBuy}|${lines.map((l) => `${l.id}:${l.packs}`).join(',')}`;
+    const { short, credit } = payment(s, lines);
+    const key = `${s.money}|${nothingToBuy}|${short}|${credit}|${lines.map((l) => `${l.id}:${l.packs}`).join(',')}`;
     if (key === footKey) return;
     footKey = key;
     total.textContent = formatMoney(sum);
     after.textContent = formatMoney(s.money - sum);
     buyText.textContent = sum > 0 ? `Nhập hàng · ${formatMoney(sum)}` : 'Nhập hàng';
-    const short = sum > s.money;
     setAriaDisabled(buyBtn, sum === 0 || short);
     // One slot for every message, at most two lines, so the foot keeps its height.
     hint.classList.toggle('reason-danger', short);
@@ -140,6 +157,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       const top = lines.reduce((a, l) => (l.cost > a.cost ? l : a));
       setIconText(hint, 'i-lock', `Thiếu ${formatMoney(sum - s.money)}. Bớt ${getIngredient(top.id).name} để vừa tiền.`);
     }
+    else if (credit) setIconText(hint, 'i-warning', `Nhập chịu 1 gói mỗi món sắp hết; tiền còn ${formatMoney(s.money - sum)}.`);
     else setIconText(hint, 'i-info', 'Kiểm tra số gói rồi bấm Nhập hàng.');
   }
 

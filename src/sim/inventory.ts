@@ -70,12 +70,27 @@ export function ingredientPrice(state: GameState, id: IngredientId, qty: number)
 
 export type BuyResult = { ok: true; cost: number } | { ok: false; reason: string };
 
-/** Buys `qty` units of an ingredient. Refused when the money does not cover the price. */
+/**
+ * Whether `qty` units the money does not cover may be bought on credit: at
+ * most one pack of an ingredient below its warning level. A pack always lifts
+ * the stock above that level, so each empty shelf gets one pack until it sells
+ * down again. Keeps a shop that wages pushed below zero able to restock and
+ * sell instead of stuck with an empty store; the debt only warns (checkDebt).
+ */
+export function canBuyOnCredit(state: GameState, id: IngredientId, qty: number): boolean {
+  const def = getIngredient(id);
+  return qty <= def.packSize && stockOf(state, id) < def.lowStock;
+}
+
+/**
+ * Buys `qty` units of an ingredient. Refused when the money does not cover the
+ * price, unless canBuyOnCredit allows it.
+ */
 export function buyIngredient(state: GameState, id: IngredientId, qty: number): BuyResult {
   if (!Number.isInteger(qty) || qty <= 0) return { ok: false, reason: 'Số lượng không hợp lệ' };
   const def = getIngredient(id);
   const cost = ingredientPrice(state, id, qty);
-  if (state.money < cost) {
+  if (state.money < cost && !canBuyOnCredit(state, id, qty)) {
     const reason = `Không đủ tiền mua ${def.name}`;
     state.events.push({ type: 'notify', level: 'error', text: reason });
     return { ok: false, reason };
@@ -284,17 +299,23 @@ export interface RestockResult {
 }
 
 /**
- * Buys the suggested lines in order; lines the money cannot cover are skipped
- * and the notice names them with the money still short.
+ * Buys the suggested lines in order. A line the money cannot cover is cut to
+ * one pack bought on credit when canBuyOnCredit allows it, else skipped; the
+ * notice names the skipped lines with the money still short.
  */
 export function applyRestockSuggestion(state: GameState): RestockResult {
   const result: RestockResult = { bought: [], skipped: [], spent: 0 };
   let skippedCost = 0;
-  for (const line of autoRestockSuggestion(state).items) {
+  for (const suggested of autoRestockSuggestion(state).items) {
+    let line = suggested;
     if (state.money < line.cost) {
-      result.skipped.push(line.id);
-      skippedCost += line.cost;
-      continue;
+      const pack = getIngredient(line.id).packSize;
+      if (!canBuyOnCredit(state, line.id, pack)) {
+        result.skipped.push(line.id);
+        skippedCost += line.cost;
+        continue;
+      }
+      line = { id: line.id, qty: pack, cost: ingredientPrice(state, line.id, pack) };
     }
     const r = buyIngredient(state, line.id, line.qty);
     if (r.ok) {

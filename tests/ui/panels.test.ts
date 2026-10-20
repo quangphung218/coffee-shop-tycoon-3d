@@ -281,6 +281,29 @@ describe('inventory panel', () => {
     expect(hint.textContent).toBe(`Thiếu ${formatMoney(pack + milk - 1000)}. Bớt ${getIngredient(top).name} để vừa tiền.`);
   });
 
+  it('lets a broke shop buy one pack on credit of an ingredient that ran low', () => {
+    const state = game();
+    state.money = -20000;
+    state.inventory.find((i) => i.id === 'milk')!.qty = 0;
+    const { body, sent } = mount(renderInventoryPanel, state);
+    const plus = q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Thêm"]');
+    plus.click();
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    const hint = q(document, `#${buy.getAttribute('aria-describedby')}`);
+    const pack = ingredientPrice(state, 'milk', getIngredient('milk').packSize);
+    expect(buy.getAttribute('aria-disabled')).toBeNull();
+    expect(hint.textContent).toBe(`Nhập chịu 1 gói mỗi món sắp hết; tiền còn ${formatMoney(-20000 - pack)}.`);
+
+    // Two packs are more than credit covers.
+    plus.click();
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+    expect(hint.textContent).toContain('Thiếu');
+    q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Bớt"]').click();
+    buy.click();
+    expect(sent).toEqual([{ type: 'buy_ingredient', ingredientId: 'milk', packs: 1 }]);
+    expect(state.money).toBe(-20000 - pack);
+  });
+
   it('shows a low-stock badge', () => {
     const state = game();
     state.inventory.find((i) => i.id === 'milk')!.qty = 10;

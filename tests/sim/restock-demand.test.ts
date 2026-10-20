@@ -24,6 +24,12 @@ function dayTwo(empty: IngredientId[]): GameState {
   return s;
 }
 
+/** Puts the given shelves at their warning level: still short for the day, but not low enough to buy on credit. */
+function atWarningLevel(s: GameState, ...ids: IngredientId[]): GameState {
+  for (const id of ids) setStock(s, id, getIngredient(id).lowStock);
+  return s;
+}
+
 const suggested = (s: GameState): IngredientId[] => autoRestockSuggestion(s).items.map((i) => i.id);
 
 describe('restock demand for items the last day did not sell', () => {
@@ -46,7 +52,7 @@ describe('restock demand for items the last day did not sell', () => {
   });
 
   it('(d) names the ingredients and the money short when the cash cannot cover them', () => {
-    const s = dayTwo(['orange', 'flour']);
+    const s = atWarningLevel(dayTwo(['orange', 'flour']), 'orange', 'flour');
     enable(s, 'orange_juice', 'cake');
     s.money = 0;
     const shortfall = autoRestockSuggestion(s).totalCost;
@@ -58,7 +64,7 @@ describe('restock demand for items the last day did not sell', () => {
   });
 
   it('(d2) buys the first line and names only the later lines with what they still lack', () => {
-    const s = dayTwo(['orange', 'flour']);
+    const s = atWarningLevel(dayTwo(['orange', 'flour']), 'orange', 'flour');
     enable(s, 'orange_juice', 'cake');
     const lines = autoRestockSuggestion(s).items;
     expect(lines.map((l) => l.id)).toEqual(['orange', 'flour']);
