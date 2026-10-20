@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
-`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout và ảnh là lượt đo trước merge `main`.
+`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout phần ván mới, HUD, ngày sự kiện cũng đo trên HEAD; layout phần P25, P27 và ảnh là lượt trước merge `main`.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -26,7 +26,7 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 - Cảnh 3D máy bàn trong `perf:frames` headless FAIL: 560 / 447 ms (+25,3%); headed 414 / 722 ms PASS.
 - Khung hình máy bàn headed trên HEAD: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
-- Layout 92/92: 68 mục cũ và 24 mục mới cho bảng Việc, Nhân viên, Nâng cấp của P27.
+- Layout trên HEAD (ván mới, HUD, ngày sự kiện): 54/54 PASS; HUD 2 hàng ở 390 và 768 px, 1 hàng ở 1280 và 1440 px. Phần P25 (20 mục) và P27 (24 mục: bảng Việc, Nhân viên, Nâng cấp) PASS ở lượt trước merge `main`.
 - 14 ảnh P27 có khoanh đỏ, 0 cảnh báo `!!`.
 
 ## Kết luận release
@@ -65,8 +65,9 @@ P27 làm chậm thật Main Menu Mobile: chậm hơn base ở cả hai lượt `
 | Long task di động (`--headed`, HEAD) | 0 long task mỗi lần | FAIL: P27 2/5 lần (lần 2: 1 ms, lần 4: 61 ms); base 4/5 (107 / 3 / 1 / 0 / 400 ms) |
 | p95 máy bàn (`--headed`, HEAD) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | 18 ms, base 18 ms |
 | Long task, trước merge `main` | 0 long task mỗi lần | Máy bàn headless P27 FAIL 3/10 lần, base 1/10; di động headless P27 FAIL 1/10, base 0/10; máy bàn headed 0/5 cả hai bản; di động headed P27 FAIL 2/5, base 1/5 |
-| `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 92/92. Tràn ngang 0, CLS Kho 0, HUD 1–2 hàng, mọi nút ≥ 44 px |
-| Layout P27 (mục mới) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
+| `npm run layout` phần ván mới, HUD, ngày sự kiện (HEAD) | PASS mọi mục | PASS: 54/54. Tràn ngang 0, CLS Kho 0, HUD 2 hàng ở 390 / 768 / 1100 px, 1 hàng ở 1280 / 1440 px, mọi nút ≥ 44 px |
+| Layout P25, trước merge `main` | PASS mọi mục | PASS: 20/20 |
+| Layout P27 (mục mới), trước merge `main` | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
 | `npm run media:p27` | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
 
 Đường khởi động tới Main Menu chỉ thêm `pendingGiftDay` trong `src/ui/screens/mainMenu.ts` và hai trường quà trong `listSlotSummaries` (`src/save/slots.ts`): so ngày và đọc hai trường của save, không tải thêm chunk.
@@ -276,12 +277,47 @@ Headless chạy hai lượt liền nhau, headed một lượt.
 
 ## 6. Layout
 
-`npm run layout` chạy làm hai phần (`LAYOUT_ONLY=day,hud,event` rồi `LAYOUT_ONLY=p25,p27`), 92 mục:
+`npm run layout` chạy làm hai phần: `LAYOUT_ONLY=day,hud,event` rồi `LAYOUT_ONLY=p25,p27`.
+
+### HEAD: ván mới, HUD, ngày sự kiện
+
+`npm run build && LAYOUT_ONLY=day,hud,event node scripts/check-layout.mjs`, 54 mục:
 
 | Phần | Khổ | Mục | Kết quả |
 | --- | --- | --- | --- |
-| Ván mới, 6 bảng, một ngày 4x, báo cáo | 390, 768, 1440 | 36 | PASS |
-| HUD, HUD ngày sự kiện | 390, 1280, 1440 | 12 | PASS |
+| Ván mới, 6 bảng, một ngày 4x, báo cáo, HUD lúc chuẩn bị, menu camera, mở cửa | 390, 768, 1440 | 33 | PASS |
+| HUD lúc chuẩn bị, menu camera, mở cửa | 1280×800 | 3 | PASS |
+| HUD ngày sự kiện, số ván mới | 390 | 3 | PASS |
+| HUD ngày sự kiện, số cuối game | 390, 1100×800, 1280×800, 1440 | 12 | PASS |
+| CLS bảng Kho | 390, 768, 1440 | 3 | PASS, CLS 0 |
+
+Số hàng HUD trên HEAD, giống nhau ở mọi màn của cùng khổ (chuẩn bị, menu camera, mở cửa, ngày sự kiện, số cuối game):
+
+| Khổ | Hàng | Cao |
+| --- | --- | --- |
+| 390×844 | 2 | 104 px |
+| 768×1024 | 2 | 104 px |
+| 1100×800 (số cuối game) | 2 | 104 px |
+| 1280×800 | 1 | 56 px |
+| 1440×900 | 1 | 56 px |
+
+```
+| 390×844 | HUD: chuẩn bị | PASS | 2 hàng, cao 104 px; today 218, progress 243, controls 118; 4 nút ≥ 44 px; sự kiện Khai trương |
+| 768×1024 | HUD: chuẩn bị | PASS | 2 hàng, cao 104 px; today 357, progress 445, controls 144; 4 nút ≥ 44 px; sự kiện Khai trương |
+| 1440×900 | HUD: chuẩn bị | PASS | 1 hàng, cao 56 px; today 438, progress 492, controls 318; 4 nút ≥ 44 px; sự kiện Khai trương |
+| 1280×800 | HUD: chuẩn bị | PASS | 1 hàng, cao 56 px; today 357, progress 445, controls 269; 4 nút ≥ 44 px; sự kiện Khai trương |
+| 390×844 | HUD: mở cửa (ngày sự kiện, cuối game) | PASS | 2 hàng, cao 104 px; today 209, progress 217, controls 104; 4 nút ≥ 44 px; sự kiện Tăng giá nhập |
+| 1100×800 | HUD: mở cửa (ngày sự kiện, cuối game) | PASS | 2 hàng, cao 104 px; today 404, progress 464, controls 219; 6 nút ≥ 44 px; sự kiện Tăng giá nhập |
+| 1280×800 | HUD: mở cửa (ngày sự kiện, cuối game) | PASS | 1 hàng, cao 56 px; today 404, progress 464, controls 355; 6 nút ≥ 44 px; sự kiện Tăng giá nhập |
+| 1440×900 | HUD: mở cửa (ngày sự kiện, cuối game) | PASS | 1 hàng, cao 56 px; today 404, progress 464, controls 355; 6 nút ≥ 44 px; sự kiện Tăng giá nhập |
+| 390×844 | Kho: đổi số gói | PASS | CLS 0.000000; foot cao 142.5 px; foot/danh sách lệch tối đa 0.0 px; shift ngay sau thao tác 0.0000 |
+PASS / 54 checks
+```
+
+### Trước merge `main`: P25, P27
+
+| Phần | Khổ | Mục | Kết quả |
+| --- | --- | --- | --- |
 | P25: Menu gọn, thẻ lên cấp | 390, 768, 1280×720, 1440 | 20 | PASS |
 | P27: Việc, Nhân viên, Nâng cấp | 390, 768, 1280×720, 1440 | 24 | PASS |
 
