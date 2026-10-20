@@ -7,7 +7,7 @@ import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
-import { formatClock, formatMoney, formatRating } from '../core/format';
+import { formatClock, formatMoney, formatMoneyShort, formatRating } from '../core/format';
 import { fresh } from '../core/fresh';
 import { PHASE_STEPS, phaseLabel } from '../core/phase';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
@@ -47,6 +47,9 @@ export function nextSpeed(speed: number): number {
 
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
+
+/** Widths where the HUD shows money compact (formatMoneyShort); the 480 px step of ui.css. */
+export const NARROW_MONEY = '(max-width: 480px)';
 
 /**
  * Minute of the next phase change while open and before closing (the end or
@@ -381,17 +384,34 @@ export function createHud(actions: HudActions): Hud {
   });
 
   // Money counts up when it rises; drops and the first value are shown at once.
+  // At NARROW_MONEY widths large sums show compact ("109,6tr"), so Tiến độ
+  // stays clear of Điều khiển; the full sum is in the title and aria-label.
   const money = h('b', { attrs: { 'data-stat': 'money' } });
+  const narrow = typeof matchMedia === 'function' ? matchMedia(NARROW_MONEY) : null;
+  const moneyText = (value: number): string => (narrow?.matches ? formatMoneyShort(value) : formatMoney(value));
   let shownMoney: number | null = null;
   let countFrame = 0;
+  function labelMoney(value: number): void {
+    const text = moneyText(value);
+    if (text === formatMoney(value)) {
+      money.removeAttribute('role');
+      money.removeAttribute('aria-label');
+      money.removeAttribute('title');
+      return;
+    }
+    money.setAttribute('role', 'img');
+    money.setAttribute('aria-label', formatMoney(value));
+    money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+  }
   function showMoney(value: number): void {
     if (countFrame) cancelAnimationFrame(countFrame);
     countFrame = 0;
     const from = shownMoney;
     shownMoney = value;
+    labelMoney(value);
     const duration = from === null || value <= from ? 0 : countDuration(money);
     if (duration <= 0 || from === null) {
-      money.textContent = formatMoney(value);
+      money.textContent = moneyText(value);
       return;
     }
     let start: number | null = null;
@@ -399,12 +419,21 @@ export function createHud(actions: HudActions): Hud {
       start ??= now;
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - (1 - t) ** 3;
-      money.textContent = formatMoney(Math.round(from + (value - from) * eased));
+      money.textContent = moneyText(Math.round(from + (value - from) * eased));
       countFrame = t < 1 ? requestAnimationFrame(tick) : 0;
     };
     countFrame = requestAnimationFrame(tick);
   }
   w.watch((s) => s.money, showMoney);
+  // Crossing NARROW_MONEY redraws the current sum in the other format.
+  const onNarrowMoney = (): void => {
+    if (shownMoney === null) return;
+    if (countFrame) cancelAnimationFrame(countFrame);
+    countFrame = 0;
+    labelMoney(shownMoney);
+    money.textContent = moneyText(shownMoney);
+  };
+  narrow?.addEventListener?.('change', onNarrowMoney);
 
   // Tem (tickets) beside the money; older saves without retention show 0.
   const tickets = h('b', { attrs: { 'data-stat': 'tickets' } });
@@ -838,6 +867,7 @@ export function createHud(actions: HudActions): Hud {
       if (resetTimer) clearTimeout(resetTimer);
       if (levelTimer) clearTimeout(levelTimer);
       if (countFrame) cancelAnimationFrame(countFrame);
+      narrow?.removeEventListener?.('change', onNarrowMoney);
     },
   };
 }

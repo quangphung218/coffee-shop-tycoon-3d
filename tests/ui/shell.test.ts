@@ -9,10 +9,10 @@ import { dispatch as simDispatch } from '../../src/sim/index';
 import { createNewGame as createGameState } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { Watcher } from '../../src/ui/core/dom';
-import { formatClock, formatMoney, formatRating } from '../../src/ui/core/format';
+import { formatClock, formatMoney, formatMoneyShort, formatRating } from '../../src/ui/core/format';
 import { MAX_TOASTS, TOAST_VISIBLE_MS, Toasts } from '../../src/ui/core/toast';
 import { toastForEvent } from '../../src/ui/hud/events';
-import { createHud } from '../../src/ui/hud/hud';
+import { createHud, NARROW_MONEY } from '../../src/ui/hud/hud';
 import { registerPanel } from '../../src/ui/hud/panels';
 import { lowStockCount, openTaskCount, registerPrepPanels } from '../../src/ui/panels';
 import { createLoadGame } from '../../src/ui/screens/loadGame';
@@ -81,6 +81,18 @@ describe('format', () => {
     expect(formatClock(702)).toBe('11:42');
     expect(formatClock(420)).toBe('07:00');
     expect(formatRating(3.84)).toBe('3,8');
+  });
+
+  it('formats large money compact for the narrow HUD', () => {
+    expect(formatMoneyShort(9_999_999)).toBe('9.999.999đ');
+    expect(formatMoneyShort(10_000_000)).toBe('10,0tr');
+    expect(formatMoneyShort(109_582_093)).toBe('109,6tr');
+    expect(formatMoneyShort(-12_540_000)).toBe('−12,5tr');
+    expect(formatMoneyShort(999_949_999)).toBe('999,9tr');
+    // Rounds up to 1000,0tr: shown in tỷ instead.
+    expect(formatMoneyShort(999_960_000)).toBe('1,0 tỷ');
+    expect(formatMoneyShort(1_234_567_890)).toBe('1,2 tỷ');
+    expect(formatMoneyShort(12_345_678_901)).toBe('12,3 tỷ');
   });
 });
 
@@ -465,6 +477,47 @@ describe('HUD', () => {
       hud.update(state);
       expect(q(hud.el, '[data-stat="money"]').textContent).toBe('2.040.000đ');
       expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('shows large money compact at 480 px and below, the full sum in the label', () => {
+    let narrow = true;
+    const listeners: (() => void)[] = [];
+    const matchMedia = vi.fn(
+      (query: string) =>
+        ({
+          get matches() {
+            return query === NARROW_MONEY ? narrow : false;
+          },
+          addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    vi.stubGlobal('matchMedia', matchMedia);
+    try {
+      const state = game();
+      state.money = 109_582_093;
+      const { hud } = makeHud(state);
+      const money = q(hud.el, '[data-stat="money"]');
+      expect(money.textContent).toBe('109,6tr');
+      expect(money.getAttribute('role')).toBe('img');
+      expect(money.getAttribute('aria-label')).toBe('109.582.093đ');
+      expect(money.title).toBe('Tiền: 109.582.093đ');
+      // Wider than 480 px: the full sum again, no label.
+      narrow = false;
+      for (const fn of listeners) fn();
+      expect(money.textContent).toBe('109.582.093đ');
+      expect(money.hasAttribute('role')).toBe(false);
+      expect(money.hasAttribute('aria-label')).toBe(false);
+      // Narrow with a small sum: nothing to shorten, no label.
+      narrow = true;
+      state.money = 3_000_000;
+      hud.update(state);
+      expect(money.textContent).toBe('3.000.000đ');
+      expect(money.hasAttribute('aria-label')).toBe(false);
+      hud.dispose();
     } finally {
       vi.unstubAllGlobals();
     }
