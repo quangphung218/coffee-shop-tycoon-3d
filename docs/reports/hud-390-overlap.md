@@ -6,7 +6,7 @@ Báo cáo này ghi chỗ cụm Tiến độ đè cụm Điều khiển trên HUD
 
 Từ 1023 px trở xuống, `.hud` là lưới `minmax(0, 1fr) auto` (`src/ui/styles/ui.css`): Hôm nay trên Tiến độ ở cột trái, Điều khiển ở cột phải qua hai hàng. Tiến độ là `white-space: nowrap`, nên khi nội dung rộng hơn cột trái thì tràn sang dưới Điều khiển. Lúc chuẩn bị, nút "Mở cửa" làm Điều khiển rộng 118 px thay vì 104 px lúc mở cửa.
 
-Số đo ngày sự kiện "Tăng giá nhập", 390×844 (mép phải Tiến độ so với mép trái Điều khiển, px):
+Số đo ngày sự kiện "Tăng giá nhập", 390×844 (mép phải khung Tiến độ so với mép trái khung Điều khiển, cả hai theo `getBoundingClientRect()`, px; `scripts/check-layout.mjs` cũng xét đè theo hai khung này):
 
 | Số liệu | Lúc chuẩn bị | Lúc mở cửa |
 | --- | --- | --- |
@@ -58,16 +58,25 @@ A: HUD giữ một khung hai hàng như thiết kế, còn chỗ cho tiền tăn
 | Ở ≤ 480 px (`NARROW_MONEY`), HUD hiện tiền gọn, cả lúc đếm tăng; số đầy đủ trong `title` ("Tiền: 109.582.093đ") và `aria-label`. Trên 480 px giữ số đầy đủ. Đổi khổ qua 480 px thì vẽ lại ngay. | `src/ui/hud/hud.ts` |
 | Ca 390×844, ngày sự kiện, số liệu cuối game | `scripts/check-layout.mjs` (`EVENT_DAY`) |
 
-Số đo 390×844, số liệu cuối game (mép phải nội dung Tiến độ so với mép trái Điều khiển, px):
+Số đo 390×844, ngày sự kiện, số liệu cuối game, cùng cách đo mục 1 (mép phải khung Tiến độ so với mép trái khung Điều khiển, px). Đo trên bản build đã sửa, thay chữ tiền trong HUD bằng từng giá trị:
 
 | | Lúc chuẩn bị | Lúc mở cửa |
 | --- | --- | --- |
-| Số đầy đủ "109.582.093đ" | đè 8 | hở 2 (số đo mục 1) |
-| Tiền gọn "109,6tr" | hở 35 | hở 49 |
-| "1,2 tỷ" | hở 46 | hở 60 |
-| "9.999.999đ" (dưới ngưỡng, không rút gọn) | hở 9 | hở 23 |
+| Số đầy đủ "109.582.093đ" | **đè 12** | hở 2 |
+| Tiền gọn "109,6tr" | hở 31 | hở 45 |
+| "1,2 tỷ" | hở 42 | hở 56 |
+| "9.999.999đ" (dưới ngưỡng, không rút gọn) | hở 4 | hở 19 |
 
-`LAYOUT_ONLY=event` của `scripts/check-layout.mjs`: 15/15 PASS; khi tắt rút gọn, hai ca 390 px cuối game (chuẩn bị, menu camera) báo FAIL. Ở 1100, 1280, 1440 px tiền vẫn đầy đủ, bề rộng cụm không đổi.
+Bản trước của bảng này ghi "đè 8" vì đo đến `left + scrollWidth` của Tiến độ, hụt 4 px viền khung; mọi ô khi đó lệch 4 px so với mục 1. Ở cách đo đó, số đầy đủ là đè 8 / hở 6, tiền gọn hở 35 / hở 49.
+
+`scripts/check-layout.mjs` đọc bản build trong `dist/`, nên chạy riêng ca phải build trước:
+
+```sh
+npm run build
+LAYOUT_ONLY=event node scripts/check-layout.mjs
+```
+
+Chạy riêng ca khi chưa có `dist/` thì `vite preview` trả 404 và lệnh dừng với lỗi "vite preview did not start"; giờ lệnh báo thiếu `dist/index.html`. Có bản build thì `LAYOUT_ONLY=event` cho 15/15 PASS; khi tắt rút gọn, hai ca 390 px cuối game (chuẩn bị, menu camera) báo FAIL. Ở 1100, 1280, 1440 px tiền vẫn đầy đủ, bề rộng cụm không đổi. `npm run layout` đầy đủ: 98/98 PASS.
 
 Ảnh trước dựng trên bản đã sửa, thay chữ tiền bằng số đầy đủ như bản cũ:
 
