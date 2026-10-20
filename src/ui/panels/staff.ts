@@ -117,7 +117,8 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const staffList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Nhân viên đang làm' } });
   const candList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Ứng viên hôm nay' } });
   const wages = h('b');
-  w.text(wages, (s) => formatMoney(totalWages(s)));
+  // Includes the wages still owed to staff fired after opening (settleDay pays both).
+  w.text(wages, (s) => formatMoney(totalWages(s) + (s.today.firedWages ?? 0)));
 
   // Mức lương: a trade-off set in place; the hint gives the day's wage bill and work speed.
   const wageTitleId = uid('wage-policy');

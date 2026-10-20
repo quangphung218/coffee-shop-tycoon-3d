@@ -525,6 +525,17 @@ describe('staff panel', () => {
     expect(state.staff).toHaveLength(0);
   });
 
+  it('keeps a fired member\'s wage in the wage total once the doors opened', () => {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    const wage = state.staff[0]!.wagePerDay;
+    state.phase = 'peak';
+    const { body, handle } = mount(renderStaffPanel, state);
+    simDispatch(state, { type: 'fire_staff', staffId: state.staff[0]!.id });
+    handle!.update!(state);
+    expect(q(body, '.foot-sum b').textContent).toBe(formatMoney(wage));
+  });
+
   it('says the wage is still paid when letting staff go after opening', () => {
     const state = game();
     simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
