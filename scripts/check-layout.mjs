@@ -14,12 +14,14 @@
 // not move. Shifts that follow a click
 // are listed per step as notes. The HUD is checked before opening, with the
 // camera menu open and while open: three clusters inside the viewport, not
-// overlapping, content inside each frame, one row from 1280 px up and at
-// most two below, every button at least --size-target (44 px) and, while
+// overlapping, content inside each frame, one row from 1280 px up (same top
+// and height) and at most two below, Điều khiển starting in the first row,
+// every button at least --size-target (44 px) and, while
 // open, each speed button with an icon and an aria-label (1280×800 runs
-// this HUD check only). The same HUD check runs again at 390, 1280 and 1440 px on
-// a day with an event ("Tăng giá nhập"), from a save written by this tree's
-// sim with the day-1 event swapped.
+// this HUD check only). The same HUD check runs again at 390, 1100, 1280 and
+// 1440 px on a day with an event ("Tăng giá nhập"), at 390 px and from
+// 1100 px with late-game values (nine-digit sum, Tem, Cấp 5), from saves
+// written by this tree's sim with the day-1 event swapped.
 // P25, at 390×844, 768×1024, 1280×720 and 1440×900, from saves of
 // scripts/capture-p25.mjs: the compact Menu on the day-3 morning after a
 // click on the Nước cam switch (no Cam), and the Daily Report of the first
@@ -39,6 +41,7 @@
 // can be split; the default runs everything.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -73,6 +76,8 @@ const EPS = 0.5;
 const SHOW = 6;
 
 async function startPreview() {
+  // Without a build, vite preview answers 404 and never looks started.
+  if (!existsSync(join(ROOT, 'dist', 'index.html'))) throw new Error('no dist/index.html: run npm run build first (npm run layout does)');
   const vite = join(ROOT, 'node_modules', '.bin', 'vite');
   const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 100; i++) {
@@ -221,6 +226,11 @@ async function checkHud(page, results, viewport, screen, maxRows) {
           rowBottom = bottom;
         } else rowBottom = Math.min(rowBottom, bottom);
       }
+      // Điều khiển starts in the first row: never wrapped alone under Tiến độ.
+      const at = (n) => boxes.find(([c]) => c.dataset.cluster === n)?.[1];
+      const today = at('today');
+      const controls = at('controls');
+      if (today && controls && controls.top >= today.bottom - eps) fails.push(`controls top ${controls.top.toFixed(1)} below today ${today.top.toFixed(1)}..${today.bottom.toFixed(1)}`);
       const menu = document.querySelector('.hud-menu:not([hidden])');
       if (menu) {
         const r = menu.getBoundingClientRect();
@@ -251,6 +261,7 @@ async function checkHud(page, results, viewport, screen, maxRows) {
       return {
         fails,
         rows,
+        tops: boxes.map(([c, r]) => [name(c), r.top, r.height]),
         height: Math.round(bar.height),
         widths: boxes.map(([c, r]) => `${name(c)} ${Math.round(r.width)}`).join(', '),
         buttons: buttons.length,
@@ -261,6 +272,13 @@ async function checkHud(page, results, viewport, screen, maxRows) {
   );
   const fails = [...m.fails];
   if (m.rows > maxRows) fails.push(`${m.rows} rows, at most ${maxRows}`);
+  // One row: the three frames share their top edge and height.
+  if (maxRows === 1 && m.tops.length) {
+    const [, top0, h0] = m.tops[0];
+    for (const [n, top, h] of m.tops) {
+      if (Math.abs(top - top0) > EPS || Math.abs(h - h0) > EPS) fails.push(`${n} top ${top.toFixed(1)} h ${h.toFixed(1)} ≠ ${top0.toFixed(1)} h ${h0.toFixed(1)}`);
+    }
+  }
   const event = m.event ? `; sự kiện ${m.event}` : '';
   results.push({ viewport, screen, pass: fails.length === 0, detail: `${m.rows} hàng, cao ${m.height} px; ${m.widths}; ${m.buttons} nút ≥ 44 px${event}`, fails });
 }
@@ -336,27 +354,44 @@ async function runHudOnly(browser, viewport, results) {
 /** Viewports of the event-day HUD check. */
 const EVENT_DAY = [
   { width: 390, height: 844 },
-  { width: 1280, height: 800 },
+  // At 390 px the nine-digit sum overlapped Điều khiển before opening; the
+  // HUD now shows it compact ("109,6tr", formatMoneyShort).
+  { width: 390, height: 844, late: true },
+  // From 1024 px up with LATE_GAME values. Between the tablet grid and one
+  // row: two rows (.is-stacked), never Điều khiển alone.
+  { width: 1100, height: 800, late: true },
+  { width: 1280, height: 800, late: true },
   // The event's name shows again from 1440 px (ui.css).
-  { width: 1440, height: 900 },
+  { width: 1440, height: 900, late: true },
 ];
 /** The event with the longest name (DAY_EVENT_LABELS "Tăng giá nhập"). */
 const EVENT = 'supplier_hike';
+/**
+ * Late-game HUD values (T451 report: a nine-digit sum, Tem, Cấp 5 at
+ * 2929/7000): at 1440 px they pushed Điều khiển to a second row.
+ */
+const LATE_GAME = { money: 109_582_093, tickets: 2, shopLevel: 5, xp: 14_929 };
 
 /**
  * Autosave of a new Easy game on the morning of day 1, its plan turned into
- * an EVENT day (day 1 is always the grand opening), written by the sim and
- * save code of this tree.
+ * an EVENT day (day 1 is always the grand opening), with LATE_GAME values
+ * when `late`, written by the sim and save code of this tree.
  */
-async function eventDaySave() {
+async function eventDaySave(late) {
   const { createServer } = await import('vite');
   const vite = await createServer({ root: ROOT, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
   try {
-    const [stateMod, save] = await Promise.all(['/src/sim/state.ts', '/src/save/save.ts'].map((p) => vite.ssrLoadModule(p)));
+    const [stateMod, save, retention] = await Promise.all(['/src/sim/state.ts', '/src/save/save.ts', '/src/sim/retention.ts'].map((p) => vite.ssrLoadModule(p)));
     const state = stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
     const today = state.week?.plan.find((p) => p.day === 1);
     if (!today) throw new Error('the new game has no week plan');
     today.event = EVENT;
+    if (late) {
+      state.money = LATE_GAME.money;
+      state.shopLevel = LATE_GAME.shopLevel;
+      state.xp = LATE_GAME.xp;
+      retention.ensureRetention(state).tickets = LATE_GAME.tickets;
+    }
     const data = new Map();
     const storage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
     const r = save.saveGame(state, 'auto', storage, FIXED_NOW);
@@ -393,7 +428,7 @@ async function runEventDay(browser, viewport, results, eventSave) {
     await page.locator('.hud [data-action="open"]').click();
     await setSpeed4(page);
     await checkHud(page, results, size, 'HUD: mở cửa', hudRows(viewport));
-    for (const r of results.slice(before)) r.screen += ' (ngày sự kiện)';
+    for (const r of results.slice(before)) r.screen += viewport.late ? ' (ngày sự kiện, cuối game)' : ' (ngày sự kiện)';
   } finally {
     await context.close();
   }
@@ -876,11 +911,11 @@ async function main() {
         overflow.push({ viewport: size, screen: 'HUD', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
-    const eventSave = part('event') ? await eventDaySave() : null;
+    const eventSaves = part('event') ? { start: await eventDaySave(false), late: await eventDaySave(true) } : null;
     for (const viewport of part('event') ? EVENT_DAY : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
-        await runEventDay(browser, viewport, overflow, eventSave);
+        await runEventDay(browser, viewport, overflow, viewport.late ? eventSaves.late : eventSaves.start);
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'HUD (ngày sự kiện)', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });

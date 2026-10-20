@@ -9,6 +9,22 @@ export function formatMoney(dong: number): string {
   return `${dong < 0 ? '−' : ''}${groupThousands(dong)}đ`;
 }
 
+/** Sums from this many đồng show compact in formatMoneyShort. */
+export const SHORT_MONEY_FROM = 10_000_000;
+
+/**
+ * Compact money for the narrow HUD: 109582093 → "109,6tr", 1234567890 →
+ * "1,2 tỷ", one decimal; below SHORT_MONEY_FROM the same as formatMoney.
+ */
+export function formatMoneyShort(dong: number): string {
+  const abs = Math.abs(Math.round(dong));
+  if (abs < SHORT_MONEY_FROM) return formatMoney(dong);
+  const sign = dong < 0 ? '−' : '';
+  const tr = Math.round(abs / 100_000) / 10;
+  if (tr < 1000) return `${sign}${tr.toFixed(1).replace('.', ',')}tr`;
+  return `${sign}${(Math.round(abs / 100_000_000) / 10).toFixed(1).replace('.', ',')} tỷ`;
+}
+
 /** 702 → "11:42". */
 export function formatClock(minute: number): string {
   const m = Math.max(0, Math.floor(minute));

@@ -555,3 +555,86 @@ describe('HUD camera and settings menu', () => {
     expect(menu.hidden).toBe(true);
   });
 });
+
+// T451: at 1440 px a late-game sum, Tem and "Tăng giá nhập" wrapped Điều
+// khiển alone onto a second row. hud.ts checks the row on every resize.
+describe('HUD keeps its clusters on one row (T451)', () => {
+  /**
+   * Mounts the HUD with a stubbed layout: Điều khiển wraps (offsetTop 56)
+   * unless the bar's classes include one of `fitsWith` ('' = as it is).
+   */
+  function mountFit(fitsWith: string[], narrow = false): { bar: HTMLElement; resize(): void } {
+    const observers: ResizeObserverCallback[] = [];
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: narrow && query === '(max-width: 1023px)' }));
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: ResizeObserverCallback) {
+          observers.push(cb);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.cluster !== 'controls') return 0;
+      const bar = this.closest('.hud')!;
+      return fitsWith.some((c) => (c ? bar.classList.contains(c) : true)) ? 0 : 56;
+    });
+    const { bar } = mountHud(game());
+    const resize = (): void => {
+      for (const cb of observers) cb([], {} as ResizeObserver);
+    };
+    return { bar, resize };
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('adds no class while the clusters fit as they are', () => {
+    const { bar, resize } = mountFit(['']);
+    resize();
+    expect(bar.classList.contains('is-compact')).toBe(false);
+    expect(bar.classList.contains('is-stacked')).toBe(false);
+  });
+
+  it('hides the short words when that brings Điều khiển back to the row', () => {
+    const { bar, resize } = mountFit(['is-compact']);
+    resize();
+    expect(bar.classList.contains('is-compact')).toBe(true);
+    expect(bar.classList.contains('is-stacked')).toBe(false);
+  });
+
+  it('falls back to the two stacked rows when even the short words do not fit', () => {
+    const { bar, resize } = mountFit(['is-stacked']);
+    resize();
+    expect(bar.classList.contains('is-compact')).toBe(true);
+    expect(bar.classList.contains('is-stacked')).toBe(true);
+  });
+
+  it('measures afresh on every resize, so a wider screen drops the classes', () => {
+    const fits = ['is-stacked'];
+    const { bar, resize } = mountFit(fits);
+    resize();
+    expect(bar.classList.contains('is-stacked')).toBe(true);
+    fits.push('');
+    resize();
+    expect(bar.className).toBe('hud');
+  });
+
+  it('leaves the ≤ 1023 px grid to ui.css', () => {
+    const { bar, resize } = mountFit([], true);
+    resize();
+    expect(bar.className).toBe('hud');
+  });
+
+  it('styles .is-compact like the 1439 px block and .is-stacked like the 1023 px grid', () => {
+    const rule = (sel: string): string | undefined => UI_RULES.find((r) => r.selector.split(',').map((s) => s.trim()).includes(sel))?.body;
+    for (const sel of ['.hud.is-compact .hud-level .xp-num', '.hud.is-compact .week-chip-label', '.hud.is-compact .hud-btn .lbl-long']) {
+      expect(decl(rule(sel) ?? '', 'display'), sel).toBe('none');
+    }
+    const stacked = rule('.hud.is-stacked')!;
+    expect(decl(stacked, 'display')).toBe('grid');
+    expect(decl(stacked, 'grid-template-columns')).toBe('minmax(0, 1fr) auto');
+    expect(decl(stacked, 'grid-template-areas')!.match(/'[^']+'/g)).toEqual(["'today controls'", "'progress controls'"]);
+    expect(decl(rule('.hud.is-stacked .hud-controls')!, 'grid-template-areas')!.match(/'[^']+'/g)).toEqual(["'main main'", "'pause menu'"]);
+  });
+});

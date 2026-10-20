@@ -7,7 +7,7 @@ import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
-import { formatClock, formatMoney, formatRating } from '../core/format';
+import { formatClock, formatMoney, formatMoneyShort, formatRating } from '../core/format';
 import { fresh } from '../core/fresh';
 import { PHASE_STEPS, phaseLabel } from '../core/phase';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
@@ -47,6 +47,9 @@ export function nextSpeed(speed: number): number {
 
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
+
+/** Widths where the HUD shows money compact (formatMoneyShort); the 480 px step of ui.css. */
+export const NARROW_MONEY = '(max-width: 480px)';
 
 /**
  * Minute of the next phase change while open and before closing (the end or
@@ -205,8 +208,9 @@ export function createHud(actions: HudActions): Hud {
 
   // Today's weather (an icon) and event (icon and word, only on a special
   // day), during a week. The title and accessible name say what they do;
-  // below 1440 px the event shows its icon only (ui.css), as a word like
-  // "Tăng giá nhập" pushed Điều khiển to a second row at 1280 px.
+  // below 1440 px, or when the row is full (.is-compact, fitRow), the event
+  // shows its icon only (ui.css), as a word like "Tăng giá nhập" pushed
+  // Điều khiển to a second row.
   const weatherChip = h('span', { class: 'week-chip', attrs: { role: 'img', 'data-chip': 'weather' } });
   const eventChip = h('span', { class: 'week-chip', attrs: { role: 'note', 'data-chip': 'event' } });
   const weekChips = h('span', { class: 'hud-week', hidden: true }, weatherChip, eventChip);
@@ -380,17 +384,34 @@ export function createHud(actions: HudActions): Hud {
   });
 
   // Money counts up when it rises; drops and the first value are shown at once.
+  // At NARROW_MONEY widths large sums show compact ("109,6tr"), so Tiến độ
+  // stays clear of Điều khiển; the full sum is in the title and aria-label.
   const money = h('b', { attrs: { 'data-stat': 'money' } });
+  const narrow = typeof matchMedia === 'function' ? matchMedia(NARROW_MONEY) : null;
+  const moneyText = (value: number): string => (narrow?.matches ? formatMoneyShort(value) : formatMoney(value));
   let shownMoney: number | null = null;
   let countFrame = 0;
+  function labelMoney(value: number): void {
+    const text = moneyText(value);
+    if (text === formatMoney(value)) {
+      money.removeAttribute('role');
+      money.removeAttribute('aria-label');
+      money.removeAttribute('title');
+      return;
+    }
+    money.setAttribute('role', 'img');
+    money.setAttribute('aria-label', formatMoney(value));
+    money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+  }
   function showMoney(value: number): void {
     if (countFrame) cancelAnimationFrame(countFrame);
     countFrame = 0;
     const from = shownMoney;
     shownMoney = value;
+    labelMoney(value);
     const duration = from === null || value <= from ? 0 : countDuration(money);
     if (duration <= 0 || from === null) {
-      money.textContent = formatMoney(value);
+      money.textContent = moneyText(value);
       return;
     }
     let start: number | null = null;
@@ -398,12 +419,21 @@ export function createHud(actions: HudActions): Hud {
       start ??= now;
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - (1 - t) ** 3;
-      money.textContent = formatMoney(Math.round(from + (value - from) * eased));
+      money.textContent = moneyText(Math.round(from + (value - from) * eased));
       countFrame = t < 1 ? requestAnimationFrame(tick) : 0;
     };
     countFrame = requestAnimationFrame(tick);
   }
   w.watch((s) => s.money, showMoney);
+  // Crossing NARROW_MONEY redraws the current sum in the other format.
+  const onNarrowMoney = (): void => {
+    if (shownMoney === null) return;
+    if (countFrame) cancelAnimationFrame(countFrame);
+    countFrame = 0;
+    labelMoney(shownMoney);
+    money.textContent = moneyText(shownMoney);
+  };
+  narrow?.addEventListener?.('change', onNarrowMoney);
 
   // Tem (tickets) beside the money; older saves without retention show 0.
   const tickets = h('b', { attrs: { 'data-stat': 'tickets' } });
@@ -787,9 +817,32 @@ export function createHud(actions: HudActions): Hud {
     host.style.setProperty('--hud-h', `${hudH}px`);
     host.style.setProperty('--dock-h', `${dockH}px`);
   }
-  const edges = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measureEdges()) : null;
+  // From 1024 px up the three clusters must share one row (ui.css). Their
+  // widths follow the data (a nine-digit sum, Tem, an event's name), so no
+  // breakpoint can promise that: lay them out in full, and while a cluster
+  // starts below Hôm nay try .is-compact (the short words), then .is-stacked
+  // (the tablet's two rows). Classes switch before paint, so nothing jumps.
+  const clusters = [...bar.querySelectorAll<HTMLElement>(':scope > .hud-cluster')];
+  const stackedMq = typeof matchMedia === 'function' ? matchMedia('(max-width: 1023px)') : null;
+  function fitRow(): void {
+    bar.classList.remove('is-compact', 'is-stacked');
+    if (el.hidden || !stackedMq || stackedMq.matches) return;
+    const oneRow = (): boolean => clusters.every((c) => Math.abs(c.offsetTop - clusters[0]!.offsetTop) < 1);
+    if (oneRow()) return;
+    bar.classList.add('is-compact');
+    if (oneRow()) return;
+    bar.classList.add('is-stacked');
+  }
+  const edges =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          fitRow();
+          measureEdges();
+        })
+      : null;
   edges?.observe(bar);
   edges?.observe(dock);
+  for (const c of clusters) edges?.observe(c);
 
   return {
     el,
@@ -814,6 +867,7 @@ export function createHud(actions: HudActions): Hud {
       if (resetTimer) clearTimeout(resetTimer);
       if (levelTimer) clearTimeout(levelTimer);
       if (countFrame) cancelAnimationFrame(countFrame);
+      narrow?.removeEventListener?.('change', onNarrowMoney);
     },
   };
 }
