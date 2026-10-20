@@ -33,6 +33,31 @@ export function watchAudioUnlock(target: EventTarget, getAudio: () => { unlock()
 }
 
 /**
+ * One animation frame that always schedules the next, so an exception in the
+ * sim, the world or the UI shows in the console instead of freezing the page.
+ * Reports the first error of each run of failing frames, not one per frame.
+ */
+export function guardFrame(
+  body: (now: number) => void,
+  schedule: (next: (now: number) => void) => void,
+  report: (error: unknown) => void = (e) => console.error(e),
+): (now: number) => void {
+  let failing = false;
+  const frame = (now: number): void => {
+    try {
+      body(now);
+      failing = false;
+    } catch (e) {
+      if (!failing) report(e);
+      failing = true;
+    } finally {
+      schedule(frame);
+    }
+  };
+  return frame;
+}
+
+/**
  * Imports a lazy chunk again after a failure. Browsers may keep a failed
  * module fetch for the life of the page (whatwg/html#6768), so when the
  * import fails again but `online()` says the site answers, `reload()`: the

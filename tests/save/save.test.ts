@@ -365,3 +365,34 @@ describe('settings', () => {
     expect(loadSettings(storage).reducedMotion).toBe('reduce');
   });
 });
+
+describe('menu items the game does not know', () => {
+  /** A save from a build that sold an item this build lacks (added, then rolled back). */
+  function saveWithUnknownItem(): StorageLike {
+    const s = createNewGame('Quán Lạ', 'normal', 11);
+    const raw = JSON.parse(JSON.stringify(s)) as { menu: unknown[] };
+    raw.menu.push({ id: 'matcha_cloud', enabled: true, price: 55000 });
+    const storage = createMemoryStorage();
+    storage.setItem(saveKey('1'), JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: raw }));
+    return storage;
+  }
+
+  it('keeps the entry but switches it off, so the sim never looks it up', () => {
+    const r = loadGame('1', saveWithUnknownItem());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.menu.at(-1)).toEqual({ id: 'matcha_cloud', enabled: false, price: 55000 });
+  });
+
+  it('plays a whole day from that save without throwing', () => {
+    const r = loadGame('1', saveWithUnknownItem());
+    if (!r.ok) throw new Error(r.error.message);
+    const g = r.value;
+    expect(dispatch(g, { type: 'apply_restock' })).toBe(true);
+    expect(dispatch(g, { type: 'start_day' })).toBe(true);
+    expect(() => {
+      for (let i = 0; i < 2000 && g.phase !== 'report'; i++) step(g, 1);
+    }).not.toThrow();
+    expect(g.phase).toBe('report');
+  });
+});

@@ -171,14 +171,15 @@ export function migrate(raw: unknown): Result<SaveFile> {
  * came with v2), switched off at their default price, so they can be enabled
  * once the shop level allows. Runs on every load, so a v2 save written before
  * an item existed gets it too. Entries keep the order of MENU; entries for
- * items the game no longer knows stay at the end, as saved.
+ * items the game no longer knows stay at the end, switched off: the sim looks
+ * up every enabled item and would throw on them.
  */
 function addMissingMenuItems(state: GameState): void {
   const saved = new Map(state.menu.filter(isObject).map((m) => [m.id, m]));
   const known = new Set<unknown>(MENU.map((m) => m.id));
   state.menu = [
     ...MENU.map((item) => saved.get(item.id) ?? { id: item.id, enabled: false, price: item.price }),
-    ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)),
+    ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)).map((m) => (isObject(m) ? { ...m, enabled: false } : m)),
   ];
 }
 

@@ -16,7 +16,7 @@ import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
-import { once, restartWorldLoad, retryModule, watchAudioUnlock } from './ui/core/startup';
+import { guardFrame, once, restartWorldLoad, retryModule, watchAudioUnlock } from './ui/core/startup';
 import { createMenuShell, type ShellOptions } from './ui/screens/menuShell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
@@ -135,7 +135,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   gameModule.then(useGame).catch(() => undefined);
 
   let last = performance.now();
-  const frame = (now: number): void => {
+  const frame = guardFrame((now) => {
     const dt = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
     const state = game?.state;
@@ -154,8 +154,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       world?.update(menuScene, menuScene.tickAccumulator);
       menuScene.events.length = 0;
     }
-    requestAnimationFrame(frame);
-  };
+  }, requestAnimationFrame);
   requestAnimationFrame(frame);
 
   // Build the scene only after the menu is on screen, then fade it in. The
