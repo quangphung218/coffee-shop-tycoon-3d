@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { initialComponents } from '../../src/ui/core/loadProgress';
 import { SceneGate } from '../../src/ui/core/sceneGate';
-import { once, restartWorldLoad, retryModule, watchAudioUnlock } from '../../src/ui/core/startup';
+import { guardFrame, once, restartWorldLoad, retryModule, runEvents, watchAudioUnlock } from '../../src/ui/core/startup';
 
 describe('watchAudioUnlock', () => {
   const tap = (target: EventTarget): void => void target.dispatchEvent(new Event('pointerdown'));
@@ -132,5 +132,53 @@ describe('Thử lại on the code item', () => {
     expect(scene.state.status).toBe('loading');
     expect(scene.state.slow).toBe(false);
     expect(retry!.hidden).toBe(true);
+  });
+});
+
+describe('guardFrame', () => {
+  it('schedules the next frame even when the frame throws, and logs once per failing run', () => {
+    const queue: ((now: number) => void)[] = [];
+    const schedule = (cb: (now: number) => void): void => void queue.push(cb);
+    const report = vi.fn();
+    let fail = true;
+    const body = vi.fn(() => {
+      if (fail) throw new Error('boom');
+    });
+    schedule(guardFrame(body, schedule, report));
+
+    for (let t = 0; t < 3; t++) queue.shift()!(t);
+    expect(body).toHaveBeenCalledTimes(3);
+    expect(queue).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls[0]![0]).toEqual(new Error('boom'));
+
+    fail = false;
+    queue.shift()!(3);
+    fail = true;
+    queue.shift()!(4);
+    expect(report).toHaveBeenCalledTimes(2);
+    expect(queue).toHaveLength(1);
+  });
+});
+
+describe('runEvents', () => {
+  it('runs every step, empties the queue even when one throws, then rethrows the first error', () => {
+    const queue = [1, 2];
+    const seen: number[][] = [];
+    const first = new Error('first');
+    expect(() =>
+      runEvents(queue, [
+        () => seen.push([...queue]),
+        () => {
+          throw first;
+        },
+        () => {
+          throw new Error('second');
+        },
+        () => seen.push([...queue]),
+      ]),
+    ).toThrow(first);
+    expect(seen).toEqual([[1, 2], [1, 2]]);
+    expect(queue).toEqual([]);
   });
 });

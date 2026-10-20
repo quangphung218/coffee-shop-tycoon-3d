@@ -16,7 +16,7 @@ import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
-import { once, restartWorldLoad, retryModule, watchAudioUnlock } from './ui/core/startup';
+import { guardFrame, once, restartWorldLoad, retryModule, runEvents, watchAudioUnlock } from './ui/core/startup';
 import { createMenuShell, type ShellOptions } from './ui/screens/menuShell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
@@ -135,27 +135,29 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   gameModule.then(useGame).catch(() => undefined);
 
   let last = performance.now();
-  const frame = (now: number): void => {
+  const frame = guardFrame((now) => {
     const dt = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
     const state = game?.state;
     if (sim && game && state) {
-      sim.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed);
-      world?.update(state, state.tickAccumulator);
-      game.update();
-      audio?.handleEvents(state.events);
-      fresh.handleEvents(state.events);
-      game.handleEvents(state.events);
-      state.events.length = 0;
+      const [s, g] = [sim, game];
+      // The step too: if it throws mid-day, the events it already queued still go out once.
+      runEvents(state.events, [
+        () => s.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed),
+        () => world?.update(state, state.tickAccumulator),
+        () => g.update(),
+        () => audio?.handleEvents(state.events),
+        () => fresh.handleEvents(state.events),
+        () => g.handleEvents(state.events),
+      ]);
     } else if (sim && menuScene) {
       sim.step(menuScene, dt * GAME_MINUTES_PER_SECOND);
       if (menuScene.phase === 'report') menuScene = sim.createMenuScene();
       world?.rotateCamera(MENU_SPIN * dt);
-      world?.update(menuScene, menuScene.tickAccumulator);
-      menuScene.events.length = 0;
+      const scene = menuScene;
+      runEvents(scene.events, [() => world?.update(scene, scene.tickAccumulator)]);
     }
-    requestAnimationFrame(frame);
-  };
+  }, requestAnimationFrame);
   requestAnimationFrame(frame);
 
   // Build the scene only after the menu is on screen, then fade it in. The

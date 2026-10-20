@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
+import { SAVE_VERSION, autosave, autosaveAtRisk, deleteSave, keepAutosave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { dispatch, isUnlocked, step } from '../../src/sim';
@@ -20,6 +20,8 @@ describe('saveGame / loadGame', () => {
   it('round-trips a game state', () => {
     const storage = createMemoryStorage();
     const s = sampleState();
+    // A running game always has one (the shell sets it); without, load derives it.
+    s.runId = 'run-1';
     expect(saveGame(s, '1', storage, 1000).ok).toBe(true);
     const r = loadGame('1', storage);
     expect(r.ok).toBe(true);
@@ -363,5 +365,102 @@ describe('settings', () => {
     expect(loadSettings(storage).reducedMotion).toBe('system');
     storage.setItem(SETTINGS_KEY, JSON.stringify({ reducedMotion: 'reduce' }));
     expect(loadSettings(storage).reducedMotion).toBe('reduce');
+  });
+});
+
+describe('menu items the game does not know', () => {
+  /** A save from a build that sold an item this build lacks (added, then rolled back). */
+  function saveWithUnknownItem(): StorageLike {
+    const s = createNewGame('Quán Lạ', 'normal', 11);
+    const raw = JSON.parse(JSON.stringify(s)) as { menu: unknown[] };
+    raw.menu.push({ id: 'matcha_cloud', enabled: true, price: 55000 });
+    const storage = createMemoryStorage();
+    storage.setItem(saveKey('1'), JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: raw }));
+    return storage;
+  }
+
+  it('keeps the entry but switches it off, so the sim never looks it up', () => {
+    const r = loadGame('1', saveWithUnknownItem());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.menu.at(-1)).toEqual({ id: 'matcha_cloud', enabled: false, price: 55000 });
+  });
+
+  it('plays a whole day from that save without throwing', () => {
+    const r = loadGame('1', saveWithUnknownItem());
+    if (!r.ok) throw new Error(r.error.message);
+    const g = r.value;
+    expect(dispatch(g, { type: 'apply_restock' })).toBe(true);
+    expect(dispatch(g, { type: 'start_day' })).toBe(true);
+    expect(() => {
+      for (let i = 0; i < 2000 && g.phase !== 'report'; i++) step(g, 1);
+    }).not.toThrow();
+    expect(g.phase).toBe('report');
+  });
+});
+
+describe('keepAutosave', () => {
+  it('does nothing for an empty autosave, copies once, and reports a full set of slots', () => {
+    const storage = createMemoryStorage();
+    expect(keepAutosave(storage)).toEqual({ kind: 'none' });
+    expect(autosaveAtRisk(storage)).toBeNull();
+    autosave(sampleState(), storage);
+    saveGame(createNewGame('Một', 'normal', 1), '1', storage);
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '2', copied: true });
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '2', copied: false });
+
+    autosave(createNewGame('Ván Sau', 'normal', 2), storage);
+    saveGame(createNewGame('Ba', 'normal', 3), '3', storage);
+    expect(autosaveAtRisk(storage)).toMatchObject({ slot: 'auto', shopName: 'Ván Sau' });
+    expect(keepAutosave(storage)).toEqual({ kind: 'no_room' });
+    expect(loadGame('auto', storage).ok).toBe(true);
+  });
+
+  it('keeps autosave data that no longer loads, byte for byte', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(saveKey('auto'), '{broken');
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '1', copied: true });
+    expect(storage.getItem(saveKey('1'))).toBe('{broken');
+  });
+});
+
+describe('runId', () => {
+  it('is kept through save and load', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Một', 'normal', 9);
+    s.runId = 'run-abc';
+    saveGame(s, '1', storage);
+    const r = loadGame('1', storage);
+    expect(r.ok && r.value.runId).toBe('run-abc');
+  });
+
+  it('is derived from the seed and shop name for a save without one, the same for every copy of that run', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Cũ', 'normal', 9);
+    saveGame(s, 'auto', storage);
+    s.day = 5;
+    saveGame(s, '1', storage);
+    const a = loadGame('auto', storage);
+    const b = loadGame('1', storage);
+    if (!a.ok || !b.ok) throw new Error('load failed');
+    expect(a.value.runId).toBeTruthy();
+    expect(a.value.runId).toBe(b.value.runId);
+    const other = createNewGame('Quán Khác', 'normal', 9);
+    saveGame(other, '2', storage);
+    const c = loadGame('2', storage);
+    expect(c.ok && c.value.runId).not.toBe(a.value.runId);
+  });
+
+  it('lets keepAutosave tell this run\'s autosave from another run\'s', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Một', 'normal', 9);
+    s.runId = 'run-1';
+    autosave(s, storage);
+    expect(keepAutosave(storage, 'run-1')).toEqual({ kind: 'same_run' });
+    expect(storage.getItem(saveKey('1'))).toBeNull();
+    for (const slot of ['1', '2', '3'] as const) saveGame(createNewGame(`Slot ${slot}`, 'normal', 1), slot, storage);
+    expect(autosaveAtRisk(storage, 'run-1')).toBeNull();
+    expect(autosaveAtRisk(storage, 'run-2')).toMatchObject({ slot: 'auto', shopName: 'Quán Một' });
+    expect(keepAutosave(storage, 'run-2')).toEqual({ kind: 'no_room' });
   });
 });

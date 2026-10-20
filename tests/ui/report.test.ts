@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { saveKey } from '../../src/save/save';
+import { loadGame, saveGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
 import { WEEK_LENGTH } from '../../src/sim/data/week';
 import { buildDailyReport } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
-import type { Command, DailyReport, DayStats, GameState, Review } from '../../src/sim/types';
+import type { Command, DailyReport, DayStats, GameState, MenuItemId, Review } from '../../src/sim/types';
 import { scoreWeek } from '../../src/sim/week';
 import { createHud } from '../../src/ui/hud/hud';
 import { listPanels, type PanelContext } from '../../src/ui/hud/panels';
@@ -677,5 +677,34 @@ describe('Shell wiring', () => {
     } finally {
       shell.dispose();
     }
+  });
+});
+
+describe('a save from a build with a menu item this build lacks', () => {
+  it('opens on the Daily Report without throwing and without the unknown item', () => {
+    const played = createNewGame('Quán Lạ', 'normal', 5);
+    played.inventory.forEach((i) => (i.qty = 100_000));
+    playDay(played);
+    const gone = 'mystery' as MenuItemId;
+    const r = played.lastReport!;
+    r.topSellers.push({ id: gone, qty: 3 });
+    r.outOfStock.push(gone);
+    r.insights?.itemMargins.push({ ...r.insights.itemMargins[0]!, id: gone });
+    r.insights?.itemProfits.push({ ...(r.insights.itemProfits[0] ?? r.insights.itemMargins[0]!), id: gone } as never);
+    played.today.sold[gone] = 3;
+    played.today.outOfStock[gone] = 1;
+    played.history.push({ ...played.today, day: 0, sold: { [gone]: 2 } });
+    played.menu.push({ id: gone, enabled: true, price: 50_000 });
+    const storage = createMemoryStorage();
+    saveGame(played, '1', storage);
+
+    const loaded = loadGame('1', storage);
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    const state = loaded.value;
+    expect(JSON.stringify(state.lastReport)).not.toContain('mystery');
+    expect(state.today.sold).not.toHaveProperty('mystery');
+    expect(state.history.some((d) => 'mystery' in d.sold)).toBe(false);
+    const { el } = mountReport(state);
+    expect(el.querySelector('[data-block="top"]')).not.toBeNull();
   });
 });

@@ -10,13 +10,16 @@ import {
   applyRestockSuggestion,
   autoRestockSuggestion,
   buyIngredient,
+  canBuyOnCredit,
   lowStockItems,
+  restockPlan,
   sellable,
   stockOf,
   stockOutlook,
   toggleMenuItem,
 } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
+import { playDay } from '../integration/helpers';
 import type { GameState, IngredientId, MenuItemId } from '../../src/sim/types';
 
 function setStock(s: GameState, id: IngredientId, qty: number): void {
@@ -197,10 +200,71 @@ describe('applyRestockSuggestion', () => {
   it('skips lines the money cannot cover', () => {
     const s = createNewGame('A', 'normal', 1);
     emptyStock(s);
+    // At the warning level: short for the day, but not low enough to buy on credit.
+    for (const i of s.inventory) i.qty = getIngredient(i.id).lowStock;
     s.money = 0;
     expect(dispatch(s, { type: 'apply_restock' })).toBe(false);
     expect(s.money).toBe(0);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'notify', level: 'warning' }));
+  });
+
+  it('buys one pack on credit of each short line when the shop is broke', () => {
+    const s = createNewGame('A', 'hard', 1);
+    emptyStock(s);
+    s.money = -50000;
+    const suggested = autoRestockSuggestion(s).items.map((l) => l.id);
+    const r = applyRestockSuggestion(s);
+    expect(r.bought.map((l) => l.id)).toEqual(suggested);
+    for (const line of r.bought) expect(line.qty).toBe(getIngredient(line.id).packSize);
+    expect(r.skipped).toEqual([]);
+    expect(s.money).toBe(-50000 - r.spent);
+  });
+});
+
+describe('restockPlan', () => {
+  it('lists what applyRestockSuggestion buys and skips, without buying', () => {
+    const s = createNewGame('A', 'hard', 1);
+    emptyStock(s);
+    setStock(s, 'milk', getIngredient('milk').lowStock);
+    s.money = 30000;
+    const plan = restockPlan(s);
+    expect(s.money).toBe(30000);
+    const r = applyRestockSuggestion(s);
+    expect(r.bought).toEqual(plan.buy);
+    expect(r.skipped).toEqual(plan.skipped.map((l) => l.id));
+    expect(plan.skipped.map((l) => l.id)).toContain('milk');
+  });
+});
+
+describe('buying on credit', () => {
+  it('lets a broke shop buy one pack of an ingredient below its warning level', () => {
+    const s = createNewGame('A', 'normal', 1);
+    s.money = -100000;
+    setStock(s, 'milk', 0);
+    expect(canBuyOnCredit(s, 'milk', 1000)).toBe(true);
+    expect(buyIngredient(s, 'milk', 1000)).toEqual({ ok: true, cost: 40000 });
+    expect(s.money).toBe(-140000);
+    expect(stockOf(s, 'milk')).toBe(1000);
+  });
+
+  it('refuses more than one pack, or stock at the warning level', () => {
+    const s = createNewGame('A', 'normal', 1);
+    s.money = -100000;
+    setStock(s, 'milk', 0);
+    expect(buyIngredient(s, 'milk', 2000).ok).toBe(false);
+    setStock(s, 'milk', getIngredient('milk').lowStock);
+    expect(buyIngredient(s, 'milk', 1000).ok).toBe(false);
+    expect(s.money).toBe(-100000);
+    expect(stockOf(s, 'milk')).toBe(getIngredient('milk').lowStock);
+  });
+
+  it('gets a shop that wages pushed below zero with an empty store open and selling again', () => {
+    const s = createNewGame('A', 'hard', 3);
+    emptyStock(s);
+    s.money = -20000;
+    expect(dispatch(s, { type: 'apply_restock' })).toBe(true);
+    playDay(s);
+    expect(s.today.revenue).toBeGreaterThan(0);
   });
 });
 

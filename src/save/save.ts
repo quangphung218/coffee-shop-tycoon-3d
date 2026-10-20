@@ -153,6 +153,9 @@ export function migrate(raw: unknown): Result<SaveFile> {
   }
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
   addMissingMenuItems(file.state);
+  dropUnknownItems(file.state);
+  // Every copy of a run saved before runId existed shares its seed and name.
+  if (typeof file.state.runId !== 'string') file.state.runId = `legacy:${file.state.seed}:${file.state.shopName}`;
   try {
     relayoutTables(file.state);
   } catch {
@@ -171,15 +174,49 @@ export function migrate(raw: unknown): Result<SaveFile> {
  * came with v2), switched off at their default price, so they can be enabled
  * once the shop level allows. Runs on every load, so a v2 save written before
  * an item existed gets it too. Entries keep the order of MENU; entries for
- * items the game no longer knows stay at the end, as saved.
+ * items the game no longer knows stay at the end, switched off: the sim looks
+ * up every enabled item and would throw on them.
  */
 function addMissingMenuItems(state: GameState): void {
   const saved = new Map(state.menu.filter(isObject).map((m) => [m.id, m]));
   const known = new Set<unknown>(MENU.map((m) => m.id));
   state.menu = [
     ...MENU.map((item) => saved.get(item.id) ?? { id: item.id, enabled: false, price: item.price }),
-    ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)),
+    ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)).map((m) => (isObject(m) ? { ...m, enabled: false } : m)),
   ];
+}
+
+/** Day stats keyed by menu item id. */
+const ITEM_KEYED_STATS = ['sold', 'outOfStock', 'missedDemand', 'soldRevenue'] as const;
+
+/**
+ * Drops menu items the game no longer knows from today, the history and the
+ * last Daily Report: the report and insights look up every item they list and
+ * would throw on them. The menu entry itself stays, switched off
+ * (addMissingMenuItems).
+ */
+function dropUnknownItems(state: GameState): void {
+  const known = new Set<unknown>(MENU.map((m) => m.id));
+  for (const day of [state.today, ...(Array.isArray(state.history) ? state.history : [])]) {
+    if (!isObject(day)) continue;
+    for (const key of ITEM_KEYED_STATS) {
+      const byItem = day[key];
+      if (!isObject(byItem)) continue;
+      for (const id of Object.keys(byItem)) if (!known.has(id)) delete (byItem as Raw)[id];
+    }
+  }
+  const r: unknown = state.lastReport;
+  if (!isObject(r)) return;
+  const keepKnown = (list: unknown, id: (x: Raw) => unknown = (x) => x.id): unknown =>
+    Array.isArray(list) ? list.filter((x) => (isObject(x) ? known.has(id(x)) : known.has(x))) : list;
+  r.topSellers = keepKnown(r.topSellers);
+  r.outOfStock = keepKnown(r.outOfStock);
+  if (isObject(r.insights)) {
+    r.insights.itemMargins = keepKnown(r.insights.itemMargins);
+    r.insights.itemProfits = keepKnown(r.insights.itemProfits);
+  }
+  if (isObject(r.levelUp) && isObject(r.levelUp.unlocks)) r.levelUp.unlocks.menu = keepKnown(r.levelUp.unlocks.menu);
+  if (isObject(r.specialOrder) && !known.has(r.specialOrder.itemId)) delete r.specialOrder;
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {
@@ -218,6 +255,70 @@ export function saveGame(
 /** Saves into the 'auto' slot; called at the end of every day. */
 export function autosave(state: GameState, storage: StorageLike = defaultStorage(), now: number = Date.now()): Result<SaveFile> {
   return saveGame(state, 'auto', storage, now);
+}
+
+/** Slots a player saves into by hand, where an older run's autosave is kept. */
+const MANUAL_SLOTS = SAVE_SLOTS.filter((slot) => slot !== 'auto');
+
+/**
+ * What keepAutosave did: 'none' when the autosave slot is empty, 'same_run'
+ * when it holds the running game's own run (overwrite it), 'kept' with the
+ * slot that now holds another run's autosave (copied: false when a slot
+ * already had the same data), 'no_room' when every manual slot is taken,
+ * 'failed' when storage threw.
+ */
+export type KeptAutosave =
+  | { kind: 'none' }
+  | { kind: 'same_run' }
+  | { kind: 'kept'; slot: SaveSlot; copied: boolean }
+  | { kind: 'no_room' }
+  | { kind: 'failed' };
+
+/** runId of the game in a slot (derived for older saves), or null when it does not load. */
+export function slotRunId(slot: SaveSlot, storage: StorageLike = defaultStorage()): string | null {
+  const r = readSlot(slot, storage);
+  return r.ok ? (r.value.state.runId ?? null) : null;
+}
+
+/**
+ * Call before a run first autosaves: unless the 'auto' slot holds this run
+ * (`runId`), copies whatever it holds (another run's game, even data that no
+ * longer loads) as is to the first empty manual slot, so it is not overwritten.
+ */
+export function keepAutosave(storage: StorageLike = defaultStorage(), runId?: string): KeptAutosave {
+  try {
+    const text = storage.getItem(saveKey('auto'));
+    if (text === null) return { kind: 'none' };
+    if (runId !== undefined && slotRunId('auto', storage) === runId) return { kind: 'same_run' };
+    let empty: SaveSlot | null = null;
+    for (const slot of MANUAL_SLOTS) {
+      const other = storage.getItem(saveKey(slot));
+      if (other === text) return { kind: 'kept', slot, copied: false };
+      if (other === null) empty ??= slot;
+    }
+    if (empty === null) return { kind: 'no_room' };
+    storage.setItem(saveKey(empty), text);
+    return { kind: 'kept', slot: empty, copied: true };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/**
+ * The autosave the run `runId` (none for a new run) would overwrite with
+ * nothing to keep it in: another run's game in the 'auto' slot that no manual
+ * slot holds, while all of them are taken. Null when it is this run's own,
+ * keepAutosave can keep it, or there is nothing to keep.
+ */
+export function autosaveAtRisk(storage: StorageLike = defaultStorage(), runId?: string): SlotInfo | null {
+  try {
+    const text = storage.getItem(saveKey('auto'));
+    if (text === null || MANUAL_SLOTS.some((slot) => [null, text].includes(storage.getItem(saveKey(slot))))) return null;
+    if (runId !== undefined && slotRunId('auto', storage) === runId) return null;
+  } catch {
+    return null;
+  }
+  return listSlots(storage).find((info) => info.slot === 'auto') ?? null;
 }
 
 /** Reads a slot. Never throws and never modifies the stored data, even when it is broken. */

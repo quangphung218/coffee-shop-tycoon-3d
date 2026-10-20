@@ -102,6 +102,8 @@ Font chữ:
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
 5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` giữ id món và nâng cấp vừa mở ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
+Thân khung bọc trong `guardFrame` (`src/ui/core/startup.ts`): một bước throw thì lỗi đầu tiên của chuỗi khung lỗi được ghi ra console, khung sau vẫn được hẹn, game không đứng hình. Bước 1 (`step`) và các bước 3–5 chạy qua `runEvents`: mỗi bước chạy riêng, rồi `game.events` luôn được xoá kể cả khi một bước throw, nên không event nào bị xử lý lại ở khung sau (không autosave, toast hay âm thanh lặp).
+
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên (kèm kinh nghiệm, `onStaffTick`) → khách → hạn đơn đặc biệt (`tickSpecialOrders`) → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
 ### Camera
@@ -128,8 +130,8 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `start_day` | Chuẩn bị → mở cửa. |
 | `next_day` | Từ báo cáo sang ngày mới (pha `preparation`). Tuần đã chấm điểm (`week.result`) thì mở luôn tuần tiếp theo. |
 | `set_menu_item` | Bật/tắt món. Giá món cố định theo dữ liệu menu; bật món chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
-| `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. `apply_restock` mua từng dòng gợi ý theo thứ tự danh mục, bỏ dòng không đủ tiền và gửi `notify` "Thiếu X đ để nhập …" kèm tên các nguyên liệu bị bỏ; mỗi dòng mua được phát một `spend`. |
-| `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. `hire_staff` trả `false` khi đội đã đủ `maxStaff(state)`. |
+| `buy_ingredient`, `apply_restock` | Nhập hàng theo gói, hoặc theo gợi ý nhập tự động. `apply_restock` mua từng dòng gợi ý theo thứ tự danh mục, bỏ dòng không đủ tiền và gửi `notify` "Thiếu X đ để nhập …" kèm tên các nguyên liệu bị bỏ; mỗi dòng mua được phát một `spend`. Không đủ tiền (kể cả đang âm) vẫn mua chịu được 1 gói của nguyên liệu dưới mức cảnh báo (`canBuyOnCredit`); `apply_restock` cắt dòng đó còn 1 gói (`restockPlan`); nút "Gợi ý" của bảng Kho điền số gói theo cùng `restockPlan`, dòng không chịu được giữ nguyên cỡ gợi ý để hint nêu tên. Quán bị lương đẩy xuống âm với kho trống vì vậy vẫn mở bán được. |
+| `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. `hire_staff` trả `false` khi đội đã đủ `maxStaff(state)`. `fire_staff` sau khi mở cửa (pha `opening`, `peak`, `closing`) vẫn ghi lương ngày đó (đã nhân mức lương) vào `today.firedWages`; `settleDay` trả cùng lương cả đội. |
 | `train_staff` | Đào tạo một nhân viên lên cấp kế tiếp (`trainStaff`). Chỉ trong pha `preparation`, cần đủ kinh nghiệm, tiền và Tem; không được thì trả `false` kèm `notify` lý do từ `canTrain` ([Nhân viên: đặc điểm và cấp](#nhân-viên-đặc-điểm-và-cấp)). |
 | `claim_daily_gift` | Nhận quà ngày (`claimDailyGift`), mọi pha. `dateKey` là ngày trên máy `'YYYY-MM-DD'` do UI gửi; đã nhận hôm nay, ngày sai hay lùi lại thì trả `false` kèm `notify` ([Quà ngày, Tem và thành tựu](#quà-ngày-tem-và-thành-tựu)). |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
@@ -460,7 +462,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 
 | Khóa `localStorage` | Nội dung |
 | --- | --- |
-| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. |
+| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. Mỗi ván có `runId` (UUID sinh lúc Ván mới hay Chơi lại; save cũ chưa có thì `migrate` gán `legacy:<seed>:<tên quán>`, mọi bản của cùng ván ra cùng id). Lần tự lưu đầu của một ván không tải từ ô này (ván mới, Chơi lại, tải từ Slot 1–3) gọi `keepAutosave` trước: ô Tự lưu cùng `runId` thì ghi đè bình thường; khác `runId` thì chép nguyên dữ liệu đang có sang slot tay trống đầu tiên, bỏ qua nếu một slot đã giữ đúng bản đó. Hết slot trống thì màn Ván mới cảnh báo trước và màn Tải game hỏi lại khi tải Slot 1–3 (`autosaveAtRisk`); chỉ khi đó ô Tự lưu mới bị ghi đè. Ván mở bằng "Tiếp tục" vào Slot 1–3, hoặc lúc chép bị lỗi (`failed`), thì không tự lưu và có toast "Chưa tự lưu, để giữ ván trước" cho tới khi có slot trống. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
 | `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`), giảm chuyển động (`reducedMotion`: `system` hay `reduce`, thiếu thì `system`). |
 | `cst3d:playlog` | Số liệu chơi ẩn danh: `{ "v": 1, "entries": [...] }`, giữ 1000 dòng mới nhất (`src/save/playlog.ts`). |
@@ -475,7 +477,7 @@ Mỗi slot là JSON:
 - Migration 1→2 thêm `shopLevel`, `xp`, `missions` và `seed`: cấp tính từ số khách đã phục vụ trong `history`, nhưng không thấp hơn cấp đủ để mọi món đang bật và nâng cấp đã mua vẫn mở khóa, nên save cũ không mất quyền đã có. `xp` được nâng lên ít nhất `xpToReach(shopLevel)`.
 - Migration 2→3 cho `week` có sẵn thêm `index = 1` (nếu thiếu) và `archive`. Tuần đã có `result` được ghi một dòng `WeekSummary` vào `archive` (lợi nhuận và khách cộng từ các ngày của tuần trong `history` và `today`, không có thì 0) và giữ `result`, nên màn kết tuần vẫn hiện và `next_day` mở tuần 2. `history` dài hơn `HISTORY_DAYS` (28) bị cắt còn 28 ngày cuối. Save không có `week` giữ nguyên.
 - `migrate()` nâng lần lượt từng phiên bản qua bảng `MIGRATIONS`, rồi kiểm các trường bắt buộc. Save mới hơn bản game báo `version_unsupported`; JSON hỏng báo `corrupt`; thiếu trường báo `invalid`. Đọc slot không bao giờ sửa hay xóa dữ liệu đã lưu.
-- Sau khi nâng, menu được bổ sung các món có trong `MENU` mà save chưa có (ví dụ `frappe` với save viết trước khi có món này), ở trạng thái tắt và giá mặc định. Bước này chạy với mọi save, kể cả save v2. Món đã có giữ nguyên giá và trạng thái bật/tắt.
+- Sau khi nâng, menu được bổ sung các món có trong `MENU` mà save chưa có (ví dụ `frappe` với save viết trước khi có món này), ở trạng thái tắt và giá mặc định. Bước này chạy với mọi save, kể cả save v2. Món đã có giữ nguyên giá và trạng thái bật/tắt. Món mà bản game không còn biết vẫn nằm cuối menu nhưng bị tắt, và bị bỏ khỏi thống kê ngày (`sold`, `outOfStock`, `missedDemand`, `soldRevenue` của `today` và `history`) cùng `lastReport` (bán chạy, hết hàng, `insights`, `levelUp`, `specialOrder`), vì sim và Daily Report tra từng món và sẽ throw.
 - Tiếp đó `relayoutTables()` (`src/sim/upgrades.ts`) đặt lại mọi bàn vào chỗ của bố cục hiện tại: bàn thứ n (theo id) của mỗi khu (trong nhà, mở rộng, ngoài hiên) lấy chỗ thứ n của khu đó. Khách đang ngồi hay đang đi tới bàn chuyển theo sang ghế cùng phía. Tiền, đồ đã mua và các trường khác giữ nguyên.
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - `week` và `policies` là trường tùy chọn: save không có `week` chơi không lịch tuần, không màn kết tuần ([Tuần 7 ngày](#tuần-7-ngày)); thiếu `policies` thì cả giá và lương là `standard`.

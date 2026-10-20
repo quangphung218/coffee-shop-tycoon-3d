@@ -117,7 +117,8 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const staffList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Nhân viên đang làm' } });
   const candList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Ứng viên hôm nay' } });
   const wages = h('b');
-  w.text(wages, (s) => formatMoney(totalWages(s)));
+  // Includes the wages still owed to staff fired after opening (settleDay pays both).
+  w.text(wages, (s) => formatMoney(totalWages(s) + (s.today.firedWages ?? 0)));
 
   // Mức lương: a trade-off set in place; the hint gives the day's wage bill and work speed.
   const wageTitleId = uid('wage-policy');
@@ -215,9 +216,12 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     );
     fireBtn.addEventListener('click', () => {
       fireBtn.hidden = true;
+      // Once the doors opened the wage is owed for today (fireStaff).
+      const phase = ctx.getState()?.phase;
+      const wage = phase === 'preparation' || phase === 'report' ? 'Hôm nay không trả lương' : 'Vẫn trả lương hôm nay';
       li.append(
         inlineConfirm(
-          `Cho ${member.name} nghỉ? Hôm nay không trả lương, không tuyển lại được.`,
+          `Cho ${member.name} nghỉ? ${wage}, không tuyển lại được.`,
           'Cho nghỉ',
           'btn-danger',
           () => keepFocus(li, body, () => send({ type: 'fire_staff', staffId: member.id })),

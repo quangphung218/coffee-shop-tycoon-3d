@@ -1,7 +1,7 @@
 #!/bin/sh
-# Bumps the version when there are feat/fix/perf commits since the last v*
-# tag, builds the game and publishes dist/ to the gh-pages branch of origin,
-# then makes sure GitHub Pages serves that branch. Safe to run repeatedly:
+# Runs npm run check (types, tests, build), then bumps the version when there
+# are feat/fix/perf commits since the last v* tag, builds the game and
+# publishes dist/ to the gh-pages branch of origin, then makes sure GitHub Pages serves that branch. Safe to run repeatedly:
 # each run replaces gh-pages with a single fresh commit. Refuses to start
 # unless main is checked out, clean and equal to origin/main; after the
 # deploy it pushes the release commit and tag (plain push, never forced).
@@ -63,11 +63,6 @@ if [ "$LOCAL" != "$UPSTREAM" ]; then
     "Keep what you need on a branch (git branch backup/main-<date>), then: git reset --hard origin/main"
 fi
 
-# Before the build, so the bundle shows the new version.
-TAG_BEFORE=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
-node scripts/release.mjs
-TAG_AFTER=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
-
 # A half-finished install can leave node_modules/ without the build tools,
 # so check the tools and the installed lockfile, not just the directory.
 REINSTALL=
@@ -82,6 +77,17 @@ if [ -n "$REINSTALL" ]; then
   echo "Running npm ci: $REINSTALL."
   npm ci
 fi
+# Types, tests and build on the merged commit, before release.mjs: a failing
+# test leaves no release commit or tag behind. Two vitest workers by default:
+# more time out on a busy machine and fail the deploy for nothing.
+VITEST_MAX_WORKERS=${VITEST_MAX_WORKERS:-2} npm run check || stop "npm run check failed (types, tests or build)." \
+  "Fix it through a PR, then run the deploy again."
+
+# Before the build, so the bundle shows the new version.
+TAG_BEFORE=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+node scripts/release.mjs
+TAG_AFTER=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+
 npm run build
 
 REMOTE_URL=$(git remote get-url origin)

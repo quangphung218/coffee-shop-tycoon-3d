@@ -1,5 +1,5 @@
 import { INGREDIENTS, getIngredient } from '../../sim/data/ingredients';
-import { autoRestockSuggestion, ingredientPrice, stockOutlook, type StockLevel } from '../../sim/inventory';
+import { canBuyOnCredit, ingredientPrice, restockPlan, stockOutlook, type StockLevel } from '../../sim/inventory';
 import type { GameState, IngredientDef, IngredientId } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -37,8 +37,9 @@ interface Row {
 /**
  * Kho: one row per ingredient (icon | name + stock | Đủ/Sắp hết/Hết against
  * the demand left today | pack stepper), the order total and one "Nhập hàng"
- * button. "Gợi ý nhập tự động" fills the steppers from autoRestockSuggestion
- * and tags those rows "gợi ý", so the player sees the amounts before paying.
+ * button. "Gợi ý nhập tự động" fills the steppers from restockPlan (what
+ * apply_restock buys, one pack on credit when the money is short) and tags
+ * those rows "gợi ý", so the player sees the amounts before paying.
  * The buy button is dimmed while nothing is picked or money is short; the
  * hint under it always shows, so the foot never changes height. A purchase is
  * reported by the spend toast, never in the panel.
@@ -49,6 +50,9 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
   const intro = h('p', { class: 'intro kho-note', text: INTRO });
   // Set when Gợi ý found nothing to buy, until the player picks packs or buys.
   let nothingToBuy = false;
+  // When Gợi ý bought on credit: the lines neither money nor credit covers,
+  // which the hint names to trim; same lifetime as nothingToBuy.
+  let leftOut: IngredientId[] = [];
   const suggestBtn = h(
     'button',
     { class: 'btn btn-secondary btn-block', attrs: { type: 'button', 'data-action': 'suggest' } },
@@ -78,6 +82,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       () => {
         sug.classList.add('is-off');
         nothingToBuy = false;
+        leftOut = [];
         const s = ctx.getState();
         if (s) refreshFoot(s);
       },
@@ -120,39 +125,66 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       .map((r) => ({ id: r.def.id, packs: r.step.value, cost: ingredientPrice(s, r.def.id, r.step.value * r.def.packSize) }));
   }
 
+  /**
+   * Walks the lines in buy order as the sim pays them: cash while it lasts,
+   * else on credit (canBuyOnCredit). Short when a line gets neither.
+   */
+  function payment(s: GameState, lines: ReturnType<typeof order>): { short: boolean; credit: boolean } {
+    let money = s.money;
+    let credit = false;
+    for (const l of lines) {
+      if (money < l.cost) {
+        if (!canBuyOnCredit(s, l.id, l.packs * getIngredient(l.id).packSize)) return { short: true, credit };
+        credit = true;
+      }
+      money -= l.cost;
+    }
+    return { short: false, credit };
+  }
+
   let footKey = '';
   function refreshFoot(s: GameState): void {
     const lines = order(s);
     const sum = lines.reduce((a, l) => a + l.cost, 0);
-    const key = `${s.money}|${nothingToBuy}|${lines.map((l) => `${l.id}:${l.packs}`).join(',')}`;
+    const { short, credit } = payment(s, lines);
+    const key = `${s.money}|${nothingToBuy}|${leftOut.join(',')}|${short}|${credit}|${lines.map((l) => `${l.id}:${l.packs}`).join(',')}`;
     if (key === footKey) return;
     footKey = key;
     total.textContent = formatMoney(sum);
     after.textContent = formatMoney(s.money - sum);
     buyText.textContent = sum > 0 ? `Nhập hàng · ${formatMoney(sum)}` : 'Nhập hàng';
-    const short = sum > s.money;
     setAriaDisabled(buyBtn, sum === 0 || short);
     // One slot for every message, at most two lines, so the foot keeps its height.
     hint.classList.toggle('reason-danger', short);
     if (sum === 0) setIconText(hint, nothingToBuy ? 'i-ok' : 'i-info', nothingToBuy ? NOTHING_TO_BUY : PICK_HINT);
+    else if (short && leftOut.length > 0) {
+      const names = leftOut.map((id) => getIngredient(id).name).join(', ');
+      setIconText(hint, 'i-lock', `Không đủ tiền, cũng không nhập chịu được ${names}. Bớt ${names} để nhập phần còn lại.`);
+    }
     else if (short) {
       // Name the costliest line: trimming it frees the most money.
       const top = lines.reduce((a, l) => (l.cost > a.cost ? l : a));
       setIconText(hint, 'i-lock', `Thiếu ${formatMoney(sum - s.money)}. Bớt ${getIngredient(top.id).name} để vừa tiền.`);
     }
+    else if (credit) setIconText(hint, 'i-warning', `Nhập chịu 1 gói mỗi món sắp hết; tiền còn ${formatMoney(s.money - sum)}.`);
     else setIconText(hint, 'i-info', 'Kiểm tra số gói rồi bấm Nhập hàng.');
   }
 
   suggestBtn.addEventListener('click', () => {
     const s = ctx.getState();
     if (!s) return;
-    const sug = autoRestockSuggestion(s);
+    // Lines as apply_restock buys them (one pack on credit when the money is
+    // short); lines it skips stay at their full size so the hint says what is missing.
+    const plan = restockPlan(s);
+    const lines = [...plan.buy, ...plan.skipped];
     for (const r of rows) {
-      const line = sug.items.find((l) => l.id === r.def.id);
+      const line = lines.find((l) => l.id === r.def.id);
       r.step.set(line ? Math.ceil(line.qty / r.def.packSize) : 0);
       r.sug.classList.toggle('is-off', !line);
     }
-    nothingToBuy = sug.items.length === 0;
+    const onCredit = plan.buy.reduce((a, l) => a + l.cost, 0) > s.money;
+    leftOut = onCredit ? plan.skipped.map((l) => l.id) : [];
+    nothingToBuy = lines.length === 0;
     refreshFoot(s);
   });
 
@@ -168,6 +200,7 @@ export function renderInventoryPanel(body: HTMLElement, ctx: PanelContext): Pane
       }
     }
     nothingToBuy = false;
+    leftOut = [];
     w.run(s);
     refreshFoot(s);
   });

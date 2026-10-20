@@ -11,7 +11,8 @@ const NOON = 12 * 60;
 
 /** Normal game on day 1, open and played until noon (mid-peak). */
 function midDayGame(seed: number): GameState {
-  const state = createNewGame('Quán Lưu', 'normal', seed);
+  // The run id the shell gives a running game; a save without one gets a derived id.
+  const state: GameState = { ...createNewGame('Quán Lưu', 'normal', seed), runId: `run-${seed}` };
   expect(dispatch(state, { type: 'apply_restock' })).toBe(true);
   expect(dispatch(state, { type: 'start_day' })).toBe(true);
   runOpenDay(state, { untilMinute: NOON });

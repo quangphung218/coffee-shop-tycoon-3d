@@ -67,11 +67,12 @@ export function payMarketing(state: GameState, amount: number): boolean {
 
 /**
  * Closes the books for today: records the ingredient cost of what was used and
- * pays the staff. Wages are paid even into debt; the debt check warns.
+ * pays the staff, including those fired after opening. Wages are paid even
+ * into debt; the debt check warns.
  */
 export function settleDay(state: GameState): void {
   state.today.ingredientCost = ingredientCostUsed(state);
-  const wages = totalWages(state);
+  const wages = totalWages(state) + (state.today.firedWages ?? 0);
   state.today.wages = wages;
   state.money -= wages;
   checkDebt(state);

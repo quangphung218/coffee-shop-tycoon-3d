@@ -1,5 +1,5 @@
 import { appendPlayLog, type PlayLogKind, type PlayLogPhase } from '../../save/playlog';
-import { autosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
+import { autosave, autosaveAtRisk, keepAutosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
 import type { Settings } from '../../save/settings';
 import { dispatch as simDispatch } from '../../sim';
 import { createNewGame as createGameState } from '../../sim/state';
@@ -11,7 +11,7 @@ import { toastForEvent } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
-import { createLoadGame } from './loadGame';
+import { createLoadGame, slotLabel } from './loadGame';
 import type { GameMount, MenuShell, ShellOptions, ShellScreen } from './menuShell';
 import { createNewGame } from './newGame';
 import { createPause } from './pause';
@@ -33,13 +33,14 @@ export interface Shell {
   update(): void;
   /** Toasts and autosave for this frame's events; the caller clears the queue. */
   handleEvents(events: readonly GameEvent[]): void;
-  startGame(state: GameState): void;
+  /** `from` is the slot the game was loaded from; a new run has none. */
+  startGame(state: GameState, from?: SaveSlot): void;
   showMenu(): void;
   openPause(): void;
   dispose(): void;
 }
 
-/** Random play-log run id; not tied to the player or the save. */
+/** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === 'function') return c.randomUUID();
@@ -80,8 +81,31 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     onSettings: () => base.openSettings(),
     onResetCamera: () => options.onResetCamera?.(),
   });
+  // Whether the 'auto' slot already holds this run. A new run (or one loaded
+  // from a manual slot) first copies what is there to an empty slot, so the
+  // last run's autosave is not lost. With no slot free it is replaced only
+  // when the player was warned first (Ván mới, the load confirm, Chơi lại);
+  // "Tiếp tục" into slot 1–3 was not, so that run skips autosaving until a
+  // slot is free.
+  let ownsAutosave = false;
+  let mayReplaceAutosave = true;
+  /** Why the last autosave was held back to keep another run, or null. */
+  let autosaveHeld: string | null = null;
   function runAutosave(game: GameState, day: number): SaveStatus {
+    autosaveHeld = null;
+    if (!ownsAutosave) {
+      const kept = keepAutosave(storage, game.runId);
+      if (kept.kind === 'kept' && kept.copied) {
+        toasts.show({ level: 'info', icon: 'i-save', title: `Đã chép bản tự lưu cũ sang ${slotLabel(kept.slot)}`, text: 'Mở lại trong Tải game.' });
+      } else if (kept.kind === 'failed') {
+        autosaveHeld = 'Không chép được bản tự lưu của ván trước sang slot trống. Lưu tay ván này trong Tạm dừng.';
+      } else if (kept.kind === 'no_room' && !mayReplaceAutosave) {
+        autosaveHeld = 'Ô Tự lưu đang giữ ván khác và Slot 1–3 đã đầy. Xoá một slot trong Tải game, hoặc lưu tay trong Tạm dừng.';
+      }
+      if (autosaveHeld) return { day, ok: false };
+    }
     const r = autosave(game, storage);
+    if (r.ok) ownsAutosave = true;
     return r.ok ? { day, ok: true, savedAt: r.value.savedAt } : { day, ok: false };
   }
   // "Thử lưu lại" on the Daily Report and "Thử lại" on the week end save the same day;
@@ -126,8 +150,12 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     report.update(state, state?.phase === 'report' && screens.current === null);
   }
 
-  function startGame(next: GameState): void {
+  function startGame(next: GameState, from?: SaveSlot): void {
     state = next;
+    // A new run (Ván mới, Chơi lại) gets its id here; a loaded one keeps its own.
+    state.runId ??= newRunId();
+    ownsAutosave = from === 'auto';
+    mayReplaceAutosave = true;
     state.speed = base.settings.gameSpeed;
     state.paused = false;
     state.events = [];
@@ -177,11 +205,12 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const newGame = createNewGame({
     onStart: (name, difficulty) => startGame(createGameState(name, difficulty, options.seed?.() ?? (Date.now() >>> 0))),
     onBack: () => screens.show('menu'),
+    autosaveAtRisk: () => autosaveAtRisk(storage),
   }, scene);
   screens.add('newGame', newGame);
   root.insertBefore(newGame.el, settingsEl);
   const load = createLoadGame(storage, {
-    onLoaded: (loaded) => startGame(loaded),
+    onLoaded: (loaded, slot) => startGame(loaded, slot),
     onBack: () => screens.show('menu'),
   }, scene);
   screens.add('load', load);
@@ -313,7 +342,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           toasts.show(
             r.ok
               ? { level: 'success', icon: 'i-save', title: `Đã tự lưu ngày ${event.day}` }
-              : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
+              : autosaveHeld
+                ? { level: 'error', icon: 'i-save', title: 'Chưa tự lưu, để giữ ván trước', text: autosaveHeld }
+                : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
           );
         }
       }
@@ -324,7 +355,11 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     dispose: () => base.dispose(),
     continueGame(slot) {
       const r = loadGame(slot, storage);
-      if (r.ok) startGame(r.value);
+      if (r.ok) {
+        startGame(r.value, slot);
+        // Tiếp tục opens the newest slot without the load screen's warning.
+        mayReplaceAutosave = false;
+      }
       // The load screen explains what is wrong with the slot.
       else screens.show('load');
     },

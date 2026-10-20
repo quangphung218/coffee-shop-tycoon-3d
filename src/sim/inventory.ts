@@ -70,12 +70,27 @@ export function ingredientPrice(state: GameState, id: IngredientId, qty: number)
 
 export type BuyResult = { ok: true; cost: number } | { ok: false; reason: string };
 
-/** Buys `qty` units of an ingredient. Refused when the money does not cover the price. */
+/**
+ * Whether `qty` units the money does not cover may be bought on credit: at
+ * most one pack of an ingredient below its warning level. A pack always lifts
+ * the stock above that level, so each empty shelf gets one pack until it sells
+ * down again. Keeps a shop that wages pushed below zero able to restock and
+ * sell instead of stuck with an empty store; the debt only warns (checkDebt).
+ */
+export function canBuyOnCredit(state: GameState, id: IngredientId, qty: number): boolean {
+  const def = getIngredient(id);
+  return qty <= def.packSize && stockOf(state, id) < def.lowStock;
+}
+
+/**
+ * Buys `qty` units of an ingredient. Refused when the money does not cover the
+ * price, unless canBuyOnCredit allows it.
+ */
 export function buyIngredient(state: GameState, id: IngredientId, qty: number): BuyResult {
   if (!Number.isInteger(qty) || qty <= 0) return { ok: false, reason: 'Số lượng không hợp lệ' };
   const def = getIngredient(id);
   const cost = ingredientPrice(state, id, qty);
-  if (state.money < cost) {
+  if (state.money < cost && !canBuyOnCredit(state, id, qty)) {
     const reason = `Không đủ tiền mua ${def.name}`;
     state.events.push({ type: 'notify', level: 'error', text: reason });
     return { ok: false, reason };
@@ -283,19 +298,49 @@ export interface RestockResult {
   spent: number;
 }
 
+export interface RestockPlan {
+  /** Lines bought, in catalogue order; a line bought on credit is cut to one pack. */
+  buy: RestockLine[];
+  /** Suggested lines neither the money nor credit covers, at their suggested size. */
+  skipped: RestockLine[];
+}
+
 /**
- * Buys the suggested lines in order; lines the money cannot cover are skipped
- * and the notice names them with the money still short.
+ * What applyRestockSuggestion buys, without buying: the suggested lines in
+ * order, paid while the money lasts. A line the money cannot cover is cut to
+ * one pack bought on credit when canBuyOnCredit allows it, else skipped. Kho's
+ * "Gợi ý" fills its steppers from this, so a broke shop can restock too.
  */
-export function applyRestockSuggestion(state: GameState): RestockResult {
-  const result: RestockResult = { bought: [], skipped: [], spent: 0 };
-  let skippedCost = 0;
+export function restockPlan(state: GameState): RestockPlan {
+  const plan: RestockPlan = { buy: [], skipped: [] };
+  let money = state.money;
   for (const line of autoRestockSuggestion(state).items) {
-    if (state.money < line.cost) {
-      result.skipped.push(line.id);
-      skippedCost += line.cost;
+    if (money >= line.cost) {
+      plan.buy.push(line);
+      money -= line.cost;
       continue;
     }
+    const pack = getIngredient(line.id).packSize;
+    if (!canBuyOnCredit(state, line.id, pack)) {
+      plan.skipped.push(line);
+      continue;
+    }
+    const cost = ingredientPrice(state, line.id, pack);
+    plan.buy.push({ id: line.id, qty: pack, cost });
+    money -= cost;
+  }
+  return plan;
+}
+
+/**
+ * Buys restockPlan's lines; the notice names the skipped lines with the money
+ * still short.
+ */
+export function applyRestockSuggestion(state: GameState): RestockResult {
+  const plan = restockPlan(state);
+  const result: RestockResult = { bought: [], skipped: plan.skipped.map((l) => l.id), spent: 0 };
+  const skippedCost = plan.skipped.reduce((s, l) => s + l.cost, 0);
+  for (const line of plan.buy) {
     const r = buyIngredient(state, line.id, line.qty);
     if (r.ok) {
       result.bought.push(line);
