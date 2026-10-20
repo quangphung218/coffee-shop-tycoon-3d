@@ -41,6 +41,7 @@
 // can be split; the default runs everything.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -75,6 +76,8 @@ const EPS = 0.5;
 const SHOW = 6;
 
 async function startPreview() {
+  // Without a build, vite preview answers 404 and never looks started.
+  if (!existsSync(join(ROOT, 'dist', 'index.html'))) throw new Error('no dist/index.html: run npm run build first (npm run layout does)');
   const vite = join(ROOT, 'node_modules', '.bin', 'vite');
   const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 100; i++) {
