@@ -89,12 +89,12 @@ Script làm lần lượt:
    - đang ở nhánh `main`;
    - không có file đã track nào chưa commit (file chưa track không tính);
    - `HEAD` trùng `origin/main`.
-2. Chạy `node scripts/release.mjs`: có `feat`/`fix`/`perf`/breaking kể từ tag trước thì tăng version, commit và tag (xem [Script làm gì](#script-làm-gì)).
-3. Chạy `npm ci` khi gặp một trong các trường hợp sau, và in `Running npm ci: <lý do>.`:
+2. Chạy `npm ci` khi gặp một trong các trường hợp sau, và in `Running npm ci: <lý do>.`:
    - chưa có `node_modules/`;
    - thiếu `node_modules/.bin/tsc` hoặc `node_modules/.bin/vite`;
    - `node_modules/.package-lock.json` không có hoặc khác `package-lock.json` (so bằng `cmp`).
-4. Chạy `npm run build`; bản build mang version mới.
+3. Chạy `npm run check` (kiểu, toàn bộ `vitest`, build). Lỗi thì dừng với `npm run check failed`, chưa tạo commit hay tag phát hành.
+4. Chạy `node scripts/release.mjs`: có `feat`/`fix`/`perf`/breaking kể từ tag trước thì tăng version, commit và tag (xem [Script làm gì](#script-làm-gì)). Sau đó chạy `npm run build`; bản build mang version mới.
 5. Chép `dist/` vào thư mục tạm, thêm `.nojekyll`, tạo commit `deploy: build from <sha>` và force-push lên nhánh `gh-pages` của `origin`.
 6. Gọi `gh api repos/<owner>/<repo>/pages`; Pages chưa bật thì bật với nguồn `gh-pages`, thư mục `/`.
 7. In địa chỉ trang: `Site: https://<owner>.github.io/<repo>/`.
@@ -130,6 +130,7 @@ Khi máy không có `gh`:
 | `release: tag vX.Y.Z already exists` | Tag trùng với version mới; kiểm tra `git tag --list 'v*'` và `"version"` trong `package.json`. |
 | `sh: tsc: command not found` (exit 127) khi `npm run build` | `node_modules/` cài dở; chạy `npm ci` rồi build lại. |
 | `npm run build` báo lỗi kiểu | Sửa lỗi TypeScript; chạy `npm run check` để xem cả test. |
+| `npm run check failed (types, tests or build)` | Có test, lỗi kiểu hoặc build hỏng trên `main`; chưa có commit hay tag phát hành nào. Sửa qua PR rồi deploy lại. |
 | Push bị từ chối | Kiểm tra quyền push và `git remote get-url origin`. |
 | `gh api` trả 404 hoặc 403 khi bật Pages | Chạy `gh auth status`; tài khoản cần quyền admin trên repo. |
 | Trang trắng sau deploy | Đợi 1–2 phút cho Pages build xong, rồi tải lại không dùng cache. |

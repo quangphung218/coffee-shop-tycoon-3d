@@ -15,7 +15,7 @@ const load = (name: string) => import(/* @vite-ignore */ name);
 const { spawnSync } = (await load('node:child_process')) as {
   spawnSync(cmd: string, args: string[], opts: { cwd: string; env: Env; encoding: 'utf8' }): SpawnResult;
 };
-const { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } = (await load(
+const { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = (await load(
   'node:fs',
 )) as {
   chmodSync(path: string, mode: number): void;
@@ -23,6 +23,7 @@ const { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, wri
   existsSync(path: string): boolean;
   mkdirSync(path: string, opts?: { recursive: boolean }): void;
   mkdtempSync(prefix: string): string;
+  readFileSync(path: string, encoding: 'utf8'): string;
   rmSync(path: string, opts: { recursive: boolean; force: boolean }): void;
   writeFileSync(path: string, data: string): void;
 };
@@ -73,13 +74,15 @@ function setup() {
   mkdirSync(join(repo, 'scripts'), { recursive: true });
   mkdirSync(join(repo, 'node_modules', '.bin'), { recursive: true });
 
+  // npm run check fails when FAIL_CHECK is set, and logs the HEAD it ran on;
   // npm run build writes dist/; npm version edits package.json like the real one.
   stub(
     bin,
     'npm',
-    `case "$1" in
-  run) mkdir -p dist && echo ok > dist/index.html ;;
-  version) node -e 'const f=require("fs");const p=JSON.parse(f.readFileSync("package.json"));p.version=process.argv[1];f.writeFileSync("package.json",JSON.stringify(p,null,2)+"\\n")' "$2" ;;
+    `case "$1 $2" in
+  "run check") git log -1 --format=%s >> "$CHECK_LOG"; [ -z "\${FAIL_CHECK:-}" ] || { echo "1 test failed" >&2; exit 1; } ;;
+  "run build") mkdir -p dist && echo ok > dist/index.html ;;
+  version*) node -e 'const f=require("fs");const p=JSON.parse(f.readFileSync("package.json"));p.version=process.argv[1];f.writeFileSync("package.json",JSON.stringify(p,null,2)+"\\n")' "$2" ;;
   *) echo "unexpected npm $*" >&2; exit 1 ;;
 esac`,
   );
@@ -110,9 +113,15 @@ esac`,
   return { base, bin, origin, repo };
 }
 
-function deploy(repo: string, bin: string) {
-  return spawnSync('sh', ['scripts/deploy-pages.sh'], { cwd: repo, env: env(bin), encoding: 'utf8' });
+function deploy(repo: string, bin: string, extra: Env = {}) {
+  const checkLog = join(dirname(bin), 'check.log');
+  return spawnSync('sh', ['scripts/deploy-pages.sh'], { cwd: repo, env: { CHECK_LOG: checkLog, ...env(bin), ...extra }, encoding: 'utf8' });
 }
+
+const checkRuns = (bin: string): string[] => {
+  const path = join(dirname(bin), 'check.log');
+  return existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n') : [];
+};
 
 /** Asserts the script stopped before release.mjs and the build. */
 function expectStopped(r: ReturnType<typeof deploy>, repo: string, bin: string, head: string) {
@@ -192,6 +201,23 @@ describe('deploy-pages.sh', { timeout: 20_000 }, () => {
     const r = deploy(repo, bin);
     expectStopped(r, repo, bin, head);
     expect(r.stderr).toContain('have split (1 local, 1 remote commit(s))');
+  });
+
+  it('stops before the release commit and tag when npm run check fails', () => {
+    const { origin, repo, bin } = setup();
+    const head = git(repo, bin, 'rev-parse', 'HEAD');
+    const r = deploy(repo, bin, { FAIL_CHECK: '1' });
+    expectStopped(r, repo, bin, head);
+    expect(r.stderr).toContain('npm run check failed');
+    expect(git(repo, bin, 'log', '-1', '--format=%s')).toBe('fix: a');
+    expect(git(origin, bin, 'branch', '--list', 'gh-pages')).toBe('');
+  });
+
+  it('runs npm run check on the merged commit, before the release commit', () => {
+    const { repo, bin } = setup();
+    const r = deploy(repo, bin);
+    expect(r.status, r.stderr).toBe(0);
+    expect(checkRuns(bin)).toEqual(['fix: a']);
   });
 
   it('deploys, then pushes the release commit and tag to origin', () => {
