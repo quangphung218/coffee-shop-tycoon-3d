@@ -1001,6 +1001,70 @@ describe('Shell', () => {
     expect(text).toContain('Đã tự lưu ngày 1');
   });
 
+  describe('a new run and the autosave of the last one', () => {
+    /** The 'auto' slot holds day 20 of "Quán Cũ", saved only by autosave. */
+    function oldRun(storage: StorageLike = createMemoryStorage()): StorageLike {
+      const old = game('Quán Cũ');
+      old.day = 20;
+      saveGame(old, 'auto', storage);
+      return storage;
+    }
+
+    function newRun(root: HTMLElement, name: string): void {
+      button(root, 'Ván mới').click();
+      q<HTMLInputElement>(root, 'input[type="text"]').value = name;
+      submit(q<HTMLFormElement>(root, 'form'));
+    }
+
+    it('copies the old run to an empty slot before the new run autosaves over it', () => {
+      const { root, storage, shell } = boot(oldRun());
+      const before = storage.getItem(saveKey('auto'));
+      newRun(root, 'Quán Mới');
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('auto'))).toContain('Quán Mới');
+      expect(storage.getItem(saveKey('1'))).toBe(before);
+      expect(root.querySelector('.toasts')?.textContent).toContain('Đã chép bản tự lưu cũ sang Slot 1');
+      // Later days of the same run only autosave.
+      shell.handleEvents([{ type: 'dayEnded', day: 2 }]);
+      expect(storage.getItem(saveKey('2'))).toBeNull();
+    });
+
+    it('does the same for "Chơi lại" and skips a copy that is already in a slot', () => {
+      const storage = oldRun();
+      storage.setItem(saveKey('3'), storage.getItem(saveKey('auto'))!);
+      const { shell } = boot(storage);
+      shell.startGame(game('Quán Chơi Lại'));
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('1'))).toBeNull();
+      expect(storage.getItem(saveKey('2'))).toBeNull();
+      expect(storage.getItem(saveKey('auto'))).toContain('Quán Chơi Lại');
+    });
+
+    it('keeps autosaving in place for a run continued from the autosave', () => {
+      const { root, storage, shell } = boot(oldRun());
+      button(root, 'Tiếp tục').click();
+      expect(shell.state?.day).toBe(20);
+      shell.handleEvents([{ type: 'dayEnded', day: 20 }]);
+      expect(storage.getItem(saveKey('1'))).toBeNull();
+    });
+
+    it('warns on Ván mới when every slot is full and the autosave would be lost', () => {
+      const storage = oldRun();
+      for (const slot of ['1', '2', '3'] as const) saveGame(game(`Slot ${slot}`), slot, storage);
+      const { root } = boot(storage);
+      button(root, 'Ván mới').click();
+      const note = q(root, '[data-autosave-warning]');
+      expect(note.hidden).toBe(false);
+      expect(note.textContent).toContain('Quán Cũ');
+      expect(note.textContent).toContain('ngày 20');
+
+      storage.removeItem(saveKey('2'));
+      button(root, 'Quay lại').click();
+      button(root, 'Ván mới').click();
+      expect(q(root, '[data-autosave-warning]').hidden).toBe(true);
+    });
+  });
+
   it('toasts an error when the autosave fails', () => {
     const storage = createMemoryStorage();
     storage.setItem = () => {

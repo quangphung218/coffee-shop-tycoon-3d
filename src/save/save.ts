@@ -221,6 +221,58 @@ export function autosave(state: GameState, storage: StorageLike = defaultStorage
   return saveGame(state, 'auto', storage, now);
 }
 
+/** Slots a player saves into by hand, where an older run's autosave is kept. */
+const MANUAL_SLOTS = SAVE_SLOTS.filter((slot) => slot !== 'auto');
+
+/**
+ * What keepAutosave did: 'none' when the autosave slot is empty, 'kept' with
+ * the slot that now holds it (copied: false when a slot already had the same
+ * data), 'no_room' when every manual slot is taken, 'failed' when storage threw.
+ */
+export type KeptAutosave =
+  | { kind: 'none' }
+  | { kind: 'kept'; slot: SaveSlot; copied: boolean }
+  | { kind: 'no_room' }
+  | { kind: 'failed' };
+
+/**
+ * Call before a new run first autosaves: copies whatever the 'auto' slot holds
+ * (another run's game, even data that no longer loads) as is to the first
+ * empty manual slot, so the new run does not overwrite it.
+ */
+export function keepAutosave(storage: StorageLike = defaultStorage()): KeptAutosave {
+  try {
+    const text = storage.getItem(saveKey('auto'));
+    if (text === null) return { kind: 'none' };
+    let empty: SaveSlot | null = null;
+    for (const slot of MANUAL_SLOTS) {
+      const other = storage.getItem(saveKey(slot));
+      if (other === text) return { kind: 'kept', slot, copied: false };
+      if (other === null) empty ??= slot;
+    }
+    if (empty === null) return { kind: 'no_room' };
+    storage.setItem(saveKey(empty), text);
+    return { kind: 'kept', slot: empty, copied: true };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/**
+ * The autosave a new run would overwrite with nothing to keep it in: a game in
+ * the 'auto' slot that no manual slot holds, while all of them are taken.
+ * Null when keepAutosave can keep it, or there is nothing to keep.
+ */
+export function autosaveAtRisk(storage: StorageLike = defaultStorage()): SlotInfo | null {
+  try {
+    const text = storage.getItem(saveKey('auto'));
+    if (text === null || MANUAL_SLOTS.some((slot) => [null, text].includes(storage.getItem(saveKey(slot))))) return null;
+  } catch {
+    return null;
+  }
+  return listSlots(storage).find((info) => info.slot === 'auto') ?? null;
+}
+
 /** Reads a slot. Never throws and never modifies the stored data, even when it is broken. */
 export function loadGame(slot: SaveSlot, storage: StorageLike = defaultStorage()): Result<GameState> {
   const r = readSlot(slot, storage);

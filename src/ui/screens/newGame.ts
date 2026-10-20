@@ -1,4 +1,5 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
+import type { SlotInfo } from '../../save/slots';
 import type { Difficulty } from '../../sim/types';
 import { h, isAriaDisabled, uid } from '../core/dom';
 import { formatMoney } from '../core/format';
@@ -26,6 +27,8 @@ const DIFFICULTY_TEXT: Record<Difficulty, { icon: IconId; note: string }> = {
 export interface NewGameActions {
   onStart(shopName: string, difficulty: Difficulty): void;
   onBack(): void;
+  /** The autosave this run will overwrite at the end of day 1 with no free slot to keep it (save.ts autosaveAtRisk). */
+  autosaveAtRisk?(): SlotInfo | null;
 }
 
 /** New Game form: shop name with inline validation, Easy/Normal/Hard with starting money. */
@@ -114,6 +117,19 @@ export function createNewGame(actions: NewGameActions, scene: SceneGate = new Sc
     if (input.value.length > 0) setError(validateShopName(input.value));
   });
 
+  // Every slot is taken: say which game the first autosave replaces.
+  const atRisk = h('p', { class: 'hint', hidden: true, attrs: { 'data-autosave-warning': '' } });
+  function showAtRisk(): void {
+    const info = actions.autosaveAtRisk?.() ?? null;
+    atRisk.hidden = info === null;
+    if (!info) return;
+    const game = info.shopName ? `ván ${info.shopName} (ngày ${info.day})` : 'một ván không đọc được';
+    atRisk.replaceChildren(
+      icon('i-warning', { size: 16 }),
+      `Ô Tự lưu đang giữ ${game}, Slot 1–3 đều đã có ván. Hết ngày 1, ván mới sẽ ghi đè ô Tự lưu. Muốn giữ ván cũ thì xoá một slot trong Tải game trước.`,
+    );
+  }
+
   const startBtn = h('button', { class: 'btn btn-primary', attrs: { type: 'submit' } }, 'Bắt đầu ngày 1', icon('i-forward'));
   // Starting drops straight into the shop, so it waits for the 3D scene.
   scene.bind(startBtn);
@@ -130,6 +146,7 @@ export function createNewGame(actions: NewGameActions, scene: SceneGate = new Sc
       field,
       h('fieldset', {}, h('legend', { text: 'Độ khó' }), h('div', { class: 'choice-grid' }, ...choices)),
     ),
+    atRisk,
     scene.statusLine(),
     h(
       'div',
@@ -158,6 +175,7 @@ export function createNewGame(actions: NewGameActions, scene: SceneGate = new Sc
     onShow: () => {
       setError(null);
       updateCount();
+      showAtRisk();
     },
     initialFocus: () => input,
     onEscape: () => {
