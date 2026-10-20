@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
-`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout phần ván mới, HUD, ngày sự kiện cũng đo trên HEAD; layout phần P25, P27 và ảnh là lượt trước merge `main`.
+`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout cũng đo trên HEAD; ảnh là lượt trước merge `main`.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -26,7 +26,7 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 - Cảnh 3D máy bàn trong `perf:frames` headless FAIL: 560 / 447 ms (+25,3%); headed 414 / 722 ms PASS.
 - Khung hình máy bàn headed trên HEAD: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
-- Layout trên HEAD (ván mới, HUD, ngày sự kiện): 54/54 PASS; HUD 2 hàng ở 390 và 768 px, 1 hàng ở 1280 và 1440 px. Phần P25 (20 mục) và P27 (24 mục: bảng Việc, Nhân viên, Nâng cấp) PASS ở lượt trước merge `main`.
+- Layout trên HEAD 98/98 PASS: ván mới, HUD, ngày sự kiện 54 mục; P25 20 mục; P27 24 mục (bảng Việc, Nhân viên, Nâng cấp). HUD 2 hàng ở 390 và 768 px, 1 hàng ở 1280 và 1440 px.
 - 14 ảnh P27 có khoanh đỏ, 0 cảnh báo `!!`.
 
 ## Kết luận release
@@ -66,8 +66,8 @@ P27 làm chậm thật Main Menu Mobile: chậm hơn base ở cả hai lượt `
 | p95 máy bàn (`--headed`, HEAD) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | 18 ms, base 18 ms |
 | Long task, trước merge `main` | 0 long task mỗi lần | Máy bàn headless P27 FAIL 3/10 lần, base 1/10; di động headless P27 FAIL 1/10, base 0/10; máy bàn headed 0/5 cả hai bản; di động headed P27 FAIL 2/5, base 1/5 |
 | `npm run layout` phần ván mới, HUD, ngày sự kiện (HEAD) | PASS mọi mục | PASS: 54/54. Tràn ngang 0, CLS Kho 0, HUD 2 hàng ở 390 / 768 / 1100 px, 1 hàng ở 1280 / 1440 px, mọi nút ≥ 44 px |
-| Layout P25, trước merge `main` | PASS mọi mục | PASS: 20/20 |
-| Layout P27 (mục mới), trước merge `main` | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
+| Layout P25 (HEAD) | PASS mọi mục | PASS: 20/20 |
+| Layout P27 (mục mới, HEAD) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
 | `npm run media:p27` | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
 
 Đường khởi động tới Main Menu chỉ thêm `pendingGiftDay` trong `src/ui/screens/mainMenu.ts` và hai trường quà trong `listSlotSummaries` (`src/save/slots.ts`): so ngày và đọc hai trường của save, không tải thêm chunk.
@@ -314,12 +314,23 @@ Số hàng HUD trên HEAD, giống nhau ở mọi màn của cùng khổ (chuẩ
 PASS / 54 checks
 ```
 
-### Trước merge `main`: P25, P27
+### HEAD: P25, P27
+
+`npm run build && LAYOUT_ONLY=p25,p27 node scripts/check-layout.mjs`, 44 mục:
 
 | Phần | Khổ | Mục | Kết quả |
 | --- | --- | --- | --- |
 | P25: Menu gọn, thẻ lên cấp | 390, 768, 1280×720, 1440 | 20 | PASS |
 | P27: Việc, Nhân viên, Nâng cấp | 390, 768, 1280×720, 1440 | 24 | PASS |
+
+```
+| 390×844 | Menu gọn: cao dòng, nút | PASS | 11 dòng; không nhãn cao tối đa 56.0 px, có nhãn 89.0 px (ngưỡng 72/96 px); 16 nút ≥ 44 px |
+| 1280×720 | Thẻ lên cấp: vừa màn, nút | PASS | thẻ cao 54 px, 3 chip; vừa một màn (phải vừa); 5 nút ≥ 44 px |
+| 390×844 | Việc P27: nút | PASS | thẻ quà, đơn đặc biệt, thành tựu sổ ra; 9 nút ≥ 44 px |
+| 390×844 | Nhân viên P27: nút | PASS | chip đặc điểm, thanh KN, xác nhận Đào tạo mở; 12 nút ≥ 44 px |
+| 390×844 | Nâng cấp P27: nút | PASS | 2 dòng giá có Tem; 20 nút ≥ 44 px |
+PASS / 44 checks
+```
 
 ## 7. Ảnh
 
