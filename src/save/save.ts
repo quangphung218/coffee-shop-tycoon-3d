@@ -153,6 +153,7 @@ export function migrate(raw: unknown): Result<SaveFile> {
   }
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
   addMissingMenuItems(file.state);
+  dropUnknownItems(file.state);
   try {
     relayoutTables(file.state);
   } catch {
@@ -181,6 +182,39 @@ function addMissingMenuItems(state: GameState): void {
     ...MENU.map((item) => saved.get(item.id) ?? { id: item.id, enabled: false, price: item.price }),
     ...state.menu.filter((m) => !isObject(m) || !known.has(m.id)).map((m) => (isObject(m) ? { ...m, enabled: false } : m)),
   ];
+}
+
+/** Day stats keyed by menu item id. */
+const ITEM_KEYED_STATS = ['sold', 'outOfStock', 'missedDemand', 'soldRevenue'] as const;
+
+/**
+ * Drops menu items the game no longer knows from today, the history and the
+ * last Daily Report: the report and insights look up every item they list and
+ * would throw on them. The menu entry itself stays, switched off
+ * (addMissingMenuItems).
+ */
+function dropUnknownItems(state: GameState): void {
+  const known = new Set<unknown>(MENU.map((m) => m.id));
+  for (const day of [state.today, ...(Array.isArray(state.history) ? state.history : [])]) {
+    if (!isObject(day)) continue;
+    for (const key of ITEM_KEYED_STATS) {
+      const byItem = day[key];
+      if (!isObject(byItem)) continue;
+      for (const id of Object.keys(byItem)) if (!known.has(id)) delete (byItem as Raw)[id];
+    }
+  }
+  const r: unknown = state.lastReport;
+  if (!isObject(r)) return;
+  const keepKnown = (list: unknown, id: (x: Raw) => unknown = (x) => x.id): unknown =>
+    Array.isArray(list) ? list.filter((x) => (isObject(x) ? known.has(id(x)) : known.has(x))) : list;
+  r.topSellers = keepKnown(r.topSellers);
+  r.outOfStock = keepKnown(r.outOfStock);
+  if (isObject(r.insights)) {
+    r.insights.itemMargins = keepKnown(r.insights.itemMargins);
+    r.insights.itemProfits = keepKnown(r.insights.itemProfits);
+  }
+  if (isObject(r.levelUp) && isObject(r.levelUp.unlocks)) r.levelUp.unlocks.menu = keepKnown(r.levelUp.unlocks.menu);
+  if (isObject(r.specialOrder) && !known.has(r.specialOrder.itemId)) delete r.specialOrder;
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {
