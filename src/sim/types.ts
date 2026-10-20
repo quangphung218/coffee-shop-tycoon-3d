@@ -621,6 +621,12 @@ export interface ActiveCampaign {
 }
 
 export interface GameState {
+  /**
+   * Which run (one game from Ván mới or Chơi lại) this state belongs to, so
+   * the autosave of this run is told from another's. Set by the UI when the
+   * run starts; a save without one gets it from the seed and shop name.
+   */
+  runId?: string;
   shopName: string;
   difficulty: Difficulty;
   /** Original seed the game started from; daily missions hash from it, never from rngState. */

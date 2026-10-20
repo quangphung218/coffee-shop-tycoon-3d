@@ -20,6 +20,8 @@ describe('saveGame / loadGame', () => {
   it('round-trips a game state', () => {
     const storage = createMemoryStorage();
     const s = sampleState();
+    // A running game always has one (the shell sets it); without, load derives it.
+    s.runId = 'run-1';
     expect(saveGame(s, '1', storage, 1000).ok).toBe(true);
     const r = loadGame('1', storage);
     expect(r.ok).toBe(true);
@@ -419,5 +421,46 @@ describe('keepAutosave', () => {
     storage.setItem(saveKey('auto'), '{broken');
     expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '1', copied: true });
     expect(storage.getItem(saveKey('1'))).toBe('{broken');
+  });
+});
+
+describe('runId', () => {
+  it('is kept through save and load', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Một', 'normal', 9);
+    s.runId = 'run-abc';
+    saveGame(s, '1', storage);
+    const r = loadGame('1', storage);
+    expect(r.ok && r.value.runId).toBe('run-abc');
+  });
+
+  it('is derived from the seed and shop name for a save without one, the same for every copy of that run', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Cũ', 'normal', 9);
+    saveGame(s, 'auto', storage);
+    s.day = 5;
+    saveGame(s, '1', storage);
+    const a = loadGame('auto', storage);
+    const b = loadGame('1', storage);
+    if (!a.ok || !b.ok) throw new Error('load failed');
+    expect(a.value.runId).toBeTruthy();
+    expect(a.value.runId).toBe(b.value.runId);
+    const other = createNewGame('Quán Khác', 'normal', 9);
+    saveGame(other, '2', storage);
+    const c = loadGame('2', storage);
+    expect(c.ok && c.value.runId).not.toBe(a.value.runId);
+  });
+
+  it('lets keepAutosave tell this run\'s autosave from another run\'s', () => {
+    const storage = createMemoryStorage();
+    const s = createNewGame('Quán Một', 'normal', 9);
+    s.runId = 'run-1';
+    autosave(s, storage);
+    expect(keepAutosave(storage, 'run-1')).toEqual({ kind: 'same_run' });
+    expect(storage.getItem(saveKey('1'))).toBeNull();
+    for (const slot of ['1', '2', '3'] as const) saveGame(createNewGame(`Slot ${slot}`, 'normal', 1), slot, storage);
+    expect(autosaveAtRisk(storage, 'run-1')).toBeNull();
+    expect(autosaveAtRisk(storage, 'run-2')).toMatchObject({ slot: 'auto', shopName: 'Quán Một' });
+    expect(keepAutosave(storage, 'run-2')).toEqual({ kind: 'no_room' });
   });
 });

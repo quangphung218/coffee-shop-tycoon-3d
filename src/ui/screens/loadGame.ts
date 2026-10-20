@@ -1,4 +1,4 @@
-import { autosaveAtRisk, deleteSave, listSlots, loadGame, type SaveErrorKind, type SaveSlot, type SlotInfo } from '../../save/save';
+import { autosaveAtRisk, deleteSave, listSlots, loadGame, slotRunId, type SaveErrorKind, type SaveSlot, type SlotInfo } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
 import type { GameState } from '../../sim/types';
 import { h, isAriaDisabled, setChildren, uid } from '../core/dom';
@@ -164,7 +164,7 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions, s
         on: {
           click: () => {
             if (isAriaDisabled(loadBtn)) return;
-            const risk = info.slot === 'auto' ? null : autosaveAtRisk(storage);
+            const risk = info.slot === 'auto' ? null : autosaveAtRisk(storage, slotRunId(info.slot, storage) ?? undefined);
             if (risk) confirmLoad(info, item, actionsRow, risk);
             else load(info, item);
           },

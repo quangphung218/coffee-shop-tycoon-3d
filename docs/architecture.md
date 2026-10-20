@@ -102,7 +102,7 @@ Font chữ:
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
 5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` giữ id món và nâng cấp vừa mở ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
-Thân khung bọc trong `guardFrame` (`src/ui/core/startup.ts`): một bước throw thì lỗi đầu tiên của chuỗi khung lỗi được ghi ra console, khung sau vẫn được hẹn, game không đứng hình. Các bước 3–5 chạy qua `runEvents`: mỗi bước chạy riêng, rồi `game.events` luôn được xoá kể cả khi một bước throw, nên không event nào bị xử lý lại ở khung sau (không autosave, toast hay âm thanh lặp).
+Thân khung bọc trong `guardFrame` (`src/ui/core/startup.ts`): một bước throw thì lỗi đầu tiên của chuỗi khung lỗi được ghi ra console, khung sau vẫn được hẹn, game không đứng hình. Bước 1 (`step`) và các bước 3–5 chạy qua `runEvents`: mỗi bước chạy riêng, rồi `game.events` luôn được xoá kể cả khi một bước throw, nên không event nào bị xử lý lại ở khung sau (không autosave, toast hay âm thanh lặp).
 
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên (kèm kinh nghiệm, `onStaffTick`) → khách → hạn đơn đặc biệt (`tickSpecialOrders`) → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 
@@ -462,7 +462,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 
 | Khóa `localStorage` | Nội dung |
 | --- | --- |
-| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. Lần tự lưu đầu của một ván không tải từ ô này (ván mới, Chơi lại, tải từ Slot 1–3) gọi `keepAutosave` trước: chép nguyên dữ liệu đang có sang slot tay trống đầu tiên, bỏ qua nếu một slot đã giữ đúng bản đó. Hết slot trống thì màn Ván mới cảnh báo trước và màn Tải game hỏi lại khi tải Slot 1–3 (`autosaveAtRisk`); chỉ khi đó ô Tự lưu mới bị ghi đè. Ván mở bằng "Tiếp tục" vào Slot 1–3, hoặc lúc chép bị lỗi (`failed`), thì không tự lưu và có toast "Chưa tự lưu, để giữ ván trước" cho tới khi có slot trống. |
+| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. Mỗi ván có `runId` (UUID sinh lúc Ván mới hay Chơi lại; save cũ chưa có thì `migrate` gán `legacy:<seed>:<tên quán>`, mọi bản của cùng ván ra cùng id). Lần tự lưu đầu của một ván không tải từ ô này (ván mới, Chơi lại, tải từ Slot 1–3) gọi `keepAutosave` trước: ô Tự lưu cùng `runId` thì ghi đè bình thường; khác `runId` thì chép nguyên dữ liệu đang có sang slot tay trống đầu tiên, bỏ qua nếu một slot đã giữ đúng bản đó. Hết slot trống thì màn Ván mới cảnh báo trước và màn Tải game hỏi lại khi tải Slot 1–3 (`autosaveAtRisk`); chỉ khi đó ô Tự lưu mới bị ghi đè. Ván mở bằng "Tiếp tục" vào Slot 1–3, hoặc lúc chép bị lỗi (`failed`), thì không tự lưu và có toast "Chưa tự lưu, để giữ ván trước" cho tới khi có slot trống. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
 | `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`), giảm chuyển động (`reducedMotion`: `system` hay `reduce`, thiếu thì `system`). |
 | `cst3d:playlog` | Số liệu chơi ẩn danh: `{ "v": 1, "entries": [...] }`, giữ 1000 dòng mới nhất (`src/save/playlog.ts`). |

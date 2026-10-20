@@ -1119,6 +1119,85 @@ describe('Shell', () => {
       expect(root.querySelector('.toasts [role="alert"]')?.textContent).toContain('Chưa tự lưu');
     });
 
+    describe('one run over many sessions (Slot 1 by hand, then Tiếp tục)', () => {
+      const day = (storage: StorageLike, slot: 'auto' | '1' | '2' | '3'): number | null => {
+        const text = storage.getItem(saveKey(slot));
+        return text === null ? null : (JSON.parse(text) as { state: GameState }).state.day;
+      };
+
+      /** One browser session: open the game, end day `d` (autosave), save by hand mid-day d+1, close the tab. */
+      function session(storage: StorageLike, d: number, start: (root: HTMLElement) => void): string {
+        const root = document.createElement('div');
+        document.body.append(root);
+        const s = createShell({ root, storage, settings: { ...DEFAULT_SETTINGS }, seed: () => 7 });
+        try {
+          start(root);
+          expect(s.state?.shopName).toBe('Quán Một');
+          s.state!.day = d;
+          vi.setSystemTime(Date.now() + 60_000);
+          s.handleEvents([{ type: 'dayEnded', day: d }]);
+          s.state!.day = d + 1;
+          vi.setSystemTime(Date.now() + 60_000);
+          s.openPause();
+          q<HTMLButtonElement>(root, '.ui-screen:not([hidden]) [data-save-slot="1"]').click();
+          vi.setSystemTime(Date.now() + 60_000);
+          return root.querySelector('.toasts')?.textContent ?? '';
+        } finally {
+          s.dispose();
+          root.remove();
+        }
+      }
+
+      it('S1–S5: keeps autosaving the same run in place, copies nothing and never holds it back', () => {
+        vi.useFakeTimers({ toFake: ['Date'], now: 1_800_000_000_000 });
+        const storage = createMemoryStorage();
+        const newGame = (root: HTMLElement): void => {
+          button(root, 'Ván mới').click();
+          q<HTMLInputElement>(root, 'input[type="text"]').value = 'Quán Một';
+          submit(q<HTMLFormElement>(root, 'form'));
+        };
+        const resume = (root: HTMLElement): void => button(root, 'Tiếp tục').click();
+        for (let d = 1; d <= 5; d++) {
+          const toasts = session(storage, d, d === 1 ? newGame : resume);
+          expect(day(storage, 'auto'), `S${d} auto`).toBe(d);
+          expect(day(storage, '1'), `S${d} slot 1`).toBe(d + 1);
+          expect(day(storage, '2'), `S${d} slot 2`).toBeNull();
+          expect(day(storage, '3'), `S${d} slot 3`).toBeNull();
+          expect(toasts).toContain(`Đã tự lưu ngày ${d}`);
+          expect(toasts).not.toContain('Đã chép');
+          expect(toasts).not.toContain('Chưa tự lưu');
+        }
+      });
+
+      it('treats an older save of the same run without a runId as the same run', () => {
+        vi.useFakeTimers({ toFake: ['Date'], now: 1_800_000_000_000 });
+        const storage = createMemoryStorage();
+        const old = game('Quán Một');
+        old.day = 3;
+        saveGame(old, 'auto', storage);
+        old.day = 4;
+        vi.setSystemTime(Date.now() + 60_000);
+        saveGame(old, '1', storage);
+        for (const slot of ['auto', '1'] as const) expect(storage.getItem(saveKey(slot))).not.toContain('runId');
+        vi.setSystemTime(Date.now() + 60_000);
+        session(storage, 4, (root) => button(root, 'Tiếp tục').click());
+        expect(day(storage, 'auto')).toBe(4);
+        expect(day(storage, '2')).toBeNull();
+      });
+    });
+
+    it('still keeps another run with the same shop name, seed and day', () => {
+      const storage = createMemoryStorage();
+      saveGame(game('Quán Cũ'), 'auto', storage);
+      const before = storage.getItem(saveKey('auto'));
+      const { root, shell } = boot(storage);
+      newRun(root, 'Quán Cũ');
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('1'))).toBe(before);
+      expect(shell.state?.runId).toBeTruthy();
+      expect(storage.getItem(saveKey('auto'))).toContain(shell.state!.runId!);
+    });
+
     it('warns on Ván mới when every slot is full and the autosave would be lost', () => {
       const storage = oldRun();
       for (const slot of ['1', '2', '3'] as const) saveGame(game(`Slot ${slot}`), slot, storage);

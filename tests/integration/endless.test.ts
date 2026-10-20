@@ -116,10 +116,11 @@ describe('endless weeks: 21 days in a row', { timeout: 300_000 }, () => {
 
 describe('endless weeks: save on day 10, load, play to day 21', { timeout: 300_000 }, () => {
   it('ends exactly like the game played without saving', () => {
-    const straight = createNewGame('Quán Ba Tuần', 'normal', SEED);
+    // Same run id, as the shell gives a running game; a save without one gets a derived id.
+    const straight = { ...createNewGame('Quán Ba Tuần', 'normal', SEED), runId: 'run-1' };
     const straightLogs = playTo(straight, LAST_DAY);
 
-    const first = createNewGame('Quán Ba Tuần', 'normal', SEED);
+    const first = { ...createNewGame('Quán Ba Tuần', 'normal', SEED), runId: 'run-1' };
     playTo(first, SAVE_DAY);
     expect(first.phase).toBe('report');
     expect(first.week!.index).toBe(2);

@@ -154,6 +154,8 @@ export function migrate(raw: unknown): Result<SaveFile> {
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
   addMissingMenuItems(file.state);
   dropUnknownItems(file.state);
+  // Every copy of a run saved before runId existed shares its seed and name.
+  if (typeof file.state.runId !== 'string') file.state.runId = `legacy:${file.state.seed}:${file.state.shopName}`;
   try {
     relayoutTables(file.state);
   } catch {
@@ -259,25 +261,35 @@ export function autosave(state: GameState, storage: StorageLike = defaultStorage
 const MANUAL_SLOTS = SAVE_SLOTS.filter((slot) => slot !== 'auto');
 
 /**
- * What keepAutosave did: 'none' when the autosave slot is empty, 'kept' with
- * the slot that now holds it (copied: false when a slot already had the same
- * data), 'no_room' when every manual slot is taken, 'failed' when storage threw.
+ * What keepAutosave did: 'none' when the autosave slot is empty, 'same_run'
+ * when it holds the running game's own run (overwrite it), 'kept' with the
+ * slot that now holds another run's autosave (copied: false when a slot
+ * already had the same data), 'no_room' when every manual slot is taken,
+ * 'failed' when storage threw.
  */
 export type KeptAutosave =
   | { kind: 'none' }
+  | { kind: 'same_run' }
   | { kind: 'kept'; slot: SaveSlot; copied: boolean }
   | { kind: 'no_room' }
   | { kind: 'failed' };
 
+/** runId of the game in a slot (derived for older saves), or null when it does not load. */
+export function slotRunId(slot: SaveSlot, storage: StorageLike = defaultStorage()): string | null {
+  const r = readSlot(slot, storage);
+  return r.ok ? (r.value.state.runId ?? null) : null;
+}
+
 /**
- * Call before a new run first autosaves: copies whatever the 'auto' slot holds
- * (another run's game, even data that no longer loads) as is to the first
- * empty manual slot, so the new run does not overwrite it.
+ * Call before a run first autosaves: unless the 'auto' slot holds this run
+ * (`runId`), copies whatever it holds (another run's game, even data that no
+ * longer loads) as is to the first empty manual slot, so it is not overwritten.
  */
-export function keepAutosave(storage: StorageLike = defaultStorage()): KeptAutosave {
+export function keepAutosave(storage: StorageLike = defaultStorage(), runId?: string): KeptAutosave {
   try {
     const text = storage.getItem(saveKey('auto'));
     if (text === null) return { kind: 'none' };
+    if (runId !== undefined && slotRunId('auto', storage) === runId) return { kind: 'same_run' };
     let empty: SaveSlot | null = null;
     for (const slot of MANUAL_SLOTS) {
       const other = storage.getItem(saveKey(slot));
@@ -293,14 +305,16 @@ export function keepAutosave(storage: StorageLike = defaultStorage()): KeptAutos
 }
 
 /**
- * The autosave a new run would overwrite with nothing to keep it in: a game in
- * the 'auto' slot that no manual slot holds, while all of them are taken.
- * Null when keepAutosave can keep it, or there is nothing to keep.
+ * The autosave the run `runId` (none for a new run) would overwrite with
+ * nothing to keep it in: another run's game in the 'auto' slot that no manual
+ * slot holds, while all of them are taken. Null when it is this run's own,
+ * keepAutosave can keep it, or there is nothing to keep.
  */
-export function autosaveAtRisk(storage: StorageLike = defaultStorage()): SlotInfo | null {
+export function autosaveAtRisk(storage: StorageLike = defaultStorage(), runId?: string): SlotInfo | null {
   try {
     const text = storage.getItem(saveKey('auto'));
     if (text === null || MANUAL_SLOTS.some((slot) => [null, text].includes(storage.getItem(saveKey(slot))))) return null;
+    if (runId !== undefined && slotRunId('auto', storage) === runId) return null;
   } catch {
     return null;
   }

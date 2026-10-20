@@ -40,7 +40,7 @@ export interface Shell {
   dispose(): void;
 }
 
-/** Random play-log run id; not tied to the player or the save. */
+/** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === 'function') return c.randomUUID();
@@ -94,7 +94,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   function runAutosave(game: GameState, day: number): SaveStatus {
     autosaveHeld = null;
     if (!ownsAutosave) {
-      const kept = keepAutosave(storage);
+      const kept = keepAutosave(storage, game.runId);
       if (kept.kind === 'kept' && kept.copied) {
         toasts.show({ level: 'info', icon: 'i-save', title: `Đã chép bản tự lưu cũ sang ${slotLabel(kept.slot)}`, text: 'Mở lại trong Tải game.' });
       } else if (kept.kind === 'failed') {
@@ -152,6 +152,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
 
   function startGame(next: GameState, from?: SaveSlot): void {
     state = next;
+    // A new run (Ván mới, Chơi lại) gets its id here; a loaded one keeps its own.
+    state.runId ??= newRunId();
     ownsAutosave = from === 'auto';
     mayReplaceAutosave = true;
     state.speed = base.settings.gameSpeed;
