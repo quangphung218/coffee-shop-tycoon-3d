@@ -1,11 +1,12 @@
 # P27 — Nhân viên lên cấp, quà ngày, đơn đặc biệt, mở rộng quán
 
-Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
+Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
 | Phần | Lệnh |
 | --- | --- |
 | Kiểm tra code | `npm run check` |
 | Khởi động, bảng chunk | `PORT=<cổng> node scripts/measure-startup.mjs --base d58350b --runs 9` |
+| Khung hình 5 s đầu, long task | `MEDIA_PORT=<cổng> npm run perf:frames -- --base d58350b --runs 5`, thêm `--headed` để lấy p95 thật |
 | Save cũ | `npx vitest run tests/integration/p27-save-compat.test.ts tests/save` |
 | Lề, tràn ngang, vùng chạm | `LAYOUT_PORT=<cổng> npm run layout` (chạy từng phần: [media.md](../media.md#kiểm-lề-và-cls)) |
 | Ảnh P27 | `MEDIA_PORT=<cổng> npm run media:p27` ([media.md](../media.md#ảnh-p27)) |
@@ -16,6 +17,8 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 - Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 660 / 657 / 850 ms qua 3 lượt, đều dưới 1 s.
 - Main Menu trên Mobile so với base: +91 / −1 / +42 ms. Phone cùng mạng và CPU lệch −11 / +16 / +109 ms (lượt 1 ngược chiều Mobile), lượt 3 cả máy bàn cũng chậm hơn base, và lượt 2 với 9 lần đo cho Mobile bằng base, nên chênh lệch là nhiễu đo chứ không phải chậm thật ([mục 3](#3-khởi-động)).
 - JS chính `index-*.js`: 15,0 → 15,4 kB gzip (+0,4 kB). CSS chính không đổi (cùng file `index-BD2jmB4N.css`, 9,55 kB).
+- `perf:frames` headless: trung vị 0 long task ở máy bàn và di động, cả hai lượt. Từng lần đo: di động 0 ms ở 9/10 lần (1 lần 1 ms); máy bàn có long task ở 3/10 lần (311–435 ms), base cũng có ở 1/10 lần (488 ms) ([mục 4](#4-khung-hình)).
+- Khung hình máy bàn headed: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
 - Layout 92/92: 68 mục cũ và 24 mục mới cho bảng Việc, Nhân viên, Nâng cấp của P27.
 - 14 ảnh P27 có khoanh đỏ, 0 cảnh báo `!!`.
@@ -32,6 +35,9 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 | Cảnh 3D, máy bàn | ≤ base + 10% | Lượt 1–2 PASS (+6,6%, +5,4%), lượt 3 FAIL (293 / 243 ms, +20,6%) |
 | JS chính gzip | ≤ 17,0 kB (tăng ≤ 2 kB) | PASS: 15,4 kB (+0,4 kB) |
 | CSS chính gzip | ≤ 9,6 kB | PASS: 9,55 kB, cùng file với base |
+| `perf:frames`, máy bàn headless | 0 long task | Trung vị PASS: 0 ở cả hai lượt. Từng lần: lượt 1 0 / 0 / 435 / 0 / 0 ms, lượt 2 311 / 428 / 0 / 0 / 0 ms (FAIL ở 3/10 lần); base 0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms |
+| `perf:frames`, di động headless | 0 long task | Trung vị PASS: 0 ở cả hai lượt. Từng lần: lượt 1 0 / 0 / 0 / 1 / 0 ms, lượt 2 0 ở cả 5 lần; base 0 ở cả 10 lần |
+| p95 máy bàn (`--headed`) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | 18 ms, base 18 ms. Long task trung vị 0 |
 | Save cũ | v0–v3 nạp được, giữ dữ liệu P27 qua lưu/nạp | PASS: 141 test save và tương thích |
 | `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 92/92. Tràn ngang 0, CLS Kho 0, HUD 1–2 hàng, mọi nút ≥ 44 px |
 | Layout P27 (mục mới) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
@@ -79,7 +85,31 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 
 Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9). `npm run build` (gzip của Vite) ghi JS chính 15,39 kB, CSS chính 9,55 kB.
 
-## 4. Save cũ
+## 4. Khung hình
+
+`perf:frames --base d58350b --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless chạy hai lượt liền nhau, headed một lượt. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
+
+| Chế độ | Hồ sơ | Bản | Cảnh 3D | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
+| --- | --- | --- | --- | --- | --- | --- |
+| Headless, lượt 1 | Máy bàn | `d58350b` | 227 ms | 50 / 67 / 67 ms | 31 | 0 |
+| Headless, lượt 1 | Máy bàn | P27 | 273 ms | 33 / 67 / 67 ms | 36 | 0 |
+| Headless, lượt 1 | Di động | `d58350b` | 3048 ms | 33 / 67 / 67 ms | 24 | 0 |
+| Headless, lượt 1 | Di động | P27 | 3077 ms | 33 / 67 / 67 ms | 26 | 0 |
+| Headless, lượt 2 | Máy bàn | `d58350b` | 230 ms | 50 / 67 / 67 ms | 35 | 0 |
+| Headless, lượt 2 | Máy bàn | P27 | 234 ms | 50 / 67 / 83 ms | 32 | 0 |
+| Headless, lượt 2 | Di động | `d58350b` | 3248 ms | 33 / 100 / 133 ms | 40 | 0 |
+| Headless, lượt 2 | Di động | P27 | 3293 ms | 50 / 133 / 133 ms | 38 | 0 |
+| Headed | Máy bàn | `d58350b` | 247 ms | 17 / 18 / 36 ms | 0 | 0 |
+| Headed | Máy bàn | P27 | 235 ms | 17 / 18 / 27 ms | 0 | 0 |
+| Headed | Di động | `d58350b` | 3056 ms | 17 / 17 / 34 ms | 0 | 0 |
+| Headed | Di động | P27 | 3075 ms | 17 / 18 / 33 ms | 0 | 0 |
+
+- Thời gian long task từng lần, headless máy bàn: base 0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms; P27 0 / 0 / 435 / 0 / 0 và 311 / 428 / 0 / 0 / 0 ms.
+- Headless di động: base 0 ở cả 10 lần; P27 0 / 0 / 0 / 1 / 0 và 0 / 0 / 0 / 0 / 0 ms.
+- Headed: máy bàn 0 ở cả 5 lần của hai bản; di động lần 4 có long task ở cả hai bản (base 311 ms, P27 402 ms), P27 lần 2 thêm 2 ms.
+- Long task máy bàn headless rơi vào lần đo khác nhau giữa hai lượt và base cũng có (488 ms). Muốn chặn hẳn thì cần một lượt đo có trace (`chrome://tracing`) ở lần có long task để biết việc nào chạy trên main thread.
+
+## 5. Save cũ
 
 | Kiểm | Kết quả |
 | --- | --- |
@@ -88,7 +118,7 @@ Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9). `npm run build` (g
 | Danh sách slot ở Main Menu | `listSlotSummaries` khớp `listSlots` cho v0–v3, JSON hỏng, version 99 và −1, storage lỗi; không ghi vào storage |
 | `SAVE_VERSION` | Vẫn là 3 |
 
-## 5. Layout
+## 6. Layout
 
 `npm run layout` chạy làm hai phần (`LAYOUT_ONLY=day,hud,event` rồi `LAYOUT_ONLY=p25,p27`), 92 mục:
 
@@ -99,11 +129,13 @@ Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9). `npm run build` (g
 | P25: Menu gọn, thẻ lên cấp | 390, 768, 1280×720, 1440 | 20 | PASS |
 | P27: Việc, Nhân viên, Nâng cấp | 390, 768, 1280×720, 1440 | 24 | PASS |
 
-## 6. Ảnh
+## 7. Ảnh
 
 `npm run media:p27`, Chromium headless. Chỗ mới khoanh đỏ, nhãn đỏ chữ trắng. Save của từng bản do sim của chính bản đó chơi ra: ván Vừa, cùng seed, tuyển 2 nhân viên ngày 1, nhận quà sáng ngày 3 với ngày hôm qua của máy.
 
 ### Trước/sau
+
+Mỗi ảnh ghép P26 `d58350b` (trái) cạnh P27 (phải), cùng save và cùng khổ.
 
 | Cảnh | Khổ | Chỗ cần nhìn | Ảnh |
 | --- | --- | --- | --- |
