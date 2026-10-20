@@ -2,12 +2,66 @@
 # Bumps the version when there are feat/fix/perf commits since the last v*
 # tag, builds the game and publishes dist/ to the gh-pages branch of origin,
 # then makes sure GitHub Pages serves that branch. Safe to run repeatedly:
-# each run replaces gh-pages with a single fresh commit. Never pushes the
-# release commit or tag; it prints the push command instead.
+# each run replaces gh-pages with a single fresh commit. Refuses to start
+# unless main is checked out, clean and equal to origin/main; after the
+# deploy it pushes the release commit and tag (plain push, never forced).
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+
+stop() {
+  echo "deploy-pages: $1" >&2
+  shift
+  for line in "$@"; do echo "  $line" >&2; done
+  echo "Nothing was built, committed or pushed." >&2
+  exit 1
+}
+
+warn() {
+  if [ -t 2 ]; then printf '\033[1;31m%s\033[0m\n' "$1" >&2; else printf '%s\n' "$1" >&2; fi
+}
+
+# Releasing from anything but an up-to-date main leaves a release commit
+# that origin/main does not have, and the two branches split on the next
+# PR merge.
+git fetch -q origin || stop "git fetch origin failed." \
+  "Check the network and 'git remote get-url origin', then run again."
+BRANCH=$(git symbolic-ref --short -q HEAD || true)
+if [ "$BRANCH" != main ]; then
+  stop "deploy only runs on main (current: ${BRANCH:-detached HEAD})." \
+    "Run: git switch main && git pull --ff-only"
+fi
+DIRTY=$(git status --porcelain --untracked-files=no)
+if [ -n "$DIRTY" ]; then
+  stop "the working tree has uncommitted changes:" "$DIRTY" \
+    "Commit them through a PR, or discard them, then run again."
+fi
+git rev-parse -q --verify origin/main >/dev/null ||
+  stop "origin/main not found." "Push main once: git push origin main"
+LOCAL=$(git rev-parse HEAD)
+UPSTREAM=$(git rev-parse origin/main)
+if [ "$LOCAL" != "$UPSTREAM" ]; then
+  AHEAD=$(git rev-list --count origin/main..HEAD)
+  BEHIND=$(git rev-list --count HEAD..origin/main)
+  if [ "$AHEAD" -eq 0 ]; then
+    stop "local main is $BEHIND commit(s) behind origin/main." \
+      "Run: git pull --ff-only" "Then run the deploy again."
+  fi
+  HEAD_TAG=$(git tag --points-at HEAD --list 'v[0-9]*' | head -n 1)
+  if [ "$BEHIND" -eq 0 ]; then
+    if [ -n "$HEAD_TAG" ]; then
+      stop "local main has $AHEAD commit(s) that origin/main does not, ending at release $HEAD_TAG." \
+        "Push them first: git push origin main $HEAD_TAG"
+    fi
+    stop "local main has $AHEAD commit(s) that origin/main does not:" \
+      "$(git log --oneline origin/main..HEAD)" \
+      "Push them (git push origin main) or move them to a branch and open a PR, then run again."
+  fi
+  stop "local main and origin/main have split ($AHEAD local, $BEHIND remote commit(s))." \
+    "Inspect: git log --oneline --left-right main...origin/main" \
+    "Keep what you need on a branch (git branch backup/main-<date>), then: git reset --hard origin/main"
+fi
 
 # Before the build, so the bundle shows the new version.
 TAG_BEFORE=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
@@ -39,7 +93,7 @@ SOURCE_SHA=$(git rev-parse --short HEAD)
 AUTHOR_NAME=$(git config user.name || echo "deploy-pages")
 AUTHOR_EMAIL=$(git config user.email || echo "deploy-pages@localhost")
 
-TMP=$(mktemp -d)
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/deploy-pages.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 cp -R dist/. "$TMP/"
@@ -69,8 +123,14 @@ fi
 echo "Site: $PAGE_URL"
 
 if [ "$TAG_AFTER" != "$TAG_BEFORE" ]; then
-  BRANCH=$(git rev-parse --abbrev-ref HEAD)
   echo ""
-  echo "Released $TAG_AFTER (commit and tag are local only). Push them with:"
-  echo "  git push origin $BRANCH $TAG_AFTER"
+  echo "Pushing release $TAG_AFTER to origin..."
+  if git push origin main "$TAG_AFTER"; then
+    echo "Pushed main and $TAG_AFTER."
+  else
+    warn "WARNING: pushing the release commit and tag $TAG_AFTER failed."
+    warn "The site is deployed, but origin/main does not have the release commit yet."
+    warn "Do not merge PRs until this works: git push origin main $TAG_AFTER"
+    exit 1
+  fi
 fi
