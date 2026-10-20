@@ -85,21 +85,26 @@ sh scripts/deploy-pages.sh
 
 Script làm lần lượt:
 
-1. Chạy `node scripts/release.mjs`: có `feat`/`fix`/`perf`/breaking kể từ tag trước thì tăng version, commit và tag (xem [Script làm gì](#script-làm-gì)).
-2. Chạy `npm ci` khi gặp một trong các trường hợp sau, và in `Running npm ci: <lý do>.`:
+1. Chạy `git fetch origin` rồi dừng, chưa build hay tạo commit, nếu một trong các điều sau sai (thông báo in cách xử lý, xem [Lỗi hay gặp](#lỗi-hay-gặp)):
+   - đang ở nhánh `main`;
+   - không có file đã track nào chưa commit (file chưa track không tính);
+   - `HEAD` trùng `origin/main`.
+2. Chạy `node scripts/release.mjs`: có `feat`/`fix`/`perf`/breaking kể từ tag trước thì tăng version, commit và tag (xem [Script làm gì](#script-làm-gì)).
+3. Chạy `npm ci` khi gặp một trong các trường hợp sau, và in `Running npm ci: <lý do>.`:
    - chưa có `node_modules/`;
    - thiếu `node_modules/.bin/tsc` hoặc `node_modules/.bin/vite`;
    - `node_modules/.package-lock.json` không có hoặc khác `package-lock.json` (so bằng `cmp`).
-3. Chạy `npm run build`; bản build mang version mới.
-4. Chép `dist/` vào thư mục tạm, thêm `.nojekyll`, tạo commit `deploy: build from <sha>` và force-push lên nhánh `gh-pages` của `origin`.
-5. Gọi `gh api repos/<owner>/<repo>/pages`; Pages chưa bật thì bật với nguồn `gh-pages`, thư mục `/`.
-6. In địa chỉ trang: `Site: https://<owner>.github.io/<repo>/`.
-7. Nếu vừa phát hành, in lệnh đẩy commit và tag, dạng `git push origin main v0.2.0`.
+4. Chạy `npm run build`; bản build mang version mới.
+5. Chép `dist/` vào thư mục tạm, thêm `.nojekyll`, tạo commit `deploy: build from <sha>` và force-push lên nhánh `gh-pages` của `origin`.
+6. Gọi `gh api repos/<owner>/<repo>/pages`; Pages chưa bật thì bật với nguồn `gh-pages`, thư mục `/`.
+7. In địa chỉ trang: `Site: https://<owner>.github.io/<repo>/`.
+8. Nếu vừa phát hành, chạy `git push origin main vX.Y.Z` (push thường, không force). Push lỗi thì in cảnh báo đỏ `WARNING: pushing the release commit and tag vX.Y.Z failed.` kèm lệnh chạy lại, và thoát mã 1.
 
 Sau khi deploy:
 
-- Chạy lệnh `git push` ở bước 7; script chỉ push `gh-pages`, không push `main` hay tag.
+- Push ở bước 8 lỗi thì chạy lại lệnh `git push` trong cảnh báo trước khi merge PR mới.
 - Chạy lại script bao nhiêu lần cũng được: mỗi lần thay toàn bộ `gh-pages`, và không tăng version khi không có commit mới.
+- Test các nhánh dừng và bước push (repo git tạm, `npm`/`gh` giả): `npx vitest run tests/scripts/deploy-pages.test.ts`.
 
 ## Bật Pages bằng tay
 
@@ -113,6 +118,13 @@ Khi máy không có `gh`:
 
 | Triệu chứng | Cách xử lý |
 | --- | --- |
+| `deploy only runs on main (current: <nhánh>)` | `git switch main && git pull --ff-only`, rồi chạy lại. |
+| `the working tree has uncommitted changes` | Commit qua PR hoặc bỏ thay đổi trong các file được liệt kê, rồi chạy lại. |
+| `local main is N commit(s) behind origin/main` | `git pull --ff-only`, rồi chạy lại. |
+| `local main has N commit(s) that origin/main does not, ending at release vX.Y.Z` | Bản phát hành trước chưa được push: `git push origin main vX.Y.Z`. |
+| `local main has N commit(s) that origin/main does not` | Push các commit đó (`git push origin main`) hoặc chuyển sang nhánh riêng và mở PR. |
+| `local main and origin/main have split` | Xem `git log --oneline --left-right main...origin/main`; giữ commit cần bằng nhánh backup, rồi `git reset --hard origin/main`. |
+| `WARNING: pushing the release commit and tag vX.Y.Z failed.` | Trang đã deploy nhưng `origin/main` chưa có commit phát hành; sửa quyền hoặc mạng rồi chạy `git push origin main vX.Y.Z` trước khi merge PR. |
 | `release: none (no v* tag yet)` | Chưa có tag mốc; làm theo [Tạo tag gốc lần đầu](#tạo-tag-gốc-lần-đầu). Deploy vẫn chạy với version cũ. |
 | `release: commit or discard changes first` | Commit hoặc bỏ thay đổi trong `package.json`, `package-lock.json`, `CHANGELOG.md`, rồi chạy lại. |
 | `release: tag vX.Y.Z already exists` | Tag trùng với version mới; kiểm tra `git tag --list 'v*'` và `"version"` trong `package.json`. |
