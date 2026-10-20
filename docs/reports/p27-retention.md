@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
-`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout cũng đo trên HEAD; ảnh là lượt trước merge `main`.
+`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout và ảnh cũng làm trên HEAD.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -68,7 +68,7 @@ P27 làm chậm thật Main Menu Mobile: chậm hơn base ở cả hai lượt `
 | `npm run layout` phần ván mới, HUD, ngày sự kiện (HEAD) | PASS mọi mục | PASS: 54/54. Tràn ngang 0, CLS Kho 0, HUD 2 hàng ở 390 / 768 / 1100 px, 1 hàng ở 1280 / 1440 px, mọi nút ≥ 44 px |
 | Layout P25 (HEAD) | PASS mọi mục | PASS: 20/20 |
 | Layout P27 (mục mới, HEAD) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
-| `npm run media:p27` | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
+| `npm run media:p27` (HEAD) | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
 
 Đường khởi động tới Main Menu chỉ thêm `pendingGiftDay` trong `src/ui/screens/mainMenu.ts` và hai trường quà trong `listSlotSummaries` (`src/save/slots.ts`): so ngày và đọc hai trường của save, không tải thêm chunk.
 
@@ -338,7 +338,7 @@ PASS / 44 checks
 
 ### Trước/sau
 
-Mỗi ảnh ghép P26 `d58350b` (trái) cạnh P27 (phải), cùng save và cùng khổ. Mọi ảnh ở mục này chụp trước merge `main` (`ec75819`), tức trước `eeccb88` (HUD một hàng) và `9923d10` (tiền rút gọn ở khổ ≤ 480 px): hai ảnh HUD chưa có CSS HUD hiện tại.
+Mỗi ảnh ghép P26 `d58350b` (trái) cạnh P27 (phải), cùng save và cùng khổ. Mọi ảnh chụp trên HEAD, có CSS HUD của `eeccb88` (HUD một hàng) và `9923d10` (tiền rút gọn ở khổ ≤ 480 px).
 
 | Cảnh | Khổ | Chỗ cần nhìn | Ảnh |
 | --- | --- | --- | --- |
