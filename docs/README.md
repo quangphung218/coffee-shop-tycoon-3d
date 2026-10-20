@@ -8,7 +8,7 @@
 
 ## Báo cáo
 
-- [reports/hud-390-overlap.md](reports/hud-390-overlap.md): HUD 390 px, cụm Tiến độ đè Điều khiển lúc chuẩn bị với số liệu cuối game; ba phương án sửa có ảnh mô phỏng và số đo.
+- [reports/hud-390-overlap.md](reports/hud-390-overlap.md): HUD 390 px, cụm Tiến độ đè Điều khiển lúc chuẩn bị với số liệu cuối game; ba phương án sửa có ảnh mô phỏng và số đo; kết quả sửa theo phương án A (tiền gọn ở ≤ 480 px) với ảnh trước/sau.
 - [reports/hud-top-row.md](reports/hud-top-row.md): HUD trên, nguyên nhân cụm Điều khiển rớt hàng ở ngày sự kiện cuối game, cách giữ ba cụm một hàng, ảnh trước/sau ở 1440 và 1100 px.
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.
 - [reports/startup-under-1s-plan.md](reports/startup-under-1s-plan.md): Main Menu trên di động ở 390×844: dòng thời gian tải, chunk chính chứa gì, kế hoạch đưa xuống dưới 1 s.
