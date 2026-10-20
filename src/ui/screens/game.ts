@@ -83,14 +83,26 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   });
   // Whether the 'auto' slot already holds this run. A new run (or one loaded
   // from a manual slot) first copies what is there to an empty slot, so the
-  // last run's autosave is not lost.
+  // last run's autosave is not lost. With no slot free it is replaced only
+  // when the player was warned first (Ván mới, the load confirm, Chơi lại);
+  // "Tiếp tục" into slot 1–3 was not, so that run skips autosaving until a
+  // slot is free.
   let ownsAutosave = false;
+  let mayReplaceAutosave = true;
+  /** Why the last autosave was held back to keep another run, or null. */
+  let autosaveHeld: string | null = null;
   function runAutosave(game: GameState, day: number): SaveStatus {
+    autosaveHeld = null;
     if (!ownsAutosave) {
       const kept = keepAutosave(storage);
       if (kept.kind === 'kept' && kept.copied) {
         toasts.show({ level: 'info', icon: 'i-save', title: `Đã chép bản tự lưu cũ sang ${slotLabel(kept.slot)}`, text: 'Mở lại trong Tải game.' });
+      } else if (kept.kind === 'failed') {
+        autosaveHeld = 'Không chép được bản tự lưu của ván trước sang slot trống. Lưu tay ván này trong Tạm dừng.';
+      } else if (kept.kind === 'no_room' && !mayReplaceAutosave) {
+        autosaveHeld = 'Ô Tự lưu đang giữ ván khác và Slot 1–3 đã đầy. Xoá một slot trong Tải game, hoặc lưu tay trong Tạm dừng.';
       }
+      if (autosaveHeld) return { day, ok: false };
     }
     const r = autosave(game, storage);
     if (r.ok) ownsAutosave = true;
@@ -141,6 +153,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   function startGame(next: GameState, from?: SaveSlot): void {
     state = next;
     ownsAutosave = from === 'auto';
+    mayReplaceAutosave = true;
     state.speed = base.settings.gameSpeed;
     state.paused = false;
     state.events = [];
@@ -327,7 +340,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           toasts.show(
             r.ok
               ? { level: 'success', icon: 'i-save', title: `Đã tự lưu ngày ${event.day}` }
-              : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
+              : autosaveHeld
+                ? { level: 'error', icon: 'i-save', title: 'Chưa tự lưu, để giữ ván trước', text: autosaveHeld }
+                : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
           );
         }
       }
@@ -338,7 +353,11 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     dispose: () => base.dispose(),
     continueGame(slot) {
       const r = loadGame(slot, storage);
-      if (r.ok) startGame(r.value, slot);
+      if (r.ok) {
+        startGame(r.value, slot);
+        // Tiếp tục opens the newest slot without the load screen's warning.
+        mayReplaceAutosave = false;
+      }
       // The load screen explains what is wrong with the slot.
       else screens.show('load');
     },

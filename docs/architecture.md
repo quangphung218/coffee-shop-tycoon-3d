@@ -462,7 +462,7 @@ Mọi bước tất định: cùng state cho cùng đường và cùng chỗ đ�
 
 | Khóa `localStorage` | Nội dung |
 | --- | --- |
-| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. Lần tự lưu đầu của một ván không tải từ ô này (ván mới, Chơi lại, tải từ Slot 1–3) gọi `keepAutosave` trước: chép nguyên dữ liệu đang có sang slot tay trống đầu tiên, bỏ qua nếu một slot đã giữ đúng bản đó. Hết slot trống thì màn Ván mới cảnh báo trước (`autosaveAtRisk`). |
+| `cst3d:save:auto` | Slot tự động, ghi khi có `dayEnded`. Lần tự lưu đầu của một ván không tải từ ô này (ván mới, Chơi lại, tải từ Slot 1–3) gọi `keepAutosave` trước: chép nguyên dữ liệu đang có sang slot tay trống đầu tiên, bỏ qua nếu một slot đã giữ đúng bản đó. Hết slot trống thì màn Ván mới cảnh báo trước và màn Tải game hỏi lại khi tải Slot 1–3 (`autosaveAtRisk`); chỉ khi đó ô Tự lưu mới bị ghi đè. Ván mở bằng "Tiếp tục" vào Slot 1–3, hoặc lúc chép bị lỗi (`failed`), thì không tự lưu và có toast "Chưa tự lưu, để giữ ván trước" cho tới khi có slot trống. |
 | `cst3d:save:1` … `cst3d:save:3` | Slot lưu tay từ menu Tạm dừng. |
 | `cst3d:settings` | Cài đặt: âm lượng, chất lượng, tốc độ, kiểu phím camera, tốc độ xoay camera (`cameraRotateSpeed`, thiếu thì `normal`), giảm chuyển động (`reducedMotion`: `system` hay `reduce`, thiếu thì `system`). |
 | `cst3d:playlog` | Số liệu chơi ẩn danh: `{ "v": 1, "entries": [...] }`, giữ 1000 dòng mới nhất (`src/save/playlog.ts`). |

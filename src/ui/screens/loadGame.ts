@@ -1,4 +1,4 @@
-import { deleteSave, listSlots, loadGame, type SaveErrorKind, type SaveSlot, type SlotInfo } from '../../save/save';
+import { autosaveAtRisk, deleteSave, listSlots, loadGame, type SaveErrorKind, type SaveSlot, type SlotInfo } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
 import type { GameState } from '../../sim/types';
 import { h, isAriaDisabled, setChildren, uid } from '../core/dom';
@@ -53,6 +53,32 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions, s
     item.className = 'slot slot-broken';
     const msg = h('div', { class: 'reason reason-danger', attrs: { role: 'alert' } }, icon('i-error', { size: 16 }), `Không mở được bản lưu. ${BROKEN_TEXT[r.error.kind]}`);
     item.querySelector('.slot-detail')?.replaceWith(msg);
+  }
+
+  /**
+   * Slot 1–3 while the autosave holds a game no slot can keep (save.ts
+   * autosaveAtRisk): loading it means the first autosave replaces that game,
+   * so ask in place first (focus on "Hủy").
+   */
+  function confirmLoad(info: SlotInfo, item: HTMLElement, actionsRow: HTMLElement, risk: SlotInfo): void {
+    const label = slotLabel(info.slot);
+    const cancel = h('button', { class: 'btn btn-secondary', attrs: { type: 'button' } }, 'Hủy');
+    const confirm = h('button', { class: 'btn btn-primary', attrs: { type: 'button' } }, icon('i-speed-1'), 'Vẫn tải');
+    const game = risk.shopName ? `ván ${risk.shopName} (ngày ${risk.day})` : 'một ván không đọc được';
+    const box = h(
+      'div',
+      { class: 'confirm', attrs: { role: 'group', 'aria-label': `Xác nhận tải ${label}` } },
+      h('p', {}, icon('i-warning'), `Ô Tự lưu đang giữ ${game}, Slot 1–3 đều đã có ván. Hết ngày đầu, ${label} sẽ ghi đè ô Tự lưu.`),
+      cancel,
+      confirm,
+    );
+    cancel.addEventListener('click', () => {
+      box.replaceWith(actionsRow);
+      actionsRow.querySelector<HTMLElement>('.btn-primary')?.focus();
+    });
+    confirm.addEventListener('click', () => load(info, item));
+    actionsRow.replaceWith(box);
+    cancel.focus();
   }
 
   function confirmDelete(info: SlotInfo, actionsRow: HTMLElement): void {
@@ -132,7 +158,18 @@ export function createLoadGame(storage: StorageLike, actions: LoadGameActions, s
     );
     const loadBtn = h(
       'button',
-      { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => !isAriaDisabled(loadBtn) && load(info, item) } },
+      {
+        class: 'btn btn-primary',
+        attrs: { type: 'button' },
+        on: {
+          click: () => {
+            if (isAriaDisabled(loadBtn)) return;
+            const risk = info.slot === 'auto' ? null : autosaveAtRisk(storage);
+            if (risk) confirmLoad(info, item, actionsRow, risk);
+            else load(info, item);
+          },
+        },
+      },
       icon('i-speed-1'),
       `Tải ${label.toLowerCase()}`,
     );

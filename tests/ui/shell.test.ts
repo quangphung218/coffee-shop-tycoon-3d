@@ -1049,6 +1049,76 @@ describe('Shell', () => {
       expect(storage.getItem(saveKey('1'))).toBeNull();
     });
 
+    /** Old run in 'auto'; slots 1–3 hold other games, slot 1 saved last. */
+    function fullSlots(): StorageLike {
+      const storage = oldRun();
+      for (const slot of ['3', '2', '1'] as const) saveGame(game(`Slot ${slot}`), slot, storage, Date.now() + (4 - Number(slot)) * 1000);
+      return storage;
+    }
+
+    it('asks before loading slot 1–3 over an autosave no slot can keep', () => {
+      const storage = fullSlots();
+      const before = storage.getItem(saveKey('auto'));
+      const { root, shell } = boot(storage);
+      button(root, 'Tải game').click();
+      const load = (): HTMLButtonElement => q(root, '[data-slot="1"] .btn-primary');
+      load().click();
+      expect(shell.state).toBeNull();
+      const box = q(root, '[data-slot="1"] .confirm');
+      expect(box.textContent).toContain('Quán Cũ');
+      expect(box.textContent).toContain('ghi đè');
+      button(box, 'Hủy').click();
+      expect(root.querySelector('[data-slot="1"] .confirm')).toBeNull();
+      expect(storage.getItem(saveKey('auto'))).toBe(before);
+
+      load().click();
+      button(q(root, '[data-slot="1"] .confirm'), 'Vẫn tải').click();
+      expect(shell.state?.shopName).toBe('Slot 1');
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('auto'))).toContain('Slot 1');
+    });
+
+    it('loads the autosave itself without asking', () => {
+      const { root, shell } = boot(fullSlots());
+      button(root, 'Tải game').click();
+      q<HTMLButtonElement>(root, '[data-slot="auto"] .btn-primary').click();
+      expect(shell.state?.shopName).toBe('Quán Cũ');
+    });
+
+    it('does not autosave over that game after Tiếp tục opens slot 1–3, and says why', () => {
+      const storage = fullSlots();
+      const before = storage.getItem(saveKey('auto'));
+      const { root, shell } = boot(storage);
+      button(root, 'Tiếp tục').click();
+      expect(shell.state?.shopName).toBe('Slot 1');
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('auto'))).toBe(before);
+      const text = root.querySelector('.toasts [role="alert"]')?.textContent ?? '';
+      expect(text).toContain('Chưa tự lưu');
+      expect(text).toContain('Slot 1–3');
+
+      // A slot freed later lets the next day keep the old run and autosave.
+      storage.removeItem(saveKey('3'));
+      shell.handleEvents([{ type: 'dayEnded', day: 2 }]);
+      expect(storage.getItem(saveKey('3'))).toBe(before);
+      expect(storage.getItem(saveKey('auto'))).toContain('Slot 1');
+    });
+
+    it('does not autosave over the old run when copying it fails', () => {
+      const storage = oldRun();
+      const before = storage.getItem(saveKey('auto'));
+      const setItem = storage.setItem.bind(storage);
+      storage.setItem = (key, value) => {
+        if (key !== saveKey('auto')) throw new Error('quota');
+        setItem(key, value);
+      };
+      const { shell, root } = boot(storage);
+      shell.startGame(game('Quán Mới'));
+      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      expect(storage.getItem(saveKey('auto'))).toBe(before);
+      expect(root.querySelector('.toasts [role="alert"]')?.textContent).toContain('Chưa tự lưu');
+    });
+
     it('warns on Ván mới when every slot is full and the autosave would be lost', () => {
       const storage = oldRun();
       for (const slot of ['1', '2', '3'] as const) saveGame(game(`Slot ${slot}`), slot, storage);
