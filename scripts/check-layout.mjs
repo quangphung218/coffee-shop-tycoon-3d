@@ -19,9 +19,9 @@
 // every button at least --size-target (44 px) and, while
 // open, each speed button with an icon and an aria-label (1280×800 runs
 // this HUD check only). The same HUD check runs again at 390, 1100, 1280 and
-// 1440 px on a day with an event ("Tăng giá nhập"), from 1100 px with
-// late-game values (nine-digit sum, Tem, Cấp 5), from saves written by this
-// tree's sim with the day-1 event swapped.
+// 1440 px on a day with an event ("Tăng giá nhập"), at 390 px and from
+// 1100 px with late-game values (nine-digit sum, Tem, Cấp 5), from saves
+// written by this tree's sim with the day-1 event swapped.
 // P25, at 390×844, 768×1024, 1280×720 and 1440×900, from saves of
 // scripts/capture-p25.mjs: the compact Menu on the day-3 morning after a
 // click on the Nước cam switch (no Cam), and the Daily Report of the first
@@ -351,6 +351,9 @@ async function runHudOnly(browser, viewport, results) {
 /** Viewports of the event-day HUD check. */
 const EVENT_DAY = [
   { width: 390, height: 844 },
+  // At 390 px the nine-digit sum overlapped Điều khiển before opening; the
+  // HUD now shows it compact ("109,6tr", formatMoneyShort).
+  { width: 390, height: 844, late: true },
   // From 1024 px up with LATE_GAME values. Between the tablet grid and one
   // row: two rows (.is-stacked), never Điều khiển alone.
   { width: 1100, height: 800, late: true },
@@ -422,7 +425,7 @@ async function runEventDay(browser, viewport, results, eventSave) {
     await page.locator('.hud [data-action="open"]').click();
     await setSpeed4(page);
     await checkHud(page, results, size, 'HUD: mở cửa', hudRows(viewport));
-    for (const r of results.slice(before)) r.screen += ' (ngày sự kiện)';
+    for (const r of results.slice(before)) r.screen += viewport.late ? ' (ngày sự kiện, cuối game)' : ' (ngày sự kiện)';
   } finally {
     await context.close();
   }
