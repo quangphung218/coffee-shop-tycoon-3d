@@ -140,9 +140,10 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     last = now;
     const state = game?.state;
     if (sim && game && state) {
-      sim.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed);
-      const g = game;
+      const [s, g] = [sim, game];
+      // The step too: if it throws mid-day, the events it already queued still go out once.
       runEvents(state.events, [
+        () => s.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed),
         () => world?.update(state, state.tickAccumulator),
         () => g.update(),
         () => audio?.handleEvents(state.events),
