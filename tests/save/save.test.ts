@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SAVE_VERSION, autosave, deleteSave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
+import { SAVE_VERSION, autosave, autosaveAtRisk, deleteSave, keepAutosave, listSlots, loadGame, migrate, saveGame, saveKey } from '../../src/save/save';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, saveSettings } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { dispatch, isUnlocked, step } from '../../src/sim';
@@ -394,5 +394,30 @@ describe('menu items the game does not know', () => {
       for (let i = 0; i < 2000 && g.phase !== 'report'; i++) step(g, 1);
     }).not.toThrow();
     expect(g.phase).toBe('report');
+  });
+});
+
+describe('keepAutosave', () => {
+  it('does nothing for an empty autosave, copies once, and reports a full set of slots', () => {
+    const storage = createMemoryStorage();
+    expect(keepAutosave(storage)).toEqual({ kind: 'none' });
+    expect(autosaveAtRisk(storage)).toBeNull();
+    autosave(sampleState(), storage);
+    saveGame(createNewGame('Một', 'normal', 1), '1', storage);
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '2', copied: true });
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '2', copied: false });
+
+    autosave(createNewGame('Ván Sau', 'normal', 2), storage);
+    saveGame(createNewGame('Ba', 'normal', 3), '3', storage);
+    expect(autosaveAtRisk(storage)).toMatchObject({ slot: 'auto', shopName: 'Ván Sau' });
+    expect(keepAutosave(storage)).toEqual({ kind: 'no_room' });
+    expect(loadGame('auto', storage).ok).toBe(true);
+  });
+
+  it('keeps autosave data that no longer loads, byte for byte', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(saveKey('auto'), '{broken');
+    expect(keepAutosave(storage)).toEqual({ kind: 'kept', slot: '1', copied: true });
+    expect(storage.getItem(saveKey('1'))).toBe('{broken');
   });
 });
