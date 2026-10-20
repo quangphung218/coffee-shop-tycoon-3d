@@ -215,9 +215,12 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     );
     fireBtn.addEventListener('click', () => {
       fireBtn.hidden = true;
+      // Once the doors opened the wage is owed for today (fireStaff).
+      const phase = ctx.getState()?.phase;
+      const wage = phase === 'preparation' || phase === 'report' ? 'Hôm nay không trả lương' : 'Vẫn trả lương hôm nay';
       li.append(
         inlineConfirm(
-          `Cho ${member.name} nghỉ? Hôm nay không trả lương, không tuyển lại được.`,
+          `Cho ${member.name} nghỉ? ${wage}, không tuyển lại được.`,
           'Cho nghỉ',
           'btn-danger',
           () => keepFocus(li, body, () => send({ type: 'fire_staff', staffId: member.id })),

@@ -347,6 +347,11 @@ export interface DayStats {
   revenue: number;
   ingredientCost: number;
   wages: number;
+  /**
+   * Wages owed to staff fired after the doors opened today (wage policy
+   * applied), paid with the others at the end of the day. Absent in old saves.
+   */
+  firedWages?: number;
   marketingCost: number;
   upgradeCost: number;
   customersArrived: number;

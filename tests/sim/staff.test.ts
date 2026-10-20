@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { arrivalRate, floorSpots, spawnCustomer } from '../../src/sim/customers';
 import { getCampaign } from '../../src/sim/data/marketing';
 import { dispatch, step } from '../../src/sim/index';
+import { totalWages } from '../../src/sim/economy';
 import { MARKETER_BONUS, customerMultiplier, runCampaign } from '../../src/sim/marketing';
 import { CHAIR_OFFSET, NAV_CELL, buildNavGrid, isWalkable, nearestFree } from '../../src/sim/nav';
 import { isClaimed, updatePlayerTasks } from '../../src/sim/orders';
@@ -360,6 +361,58 @@ describe('wages', () => {
       .filter((m) => m.status === 'completed')
       .reduce((sum, m) => sum + m.rewardMoney, 0);
     expect(s.money).toBe(start + s.today.revenue - s.today.wages + missionReward);
+  });
+
+  /** Opens the day and plays until `minute`, then fires everyone and plays to the report. */
+  function fireAllAt(s: GameState, minute: number): void {
+    expect(dispatch(s, { type: 'start_day' })).toBe(true);
+    for (let guard = 0; s.minute < minute && guard < 3000; guard++) {
+      autoPlay(s);
+      step(s, 1);
+      s.events = [];
+    }
+    expect(s.phase).not.toBe('report');
+    for (const m of [...s.staff]) expect(dispatch(s, { type: 'fire_staff', staffId: m.id })).toBe(true);
+    for (let guard = 0; s.phase !== 'report' && guard < 3000; guard++) {
+      autoPlay(s);
+      step(s, 1);
+      s.events = [];
+    }
+    expect(s.phase).toBe('report');
+  }
+
+  it('are still paid for staff fired after the doors opened', () => {
+    const s = stockedGame(4);
+    const a = hire(s, 'barista');
+    const b = hire(s, 'server');
+    fireAllAt(s, 20 * 60);
+    expect(s.staff).toEqual([]);
+    expect(s.today.wages).toBe(a.wagePerDay + b.wagePerDay);
+    expect(s.lastReport?.wages).toBe(s.today.wages);
+  });
+
+  it('follow the wage policy for staff fired mid-day', () => {
+    const s = stockedGame(4);
+    expect(dispatch(s, { type: 'set_policy', policy: 'wage', level: 'high' })).toBe(true);
+    const a = hire(s, 'barista');
+    const full = totalWages(s);
+    fireAllAt(s, 10 * 60);
+    expect(full).toBeGreaterThan(a.wagePerDay);
+    expect(s.today.wages).toBe(full);
+  });
+
+  it('are not paid for staff fired before opening, nor carried into the next day', () => {
+    const s = stockedGame(4);
+    const a = hire(s, 'barista');
+    expect(dispatch(s, { type: 'fire_staff', staffId: a.id })).toBe(true);
+    playDay(s);
+    expect(s.today.wages).toBe(0);
+    const b = hire(s, 'barista');
+    expect(b).toBeTruthy();
+    expect(dispatch(s, { type: 'fire_staff', staffId: b.id })).toBe(true);
+    expect(dispatch(s, { type: 'next_day' })).toBe(true);
+    playDay(s);
+    expect(s.today.wages).toBe(0);
   });
 });
 

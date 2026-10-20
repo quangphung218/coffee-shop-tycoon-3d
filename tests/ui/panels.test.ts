@@ -457,9 +457,19 @@ describe('staff panel', () => {
 
     q<HTMLButtonElement>(body, `li[data-staff="${id}"] [data-action="fire"]`).click();
     expect(sent).toHaveLength(1);
+    expect(q(body, `li[data-staff="${id}"] .confirm`).textContent).toContain('Hôm nay không trả lương');
     q<HTMLButtonElement>(body, `li[data-staff="${id}"] .confirm [data-action="confirm"]`).click();
     expect(sent[1]).toEqual({ type: 'fire_staff', staffId: id });
     expect(state.staff).toHaveLength(0);
+  });
+
+  it('says the wage is still paid when letting staff go after opening', () => {
+    const state = game();
+    simDispatch(state, { type: 'hire_staff', candidateId: state.candidates[0]!.id, role: 'barista' });
+    state.phase = 'peak';
+    const { body } = mount(renderStaffPanel, state);
+    q<HTMLButtonElement>(body, '[data-action="fire"]').click();
+    expect(q(body, '.confirm').textContent).toContain('Vẫn trả lương hôm nay');
   });
 });
 

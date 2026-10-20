@@ -2,7 +2,7 @@ import { DOOR_POS, claimSpot } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { buildNavGrid, cellAt, nearestFree } from './nav';
 import { TASK_MINUTES, cleanMinutes, finishTask, isClaimed, workMinute } from './orders';
-import { staffSpeedMult } from './policies';
+import { staffSpeedMult, wageMult } from './policies';
 import { DIRTY_HITS_MIN, QUIET_DAY_CUSTOMERS, WAIT_LOSS_MIN, WAIT_LOSS_SHARE } from './report';
 import { BASE_MAX_STAFF, growthSpeedMult, maxStaff, onStaffTick } from './staffGrowth';
 import { CANDIDATE_COUNT, generateCandidates, withTraits } from './state';
@@ -97,10 +97,16 @@ export function hireStaff(state: GameState, candidateId: number, role: StaffRole
   return member;
 }
 
-/** Lets a staff member go; their half-done task goes back to the pool. No wage is paid for today. */
+/**
+ * Lets a staff member go; their half-done task goes back to the pool. Once the
+ * doors opened they worked today, so their wage is still paid at closing.
+ */
 export function fireStaff(state: GameState, staffId: number): boolean {
   const member = state.staff.find((s) => s.id === staffId);
   if (!member) return false;
+  if (state.phase !== 'preparation' && state.phase !== 'report') {
+    state.today.firedWages = (state.today.firedWages ?? 0) + Math.round(member.wagePerDay * wageMult(state));
+  }
   releaseTask(state, member);
   state.staff = state.staff.filter((s) => s.id !== staffId);
   notify(state, 'info', `${member.name} đã nghỉ việc`);
