@@ -180,7 +180,8 @@ Mỗi lần deploy bằng `sh scripts/deploy-pages.sh`, script tự tăng versio
 | Không có các loại trên | Giữ nguyên |
 
 - Version mới được ghi vào `package.json`, `package-lock.json` và [CHANGELOG.md](CHANGELOG.md), commit `chore(release): vX.Y.Z` và tag `vX.Y.Z`.
-- Script không push commit hay tag; nó in sẵn lệnh `git push` cần chạy.
+- Script chỉ chạy trên `main` sạch và trùng `origin/main` (tự `git fetch origin`); lệch thì dừng trước khi build và in cách xử lý.
+- Sau khi deploy, script tự `git push origin main vX.Y.Z`; push lỗi thì in cảnh báo đỏ và thoát mã 1.
 
 Các bước đầy đủ, cách tạo tag gốc lần đầu: [docs/deploy.md](docs/deploy.md#version-và-phát-hành).
 
