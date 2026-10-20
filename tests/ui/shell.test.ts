@@ -19,6 +19,7 @@ import { createLoadGame } from '../../src/ui/screens/loadGame';
 import { createMainMenu } from '../../src/ui/screens/mainMenu';
 import { createNewGame, validateShopName } from '../../src/ui/screens/newGame';
 import { createSettings } from '../../src/ui/screens/settings';
+import { guardFrame, runEvents } from '../../src/ui/core/startup';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 import INDEX_HTML from '../../index.html?raw';
 import { playDay } from '../integration/helpers';
@@ -1063,6 +1064,33 @@ describe('Shell', () => {
       button(root, 'Ván mới').click();
       expect(q(root, '[data-autosave-warning]').hidden).toBe(true);
     });
+  });
+
+  it('handles a frame\'s events once when a handler throws, like main.ts', () => {
+    const storage = createMemoryStorage();
+    let writes = 0;
+    const setItem = storage.setItem.bind(storage);
+    storage.setItem = (key, value) => {
+      if (key === saveKey('auto')) writes++;
+      setItem(key, value);
+    };
+    const { shell } = boot(storage);
+    shell.startGame(game());
+    const state = shell.state!;
+    // The day-end toast and autosave run, then the unknown item's toast throws.
+    state.events.push({ type: 'dayEnded', day: 1 }, { type: 'special_order', status: 'failed', itemId: 'gone' as never });
+    const queue: ((now: number) => void)[] = [];
+    const report = vi.fn();
+    const frame = guardFrame(
+      () => runEvents(state.events, [() => shell.update(), () => shell.handleEvents(state.events), () => { throw new Error('audio'); }]),
+      (next) => void queue.push(next),
+      report,
+    );
+    frame(0);
+    for (let t = 1; t < 60; t++) queue.shift()!(t);
+    expect(writes).toBe(1);
+    expect(state.events).toEqual([]);
+    expect(report).toHaveBeenCalledTimes(1);
   });
 
   it('toasts an error when the autosave fails', () => {

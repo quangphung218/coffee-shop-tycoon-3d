@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { initialComponents } from '../../src/ui/core/loadProgress';
 import { SceneGate } from '../../src/ui/core/sceneGate';
-import { guardFrame, once, restartWorldLoad, retryModule, watchAudioUnlock } from '../../src/ui/core/startup';
+import { guardFrame, once, restartWorldLoad, retryModule, runEvents, watchAudioUnlock } from '../../src/ui/core/startup';
 
 describe('watchAudioUnlock', () => {
   const tap = (target: EventTarget): void => void target.dispatchEvent(new Event('pointerdown'));
@@ -158,5 +158,27 @@ describe('guardFrame', () => {
     queue.shift()!(4);
     expect(report).toHaveBeenCalledTimes(2);
     expect(queue).toHaveLength(1);
+  });
+});
+
+describe('runEvents', () => {
+  it('runs every step, empties the queue even when one throws, then rethrows the first error', () => {
+    const queue = [1, 2];
+    const seen: number[][] = [];
+    const first = new Error('first');
+    expect(() =>
+      runEvents(queue, [
+        () => seen.push([...queue]),
+        () => {
+          throw first;
+        },
+        () => {
+          throw new Error('second');
+        },
+        () => seen.push([...queue]),
+      ]),
+    ).toThrow(first);
+    expect(seen).toEqual([[1, 2], [1, 2]]);
+    expect(queue).toEqual([]);
   });
 });

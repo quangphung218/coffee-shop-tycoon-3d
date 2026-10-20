@@ -102,7 +102,7 @@ Font chữ:
 4. `shell.update()`: HUD, bảng đang mở và Daily Report cập nhật DOM qua `Watcher` (chỉ chạm DOM khi giá trị đổi).
 5. `audio.handleEvents(events)`, `fresh.handleEvents(events)` rồi `shell.handleEvents(events)`; sau đó xóa `game.events`. `fresh` giữ id món và nâng cấp vừa mở ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
 
-Thân khung bọc trong `guardFrame` (`src/ui/core/startup.ts`): một bước throw thì lỗi đầu tiên của chuỗi khung lỗi được ghi ra console, khung sau vẫn được hẹn, game không đứng hình.
+Thân khung bọc trong `guardFrame` (`src/ui/core/startup.ts`): một bước throw thì lỗi đầu tiên của chuỗi khung lỗi được ghi ra console, khung sau vẫn được hẹn, game không đứng hình. Các bước 3–5 chạy qua `runEvents`: mỗi bước chạy riêng, rồi `game.events` luôn được xoá kể cả khi một bước throw, nên không event nào bị xử lý lại ở khung sau (không autosave, toast hay âm thanh lặp).
 
 Thứ tự trong một tick: đồng hồ và pha → khách mới đến (trừ pha đóng cửa) → việc của người chơi → nhân viên (kèm kinh nghiệm, `onStaffTick`) → khách → hạn đơn đặc biệt (`tickSpecialOrders`) → ghi trải nghiệm và review → nếu đang đóng cửa và quán trống thì kết thúc ngày.
 

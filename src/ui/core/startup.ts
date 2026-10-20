@@ -58,6 +58,30 @@ export function guardFrame(
 }
 
 /**
+ * Runs each step of a frame that reads `queue` (the state's events), each on
+ * its own so one that throws does not skip the others, then empties the queue
+ * even on a throw: an event is never handled again next frame (no repeated
+ * autosave, toast or sound). Rethrows the first error for guardFrame to log.
+ */
+export function runEvents(queue: unknown[], steps: readonly (() => void)[]): void {
+  let failed = false;
+  let error: unknown;
+  try {
+    for (const step of steps) {
+      try {
+        step();
+      } catch (e) {
+        if (!failed) error = e;
+        failed = true;
+      }
+    }
+  } finally {
+    queue.length = 0;
+  }
+  if (failed) throw error;
+}
+
+/**
  * Imports a lazy chunk again after a failure. Browsers may keep a failed
  * module fetch for the life of the page (whatwg/html#6768), so when the
  * import fails again but `online()` says the site answers, `reload()`: the

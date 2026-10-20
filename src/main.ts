@@ -16,7 +16,7 @@ import { fresh } from './ui/core/fresh';
 import { initialComponents, loadFonts, readAssets, watchDownloads, type LoadComponentId } from './ui/core/loadProgress';
 import { enableHdIcons, onIconAtlas, retryIconAtlas, watchIconAtlas } from './ui/core/icons';
 import { SceneGate } from './ui/core/sceneGate';
-import { guardFrame, once, restartWorldLoad, retryModule, watchAudioUnlock } from './ui/core/startup';
+import { guardFrame, once, restartWorldLoad, retryModule, runEvents, watchAudioUnlock } from './ui/core/startup';
 import { createMenuShell, type ShellOptions } from './ui/screens/menuShell';
 
 /** Game minutes per real second at 1x: a 07:00–21:00 day in about 7 minutes. */
@@ -141,18 +141,20 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     const state = game?.state;
     if (sim && game && state) {
       sim.step(state, dt * GAME_MINUTES_PER_SECOND * state.speed);
-      world?.update(state, state.tickAccumulator);
-      game.update();
-      audio?.handleEvents(state.events);
-      fresh.handleEvents(state.events);
-      game.handleEvents(state.events);
-      state.events.length = 0;
+      const g = game;
+      runEvents(state.events, [
+        () => world?.update(state, state.tickAccumulator),
+        () => g.update(),
+        () => audio?.handleEvents(state.events),
+        () => fresh.handleEvents(state.events),
+        () => g.handleEvents(state.events),
+      ]);
     } else if (sim && menuScene) {
       sim.step(menuScene, dt * GAME_MINUTES_PER_SECOND);
       if (menuScene.phase === 'report') menuScene = sim.createMenuScene();
       world?.rotateCamera(MENU_SPIN * dt);
-      world?.update(menuScene, menuScene.tickAccumulator);
-      menuScene.events.length = 0;
+      const scene = menuScene;
+      runEvents(scene.events, [() => world?.update(scene, scene.tickAccumulator)]);
     }
   }, requestAnimationFrame);
   requestAnimationFrame(frame);
