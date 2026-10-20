@@ -2,6 +2,8 @@
 
 Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
+`npm run check`, bản build và test save đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Khởi động, khung hình, layout và ảnh là lượt đo trước merge `main`.
+
 | Phần | Lệnh |
 | --- | --- |
 | Kiểm tra code | `npm run check` |
@@ -13,12 +15,13 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 
 ## 1. Tóm tắt
 
-- `npm run check` xanh: 107 file, 1616 test; 12 file test P27 có 190 test.
-- Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x): 660 / 657 / 850 ms qua 3 lượt, đều dưới 1 s.
-- Main Menu trên Mobile so với base: +91 / −1 / +42 ms. Phone cùng mạng và CPU lệch −11 / +16 / +109 ms (lượt 1 ngược chiều Mobile), lượt 3 cả máy bàn cũng chậm hơn base, và lượt 2 với 9 lần đo cho Mobile bằng base, nên chênh lệch là nhiễu đo chứ không phải chậm thật ([mục 3](#3-khởi-động)).
-- JS chính `index-*.js`: 15,0 → 15,4 kB gzip (+0,4 kB). CSS chính không đổi (cùng file `index-BD2jmB4N.css`, 9,55 kB).
-- `perf:frames` headless: trung vị 0 long task ở máy bàn và di động, cả hai lượt. Từng lần đo: di động 0 ms ở 9/10 lần (1 lần 1 ms); máy bàn có long task ở 3/10 lần (311–435 ms), base cũng có ở 1/10 lần (488 ms) ([mục 4](#4-khung-hình)).
-- Khung hình máy bàn headed: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
+- `npm run check` xanh trên HEAD: 108 file, 1633 test.
+- CSS chính FAIL: `index-G0d7UaCo.css` 9,64 kB gzip, quá ngưỡng 9,6 kB. CSS giống hệt `main` (cùng 9,64 kB); phần tăng là 57 dòng `src/ui/styles/ui.css` của `eeccb88` ([mục 2](#2-kết-quả-kiểm)).
+- JS chính `index-*.js`: 15,0 → 15,46 kB gzip (Vite).
+- Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x), lượt trước merge `main`: 660 / 657 / 850 ms qua 3 lượt, đều dưới 1 s.
+- Main Menu trên Mobile so với base, lượt trước merge `main`: +91 / −1 / +42 ms; lượt 3 cả máy bàn cũng chậm hơn base ([mục 3](#3-khởi-động)).
+- Long task, lượt trước merge `main`, chấm theo từng lần: máy bàn headless P27 3/10 lần, base 1/10; di động headless P27 1/10, base 0/10; máy bàn headed 0/5 cả hai bản; di động headed P27 2/5, base 1/5 ([mục 4](#4-khung-hình)).
+- Khung hình máy bàn headed, lượt trước merge `main`: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
 - Layout 92/92: 68 mục cũ và 24 mục mới cho bảng Việc, Nhân viên, Nâng cấp của P27.
 - 14 ảnh P27 có khoanh đỏ, 0 cảnh báo `!!`.
@@ -27,27 +30,51 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| `npm run check` | tsc, test, build xanh | PASS: 107 file, 1616 test |
-| Test P27 (12 file) | Xanh | PASS: 190 test |
-| Main Menu, Phone 390×844 | < 1000 ms | PASS: 660 / 657 / 850 ms (base 671 / 641 / 741 ms) |
-| Main Menu, Mobile | Không chậm hơn base | Lệch theo lượt: 701 / 610 ms (+91, FAIL), 651 / 652 ms (−1, PASS), 823 / 781 ms (+42, FAIL) |
-| Cảnh 3D, Phone và Mobile | ≤ base + 10% | PASS cả 3 lượt: Phone +0,2% / +4,0% / +4,4%, Mobile +4,9% / +0,7% / +0,8% |
-| Cảnh 3D, máy bàn | ≤ base + 10% | Lượt 1–2 PASS (+6,6%, +5,4%), lượt 3 FAIL (293 / 243 ms, +20,6%) |
-| JS chính gzip | ≤ 17,0 kB (tăng ≤ 2 kB) | PASS: 15,4 kB (+0,4 kB) |
-| CSS chính gzip | ≤ 9,6 kB | PASS: 9,55 kB, cùng file với base |
-| `perf:frames`, máy bàn headless | 0 long task | Trung vị PASS: 0 ở cả hai lượt. Từng lần: lượt 1 0 / 0 / 435 / 0 / 0 ms, lượt 2 311 / 428 / 0 / 0 / 0 ms (FAIL ở 3/10 lần); base 0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms |
-| `perf:frames`, di động headless | 0 long task | Trung vị PASS: 0 ở cả hai lượt. Từng lần: lượt 1 0 / 0 / 0 / 1 / 0 ms, lượt 2 0 ở cả 5 lần; base 0 ở cả 10 lần |
-| p95 máy bàn (`--headed`) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | 18 ms, base 18 ms. Long task trung vị 0 |
-| Save cũ | v0–v3 nạp được, giữ dữ liệu P27 qua lưu/nạp | PASS: 141 test save và tương thích |
+| `npm run check` (HEAD) | tsc, test, build xanh | PASS: 108 file, 1633 test |
+| Test P27 (12 file), trước merge `main` | Xanh | PASS: 190 test |
+| JS chính gzip (HEAD) | ≤ 17,0 kB (tăng ≤ 2 kB) | PASS: `index-BGuo_h3r.js` 15,46 kB |
+| CSS chính gzip (HEAD) | ≤ 9,6 kB | FAIL: `index-G0d7UaCo.css` 9,64 kB. `main` cũng 9,64 kB: `git diff main HEAD -- src/ui/styles` rỗng; so với base chỉ khác 57 dòng `src/ui/styles/ui.css` của `eeccb88` (HUD một hàng). Trước merge `main`: 9,55 kB |
+| Save cũ (HEAD) | v0–v3 nạp được, giữ dữ liệu P27 qua lưu/nạp | PASS: 10 file, 188 test save và tương thích |
+| Main Menu, Phone 390×844 | < 1000 ms | Trước merge `main`: PASS 660 / 657 / 850 ms (base 671 / 641 / 741 ms) |
+| Main Menu, Mobile | Không chậm hơn base | Trước merge `main`, theo lượt: 701 / 610 ms (+91, FAIL), 651 / 652 ms (−1, PASS), 823 / 781 ms (+42, FAIL) |
+| Cảnh 3D, Phone và Mobile | ≤ base + 10% | Trước merge `main`: PASS cả 3 lượt: Phone +0,2% / +4,0% / +4,4%, Mobile +4,9% / +0,7% / +0,8% |
+| Cảnh 3D, máy bàn | ≤ base + 10% | Trước merge `main`: lượt 1 PASS (258 / 242 ms, +6,6%), lượt 2 PASS (255 / 242 ms, +5,4%), **lượt 3 FAIL** (293 / 243 ms, +20,6%) |
+| `perf:frames`, máy bàn headless | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 3/10 lần có long task (0 / 0 / 435 / 0 / 0 và 311 / 428 / 0 / 0 / 0 ms); base 1/10 (0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms) |
+| `perf:frames`, di động headless | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 1/10 lần có long task (0 / 0 / 0 / 1 / 0 và 0 / 0 / 0 / 0 / 0 ms); base 0/10 |
+| Long task máy bàn (`--headed`) | 0 long task mỗi lần | Trước merge `main`: PASS, P27 0/5 lần, base 0/5 |
+| Long task di động (`--headed`) | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 2/5 lần (lần 2: 2 ms, lần 4: 402 ms); base 1/5 (lần 4: 311 ms) |
+| p95 máy bàn (`--headed`) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | Trước merge `main`: 18 ms, base 18 ms |
 | `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 92/92. Tràn ngang 0, CLS Kho 0, HUD 1–2 hàng, mọi nút ≥ 44 px |
 | Layout P27 (mục mới) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
 | `npm run media:p27` | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
 
-Đường khởi động tới Main Menu chỉ thêm `pendingGiftDay` trong `src/ui/screens/mainMenu.ts` và hai trường quà trong `listSlotSummaries` (`src/save/slots.ts`): so ngày và đọc hai trường của save, không tải thêm chunk. Phần tăng 0,4 kB gzip tải mất khoảng 2 ms ở 1,6 Mbps.
+Đường khởi động tới Main Menu chỉ thêm `pendingGiftDay` trong `src/ui/screens/mainMenu.ts` và hai trường quà trong `listSlotSummaries` (`src/save/slots.ts`): so ngày và đọc hai trường của save, không tải thêm chunk.
+
+Output build trên HEAD (`npm run check`, phần `vite build`):
+
+```
+ Test Files  108 passed (108)
+      Tests  1633 passed (1633)
+dist/assets/game-DqiI1TBm.css                             31.52 kB │ gzip:   5.33 kB
+dist/assets/index-G0d7UaCo.css                            54.28 kB │ gzip:   9.64 kB
+dist/assets/confetti-CoKwk5Sz.js                           2.31 kB │ gzip:   1.22 kB
+dist/assets/index-BGuo_h3r.js                             39.38 kB │ gzip:  15.46 kB
+dist/assets/iconMap-DFV1JIJr.js                           77.14 kB │ gzip:  27.92 kB
+dist/assets/index-DPuBJNkT.js                            104.16 kB │ gzip:  38.08 kB
+dist/assets/game-pEsl-ZWw.js                             130.30 kB │ gzip:  43.99 kB
+dist/assets/three-CMIswvRL.js                            504.48 kB │ gzip: 126.49 kB
+```
+
+`npx vitest run tests/integration/p27-save-compat.test.ts tests/save` trên HEAD:
+
+```
+ Test Files  10 passed (10)
+      Tests  188 passed (188)
+```
 
 ## 3. Khởi động
 
-`measure-startup.mjs --base d58350b`: Chrome headless, ANGLE Metal (Apple M2). Lượt 1 trung vị 5 lần, lượt 2 và 3 trung vị 9 lần, chạy liền nhau. Mobile và Phone dùng mạng 150 ms RTT, 1,6 Mbps, CPU 4x; khác nhau ở khổ và DPR.
+Lượt đo trước merge `main`. `measure-startup.mjs --base d58350b`: Chrome headless, ANGLE Metal (Apple M2). Lượt 1 trung vị 5 lần, lượt 2 và 3 trung vị 9 lần, chạy liền nhau. Mobile và Phone dùng mạng 150 ms RTT, 1,6 Mbps, CPU 4x; khác nhau ở khổ và DPR.
 
 | Lượt | Cấu hình | Bản | Nội dung đầu tiên hiện | Main Menu | Cảnh 3D |
 | --- | --- | --- | --- | --- | --- |
@@ -70,12 +97,12 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 | 3 | Phone 390×844 @3x, CPU 4x | `d58350b` | 360 ms | 741 ms | 3227 ms |
 | 3 | Phone 390×844 @3x, CPU 4x | P27 | 420 ms | 850 ms | 3369 ms |
 
-Ở lượt 3, P27 chậm hơn base ở cả ba cấu hình, kể cả máy bàn không giới hạn mạng và CPU (Main Menu 100 / 57 ms), nơi 0,4 kB không tạo ra 43 ms. Lượt 2 với 9 lần đo cho Mobile bằng base (651 / 652 ms).
+Cảnh 3D máy bàn lượt 3 FAIL: 293 / 243 ms, +20,6%, quá base + 10%. Ở lượt này P27 chậm hơn base ở cả ba cấu hình, kể cả máy bàn không giới hạn mạng và CPU (Main Menu 100 / 57 ms). Lượt 2 với 9 lần đo cho Mobile bằng base (651 / 652 ms).
 
 | Chunk | `d58350b` gzip | P27 gzip | Tải lúc |
 | --- | --- | --- | --- |
 | JS chính `index-*.js` | 15,0 kB | 15,4 kB | Trước Main Menu |
-| CSS `index-*.css` | 9,5 kB | 9,5 kB (cùng file) | Trước Main Menu |
+| CSS `index-*.css` | 9,5 kB | 9,5 kB (trước merge `main`) | Trước Main Menu |
 | `game-*.js` | 40,7 kB | 43,6 kB | Sau khung hình đầu của menu |
 | `game-*.css` | 5,2 kB | 5,3 kB | Cùng `game-*.js` |
 | `iconMap-*.js` | 23,9 kB | 27,9 kB | Cùng `game-*.js` |
@@ -83,30 +110,32 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 | `three-*.js` | 126,1 kB | 126,1 kB | Cùng `src/render` |
 | `confetti-*.js` | 1,2 kB | 1,2 kB | Khi báo cáo có lên cấp |
 
-Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9). `npm run build` (gzip của Vite) ghi JS chính 15,39 kB, CSS chính 9,55 kB.
+Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9) trước merge `main`; lúc đó `npm run build` ghi JS chính 15,39 kB, CSS chính 9,55 kB. Trên HEAD, `npm run build` ghi JS chính 15,46 kB, CSS chính 9,64 kB ([mục 2](#2-kết-quả-kiểm)).
 
 ## 4. Khung hình
 
-`perf:frames --base d58350b --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless chạy hai lượt liền nhau, headed một lượt. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
+Lượt đo trước merge `main`. `perf:frames --base d58350b --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless chạy hai lượt liền nhau, headed một lượt. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
+
+Long task chấm theo từng lần như P26: lần nào có long task > 0 ms là FAIL ở lần đó; cột Long task ghi số lần có long task trên số lần đo. Thời gian long task chỉ tính phần nằm trong cửa sổ 5 s đo, nên có thể nhỏ hơn 50 ms.
 
 | Chế độ | Hồ sơ | Bản | Cảnh 3D | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
 | --- | --- | --- | --- | --- | --- | --- |
-| Headless, lượt 1 | Máy bàn | `d58350b` | 227 ms | 50 / 67 / 67 ms | 31 | 0 |
-| Headless, lượt 1 | Máy bàn | P27 | 273 ms | 33 / 67 / 67 ms | 36 | 0 |
-| Headless, lượt 1 | Di động | `d58350b` | 3048 ms | 33 / 67 / 67 ms | 24 | 0 |
-| Headless, lượt 1 | Di động | P27 | 3077 ms | 33 / 67 / 67 ms | 26 | 0 |
-| Headless, lượt 2 | Máy bàn | `d58350b` | 230 ms | 50 / 67 / 67 ms | 35 | 0 |
-| Headless, lượt 2 | Máy bàn | P27 | 234 ms | 50 / 67 / 83 ms | 32 | 0 |
-| Headless, lượt 2 | Di động | `d58350b` | 3248 ms | 33 / 100 / 133 ms | 40 | 0 |
-| Headless, lượt 2 | Di động | P27 | 3293 ms | 50 / 133 / 133 ms | 38 | 0 |
-| Headed | Máy bàn | `d58350b` | 247 ms | 17 / 18 / 36 ms | 0 | 0 |
-| Headed | Máy bàn | P27 | 235 ms | 17 / 18 / 27 ms | 0 | 0 |
-| Headed | Di động | `d58350b` | 3056 ms | 17 / 17 / 34 ms | 0 | 0 |
-| Headed | Di động | P27 | 3075 ms | 17 / 18 / 33 ms | 0 | 0 |
+| Headless, lượt 1 | Máy bàn | `d58350b` | 227 ms | 50 / 67 / 67 ms | 31 | 0/5 lần |
+| Headless, lượt 1 | Máy bàn | P27 | 273 ms | 33 / 67 / 67 ms | 36 | FAIL: 1/5 lần |
+| Headless, lượt 1 | Di động | `d58350b` | 3048 ms | 33 / 67 / 67 ms | 24 | 0/5 lần |
+| Headless, lượt 1 | Di động | P27 | 3077 ms | 33 / 67 / 67 ms | 26 | FAIL: 1/5 lần |
+| Headless, lượt 2 | Máy bàn | `d58350b` | 230 ms | 50 / 67 / 67 ms | 35 | FAIL: 1/5 lần |
+| Headless, lượt 2 | Máy bàn | P27 | 234 ms | 50 / 67 / 83 ms | 32 | FAIL: 2/5 lần |
+| Headless, lượt 2 | Di động | `d58350b` | 3248 ms | 33 / 100 / 133 ms | 40 | 0/5 lần |
+| Headless, lượt 2 | Di động | P27 | 3293 ms | 50 / 133 / 133 ms | 38 | 0/5 lần |
+| Headed | Máy bàn | `d58350b` | 247 ms | 17 / 18 / 36 ms | 0 | 0/5 lần |
+| Headed | Máy bàn | P27 | 235 ms | 17 / 18 / 27 ms | 0 | 0/5 lần |
+| Headed | Di động | `d58350b` | 3056 ms | 17 / 17 / 34 ms | 0 | FAIL: 1/5 lần |
+| Headed | Di động | P27 | 3075 ms | 17 / 18 / 33 ms | 0 | FAIL: 2/5 lần |
 
 - Thời gian long task từng lần, headless máy bàn: base 0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms; P27 0 / 0 / 435 / 0 / 0 và 311 / 428 / 0 / 0 / 0 ms.
 - Headless di động: base 0 ở cả 10 lần; P27 0 / 0 / 0 / 1 / 0 và 0 / 0 / 0 / 0 / 0 ms.
-- Headed: máy bàn 0 ở cả 5 lần của hai bản; di động lần 4 có long task ở cả hai bản (base 311 ms, P27 402 ms), P27 lần 2 thêm 2 ms.
+- Headed: máy bàn 0 ở cả 5 lần của hai bản; di động base lần 4 có 311 ms, P27 lần 2 có 2 ms và lần 4 có 402 ms.
 - Long task máy bàn headless rơi vào lần đo khác nhau giữa hai lượt và base cũng có (488 ms). Muốn chặn hẳn thì cần một lượt đo có trace (`chrome://tracing`) ở lần có long task để biết việc nào chạy trên main thread.
 
 ## 5. Save cũ
