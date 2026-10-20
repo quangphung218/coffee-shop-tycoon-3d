@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước chunk gzip, khung hình và long task, save cũ, layout, ảnh có khoanh. Luật và con số của các tính năng: [spec/p27-retention.md](../spec/p27-retention.md).
 
-`npm run check`, bản build, test save và khởi động đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Khung hình, layout và ảnh là lượt đo trước merge `main`.
+`npm run check`, bản build, test save, khởi động và khung hình đo trên HEAD sau merge `main` (`d8d5a45`, kéo theo `eeccb88` `fix(hud): keep the top clusters on one row`). Layout và ảnh là lượt đo trước merge `main`.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -20,8 +20,9 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 - JS chính `index-*.js`: 15,0 → 15,46 kB gzip (Vite).
 - Main Menu trên Phone 390×844 (150 ms RTT, 1,6 Mbps, CPU 4x), HEAD: 822 ms (base 928 ms), dưới 1 s. Lượt trước merge `main`: 660 / 657 / 850 ms.
 - Main Menu trên Mobile, HEAD: 774 / 679 ms (+95 ms, FAIL). Cảnh 3D Mobile 4168 / 3612 ms (+15,4%, FAIL); máy bàn 546 / 647 ms và Phone 4378 / 4425 ms PASS ([mục 3](#3-khởi-động)).
-- Long task, lượt trước merge `main`, chấm theo từng lần: máy bàn headless P27 3/10 lần, base 1/10; di động headless P27 1/10, base 0/10; máy bàn headed 0/5 cả hai bản; di động headed P27 2/5, base 1/5 ([mục 4](#4-khung-hình)).
-- Khung hình máy bàn headed, lượt trước merge `main`: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
+- Long task trên HEAD, chấm theo từng lần: máy bàn headless P27 0/4 lần đọc được, base ≥ 1/4; di động headless P27 1/5, base 1/5; máy bàn headed P27 1/5, base 1/5; di động headed P27 2/5, base 4/5 ([mục 4](#4-khung-hình)).
+- Cảnh 3D máy bàn trong `perf:frames` headless FAIL: 560 / 447 ms (+25,3%); headed 414 / 722 ms PASS.
+- Khung hình máy bàn headed trên HEAD: p95 18 ms, bằng base (18 ms), chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
 - Save v0–v3 nạp được, chơi tiếp 3 ngày có quà, Đào tạo, nội thất Tem; `SAVE_VERSION` vẫn là 3.
 - Layout 92/92: 68 mục cũ và 24 mục mới cho bảng Việc, Nhân viên, Nâng cấp của P27.
 - 14 ảnh P27 có khoanh đỏ, 0 cảnh báo `!!`.
@@ -41,11 +42,14 @@ Báo cáo kiểm chứng P27 so với P26 `d58350b`: kết quả `npm run check`
 | Cảnh 3D, Mobile (HEAD) | ≤ base + 10% | **FAIL**: 4168 / 3612 ms (+15,4%) |
 | Cảnh 3D, máy bàn (HEAD) | ≤ base + 10% | PASS: 546 / 647 ms (−15,6%) |
 | Khởi động, trước merge `main` | Như trên | Phone Main Menu 660 / 657 / 850 ms (PASS); Mobile Main Menu +91 (FAIL) / −1 (PASS) / +42 ms (FAIL); cảnh 3D Phone và Mobile PASS cả 3 lượt; cảnh 3D máy bàn lượt 1 PASS (+6,6%), lượt 2 PASS (+5,4%), **lượt 3 FAIL** (293 / 243 ms, +20,6%) |
-| `perf:frames`, máy bàn headless | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 3/10 lần có long task (0 / 0 / 435 / 0 / 0 và 311 / 428 / 0 / 0 / 0 ms); base 1/10 (0 / 0 / 0 / 0 / 0 và 0 / 488 / 0 / 0 / 0 ms) |
-| `perf:frames`, di động headless | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 1/10 lần có long task (0 / 0 / 0 / 1 / 0 và 0 / 0 / 0 / 0 / 0 ms); base 0/10 |
-| Long task máy bàn (`--headed`) | 0 long task mỗi lần | Trước merge `main`: PASS, P27 0/5 lần, base 0/5 |
-| Long task di động (`--headed`) | 0 long task mỗi lần | Trước merge `main`: FAIL, P27 2/5 lần (lần 2: 2 ms, lần 4: 402 ms); base 1/5 (lần 4: 311 ms) |
-| p95 máy bàn (`--headed`) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | Trước merge `main`: 18 ms, base 18 ms |
+| Cảnh 3D máy bàn, `perf:frames` headless (HEAD) | ≤ base + 10% | **FAIL**: 560 / 447 ms (+25,3%) |
+| Cảnh 3D máy bàn, `perf:frames --headed` (HEAD) | ≤ base + 10% | PASS: 414 / 722 ms (−42,7%) |
+| `perf:frames`, máy bàn headless (HEAD) | 0 long task mỗi lần | P27 0/4 lần đọc được (lần 1 bị cắt khỏi output); base FAIL ≥ 1/4 (lần 4: 98 ms) |
+| `perf:frames`, di động headless (HEAD) | 0 long task mỗi lần | FAIL: P27 1/5 lần (lần 1: 58 ms); base 1/5 (lần 1: 1 ms) |
+| Long task máy bàn (`--headed`, HEAD) | 0 long task mỗi lần | FAIL: P27 1/5 lần (lần 5: 61 ms); base 1/5 (lần 1: 1 ms) |
+| Long task di động (`--headed`, HEAD) | 0 long task mỗi lần | FAIL: P27 2/5 lần (lần 2: 1 ms, lần 4: 61 ms); base 4/5 (107 / 3 / 1 / 0 / 400 ms) |
+| p95 máy bàn (`--headed`, HEAD) | ≤ 16,7 ms (nợ cũ, chỉ ghi) | 18 ms, base 18 ms |
+| Long task, trước merge `main` | 0 long task mỗi lần | Máy bàn headless P27 FAIL 3/10 lần, base 1/10; di động headless P27 FAIL 1/10, base 0/10; máy bàn headed 0/5 cả hai bản; di động headed P27 FAIL 2/5, base 1/5 |
 | `npm run layout` ở 390/768/1280/1440 | PASS mọi mục | PASS: 92/92. Tràn ngang 0, CLS Kho 0, HUD 1–2 hàng, mọi nút ≥ 44 px |
 | Layout P27 (mục mới) | Không tràn, đủ phần mới, nút ≥ 44 px | PASS: 24/24. Việc (thẻ quà, đơn đặc biệt, thành tựu; 9 nút), Nhân viên (chip đặc điểm, thanh KN, xác nhận Đào tạo; 12 nút), Nâng cấp (2 dòng giá Tem; 20 nút) |
 | `npm run media:p27` | Nhãn và vòng khoanh trong khung, không `!!` | PASS: 14 ảnh, 0 cảnh báo |
@@ -148,9 +152,45 @@ Bảng chunk lấy từ `measure-startup.mjs` (gzip mức 9) trên HEAD. `npm ru
 
 ## 4. Khung hình
 
-Lượt đo trước merge `main`. `perf:frames --base d58350b --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless chạy hai lượt liền nhau, headed một lượt. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
+`perf:frames --base d58350b --runs 5`: Chrome 155, 1280×800, 5 s sau `cst:world`, trung vị 5 lần. Headless cấp khung theo bội số nhịp màn hình, nên p95 headless chỉ dùng để so; dòng headed là thời gian khung thật. Confetti và atlas `tiers` không tải ở mọi dòng.
 
 Long task chấm theo từng lần như P26: lần nào có long task > 0 ms là FAIL ở lần đó; cột Long task ghi số lần có long task trên số lần đo. Thời gian long task chỉ tính phần nằm trong cửa sổ 5 s đo, nên có thể nhỏ hơn 50 ms.
+
+### HEAD
+
+Một lượt headless, một lượt headed (`--headed`), chạy liền nhau.
+
+| Chế độ | Hồ sơ | Bản | Cảnh 3D | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
+| --- | --- | --- | --- | --- | --- | --- |
+| Headless | Máy bàn | `d58350b` | 447 ms | 33 / 67 / 83 ms | 19 | FAIL: ≥ 1/4 lần đọc được (lần 4: 98 ms) |
+| Headless | Máy bàn | P27 | 560 ms (**+25,3%, FAIL**) | 33 / 67 / 67 ms | 26 | 0/4 lần đọc được |
+| Headless | Di động | `d58350b` | 3463 ms | 33 / 67 / 83 ms | 29 | FAIL: 1/5 lần (lần 1: 1 ms) |
+| Headless | Di động | P27 | 3433 ms (−0,9%) | 50 / 67 / 67 ms | 36 | FAIL: 1/5 lần (lần 1: 58 ms) |
+| Headed | Máy bàn | `d58350b` | 722 ms | 17 / 18 / 27 ms | 0 | FAIL: 1/5 lần (lần 1: 1 ms) |
+| Headed | Máy bàn | P27 | 414 ms (−42,7%) | 17 / 18 / 21 ms | 0 | FAIL: 1/5 lần (lần 5: 61 ms) |
+| Headed | Di động | `d58350b` | 3728 ms | 17 / 20 / 51 ms | 1 | FAIL: 4/5 lần (107 / 3 / 1 / 0 / 400 ms) |
+| Headed | Di động | P27 | 3701 ms (−0,7%) | 17 / 19 / 34 ms | 0 | FAIL: 2/5 lần (0 / 1 / 0 / 61 / 0 ms) |
+
+- Headless máy bàn: dòng lần 1 của cả hai bản bị cắt khỏi output nên chỉ chấm được lần 2–5. Base 0 / 0 / 98 / 0 ms, P27 0 / 0 / 0 / 0 ms. Trung vị long task của cả hai bản là 0.
+- Headless di động: base 1 / 0 / 0 / 0 / 0 ms, P27 58 / 0 / 0 / 0 / 0 ms.
+- Headed máy bàn: base 1 / 0 / 0 / 0 / 0 ms, P27 0 / 0 / 0 / 0 / 61 ms. p95 18 ms, bằng base, chưa đạt 16,7 ms (nợ cũ, chỉ ghi).
+- Cảnh 3D máy bàn headless FAIL: 560 / 447 ms. Ở lượt headed ngay sau đó, P27 nhanh hơn base (414 / 722 ms).
+
+```
+| base (d58350b) | Desktop, no throttling | 447 ms | 145 | 33 ms | 67 ms | 83 ms | 19 (19/10/33/18/38) | 0 | 0 ms | none |
+| working tree | Desktop, no throttling | 560 ms | 122 | 33 ms | 67 ms | 67 ms | 26 (30/16/23/26/36) | 0 | 0 ms | none |
+| base (d58350b) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 3463 ms | 132 | 33 ms | 67 ms | 83 ms | 29 (22/45/29/40/24) | 0 | 0 ms | none |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 3433 ms | 119 | 50 ms | 67 ms | 67 ms | 36 (50/36/23/46/19) | 1 | 0 ms | none |
+Chrome 155.0.8059.85 (headed), WebGL: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version), 1280×800, 5 s after cst:world, 5 runs per cell (median)
+| base (d58350b) | Desktop, no throttling | 722 ms | 301 | 17 ms | 18 ms | 27 ms | 0 (1/0/0/0/0) | 0 | 0 ms | none |
+| working tree | Desktop, no throttling | 414 ms | 301 | 17 ms | 18 ms | 21 ms | 0 (0/0/0/0/1) | 0 | 0 ms | none |
+| base (d58350b) | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 3728 ms | 289 | 17 ms | 20 ms | 51 ms | 1 (1/0/2/0/9) | 1 | 3 ms | none |
+| working tree | Mobile: 150 ms RTT, 1.6 Mbps, CPU 4x | 3701 ms | 297 | 17 ms | 19 ms | 34 ms | 0 (0/1/0/0/0) | 0 | 0 ms | none |
+```
+
+### Trước merge `main`
+
+Headless chạy hai lượt liền nhau, headed một lượt.
 
 | Chế độ | Hồ sơ | Bản | Cảnh 3D | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
 | --- | --- | --- | --- | --- | --- | --- |
