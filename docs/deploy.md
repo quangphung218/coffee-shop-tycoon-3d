@@ -93,7 +93,7 @@ Script làm lần lượt:
    - chưa có `node_modules/`;
    - thiếu `node_modules/.bin/tsc` hoặc `node_modules/.bin/vite`;
    - `node_modules/.package-lock.json` không có hoặc khác `package-lock.json` (so bằng `cmp`).
-3. Chạy `npm run check` (kiểu, toàn bộ `vitest`, build). Lỗi thì dừng với `npm run check failed`, chưa tạo commit hay tag phát hành.
+3. Chạy `npm run check` (kiểu, toàn bộ `vitest`, build) với `VITEST_MAX_WORKERS=2` nếu chưa đặt, để test không chập chờn khi máy bận. Lỗi thì dừng với `npm run check failed`, chưa tạo commit hay tag phát hành.
 4. Chạy `node scripts/release.mjs`: có `feat`/`fix`/`perf`/breaking kể từ tag trước thì tăng version, commit và tag (xem [Script làm gì](#script-làm-gì)). Sau đó chạy `npm run build`; bản build mang version mới.
 5. Chép `dist/` vào thư mục tạm, thêm `.nojekyll`, tạo commit `deploy: build from <sha>` và force-push lên nhánh `gh-pages` của `origin`.
 6. Gọi `gh api repos/<owner>/<repo>/pages`; Pages chưa bật thì bật với nguồn `gh-pages`, thư mục `/`.

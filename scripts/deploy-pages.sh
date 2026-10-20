@@ -78,8 +78,9 @@ if [ -n "$REINSTALL" ]; then
   npm ci
 fi
 # Types, tests and build on the merged commit, before release.mjs: a failing
-# test leaves no release commit or tag behind.
-npm run check || stop "npm run check failed (types, tests or build)." \
+# test leaves no release commit or tag behind. Two vitest workers by default:
+# more time out on a busy machine and fail the deploy for nothing.
+VITEST_MAX_WORKERS=${VITEST_MAX_WORKERS:-2} npm run check || stop "npm run check failed (types, tests or build)." \
   "Fix it through a PR, then run the deploy again."
 
 # Before the build, so the bundle shows the new version.

@@ -80,7 +80,7 @@ function setup() {
     bin,
     'npm',
     `case "$1 $2" in
-  "run check") git log -1 --format=%s >> "$CHECK_LOG"; [ -z "\${FAIL_CHECK:-}" ] || { echo "1 test failed" >&2; exit 1; } ;;
+  "run check") echo "$(git log -1 --format=%s) workers=\${VITEST_MAX_WORKERS:-}" >> "$CHECK_LOG"; [ -z "\${FAIL_CHECK:-}" ] || { echo "1 test failed" >&2; exit 1; } ;;
   "run build") mkdir -p dist && echo ok > dist/index.html ;;
   version*) node -e 'const f=require("fs");const p=JSON.parse(f.readFileSync("package.json"));p.version=process.argv[1];f.writeFileSync("package.json",JSON.stringify(p,null,2)+"\\n")' "$2" ;;
   *) echo "unexpected npm $*" >&2; exit 1 ;;
@@ -115,7 +115,11 @@ esac`,
 
 function deploy(repo: string, bin: string, extra: Env = {}) {
   const checkLog = join(dirname(bin), 'check.log');
-  return spawnSync('sh', ['scripts/deploy-pages.sh'], { cwd: repo, env: { CHECK_LOG: checkLog, ...env(bin), ...extra }, encoding: 'utf8' });
+  return spawnSync('sh', ['scripts/deploy-pages.sh'], {
+    cwd: repo,
+    env: { CHECK_LOG: checkLog, ...env(bin), VITEST_MAX_WORKERS: undefined, ...extra },
+    encoding: 'utf8',
+  });
 }
 
 const checkRuns = (bin: string): string[] => {
@@ -217,7 +221,7 @@ describe('deploy-pages.sh', { timeout: 20_000 }, () => {
     const { repo, bin } = setup();
     const r = deploy(repo, bin);
     expect(r.status, r.stderr).toBe(0);
-    expect(checkRuns(bin)).toEqual(['fix: a']);
+    expect(checkRuns(bin)).toEqual(['fix: a workers=2']);
   });
 
   it('deploys, then pushes the release commit and tag to origin', () => {
