@@ -12,6 +12,7 @@ import {
   buyIngredient,
   canBuyOnCredit,
   lowStockItems,
+  restockPlan,
   sellable,
   stockOf,
   stockOutlook,
@@ -217,6 +218,21 @@ describe('applyRestockSuggestion', () => {
     for (const line of r.bought) expect(line.qty).toBe(getIngredient(line.id).packSize);
     expect(r.skipped).toEqual([]);
     expect(s.money).toBe(-50000 - r.spent);
+  });
+});
+
+describe('restockPlan', () => {
+  it('lists what applyRestockSuggestion buys and skips, without buying', () => {
+    const s = createNewGame('A', 'hard', 1);
+    emptyStock(s);
+    setStock(s, 'milk', getIngredient('milk').lowStock);
+    s.money = 30000;
+    const plan = restockPlan(s);
+    expect(s.money).toBe(30000);
+    const r = applyRestockSuggestion(s);
+    expect(r.bought).toEqual(plan.buy);
+    expect(r.skipped).toEqual(plan.skipped.map((l) => l.id));
+    expect(plan.skipped.map((l) => l.id)).toContain('milk');
   });
 });
 

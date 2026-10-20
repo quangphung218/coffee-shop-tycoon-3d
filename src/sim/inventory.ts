@@ -298,25 +298,49 @@ export interface RestockResult {
   spent: number;
 }
 
+export interface RestockPlan {
+  /** Lines bought, in catalogue order; a line bought on credit is cut to one pack. */
+  buy: RestockLine[];
+  /** Suggested lines neither the money nor credit covers, at their suggested size. */
+  skipped: RestockLine[];
+}
+
 /**
- * Buys the suggested lines in order. A line the money cannot cover is cut to
- * one pack bought on credit when canBuyOnCredit allows it, else skipped; the
- * notice names the skipped lines with the money still short.
+ * What applyRestockSuggestion buys, without buying: the suggested lines in
+ * order, paid while the money lasts. A line the money cannot cover is cut to
+ * one pack bought on credit when canBuyOnCredit allows it, else skipped. Kho's
+ * "Gợi ý" fills its steppers from this, so a broke shop can restock too.
+ */
+export function restockPlan(state: GameState): RestockPlan {
+  const plan: RestockPlan = { buy: [], skipped: [] };
+  let money = state.money;
+  for (const line of autoRestockSuggestion(state).items) {
+    if (money >= line.cost) {
+      plan.buy.push(line);
+      money -= line.cost;
+      continue;
+    }
+    const pack = getIngredient(line.id).packSize;
+    if (!canBuyOnCredit(state, line.id, pack)) {
+      plan.skipped.push(line);
+      continue;
+    }
+    const cost = ingredientPrice(state, line.id, pack);
+    plan.buy.push({ id: line.id, qty: pack, cost });
+    money -= cost;
+  }
+  return plan;
+}
+
+/**
+ * Buys restockPlan's lines; the notice names the skipped lines with the money
+ * still short.
  */
 export function applyRestockSuggestion(state: GameState): RestockResult {
-  const result: RestockResult = { bought: [], skipped: [], spent: 0 };
-  let skippedCost = 0;
-  for (const suggested of autoRestockSuggestion(state).items) {
-    let line = suggested;
-    if (state.money < line.cost) {
-      const pack = getIngredient(line.id).packSize;
-      if (!canBuyOnCredit(state, line.id, pack)) {
-        result.skipped.push(line.id);
-        skippedCost += line.cost;
-        continue;
-      }
-      line = { id: line.id, qty: pack, cost: ingredientPrice(state, line.id, pack) };
-    }
+  const plan = restockPlan(state);
+  const result: RestockResult = { bought: [], skipped: plan.skipped.map((l) => l.id), spent: 0 };
+  const skippedCost = plan.skipped.reduce((s, l) => s + l.cost, 0);
+  for (const line of plan.buy) {
     const r = buyIngredient(state, line.id, line.qty);
     if (r.ok) {
       result.bought.push(line);

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { getIngredient } from '../../src/sim/data/ingredients';
 import { getUpgrade } from '../../src/sim/data/upgrades';
-import { autoRestockSuggestion, ingredientPrice } from '../../src/sim/inventory';
+import { autoRestockSuggestion, ingredientPrice, restockPlan } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { Command, GameState } from '../../src/sim/types';
 import { formatMoney } from '../../src/ui/core/format';
@@ -302,6 +302,45 @@ describe('inventory panel', () => {
     buy.click();
     expect(sent).toEqual([{ type: 'buy_ingredient', ingredientId: 'milk', packs: 1 }]);
     expect(state.money).toBe(-20000 - pack);
+  });
+
+  it('fills Gợi ý the way apply_restock buys, so a broke shop can restock in one click', () => {
+    const state = createNewGame('Quán Nợ', 'hard', 7);
+    for (const i of state.inventory) i.qty = 0;
+    state.money = -20000;
+    const plan = restockPlan(state);
+    expect(plan.buy.length).toBeGreaterThan(0);
+    expect(autoRestockSuggestion(state).items.some((l) => l.qty > getIngredient(l.id).packSize)).toBe(true);
+    const { body, sent } = mount(renderInventoryPanel, state);
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    expect(buy.getAttribute('aria-disabled')).toBeNull();
+    buy.click();
+    expect(sent).toEqual(plan.buy.map((l) => ({ type: 'buy_ingredient', ingredientId: l.id, packs: 1 })));
+    expect(state.money).toBe(-20000 - plan.buy.reduce((a, l) => a + l.cost, 0));
+  });
+
+  it('keeps a Gợi ý line credit cannot cover at full size and names it to trim', () => {
+    const state = game();
+    for (const i of state.inventory) i.qty = 0;
+    // Milk at its warning level: still short for the day, not low enough for credit.
+    state.inventory.find((i) => i.id === 'milk')!.qty = getIngredient('milk').lowStock;
+    state.money = 0;
+    const plan = restockPlan(state);
+    const milk = plan.skipped.find((l) => l.id === 'milk')!;
+    expect(milk).toBeTruthy();
+    const { body } = mount(renderInventoryPanel, state);
+    q<HTMLButtonElement>(body, '[data-action="suggest"]').click();
+    const packs = milk.qty / getIngredient('milk').packSize;
+    expect(q<HTMLInputElement>(body, '.stepper[data-ingredient="milk"] input').value).toBe(String(packs));
+    const buy = q<HTMLButtonElement>(body, '[data-action="buy"]');
+    const hint = q(document, `#${buy.getAttribute('aria-describedby')}`);
+    expect(buy.getAttribute('aria-disabled')).toBe('true');
+    expect(hint.textContent).toContain(`Bớt ${getIngredient('milk').name}`);
+
+    for (let i = 0; i < packs; i++) q<HTMLButtonElement>(body, '.stepper[data-ingredient="milk"] button[aria-label^="Bớt"]').click();
+    expect(buy.getAttribute('aria-disabled')).toBeNull();
+    expect(hint.textContent).toContain('Nhập chịu');
   });
 
   it('shows a low-stock badge', () => {
