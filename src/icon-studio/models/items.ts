@@ -159,28 +159,25 @@ export function coldBrew(): Group {
   return group(jar, lip, ...ice, handle(0.62, 0.7, 0.26, 'skyLight'));
 }
 
-/** One round cookie with big chocolate chips on top, standing on y = 0. */
-function chipCookie(): Group {
-  const dough = part(lathe([[0, 0], [0.82, 0], [0.9, 0.12], [0.8, 0.26], [0, 0.3]], 18), 'honeyDeep');
+/**
+ * i-cookie: one big chocolate chip cookie lying flat, seen from above so it
+ * reads round and fills the cell. Two cookies side by side cast a shadow
+ * wider than either and left the pair small in the 48 px cell.
+ */
+export function cookie(): Group {
+  const dough = part(lathe([[0, 0], [0.9, 0], [1.0, 0.14], [0.9, 0.3], [0, 0.34]], 20), 'honeyDeep');
   const chips = (
     [
-      [-0.38, 0.12],
-      [0.3, 0.3],
-      [0.02, -0.36],
-      [0.42, -0.24],
-      [-0.2, 0.46],
+      [-0.45, 0.1],
+      [0.36, 0.34],
+      [0.0, -0.44],
+      [0.5, -0.24],
+      [-0.18, 0.55],
+      [-0.4, -0.38],
+      [0.06, 0.06],
     ] as const
-  ).map(([x, z]) => at(part(new SphereGeometry(0.15, 8, 6).scale(1, 0.6, 1), 'coffeeDark'), x, 0.28, z));
-  return group(dough, ...chips);
-}
-
-/** i-cookie: two chocolate chip cookies, one leaning on the one lying flat. */
-export function cookie(): Group {
-  const flat = at(chipCookie(), -0.2, 0, -0.1);
-  // Tipped towards the camera with its front edge on the table, so its chips face the viewer.
-  const leaning = at(chipCookie(), 0.3, 0.8, 0.45);
-  leaning.rotation.set(1.05, 0.2, 0);
-  return group(flat, leaning);
+  ).map(([x, z]) => at(part(new SphereGeometry(0.17, 8, 6).scale(1, 0.6, 1), 'coffeeDark'), x, 0.32, z));
+  return posed('top', group(dough, ...chips));
 }
 
 // Ingredients

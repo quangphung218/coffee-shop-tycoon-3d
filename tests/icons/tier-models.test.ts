@@ -1,5 +1,6 @@
 import { Box3, Mesh, type Object3D, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { MODELS } from '../../src/icon-studio/models/index';
 import { MACHINE_TIER_COLORS } from '../../src/icon-studio/models/shop';
 import { type Tier, upgradeModel } from '../../src/icon-studio/models/tiers';
 import { mat, PALETTE, type PaletteKey, type Pose, POSES } from '../../src/icon-studio/style';
@@ -120,6 +121,23 @@ function body(model: Object3D): Mesh {
   const volume = (m: Mesh) => new Box3().setFromObject(m, true).getSize(new Vector3()).toArray().reduce((a, b) => a * b, 1);
   return meshes(model).reduce((best, m) => (volume(m) > volume(best) ? m : best));
 }
+
+describe('P31 icons', () => {
+  it('i-oven has the steel body of the grinder icon, like the steel scene oven', () => {
+    expect(body(upgradeModel('i-oven', 1)).material).toBe(body(upgradeModel('i-grinder', 1)).material);
+  });
+
+  it('i-cold-brew-tower tier 2 adds a glass of cold brew on the base', () => {
+    const coffee = (tier: Tier) => meshes(upgradeModel('i-cold-brew-tower', tier)).filter((m) => m.material === mat('coffeeDark')).length;
+    expect(coffee(2)).toBeGreaterThan(coffee(1));
+  });
+
+  it('i-cookie reads round, so it fills the cell instead of a strip', () => {
+    const { w, h } = screenSize(MODELS['i-cookie']!());
+    expect(w / h).toBeLessThan(1.25);
+    expect(h / w).toBeLessThan(1.25);
+  });
+});
 
 describe('machine tier colours', () => {
   // better_machine has maxLevel 3, so look tier n is level n: MACHINE_TIERS[n].
