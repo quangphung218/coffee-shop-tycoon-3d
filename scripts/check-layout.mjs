@@ -44,6 +44,10 @@
 // LAYOUT_ONLY (day, hud, event, p25, p27, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
+// Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
+// open: it shares the GPU with perf:frames and measure-startup, so it waits
+// for a running measurement (PERF_LOCK_WAIT_S) and keeps one from starting
+// over it.
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -51,6 +55,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './lib/browser.mjs';
+import { acquirePerfLock } from './lib/perf-lock.mjs';
 import { clockOf, loadSim, playFirstDay, saveText } from './lib/saves.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -895,12 +900,14 @@ function printTable(title, rows) {
 }
 
 async function main() {
+  // One Chrome on the GPU at a time: wait for a running measurement, and keep one from starting while this runs.
+  const only = process.env.LAYOUT_ONLY?.split(',');
+  const lock = await acquirePerfLock(ROOT, { label: `check-layout${only ? ` LAYOUT_ONLY=${only.join(',')}` : ''}` });
   const server = await startPreview();
   const browser = await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
   // LAYOUT_ONLY=day,hud,event,p25,p27 runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
-  const only = process.env.LAYOUT_ONLY?.split(',');
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
@@ -961,6 +968,7 @@ async function main() {
   } finally {
     await browser.close();
     server.kill();
+    lock.release();
   }
   printTable('Tràn ngang', overflow);
   printTable('CLS bảng Kho', shift);

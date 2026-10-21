@@ -27,7 +27,9 @@ Gần 5,7 lần nhanh hơn, CPU user bằng 36%. Phần còn lại của 61 s: d
 | --- | --- |
 | `scripts/lib/saves.mjs` | `playFirstDay(mods, { shopName, difficulty, seed, hires })`: ngày 1 như check-layout từng chơi, trả trạng thái trước tick kết ngày. `loadSim(root, extra)` nhận thêm module theo tên (`retention`, `staff`). |
 | `scripts/check-layout.mjs` | Sau "HUD: mở cửa": đóng trang, `resumeSave` save ngày 1, chờ báo cáo có số và dòng autosave, soát Daily Report + Đánh giá. Save sự kiện (`eventDaySave`) và save ngày 1 dùng chung một lượt `loadSim`. Bỏ `DAY_TIMEOUT_MS`. |
-| `tests/scripts/layout-first-day.test.ts` | `playFirstDay` dừng còn mở cửa, tick kế tiếp ra báo cáo có khách, doanh thu, đánh giá; tất định; save nạp lại và kết ngày giống nhau. |
-| `docs/media.md` | Mục Kiểm lề và CLS: cách chạy mới, thời gian mới. |
+| `tests/scripts/layout-first-day.test.ts` | `playFirstDay` dừng còn mở cửa, tick kế tiếp ra báo cáo có khách, doanh thu, đánh giá; tất định; save nạp lại và kết ngày giống nhau. Test tương đương luồng UI: dựng trạng thái đúng như hai bảng làm (`buy_ingredient` từng dòng `restockPlan` theo thứ tự `INGREDIENTS`, `packs = ceil(qty/packSize)`; `hire_staff` theo `rolePlan`), `step(s, 1)` tới tick trước báo cáo rồi `toEqual` với `playFirstDay`: đỏ khi bỏ `apply_restock` hay đổi `candidates[0]`. |
+| `scripts/lib/perf-lock.mjs` | `lockPath(root, dir)`, `acquirePerfLock(root, { dir })`, `lockDir()` = `$PERF_LOCK_DIR` hoặc temp dir của máy. `tests/scripts/perf-lock.test.ts` trỏ vào `mktemp`, không đụng lock thật nên không đỏ khi máy đang đo. |
+| `scripts/check-layout.mjs` (lock) | Giữ perf lock của máy từ trước khi mở preview và Chrome tới khi đóng: chờ `perf:frames`/`measure-startup` đang chạy (`PERF_LOCK_WAIT_S`), và chặn lượt đo khởi động chồng lên mình. |
+| `docs/media.md`, `CLAUDE.md` | Mục Kiểm lề và CLS: cách chạy mới, thời gian mới, lock; CLAUDE.md ghi `layout` cùng giữ lock. |
 
 Cách chạy không đổi: `npm run layout`; `LAYOUT_ONLY`, `LAYOUT_DAY_WIDTHS`, `LAYOUT_HEADED` như cũ.
