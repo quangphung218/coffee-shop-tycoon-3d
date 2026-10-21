@@ -54,7 +54,7 @@ describe('Khách quen card', () => {
     const { body, handle } = mount(state);
     expect(rowTexts(body)).toEqual([]);
     state.regulars = { em_vy: { visits: 1, firstDay: 3, lastDay: 3 } };
-    handle.update(state);
+    handle.update!(state);
     expect(regularRows(state).map((r) => r.id)).toEqual(['em_vy']);
     expect(rowTexts(body)).toHaveLength(1);
     expect(body.querySelector<HTMLElement>('[data-regular-empty]')!.hidden).toBe(true);
