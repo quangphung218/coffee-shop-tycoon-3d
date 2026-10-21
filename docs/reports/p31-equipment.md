@@ -139,7 +139,7 @@ Khung dài nhất của P31 trong từng lần là 24 ms (máy bàn, lần 5).
 | --- | --- |
 | `npx vitest run tests/save` | PASS: 12 file, 201 test, gồm `tests/save/p31-compat.test.ts` (giữ `SAVE_VERSION` 3; save v0–v3 không có món hay công cụ P31 nạp được với Cold brew và Bánh quy tắt, chơi một ngày, lưu lại; Cold brew bị từ chối khi chưa có tháp) |
 | Bước `compat` của `media -- --scenario p31`: save trưa ngày 2 do sim `fe1fe8e` chơi ra (save v3 của P30), đặt vào slot `auto`, mở bản build P31, bấm Tiếp tục, chờ 4 s | PASS: đồng hồ chạy 12:00 → 12:08, 0 lỗi console, 0 request lỗi. Save của chính P31 qua cùng bước có 1 request 404, nên không do save cũ |
-| Nguồn request 404 (chạy lại `compat` trên `1df0efb`, thêm bản `fe1fe8e` trên save của chính nó) | Lỗi có sẵn, không phải asset P31: `fe1fe8e` cũng có đúng 1 lỗi "Failed to load resource: 404". Trang không phát sự kiện `response` ≥ 400 nào, nên request không do code game gửi (icon, atlas, chunk đều đi qua trang); request trình duyệt tự gửi là `/favicon.ico`, và cả hai bản không có `<link rel="icon">` hay `public/favicon.ico`. URL suy ra từ đó, không có trong log |
+| Nguồn request 404 (chạy lại `compat` trên `1df0efb`, thêm bản `fe1fe8e` trên save của chính nó) | Lỗi có sẵn, không phải asset P31: `fe1fe8e` cũng có đúng 1 lỗi "Failed to load resource: 404". Trang không phát sự kiện `response` ≥ 400 nào, nên request không do code game gửi (icon, atlas, chunk đều đi qua trang); cả hai bản không khai `<link rel="icon">` và thư mục `public` không có file favicon, nên trình duyệt tự xin URL `/favicon.ico`. URL này suy ra, không lấy từ log |
 | `SAVE_VERSION` | Vẫn là 3 |
 
 ## 6. Ảnh
