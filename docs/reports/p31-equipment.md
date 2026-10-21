@@ -10,6 +10,7 @@ Mọi số đo và ảnh làm trên commit `48a9945` (HEAD của nhánh tích h�
 | Khởi động, bảng chunk | `node scripts/measure-startup.mjs --base fe1fe8e --runs 9` (hai lượt) |
 | Khung hình 5 s đầu | `MEDIA_PORT=<cổng> npm run perf:frames -- --base fe1fe8e --runs 5 --headed` |
 | Khung hình cảnh có khách | như trên, thêm `--scene dusk-rain` hoặc `--scene noon-sunny` |
+| Khung hình cảnh có tháp và lò | `npm run perf:frames -- --base fe1fe8e --runs 5 --headed --scene tools-p31` |
 | Layout 390–1440 px | `LAYOUT_PORT=<cổng> npm run layout` |
 | Save | `npx vitest run tests/save`, cộng bước `compat` của kịch bản ảnh ([mục 5](#5-save-cũ)) |
 | Ảnh | `MEDIA_PORT=<cổng> npm run media -- --scenario p31` ([media.md](../media.md#ảnh-p31)) |
@@ -129,6 +130,8 @@ Bên trái build `fe1fe8e`, bên phải P31 `48a9945`, cùng save do sim của t
 | Nâng cấp, cấp 8, 390×844 và 1280×800 | Cuối nhóm Dụng cụ thêm 2 hàng: Tháp cold brew (1.800.000 đ, cấp 0/2) và Lò nướng (2.000.000 đ, cấp 0/2), nút Mua. Base: sau Máy rửa ly là nhóm Không gian | ![Nâng cấp](p31-equipment/upgrades-lv8-before-after-p31.jpg) |
 | Menu, 390×844 và 1280×800 | Chưa mua: Cold brew và Bánh quy sô-cô-la tắt, công tắc khoá, nhãn "Cần Tháp cold brew", "Cần Lò nướng" mở Nâng cấp. Mua bậc 1 hai công cụ: cả hai món tự bật, nhãn "Cần …" biến mất (Bánh quy còn nhãn kho "Thiếu Bột bánh"). Base: Menu dừng ở Bánh ngọt | ![Menu](p31-equipment/menu-cold-brew-before-after-p31.jpg) |
 | Quầy sau, 1280×800 và 390×844 | Lò nướng bên trái, Tháp cold brew giữa máy espresso và máy pha nhanh; bậc 2 thêm bệ, khay bánh quy trên lò, ly cold brew dưới tháp. Base: chỗ đó trống. Camera hai bản phóng quanh cùng một điểm (240 px mỗi mét ở 1280, 105 ở 390) | ![Quầy sau](p31-equipment/back-counter-before-after-p31.jpg) |
+
+Tháp cold brew và Lò nướng có `maxLevel` 2 và không có trong `maxLevelBonus` của cấp quán 7–10 (`src/sim/data/levels.ts`), nên cấp cao nhất là 2 và bậc hình cao nhất là bậc 2. Trong game không có bậc 3 của hai công cụ này; dòng kế hoạch ghi "bậc 3 (cấp thưởng)" là sai. Nhánh bậc 3 của hai máy trong `src/render/scene/equipment.ts` (sao vàng) không bao giờ được vẽ.
 
 ## 7. Đối chiếu P30
 
