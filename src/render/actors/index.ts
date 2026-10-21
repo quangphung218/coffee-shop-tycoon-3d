@@ -21,7 +21,7 @@ import {
   type AnimName,
   type Mood,
 } from './animations';
-import { CoinFx, Steam, puffTexture, steamFor } from './fx';
+import { CoinFx, Steam, puffTexture, setSteamQuality, steamFor } from './fx';
 import { LABEL_BUBBLES, Label, LabelAssets, commandForCustomer, faceFor, labelFor } from './labels';
 import { Pool } from './pool';
 import { createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
@@ -65,7 +65,7 @@ export interface Actors {
   stats(): { live: number; free: number; created: number; coins: number; coinsCreated: number };
   /** Snapshot of one person: 'c<id>' customer, 's<id>' staff, 'player'. */
   inspect(key: string): ActorInfo | null;
-  /** Low quality drops the steam, keeps coins still and softens the bounce. */
+  /** Low quality drops the steam, keeps coins still and softens the bounce; higher ones add steam puffs and burst coins. */
   setQuality(quality: Quality): void;
   /** Force reduced motion on (true) or leave it to the OS media query (false). */
   setReducedMotion(reduce: boolean): void;
@@ -166,6 +166,8 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   const coins = new CoinFx(assets.face('i-coin').map);
   root.add(coins.group);
   let quality: Quality = options.quality ?? 'medium';
+  coins.setQuality(quality);
+  setSteamQuality(quality);
   const pool = new Pool<Body>(
     () => {
       const char = createCharacter({ role: 'customer', look: 0 });
@@ -467,6 +469,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
 
     setQuality(q: Quality): void {
       quality = q;
+      coins.setQuality(q);
+      // Shared with the machine steam in AmbientView.
+      setSteamQuality(q);
     },
 
     setReducedMotion(reduce: boolean): void {

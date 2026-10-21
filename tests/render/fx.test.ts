@@ -3,7 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { createActors } from '../../src/render/actors';
 import { LabelAssets, popScale } from '../../src/render/actors/labels';
 import { ALL_ANIMS, CALM_BOUNCE, IDLE_BOUNCE_PERIOD, SEATED_ANIMS, bounceFor } from '../../src/render/actors/animations';
-import { COIN_SECONDS, CoinFx, HOT_ITEMS, STEAM_PUFFS, Steam, steamFor } from '../../src/render/actors/fx';
+import {
+  CHIP_SECONDS,
+  COIN_APEX,
+  COIN_BURST,
+  COIN_JUMP,
+  COIN_POOL,
+  COIN_SECONDS,
+  CoinFx,
+  DEBRIS_BY_QUALITY,
+  HOT_ITEMS,
+  STEAM_PUFFS,
+  STEAM_PUFFS_BY_QUALITY,
+  Steam,
+  coinPose,
+  setSteamQuality,
+  steamFor,
+  steamPuffCount,
+} from '../../src/render/actors/fx';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState, MenuItemId, StaffTask } from '../../src/sim/types';
 
@@ -96,6 +113,7 @@ describe('steam', () => {
   });
 
   it('animates its puffs only while on', () => {
+    setSteamQuality('high');
     const steam = new Steam(null);
     expect(steam.group.children).toHaveLength(STEAM_PUFFS);
     steam.update(true, 0.4);
@@ -104,7 +122,38 @@ describe('steam', () => {
     expect(new Set(ys).size).toBe(STEAM_PUFFS);
     steam.update(false, 0.8);
     expect(steam.active).toBe(false);
+    expect(steam.shown).toBe(0);
     steam.dispose();
+    setSteamQuality('medium');
+  });
+
+  it('shows 3 puffs at medium and 5 at high, for every plume including one built before the change', () => {
+    expect(STEAM_PUFFS_BY_QUALITY).toEqual({ low: 0, medium: 3, high: 5 });
+    const steam = new Steam(null);
+    setSteamQuality('medium');
+    steam.update(true, 0.4);
+    expect(steam.shown).toBe(3);
+    setSteamQuality('high');
+    expect(steamPuffCount()).toBe(5);
+    steam.update(true, 0.5);
+    expect(steam.shown).toBe(5);
+    const visible = steam.group.children.filter((s) => s.visible);
+    expect(new Set(visible.map((s) => s.position.y)).size).toBe(5);
+    setSteamQuality('medium');
+    steam.update(true, 0.6);
+    expect(steam.shown).toBe(3);
+    steam.dispose();
+  });
+
+  it('follows the actors quality, which the machine steam shares', () => {
+    const actors = createActors(new Scene(), { quality: 'high' });
+    expect(steamPuffCount()).toBe(5);
+    actors.setQuality('medium');
+    expect(steamPuffCount()).toBe(3);
+    actors.setQuality('low');
+    expect(steamPuffCount()).toBe(0);
+    actors.setQuality('medium');
+    actors.dispose();
   });
 
   it('shows on a worker carrying a hot drink, not a cold one, and never at low quality', () => {
@@ -216,27 +265,122 @@ describe('coins', () => {
     fx.dispose();
   });
 
-  it('rises and fades, or stays put and fades when calm', () => {
+  it('lives at most 1.1 s and keeps the chip on its old 0.9 s popup', () => {
+    expect(COIN_SECONDS).toBeLessThanOrEqual(1.1);
+    expect(CHIP_SECONDS).toBe(0.9);
+  });
+
+  it('hops up an arc that tops out at COIN_APEX and ends burst and gone', () => {
+    const apexAge = COIN_APEX * COIN_SECONDS;
+    const apex = coinPose(apexAge, false).y;
+    expect(apex).toBeCloseTo(COIN_JUMP, 6);
+    for (let age = 0; age <= COIN_SECONDS; age += 0.01) expect(coinPose(age, false).y).toBeLessThanOrEqual(apex + 1e-9);
+    expect(coinPose(0, false).y).toBe(0);
+    expect(coinPose(apexAge * 0.5, false).y).toBeGreaterThan(0);
+    expect(coinPose(apexAge * 0.5, false).y).toBeLessThan(apex);
+    // Spins about y and leans while flying, not yet bursting.
+    const mid = coinPose(COIN_SECONDS * 0.3, false);
+    expect(mid.spin).toBeLessThan(1);
+    expect(mid.tilt).toBeGreaterThan(0);
+    expect(mid.burst).toBe(0);
+    expect(mid.opacity).toBe(1);
+    const end = coinPose(COIN_SECONDS, false);
+    expect(end.burst).toBe(1);
+    expect(end.opacity).toBe(0);
+    expect(end.size).toBe(0);
+    expect(end.y).toBeGreaterThan(0);
+    expect(coinPose(COIN_BURST * COIN_SECONDS - 0.001, false).burst).toBe(0);
+  });
+
+  it('is pure: the same age gives the same pose, written into the given object', () => {
+    const out = coinPose(0.2, false);
+    const again = coinPose(0.2, false, out);
+    expect(again).toBe(out);
+    expect(again).toEqual(coinPose(0.2, false));
+  });
+
+  it('floats still and fades without spin or burst when calm', () => {
+    for (let age = 0; age <= COIN_SECONDS; age += 0.05) {
+      const p = coinPose(age, true);
+      expect(p).toMatchObject({ y: 0, spin: 1, tilt: 0, size: 1, burst: 0 });
+    }
+    expect(coinPose(0.1, true).opacity).toBe(1);
+    expect(coinPose(0.8, true).opacity).toBeLessThan(0.5);
+    expect(coinPose(CHIP_SECONDS, true).opacity).toBe(0);
+  });
+
+  it('arcs up and bursts into small coins by quality', () => {
+    expect(DEBRIS_BY_QUALITY.low).toBe(0);
+    const late = COIN_SECONDS * 0.9;
+    for (const q of ['low', 'medium', 'high'] as const) {
+      const fx = new CoinFx(null);
+      fx.setQuality(q);
+      fx.spawn(10000, { x: 0, z: 0 }, 0);
+      fx.update(0.05, false);
+      const start = fx.peek(0)!;
+      expect(start.debris).toBe(0);
+      fx.update(COIN_APEX * COIN_SECONDS, false);
+      expect(fx.peek(0)!.y).toBeCloseTo(start.y - coinPose(0.05, false).y + COIN_JUMP, 6);
+      fx.update(late, false);
+      const burst = fx.peek(0)!;
+      expect(burst.debris).toBe(DEBRIS_BY_QUALITY[q]);
+      expect(burst.opacity).toBeLessThan(1);
+      fx.dispose();
+    }
+    expect(DEBRIS_BY_QUALITY.medium).toBeGreaterThanOrEqual(4);
+    expect(DEBRIS_BY_QUALITY.high).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps the chip rising and fading as before', () => {
     const fx = new CoinFx(null);
     fx.spawn(10000, { x: 0, z: 0 }, 0);
     fx.update(0.1, false);
     const early = fx.peek(0)!;
     fx.update(0.8, false);
     const late = fx.peek(0)!;
-    expect(late.y).toBeGreaterThan(early.y);
-    expect(early.opacity).toBe(1);
-    expect(late.opacity).toBeLessThan(0.5);
+    expect(late.chipY).toBeGreaterThan(early.chipY);
+    expect(early.chipOpacity).toBe(1);
+    expect(late.chipOpacity).toBeLessThan(0.5);
+    fx.dispose();
+  });
 
+  it('throws no small coins and stays put when calm, even at high quality', () => {
     const still = new CoinFx(null);
+    still.setQuality('high');
     still.spawn(10000, { x: 0, z: 0 }, 0);
     still.update(0.1, true);
     const a = still.peek(0)!;
+    for (let age = 0.1; age < COIN_SECONDS; age += 0.05) {
+      still.update(age, true);
+      expect(still.peek(0)!.debris).toBe(0);
+    }
     still.update(0.8, true);
     const b = still.peek(0)!;
     expect(b.y).toBe(a.y);
+    expect(b.chipY).toBe(a.chipY);
     expect(b.opacity).toBeLessThan(a.opacity);
-    fx.dispose();
     still.dispose();
+  });
+
+  it('never grows past COIN_POOL coins, over 100 spawns or a 4x lunch rush', () => {
+    const fx = new CoinFx(null);
+    fx.setQuality('high');
+    for (let i = 0; i < 100; i++) fx.spawn(10000, { x: 0, z: 0 }, 0);
+    fx.update(0.5, false);
+    expect(fx.stats().created).toBe(COIN_POOL);
+    expect(fx.stats().live).toBe(COIN_POOL);
+    fx.update(COIN_SECONDS + 1, false);
+    expect(fx.stats()).toEqual({ live: 0, free: COIN_POOL, created: COIN_POOL });
+    // 4x: a sale every 0.125 s of real time for a minute, a frame every 1/60 s.
+    let t = 10;
+    for (let frame = 0; frame < 3600; frame++) {
+      t += 1 / 60;
+      if (frame % 8 === 0) fx.spawn(25000, { x: 0, z: 0 }, t);
+      fx.update(t, false);
+      expect(fx.stats().live).toBeLessThanOrEqual(COIN_POOL);
+    }
+    expect(fx.stats().created).toBe(COIN_POOL);
+    fx.dispose();
   });
 
   it('pops a coin for each cash event the actors see', () => {
