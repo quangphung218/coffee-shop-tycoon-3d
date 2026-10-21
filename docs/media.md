@@ -497,11 +497,13 @@ Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạ
 | `uniform-picker-390-before-after-p30.jpg` | Mục Đồng phục của bảng Nhân viên ở 390×844: đang mặc, mở, khoá. |
 | `regulars-390-before-after-p30.jpg` | Thẻ Khách quen của bảng Việc và toast khách quen ghé, 390×844. |
 
-Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, hoặc save cũ nạp lỗi; có `!!` thì lệnh kết thúc với mã 1.
+Trước khi mở trình duyệt, script nạp lại save đám mây và chạy nó trong Node ở x4 theo khung 60 fps; dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
+
+Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi đồng hồ HUD đầu và cuối lượt chờ cùng số khung trang đã vẽ: đồng hồ đứng mà ít khung (vài khung trong 40 s) là trình duyệt không vẽ, không phải game dừng.
 
 | Lệnh | Việc |
 | --- | --- |
-| `P30_SAVES_ONLY=1 node scripts/capture-p30.mjs` | Chỉ chơi và in tóm tắt save của bản hiện tại, không mở server hay trình duyệt. |
+| `P30_SAVES_ONLY=1 node scripts/capture-p30.mjs` | Chỉ chơi và in tóm tắt save của bản hiện tại (gồm kiểm save đám mây), không mở server hay trình duyệt; có `!!` thì mã 1. |
 
 ## Tùy chọn
 

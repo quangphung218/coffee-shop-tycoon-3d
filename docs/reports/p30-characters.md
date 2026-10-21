@@ -28,7 +28,7 @@ Mọi số đo làm trên commit `df31c9f` (HEAD của nhánh tích hợp P30 l�
 | p95 headed | So base | PASS: 18 ms ở mọi bảng, base 18–19 ms |
 | `npm run layout` | PASS | PASS: 98 mục |
 | Save v0–v3 | Nạp được, chơi tiếp được | PASS: `tests/save` 11 file, 195 test; Playwright nạp save v3 của P29: đồng hồ chạy, 0 lỗi mới |
-| Ảnh | Trước/sau có khoanh | 4 ảnh ghép: tim và giọt mồ hôi, đội mặc đồng phục latte, mục Đồng phục, thẻ Khách quen và toast. Chưa có ảnh đám mây ([mục 6](#6-ảnh)) |
+| Ảnh | Trước/sau có khoanh | 4 ảnh ghép: tim và giọt mồ hôi, đội mặc đồng phục latte, mục Đồng phục, thẻ Khách quen và toast. Chưa có ảnh đám mây: `media:p30` kết thúc với mã 1, do trình duyệt không vẽ khung chứ không do game treo ([mục 6](#6-ảnh)) |
 
 ## 2. Khởi động
 
@@ -128,4 +128,13 @@ Bên trái build `9f662fd`, bên phải P30 `df31c9f`, cùng save do sim của t
 | Mục Đồng phục, 390×844 | Bảng Nhân viên có mục Đồng phục 4 nút, đủ 3 trạng thái ở cấp quán 3: Áo bạc hà đang mặc (viền đậm), Áo kem cổ điển mở, hai bộ khoá ghi "Cấp 5", "Cấp 7". Mỗi nút cao 90 px | ![Mục Đồng phục](p30-characters/uniform-picker-390-before-after-p30.jpg) |
 | Thẻ Khách quen và toast, 390×844 | Bảng Việc có thẻ Khách quen: 8 người, mỗi dòng "Ghé 2 lần · Hay gọi <món>". Toast "Anh Khoa ghé quán (lần 2)" lúc khách quen ghé ngày 3; base không có toast nào ở cùng lúc | ![Khách quen](p30-characters/regulars-390-before-after-p30.jpg) |
 
-Chưa có ảnh đám mây: ở save có khách xếp hàng gọi món đã hết nguyên liệu, đồng hồ game trong trình duyệt dừng ở 12:08 và không có toast "Khách bỏ đi" trong 40 s, dù cùng save chạy bằng sim trong Node cho khách bỏ đi vì hết món lúc 12:05. Hình và luật của đám mây có test trong `tests/render/emotes.test.ts`.
+Lần chạy `npm run media:p30` dùng cho bốn ảnh trên kết thúc với mã 1 vì một dòng `!!`: không thấy đám mây ở save hết hàng trong 40 s. Bảng Biểu cảm vì vậy chỉ có tim và giọt mồ hôi; ba bảng còn lại không có `!!`. Bảng Biểu cảm chưa đủ cho tới khi `media:p30` chạy lại thoát mã 0.
+
+Ở lần đó đồng hồ HUD dừng ở 12:08 và không có toast "Khách bỏ đi". Đó không phải game treo:
+
+| Kiểm | Kết quả |
+| --- | --- |
+| Save đám mây nạp lại bằng `loadGame`, chạy ở x4 theo khung 60 fps (`cloudCheck` trong `scripts/capture-p30.mjs`, `tests/scripts/p30-cloud.test.ts`) | Khách bỏ đi vì hết món lúc 12:05, 2 phút game sau mốc save 12:03 |
+| Cùng save qua `mountGame` và **Tiếp tục** trong jsdom, mỗi khung chạy sim, nhân vật (`createActors`), HUD và toast như `src/main.ts`; 600 khung 1/60 s và 600 khung 0,1 s | Đồng hồ 12:03 → 13:22 và 12:03 → 20:03, có toast "Khách bỏ đi", 0 lỗi |
+
+Mỗi khung trình duyệt đẩy đồng hồ tối đa 0,8 phút game ở x4 (`MAX_FRAME_S` 0,1 s), nên đi 5 phút trong 40 s nghĩa là trang chỉ vẽ khoảng 6 khung: trình duyệt không vẽ khung, sim không dừng. Script giờ in số khung trang đã vẽ và đồng hồ đầu/cuối khi không thấy biểu cảm, và in `!!` khi sim trong Node không cho ai bỏ đi ở save đám mây. Hình và luật của đám mây có test trong `tests/render/emotes.test.ts`.

@@ -24,14 +24,18 @@
 // Also loads the base's untouched noon save (a v3 save of the P29 release)
 // into the working-tree build and checks the clock runs with no error that
 // the working tree's own save does not have.
+// Before the browser, the cloud save is loaded back and played in Node at
+// FAST in 60 fps frames; the summary gives the minute of the walk-out.
 // P30_SAVES_ONLY=1 plays the working tree's saves and stops.
 // Prints `!!` for an emote, team, section, card or toast that never showed,
-// or a failed load; any `!!` ends the run with exit code 1.
+// a cloud save nobody walks out of, or a failed load; a missing emote also
+// gives the HUD clock and the frames the page drew over the wait. Any `!!`
+// ends the run with exit code 1 and names where it hit.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FIXED_NOW, buildRef, newContext, openMenu, startPreview, urlFor } from './capture-media.mjs';
 import { playToScene, saveText } from './capture-p29.mjs';
 
@@ -56,6 +60,11 @@ const EMOTE_PPM = 150;
 const TEAM_PPM = 95;
 /** Game speed of the saves that wait for an event (the top of SPEEDS in src/save/settings.ts). */
 const FAST = 4;
+/** Game minutes per real second and the longest frame step, s (GAME_MINUTES_PER_SECOND, MAX_FRAME_S in src/main.ts). */
+const GAME_MINUTES_PER_SECOND = 2;
+const MAX_FRAME_S = 0.1;
+/** Game minutes the Node check of the cloud save plays, at FAST in 60 fps frames. */
+const CLOUD_CHECK_MINUTES = 30;
 /** Patience left in the sweat save, a share of the most (impatient below 0.4). */
 const SWEAT_PATIENCE = 0.3;
 /** Customer states the sweat drop shows in (RESTLESS in src/render/actors/sync.ts). */
@@ -72,8 +81,11 @@ const EMOTE_WHEN = {
 const START = Date.now();
 const progress = (what) => console.log(`[${Math.round((Date.now() - START) / 1000)} s] ${what}`);
 let warnings = 0;
+/** Where the `!!` lines hit: the text before the first colon ("emotes", "cloud save"…). */
+const warnedAt = new Set();
 const warn = (what) => {
   warnings++;
+  warnedAt.add(what.split(':')[0]);
   console.warn(`!! ${what}`);
 };
 
@@ -116,8 +128,32 @@ function playToReport(mods, s, lastDay) {
 
 const noonOf = (mods) => playToScene(mods, { weather: 'sunny', minute: 12 * 60 }, SEED);
 
+/**
+ * Loads the cloud save back as Tiếp tục does and plays it as the browser
+ * would, at FAST in 60 fps frames, for CLOUD_CHECK_MINUTES. Returns the game
+ * minute of the first walk-out over an empty stock (a cloud) and the clock at
+ * the end; `at` is null when nobody walked out.
+ */
+export function cloudCheck(mods, save, { key, text }) {
+  const data = new Map([[key, text]]);
+  const storage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
+  const r = save.loadGame('auto', storage);
+  if (!r.ok) throw new Error(`cloud save: does not load back: ${r.error.message}`);
+  const s = r.value;
+  const dt = (1 / 60) * GAME_MINUTES_PER_SECOND * FAST;
+  for (let f = 0; f < CLOUD_CHECK_MINUTES / dt; f++) {
+    s.events = [];
+    mods.sim.step(s, dt);
+    const out = s.events.find((e) => e.type === 'angry' && (s.customers.find((c) => c.id === e.customerId)?.patience ?? 0) > 0);
+    if (out) return { at: s.minute, end: s.minute };
+  }
+  return { at: null, end: s.minute };
+}
+
+const clockOf = (minute) => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(Math.floor(minute % 60)).padStart(2, '0')}`;
+
 /** The saves of one build: the same edits on its own noon state. `p30` adds the uniform field. */
-function buildSaves(mods, save, p30) {
+export function buildSaves(mods, save, p30) {
   const out = {};
   const put = (id, s) => {
     s.events = [];
@@ -151,6 +187,9 @@ function buildSaves(mods, save, p30) {
   }
   cloud.speed = FAST;
   put('cloud', cloud);
+  const check = cloudCheck(mods, save, out.cloud);
+  const cloudAt = check.at === null ? `no walk-out by ${clockOf(check.end)}` : `walk-out at ${clockOf(check.at)}`;
+  if (check.at === null) warn(`cloud save: the sim plays it from ${clockOf(cloud.minute)} to ${clockOf(check.end)} with nobody walking out over the empty stock`);
   const team = noonOf(mods);
   team.shopLevel = Math.max(team.shopLevel, 5);
   if (p30) team.uniform = 'latte';
@@ -168,7 +207,7 @@ function buildSaves(mods, save, p30) {
   if (p30) prep.uniform = 'mint';
   put('prep', prep);
   const regulars = Object.entries(prep.regulars ?? {}).map(([id, v]) => `${id} ${v.visits}`);
-  return { saves: out, info: `${restless} restless customers at noon, cloud ${queued.order} at ${cloud.minute}, day ${prep.day} ${prep.phase}, regulars: ${regulars.join(', ') || 'none'}` };
+  return { saves: out, info: `${restless} restless customers at noon, cloud ${queued.order} at ${clockOf(cloud.minute)} (sim: ${cloudAt}), day ${prep.day} ${prep.phase}, regulars: ${regulars.join(', ') || 'none'}` };
 }
 
 /** Loads `root`'s sim and save code through vite and returns its buildSaves. */
@@ -317,6 +356,15 @@ async function session(browser, url, save, viewport, fn, { errors = [], speed = 
     { ...save, speed },
   );
   await context.addInitScript(focusHooks);
+  // Frames the page drew (window.__mediaFrames): a clock that stops with few frames is the browser, not the game.
+  await context.addInitScript(() => {
+    window.__mediaFrames = 0;
+    const tick = () => {
+      window.__mediaFrames++;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   // A headed window behind others reads as hidden, and the game pauses on a hidden tab.
   await context.addInitScript(() => {
     Object.defineProperty(document, 'hidden', { get: () => false });
@@ -512,6 +560,8 @@ const grow = (b, pad) => ({ x: b.x - pad, y: b.y - pad, w: b.w + 2 * pad, h: b.h
 /** Working tree: waits for an emote of `kind` in view, centres the camera on it and shoots. */
 async function emoteAfter(page, t0, kind) {
   await page.locator('nav.dock').waitFor();
+  const frames = () => page.evaluate(() => window.__mediaFrames ?? 0);
+  const from = { clock: await clockText(page), frames: await frames(), t: Date.now() };
   const deadline = Date.now() + WAIT_MS;
   let hit = null;
   const toasts = new Set();
@@ -524,7 +574,11 @@ async function emoteAfter(page, t0, kind) {
       await sleep(100);
     }
   }
-  if (!hit) return { toasts: [...toasts], clock: await clockText(page) };
+  if (!hit) {
+    const drawn = (await frames()) - from.frames;
+    const sec = (Date.now() - from.t) / 1000;
+    return { toasts: [...toasts], clock: `${from.clock} → ${await clockText(page)}`, frames: `${drawn} frames in ${Math.round(sec)} s (${(drawn / sec).toFixed(1)} fps)` };
+  }
   // Hearts and clouds pop in first; let them reach full size.
   if (kind !== 'sweat') await sleep(250);
   const again = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
@@ -565,7 +619,7 @@ async function emoteBoard(browser, cur, base, head) {
     const errors = [];
     const after = await session(browser, cur.url, cur.saves[kind], DESK, (p, t0) => emoteAfter(p, t0, kind), { speed, errors });
     if (!after?.box) {
-      warn(`emotes: no ${kind} on the working tree in ${WAIT_MS / 1000} s; HUD ${after?.clock}; toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${errors.slice(0, 3).join(' | ') || 'none'}`);
+      warn(`emotes: no ${kind} on the working tree in ${WAIT_MS / 1000} s; HUD ${after?.clock}; ${after?.frames} (the clock moves at most ${MAX_FRAME_S * GAME_MINUTES_PER_SECOND * speed} game min a frame); toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${errors.slice(0, 3).join(' | ') || 'none'}`);
       continue;
     }
     const before = await session(browser, base.url, base.saves[kind], DESK, (p, t0) => emoteBefore(p, t0, after), { speed });
@@ -837,7 +891,10 @@ const files = [];
 async function main() {
   const cur = await savesOf(ROOT, true);
   progress(`working tree saves: ${cur.info}`);
-  if (process.env.P30_SAVES_ONLY === '1') return;
+  if (process.env.P30_SAVES_ONLY === '1') {
+    if (warnings > 0) process.exitCode = 1;
+    return;
+  }
   mkdirSync(OUT_DIR, { recursive: true });
   const head = spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).stdout.trim() || 'HEAD';
   progress(`building ${BASE_COMMIT}`);
@@ -866,12 +923,15 @@ async function main() {
   }
   for (const f of files.filter(Boolean)) console.log(`ok ${f} ${Math.round(statSync(join(ROOT, f)).size / 1024)} kB`);
   if (warnings > 0) {
-    console.error(`${warnings} !! warning(s): fix them before using the shots`);
+    console.error(`${warnings} !! warning(s) (${[...warnedAt].join(', ')}): fix them and run again before using the shots`);
     process.exitCode = 1;
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+// tests/scripts/p30-cloud.test.ts imports cloudCheck; only a direct run captures.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}
