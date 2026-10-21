@@ -47,6 +47,9 @@ export function nextSpeed(speed: number): number {
 
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
+/** Money bounce on a rise (scale 1 → 1.12 → 1), and the least gap between two bounces. */
+export const MONEY_BOUNCE_MS = 220;
+export const MONEY_BOUNCE_GAP_MS = 300;
 
 /** Widths where the HUD shows money compact (formatMoneyShort); the 480 px step of ui.css. */
 export const NARROW_MONEY = '(max-width: 480px)';
@@ -403,12 +406,24 @@ export function createHud(actions: HudActions): Hud {
     money.setAttribute('aria-label', formatMoney(value));
     money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
   }
+  // A rise also bounces the sum (scale only), at most once per
+  // MONEY_BOUNCE_GAP_MS so sales at 4x read as one beat. None under reduced motion.
+  let lastBounce = -Infinity;
+  function bounceMoney(): void {
+    if (typeof money.animate !== 'function' || prefersReducedMotion()) return;
+    if (money.ownerDocument.documentElement.classList.contains('reduce-motion')) return;
+    const now = performance.now();
+    if (now - lastBounce < MONEY_BOUNCE_GAP_MS) return;
+    lastBounce = now;
+    money.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: MONEY_BOUNCE_MS, easing: 'ease-out' });
+  }
   function showMoney(value: number): void {
     if (countFrame) cancelAnimationFrame(countFrame);
     countFrame = 0;
     const from = shownMoney;
     shownMoney = value;
     labelMoney(value);
+    if (from !== null && value > from) bounceMoney();
     const duration = from === null || value <= from ? 0 : countDuration(money);
     if (duration <= 0 || from === null) {
       money.textContent = moneyText(value);

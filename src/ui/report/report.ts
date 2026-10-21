@@ -313,6 +313,9 @@ function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
 
 /** Unlock chips the level-up card shows (one line from 1024 px); the rest is counted as "+N". */
 export const LEVELUP_CHIPS = 3;
+/** The badge's rpt-badge-pop length (report.css), then the one sideways shake (±3 px). */
+export const BADGE_POP_MS = 400;
+export const BADGE_SHAKE_MS = 300;
 
 type UnlockGroup = 'menu' | 'upgrades' | 'tools';
 interface UnlockChip {
@@ -538,12 +541,23 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     if (!r?.levelUp || r === celebrated) return;
     celebrated = r;
     if (reducedMotion(el.ownerDocument)) return;
+    shakeBadge();
     const gen = ++fxGen;
     import('../fx/confetti')
       .then(({ burst }) => {
         if (gen === fxGen && shown) stopConfetti = burst(el);
       })
       .catch(() => {});
+  }
+
+  // Once the level badge has popped in (BADGE_POP_MS), it shakes sideways once.
+  function shakeBadge(): void {
+    const badge = summary.querySelector<HTMLElement>('.rpt-levelup-badge');
+    if (!badge || typeof badge.animate !== 'function') return;
+    badge.animate(
+      [{ transform: 'translateX(0)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(0)' }],
+      { duration: BADGE_SHAKE_MS, delay: BADGE_POP_MS, easing: 'ease-in-out' },
+    );
   }
 
   function endConfetti(): void {
