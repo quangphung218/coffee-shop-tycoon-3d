@@ -16,7 +16,7 @@ Trang này ghi luật và con số của ba mảng nhân vật: khách quen có 
 | Đồng phục | 4 bộ áo và mũ cho cả đội, mở ở cấp quán 1/3/5/7 | Mục **Đồng phục** của bảng Nhân viên, nhân vật trong cảnh 3D |
 | Biểu cảm | Tim, giọt mồ hôi, đám mây trên đầu khách; mặt buồn | Cảnh 3D |
 
-Cả ba chỉ để nhìn: tiền, kiên nhẫn, món gọi, sao và review không đổi. Khách quen chọn bằng hash của seed và id khách, không rút từ `rngState`, nên cùng seed vẫn cho cùng kết quả mô phỏng.
+Cả ba chỉ để nhìn: tiền, kiên nhẫn, món gọi, số sao và câu chữ review không đổi; riêng review của khách quen ghi tên khách quen làm tác giả. Khách quen chọn bằng hash của seed và id khách, không rút từ `rngState`, nên cùng seed vẫn cho cùng kết quả mô phỏng.
 
 ## Khách quen
 
@@ -40,6 +40,8 @@ Món hay gọi chỉ hiện trên thẻ, không đổi món khách gọi.
 | Ai là khách quen | Khách có cá tính Khách quen (`persona: 'regular'`) vào cửa |
 | Có từ ngày | 2 (`REGULARS_FROM_DAY`); ngày 1 mọi khách đều vô danh |
 | Gán tên | `pickRegular(seed, id)`: hash của seed và id khách, chia lấy dư cho 8 |
+| Hình | Cùng một khách quen luôn có cùng hình: `look` của khách lấy theo `look` của khách quen trong `REGULARS` (0–7), đặt sau lượt rút `look` nên chuỗi RNG không đổi |
+| Tác giả review | Review của khách quen ghi tên khách quen; review vẫn rút tên tác giả thay thế như khách vô danh để giữ chuỗi RNG |
 | Mỗi ngày | Một khách quen ghé tối đa 1 lần; lần trùng trong ngày vẫn là khách vô danh |
 | Đếm lượt | `state.regulars[id]`: `visits` +1 mỗi lần ghé, `firstDay`, `lastDay` |
 | Sự kiện | `regular_arrived` ngay sau `doorbell`, kèm `visits` tính cả lần này |

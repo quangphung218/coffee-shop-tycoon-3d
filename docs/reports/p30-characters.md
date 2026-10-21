@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P30 so với base `9f662fd` (`chore(release): v0.10.0`, bản P29 đã deploy): kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, khung hình, layout, nạp save v0–v3, ảnh trước/sau có khoanh. Luật và con số của P30: [spec/p30-characters.md](../spec/p30-characters.md).
 
-Mọi số đo làm trên commit `df31c9f` (HEAD của nhánh tích hợp P30 lúc đo; commit sau đó chỉ thêm script chụp ảnh và tài liệu). Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal.
+Số đo khởi động, khung hình và layout làm trên commit `df31c9f` (HEAD của nhánh tích hợp P30 lúc đo) và không đo lại: các commit sau đó chỉ đổi hình của khách quen (cùng `look` mỗi lần ghé), toast, script chụp ảnh và tài liệu, không đổi code vẽ. `npm run check` và ảnh làm trên commit `6586b4d`. Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -18,7 +18,7 @@ Mọi số đo làm trên commit `df31c9f` (HEAD của nhánh tích hợp P30 l�
 
 | Kiểm | Ngưỡng | Kết quả |
 | --- | --- | --- |
-| `npm run check` | tsc, test, build xanh | PASS: 123 file, 1810 test |
+| `npm run check` | tsc, test, build xanh | PASS: 125 file, 1820 test (`6586b4d`) |
 | Main Menu Phone 390×844 (2 lượt) | < 1000 ms | PASS: 668 và 824 ms (base 663 và 804 ms) |
 | Main Menu Mobile (2 lượt) | < 1000 ms | PASS: 674 và 659 ms (base 673 và 662 ms) |
 | CSS chính `index-*.css` gzip | So base | `index-G0d7UaCo.css` 9,64 kB, cùng file (cùng hash) với base |
@@ -28,7 +28,7 @@ Mọi số đo làm trên commit `df31c9f` (HEAD của nhánh tích hợp P30 l�
 | p95 headed | So base | PASS: 18 ms ở mọi bảng, base 18–19 ms |
 | `npm run layout` | PASS | PASS: 98 mục |
 | Save v0–v3 | Nạp được, chơi tiếp được | PASS: `tests/save` 11 file, 195 test; Playwright nạp save v3 của P29: đồng hồ chạy, 0 lỗi mới |
-| Ảnh | Trước/sau có khoanh | 4 ảnh ghép: tim và giọt mồ hôi, đội mặc đồng phục latte, mục Đồng phục, thẻ Khách quen và toast. Chưa có ảnh đám mây: `media:p30` kết thúc với mã 1, do trình duyệt không vẽ khung chứ không do game treo ([mục 6](#6-ảnh)) |
+| Ảnh | Trước/sau có khoanh | PASS: `media:p30` thoát mã 0 trên `6586b4d`. 4 ảnh ghép: tim, giọt mồ hôi, đám mây kèm mặt buồn; đội mặc đồng phục latte; mục Đồng phục; thẻ Khách quen và toast ([mục 6](#6-ảnh)) |
 
 ## 2. Khởi động
 
@@ -119,22 +119,13 @@ Khung dài nhất của P30 trong từng lần là 28 ms (`dusk-rain` di động
 
 ## 6. Ảnh
 
-Bên trái build `9f662fd`, bên phải P30 `df31c9f`, cùng save do sim của từng bản chơi ra (cùng seed). Bản P30 chụp trước; bản gốc chụp cùng số giây sau Tiếp tục, camera ở cùng điểm và cùng vòng khoanh. Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
+Bên trái build `9f662fd`, bên phải P30 `6586b4d`, cùng save do sim của từng bản chơi ra (cùng seed). Chụp bằng `MEDIA_HEADED=1 MEDIA_PORT=4391 npm run media:p30`, thoát mã 0, không có dòng `!!`. Bản P30 chụp trước, bản gốc chụp sau với camera ở cùng điểm và cùng vòng khoanh. Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
 
 | Mục | Đã đổi gì | Ảnh |
 | --- | --- | --- |
-| Biểu cảm, 1280×800, mức Cao | Tim (khối kim cương hai thùy) bay lên trên khách vừa được phục vụ, 0,6 s sau Tiếp tục có 2 khách đang có tim. Giọt mồ hôi ở thái dương khách còn 30% kiên nhẫn. Base không có khối biểu cảm nào trong cảnh | ![Biểu cảm](p30-characters/emotes-before-after-p30.jpg) |
+| Biểu cảm, 1280×800, mức Cao | Bản P30 giữ đồng hồ trang và đẩy từng khung 1/60 s; bản gốc chạy theo giờ thật, chụp khi HUD tới cùng giờ. Tim (khối kim cương hai thùy) bay lên trên khách vừa được phục vụ (khung 26, HUD 12:04, x4). Giọt mồ hôi ở thái dương khách còn 30% kiên nhẫn (khung 10, HUD 12:01). Đám mây xám trên khách bỏ đi vì món hết hàng, mặt buồn (khung 46, HUD 12:05, x1); bản gốc cùng lúc là mặt giận. Base không có khối biểu cảm nào trong cảnh | ![Biểu cảm](p30-characters/emotes-before-after-p30.jpg) |
 | Đồng phục cấp 5, 1280×800 | Cả 3 người trong đội (người chơi, pha chế, phục vụ) mặc áo latte và mũ nồi; tạp dề giữ màu theo vai. Base: áo kem, người chơi mũ lưỡi trai đỏ, nhân viên không mũ | ![Đồng phục](p30-characters/uniform-latte-before-after-p30.jpg) |
 | Mục Đồng phục, 390×844 | Bảng Nhân viên có mục Đồng phục 4 nút, đủ 3 trạng thái ở cấp quán 3: Áo bạc hà đang mặc (viền đậm), Áo kem cổ điển mở, hai bộ khoá ghi "Cấp 5", "Cấp 7". Mỗi nút cao 90 px | ![Mục Đồng phục](p30-characters/uniform-picker-390-before-after-p30.jpg) |
 | Thẻ Khách quen và toast, 390×844 | Bảng Việc có thẻ Khách quen: 8 người, mỗi dòng "Ghé 2 lần · Hay gọi <món>". Toast "Anh Khoa ghé quán (lần 2)" lúc khách quen ghé ngày 3; base không có toast nào ở cùng lúc | ![Khách quen](p30-characters/regulars-390-before-after-p30.jpg) |
 
-Lần chạy `npm run media:p30` dùng cho bốn ảnh trên kết thúc với mã 1 vì một dòng `!!`: không thấy đám mây ở save hết hàng trong 40 s. Bảng Biểu cảm vì vậy chỉ có tim và giọt mồ hôi; ba bảng còn lại không có `!!`. Bảng Biểu cảm chưa đủ cho tới khi `media:p30` chạy lại thoát mã 0.
-
-Ở lần đó đồng hồ HUD dừng ở 12:08 và không có toast "Khách bỏ đi". Đó không phải game treo:
-
-| Kiểm | Kết quả |
-| --- | --- |
-| Save đám mây nạp lại bằng `loadGame`, chạy ở x4 theo khung 60 fps (`cloudCheck` trong `scripts/capture-p30.mjs`, `tests/scripts/p30-cloud.test.ts`) | Khách bỏ đi vì hết món lúc 12:05, 2 phút game sau mốc save 12:03 |
-| Cùng save qua `mountGame` và **Tiếp tục** trong jsdom, mỗi khung chạy sim, nhân vật (`createActors`), HUD và toast như `src/main.ts`; 600 khung 1/60 s và 600 khung 0,1 s | Đồng hồ 12:03 → 13:22 và 12:03 → 20:03, có toast "Khách bỏ đi", 0 lỗi |
-
-Mỗi khung trình duyệt đẩy đồng hồ tối đa 0,8 phút game ở x4 (`MAX_FRAME_S` 0,1 s), nên đi 5 phút trong 40 s nghĩa là trang chỉ vẽ khoảng 6 khung: trình duyệt không vẽ khung, sim không dừng. Script giờ in số khung trang đã vẽ và đồng hồ đầu/cuối khi không thấy biểu cảm, và in `!!` khi sim trong Node không cho ai bỏ đi ở save đám mây. Hình và luật của đám mây có test trong `tests/render/emotes.test.ts`.
+Trước khi mở trình duyệt, script nạp lại save đám mây bằng `loadGame` và chạy ở x1 theo khung 60 fps (`cloudCheck`, có test trong `tests/scripts/p30-cloud.test.ts`): khách bỏ đi vì hết món lúc 12:05, 2 phút game sau mốc save 12:03. Mặt buồn được nhận bằng hình mặt của rig (`faceMarks`). Hình và luật của đám mây có test trong `tests/render/emotes.test.ts`.
