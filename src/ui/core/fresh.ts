@@ -1,7 +1,7 @@
 import type { GameEvent, MenuItemId, UpgradeId } from '../../sim/types';
 
 /**
- * Items and upgrades opened this session (level_up, week_unlocks), for the
+ * Items, upgrades and tools opened this session (level_up, week_unlocks), for the
  * "Mới" dot on the dock and the "Mới" label on their rows. Session only: the
  * save never holds it, a started or loaded game clears it, and closing the
  * Menu or Nâng cấp panel clears that tab's ids (the player has seen them).
@@ -38,6 +38,8 @@ export function createFreshStore(): FreshStore {
         if (e.type !== 'level_up' && e.type !== 'week_unlocks') continue;
         for (const id of e.unlocks.menu) ids.menu.add(id);
         for (const id of e.unlocks.upgrades) ids.upgrades.add(id);
+        // Tools are upgrades too: their rows sit in Nâng cấp.
+        for (const id of e.unlocks.tools) ids.upgrades.add(id);
       }
       if (ids.menu.size + ids.upgrades.size !== before) notify();
     },

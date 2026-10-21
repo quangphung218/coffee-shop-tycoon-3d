@@ -273,14 +273,14 @@ describe('row icons', () => {
 });
 
 describe('tier meta', () => {
-  it('shows "Bậc n/3" once bought, with "mua để lên bậc n+1" only when the next level changes it', () => {
+  it('shows "Bậc n/top" once bought (top = highest tier reachable), with "mua để lên bậc n+1" only when the next level changes it', () => {
     // tables: maxLevel 6, two levels per tier.
     expect(getUpgrade('tables').maxLevel).toBe(6);
     const body = open(game({ tables: 2, better_machine: 3, big_counter: 1 }));
     expect(meta(body, 'tables')).toMatch(/^Giá [\d.]+đ · Cấp 2\/\d+ · Bậc 1\/3 · mua để lên bậc 2 · mỗi cấp \+\d+ chỗ ngồi$/);
     expect(meta(body, 'better_machine')).toMatch(/ · Cấp 3\/\d+ · Bậc 3\/3 · mỗi cấp /);
-    // big_counter: maxLevel 2, one level per tier.
-    expect(meta(body, 'big_counter')).toMatch(/ · Cấp 1\/\d+ · Bậc 1\/3 · mua để lên bậc 2 · mỗi cấp /);
+    // big_counter: maxLevel 2, one level per tier, no shop-level bonus: tops out at tier 2.
+    expect(meta(body, 'big_counter')).toMatch(/ · Cấp 1\/\d+ · Bậc 1\/2 · mua để lên bậc 2 · mỗi cấp /);
     expect(meta(body, 'fast_machine')).not.toContain('Bậc');
   });
 

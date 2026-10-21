@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
+import { levelDef, MAX_SHOP_LEVEL } from '../../src/sim/data/levels';
 import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState } from '../../src/sim/types';
+import { fresh } from '../../src/ui/core/fresh';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createHud } from '../../src/ui/hud/hud';
 import { registerPrepPanels } from '../../src/ui/panels';
@@ -60,9 +62,9 @@ describe('P31 Menu: an item that needs a tool', () => {
     expect(need.hidden).toBe(false);
     expect(need.tagName).toBe('BUTTON');
     expect(need.textContent).toBe('Cần Tháp cold brew');
-    // Same button label as "Thiếu Cam"; the item's icon, then the forward arrow.
+    // Same button label as "Thiếu Cam": warning icon, words, forward arrow.
     expect(need.className).toBe('badge badge-danger badge-btn');
-    expect(need.querySelector('[data-icon="i-cold-brew"]')).not.toBeNull();
+    expect((need.firstElementChild as HTMLElement).dataset.icon).toBe('i-warning');
     expect((need.lastElementChild as HTMLElement).dataset.icon).toBe('i-forward');
     expect(need.getAttribute('aria-label')).toBe('Cần Tháp cold brew, mở Nâng cấp');
     // One label only: not "Mở ở cấp", not "Thiếu …", even with the stock empty.
@@ -133,20 +135,29 @@ describe('P31 Menu: an item that needs a tool', () => {
     expect(CSS).toMatch(/\.badge-btn::before\s*\{[^}]*height:\s*var\(--size-target\)/);
   });
 
-  it("draws the item's own icon on the label, not the tool's", () => {
+  it('builds "Cần …" exactly like "Thiếu …": same class, icons and structure, only the words differ', () => {
     const state = level7();
     state.shopLevel = 8;
+    // Croissant short of stock shows "Thiếu …"; the cookie (oven not bought) shows "Cần Lò nướng".
+    state.inventory = state.inventory.map((i) => ({ ...i, qty: 0 }));
     const { hud, off } = openMenu(state);
     cleanup = () => {
       hud.dispose();
       off();
     };
-    for (const [item, iconId] of [
-      ['cold_brew', 'i-cold-brew'],
-      ['cookie', 'i-cookie'],
-    ] as const) {
-      const need = q(hud.panelEl, `[data-item="${item}"] [data-lock="tool"]`);
-      expect((need.firstElementChild as HTMLElement).dataset.icon, item).toBe(iconId);
+    const miss = q<HTMLButtonElement>(hud.panelEl, '[data-item="croissant"] [data-lock="stock"]');
+    expect(miss.hidden).toBe(false);
+    const shape = (el: HTMLElement) => ({
+      tag: el.tagName,
+      className: el.className,
+      type: el.getAttribute('type'),
+      children: [...el.children].map((c) => `${c.tagName}.${c.getAttribute('class')}:${(c as HTMLElement).dataset.icon ?? ''}`),
+    });
+    for (const item of ['cold_brew', 'cookie']) {
+      const need = q<HTMLButtonElement>(hud.panelEl, `[data-item="${item}"] [data-lock="tool"]`);
+      expect(need.hidden, item).toBe(false);
+      expect(shape(need), item).toEqual(shape(miss));
+      expect(need.textContent, item).not.toBe(miss.textContent);
     }
   });
 });
@@ -200,15 +211,43 @@ describe('P31 Nâng cấp: the cold brew tower row', () => {
     const { hud, row } = openUpgrades(state);
     expect(simDispatch(state, { type: 'buy_upgrade', upgradeId: 'cold_brew_tower' })).toBe(true);
     hud.update(state);
-    expect(meta(row())).toContain('Cấp 1/2 · Bậc 1/3 · mua để lên bậc 2');
+    expect(meta(row())).toContain('Cấp 1/2 · Bậc 1/2 · mua để lên bậc 2');
     expect(row().querySelector('.item-icon [data-icon="i-cold-brew-tower"]')).not.toBeNull();
     expect(statusBadge(row()).hidden).toBe(true);
 
     expect(simDispatch(state, { type: 'buy_upgrade', upgradeId: 'cold_brew_tower' })).toBe(true);
     hud.update(state);
-    expect(meta(row())).toContain('Cấp 2/2 · Bậc 2/3');
+    expect(meta(row())).toContain('Cấp 2/2 · Bậc 2/2');
     expect(statusBadge(row()).hidden).toBe(false);
     expect(statusBadge(row()).textContent).toBe('Tối đa');
     expect(buyBtn(row()).hidden).toBe(true);
+  });
+
+  it('shows "Bậc 2/2" on both new tools at their cap, even at the top shop level', () => {
+    const state = level7();
+    state.shopLevel = MAX_SHOP_LEVEL;
+    state.upgrades.cold_brew_tower = 2;
+    state.upgrades.oven = 2;
+    const { hud } = openUpgrades(state);
+    for (const id of ['cold_brew_tower', 'oven']) {
+      const row = q(hud.panelEl, `[data-upgrade="${id}"]`);
+      expect(meta(row), id).toContain('Cấp 2/2 · Bậc 2/2');
+      expect(statusBadge(row).textContent, id).toBe('Tối đa');
+    }
+  });
+
+  it('marks the tower row "Mới" after reaching level 7', () => {
+    fresh.clear();
+    const state = level7();
+    state.shopLevel = 6;
+    const { hud, row } = openUpgrades(state);
+    expect(q(row(), '[data-fresh]').hidden).toBe(true);
+    state.shopLevel = 7;
+    fresh.handleEvents([{ type: 'level_up', level: 7, unlocks: levelDef(7).unlocks }]);
+    hud.update(state);
+    const badge = q(row(), '[data-fresh]');
+    expect(badge.hidden).toBe(false);
+    expect(badge.textContent).toBe('Mới');
+    fresh.clear();
   });
 });
