@@ -1,24 +1,31 @@
-import { Matrix4, PointLight, Scene } from 'three';
+import { AdditiveBlending, Matrix4, Mesh, MeshBasicMaterial, PointLight, Scene } from 'three';
 import { describe, expect, it } from 'vitest';
 import type { Quality } from '../../src/save/settings';
 import {
   AmbientView,
   GLASS_GLOW,
+  LIGHTS_ON_LAMPS,
+  LIGHTS_ON_RAMP,
   MAX_POINT_LIGHTS,
   POINT_INTENSITY,
+  POOL_OPACITY,
+  RAIN_DAY_GLOW,
+  RAIN_LEAD,
   ambientFor,
   fanAngle,
   isBrewing,
+  shopLightsOn,
   swayAngle,
   warmGlow,
 } from '../../src/render/scene/ambient';
+import { lightingAt } from '../../src/render/street/layout';
 import { environmentEnabled } from '../../src/render/scene/environment';
 import { GLASS_MATERIAL } from '../../src/render/scene/parts';
 import { fillOf, LIGHT_BUDGET, lightingFor, P19_LIGHTING, totalLightOf } from '../../src/render/scene/renderer';
 import { ShopView } from '../../src/render/scene/shop';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, nextUpgradeCost } from '../../src/sim/upgrades';
-import type { GameState, UpgradeId } from '../../src/sim/types';
+import type { GameState, UpgradeId, Weather } from '../../src/sim/types';
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 
@@ -51,6 +58,14 @@ function pointLights(scene: Scene): PointLight[] {
   return out;
 }
 
+function lightPools(scene: Scene): Mesh[] {
+  const out: Mesh[] = [];
+  scene.traverse((o) => {
+    if (o instanceof Mesh && o.name === 'light-pool') out.push(o);
+  });
+  return out;
+}
+
 /** Fan, door plant, valance and potted plant poses, to tell whether anything moved. */
 function pose(shop: ShopView): number[] {
   const f = shop.facade;
@@ -63,34 +78,85 @@ function pose(shop: ShopView): number[] {
   return out;
 }
 
-describe('warm glow by time of day', () => {
-  it('is off at midday and rises after 17:00 into the night', () => {
-    const noon = warmGlow(12 * 60, 'sunny');
-    expect(noon).toBe(0);
-    let prev = warmGlow(16 * 60 + 30, 'sunny');
-    for (const h of [17, 18, 19, 20]) {
-      const g = warmGlow(h * 60, 'sunny');
-      expect(g).toBeGreaterThan(prev);
-      prev = g;
-    }
-    expect(warmGlow(17 * 60, 'sunny')).toBeGreaterThan(noon);
+/** First game minute (to the minute) the shop's lights are on, from noon. */
+function switchMinute(weather: Weather): number {
+  for (let m = 12 * 60; m <= 21 * 60; m++) if (shopLightsOn(m, weather)) return m;
+  return Infinity;
+}
+
+describe('shop lights by time of day', () => {
+  it('switches on at dusk, when the street lamps pass the threshold, around 17:45 on a clear day', () => {
+    const on = switchMinute('sunny');
+    expect(on).toBeGreaterThanOrEqual(17 * 60 + 35);
+    expect(on).toBeLessThanOrEqual(17 * 60 + 55);
+    expect(lightingAt(on, 'sunny').lamps).toBeGreaterThanOrEqual(LIGHTS_ON_LAMPS);
+    expect(lightingAt(on - 1, 'sunny').lamps).toBeLessThan(LIGHTS_ON_LAMPS);
+    expect(switchMinute('hot')).toBe(on);
+  });
+
+  it('switches on earlier when it rains', () => {
+    const sunny = switchMinute('sunny');
+    const rainy = switchMinute('rainy');
+    expect(rainy).toBeLessThan(sunny);
+    expect(rainy).toBeGreaterThanOrEqual(sunny - RAIN_LEAD - 1);
+    expect(warmGlow(rainy + LIGHTS_ON_RAMP, 'rainy')).toBe(1);
+    expect(warmGlow(rainy + LIGHTS_ON_RAMP, 'sunny')).toBeLessThan(1);
+  });
+
+  it('is off at noon, stays off through the morning and is fully on by 19:30', () => {
+    expect(warmGlow(12 * 60, 'sunny')).toBeCloseTo(0, 6);
+    for (let m = 7 * 60; m <= 17 * 60; m += 15) expect(warmGlow(m, 'sunny')).toBe(0);
+    expect(warmGlow(19 * 60 + 30, 'sunny')).toBe(1);
     expect(warmGlow(21 * 60, 'sunny')).toBe(1);
-  });
-
-  it('fades through the morning into the day', () => {
-    expect(warmGlow(6 * 60, 'sunny')).toBeGreaterThan(warmGlow(7 * 60, 'sunny'));
-    expect(warmGlow(7 * 60, 'sunny')).toBeGreaterThan(warmGlow(9 * 60, 'sunny'));
-    expect(warmGlow(9 * 60, 'sunny')).toBe(0);
-  });
-
-  it('stays in 0..1, and rain keeps some glow by day', () => {
-    for (let m = 0; m <= 24 * 60; m += 15) {
-      const g = warmGlow(m, 'sunny');
-      expect(g).toBeGreaterThanOrEqual(0);
-      expect(g).toBeLessThanOrEqual(1);
-    }
-    expect(warmGlow(12 * 60, 'rainy')).toBeGreaterThan(0);
     expect(warmGlow(Number.NaN, 'sunny')).toBe(0);
+  });
+
+  it('comes up over about 20 game minutes after switching on, not in one frame', () => {
+    const on = switchMinute('sunny');
+    const half = warmGlow(on + LIGHTS_ON_RAMP / 2, 'sunny');
+    expect(half).toBeGreaterThan(0.2);
+    expect(half).toBeLessThan(0.8);
+    // One frame at 1x is well under a game minute; the step stays small.
+    expect(warmGlow(on + 0.5, 'sunny')).toBeLessThan(0.05);
+    expect(warmGlow(on + LIGHTS_ON_RAMP, 'sunny')).toBe(1);
+  });
+
+  it('never dims from 16:00 to 21:00, in any weather, and stays in 0..1', () => {
+    for (const w of ['sunny', 'rainy', 'hot'] as const) {
+      let prev = warmGlow(16 * 60, w);
+      for (let m = 16 * 60; m <= 21 * 60; m += 0.5) {
+        const g = warmGlow(m, w);
+        expect(g).toBeGreaterThanOrEqual(prev);
+        prev = g;
+      }
+      for (let m = 0; m <= 24 * 60; m += 15) {
+        const g = warmGlow(m, w);
+        expect(g).toBeGreaterThanOrEqual(0);
+        expect(g).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('keeps a dim glow on a rainy day before the lights go on', () => {
+    expect(warmGlow(12 * 60, 'rainy')).toBe(RAIN_DAY_GLOW);
+    expect(warmGlow(12 * 60, 'hot')).toBe(0);
+  });
+
+  it('keeps the same point lights and pools all day', () => {
+    const { scene, ambient, state } = setup('high');
+    const lights = pointLights(scene);
+    const pools = lightPools(scene);
+    expect(lights).toHaveLength(2);
+    expect(pools.length).toBeGreaterThan(0);
+    for (let m = 7 * 60; m <= 21 * 60; m += 10) {
+      state.minute = m;
+      ambient.update(state, 0, 0.016);
+      const now = pointLights(scene);
+      expect(now).toHaveLength(lights.length);
+      for (let i = 0; i < now.length; i++) expect(now[i]).toBe(lights[i]);
+      expect(lightPools(scene)).toEqual(pools);
+    }
+    ambient.dispose();
   });
 
   it('drives the glass, sign and point lights from the view', () => {
@@ -108,18 +174,45 @@ describe('warm glow by time of day', () => {
     expect(GLASS_MATERIAL.emissiveIntensity).toBeCloseTo(glow * GLASS_GLOW);
     expect(shop.facade.signColor.r).toBeGreaterThan(signDay);
     for (const l of pointLights(scene)) expect(l.intensity).toBeCloseTo(glow * POINT_INTENSITY);
+    for (const p of lightPools(scene)) {
+      expect(p.visible).toBe(true);
+      expect((p.material as MeshBasicMaterial).opacity).toBeCloseTo(glow * POOL_OPACITY);
+    }
     ambient.dispose();
+  });
+
+  it('hides the floor pools by day and shows them warm and additive at night', () => {
+    const { scene, ambient, state } = setup('medium');
+    state.minute = 12 * 60;
+    ambient.update(state, 0, 0.016);
+    const pools = lightPools(scene);
+    expect(pools.length).toBeGreaterThan(0);
+    for (const p of pools) expect(p.visible).toBe(false);
+    state.minute = 20 * 60;
+    ambient.update(state, 0, 0.016);
+    for (const p of pools) {
+      const m = p.material as MeshBasicMaterial;
+      expect(p.visible).toBe(true);
+      expect(m.blending).toBe(AdditiveBlending);
+      expect(m.depthWrite).toBe(false);
+      expect(m.opacity).toBeCloseTo(POOL_OPACITY);
+      expect(p.position.y).toBeGreaterThan(0);
+      expect(p.position.y).toBeLessThan(0.1);
+    }
+    ambient.dispose();
+    expect(lightPools(scene)).toHaveLength(0);
   });
 });
 
 describe('ambient by quality', () => {
   it('turns motion and point lights on per quality', () => {
-    expect(ambientFor('low')).toEqual({ motion: false, pointLights: 0 });
-    expect(ambientFor('medium')).toEqual({ motion: true, pointLights: 0 });
-    expect(ambientFor('high')).toEqual({ motion: true, pointLights: 2 });
+    expect(ambientFor('low')).toEqual({ motion: false, pointLights: 0, pools: false });
+    expect(ambientFor('medium')).toEqual({ motion: true, pointLights: 0, pools: true });
+    expect(ambientFor('high')).toEqual({ motion: true, pointLights: 2, pools: true });
     for (const q of QUALITIES) {
       expect(ambientFor(q, true).motion).toBe(false);
       expect(ambientFor(q, true).pointLights).toBe(ambientFor(q).pointLights);
+      expect(ambientFor(q, true).pools).toBe(ambientFor(q).pools);
       expect(ambientFor(q).pointLights).toBeLessThanOrEqual(MAX_POINT_LIGHTS);
       // Shared objects: the frame loop allocates nothing.
       expect(ambientFor(q)).toBe(ambientFor(q));
@@ -135,7 +228,8 @@ describe('ambient by quality', () => {
     for (let i = 0; i < 30; i++) ambient.update(state, 0, 0.05);
     expect(pose(shop)).toEqual(before);
     expect(pointLights(scene)).toHaveLength(0);
-    expect(ambient.stats()).toMatchObject({ motion: false, pointLights: 0, steam: false });
+    expect(lightPools(scene)).toHaveLength(0);
+    expect(ambient.stats()).toMatchObject({ motion: false, pointLights: 0, pools: 0, steam: false });
     ambient.dispose();
   });
 
@@ -152,6 +246,7 @@ describe('ambient by quality', () => {
     expect(after).not.toEqual(before);
     expect(shop.facade.fans[0]!.rotation.y).not.toBe(before[0]);
     expect(pointLights(scene)).toHaveLength(0);
+    expect(lightPools(scene)).toHaveLength(2);
     ambient.dispose();
   });
 
@@ -165,16 +260,27 @@ describe('ambient by quality', () => {
     expect(pointLights(scene)).toHaveLength(0);
   });
 
-  it('adds and drops the point lights when the quality changes', () => {
+  it('adds and drops the point lights and pools when the quality changes, and stats follow', () => {
     const { scene, shop, ambient, state } = setup('high');
-    shop.setQuality('low');
-    ambient.setQuality('low');
-    ambient.update(state, 0, 0.016);
-    expect(pointLights(scene)).toHaveLength(0);
-    shop.setQuality('high');
-    ambient.setQuality('high');
-    ambient.update(state, 0, 0.016);
-    expect(pointLights(scene)).toHaveLength(2);
+    state.minute = 20 * 60;
+    const expected: Record<Quality, { pointLights: number; pools: number }> = {
+      low: { pointLights: 0, pools: 0 },
+      medium: { pointLights: 0, pools: 2 },
+      high: { pointLights: 2, pools: 2 },
+    };
+    for (const q of ['low', 'high', 'medium', 'low', 'medium', 'high'] as const) {
+      shop.setQuality(q);
+      ambient.setQuality(q);
+      ambient.update(state, 0, 0.016);
+      expect(pointLights(scene)).toHaveLength(expected[q].pointLights);
+      expect(lightPools(scene)).toHaveLength(expected[q].pools);
+      const stats = ambient.stats();
+      expect(stats).toMatchObject(expected[q]);
+      // Stats stay put frame to frame at a fixed quality and time.
+      ambient.update(state, 0, 0.016);
+      expect(ambient.stats()).toEqual(stats);
+      for (const p of lightPools(scene)) expect(p.visible).toBe(true);
+    }
     ambient.dispose();
   });
 

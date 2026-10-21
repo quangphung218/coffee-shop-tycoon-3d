@@ -1,4 +1,15 @@
-import { Object3D, PointLight, type Scene } from 'three';
+import {
+  AdditiveBlending,
+  CanvasTexture,
+  Mesh,
+  MeshBasicMaterial,
+  Object3D,
+  PlaneGeometry,
+  PointLight,
+  SRGBColorSpace,
+  type Scene,
+  type Texture,
+} from 'three';
 import type { Quality } from '../../save/settings';
 import type { GameState, Weather } from '../../sim/types';
 import type { ShopLayout } from '../../sim/upgrades';
@@ -10,11 +21,14 @@ import type { ShopView } from './shop';
 /**
  * Time-of-day warmth and small idle motion in the shop.
  *
- * Warm light: from late afternoon the window and door glass, the lamp bulbs
- * and the name sign glow warm, following the street lamps (lightingAt().lamps).
- * That is emissive / unlit colour only; high quality adds up to two warm
- * PointLights inside the shop. Lights are created per quality, never per
- * hour, so shaders do not recompile as the day goes by.
+ * Warm light: the shop switches its lights on at dusk, once the street lamps
+ * (lightingAt().lamps) pass a threshold, and they come up to full over
+ * LIGHTS_ON_RAMP game minutes. The window and door glass, the lamp bulbs and
+ * the name sign follow that glow as emissive / unlit colour; medium and high
+ * quality add warm additive pools on the floor under the lamps, and high
+ * quality up to two warm PointLights inside the shop. Lights and pools are
+ * created per quality and layout, never per hour, so shaders do not
+ * recompile as the day goes by; the clock only changes intensity and opacity.
  *
  * Motion: ceiling fans turn, potted and door plants sway out of phase, the
  * awning valance flutters, and steam rises from the espresso machine while
@@ -27,12 +41,14 @@ export interface AmbientConfig {
   motion: boolean;
   /** Warm PointLights inside the shop. */
   pointLights: number;
+  /** Warm light pools on the floor under the lamps. */
+  pools: boolean;
 }
 
 const AMBIENT: Readonly<Record<Quality, Readonly<AmbientConfig>>> = {
-  low: { motion: false, pointLights: 0 },
-  medium: { motion: true, pointLights: 0 },
-  high: { motion: true, pointLights: 2 },
+  low: { motion: false, pointLights: 0, pools: false },
+  medium: { motion: true, pointLights: 0, pools: true },
+  high: { motion: true, pointLights: 2, pools: true },
 };
 
 /** The same with prefers-reduced-motion: no motion, lights kept. */
@@ -51,9 +67,53 @@ export function ambientFor(quality: Quality, reducedMotion = false): Readonly<Am
   return table[quality] ?? table.medium;
 }
 
-/** 0 (day) .. 1 (night) warmth of the shop's lights at game `minute`; follows the street lamps. */
+/** The shop's lights go on once the street lamps pass this (about 17:45 on a clear day). */
+export const LIGHTS_ON_LAMPS = 0.44;
+/** Rain darkens the afternoon: the lights go on as if it were this many minutes later. */
+export const RAIN_LEAD = 45;
+/** Game minutes from switching on to full glow. */
+export const LIGHTS_ON_RAMP = 20;
+/** Lights stay off before this; the shop opens at 07:00 in daylight. */
+const LIGHTS_EARLIEST = 12 * 60;
+/** Dim glow a rainy day keeps before the lights go on. */
+export const RAIN_DAY_GLOW = 0.4;
+
+/** Whether the shop's lights are on at game `minute`: from dusk, when the street lamps pass LIGHTS_ON_LAMPS. */
+export function shopLightsOn(minute: number, weather: Weather, scratch: Lighting = createLighting()): boolean {
+  if (!Number.isFinite(minute) || minute < LIGHTS_EARLIEST) return false;
+  const lead = weather === 'rainy' ? RAIN_LEAD : 0;
+  return lightingAt(minute + lead, weather, scratch).lamps >= LIGHTS_ON_LAMPS;
+}
+
+/** Minute the lights go on, per weather (Infinity if never); the curve is fixed, so it is found once. */
+const switchOn: Partial<Record<Weather, number>> = {};
+
+function lightsOnAt(weather: Weather, scratch: Lighting): number {
+  const cached = switchOn[weather];
+  if (cached !== undefined) return cached;
+  let lo = LIGHTS_EARLIEST;
+  let hi = 21 * 60;
+  let on = Infinity;
+  if (shopLightsOn(lo, weather, scratch)) on = lo;
+  else if (shopLightsOn(hi, weather, scratch)) {
+    // The lamps only rise through the afternoon, so halve down to the switch.
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (shopLightsOn(mid, weather, scratch)) hi = mid;
+      else lo = mid;
+    }
+    on = hi;
+  }
+  switchOn[weather] = on;
+  return on;
+}
+
+/** 0 (day) .. 1 (night) warmth of the shop's lights at game `minute`: off by day, up to 1 over LIGHTS_ON_RAMP once switched on. */
 export function warmGlow(minute: number, weather: Weather, scratch: Lighting = createLighting()): number {
-  return Math.min(1, Math.max(0, lightingAt(minute, weather, scratch).lamps));
+  const m = Number.isFinite(minute) ? minute : 12 * 60;
+  const t = Math.min(1, Math.max(0, (m - lightsOnAt(weather, scratch)) / LIGHTS_ON_RAMP));
+  const ramp = t * t * (3 - 2 * t);
+  return weather === 'rainy' ? Math.max(RAIN_DAY_GLOW, ramp) : ramp;
 }
 
 /** Emissive intensity of the window and door glass at full glow. */
@@ -66,6 +126,34 @@ export const POINT_INTENSITY = 6;
 const POINT_COLOR = 0xffc27a;
 const POINT_DISTANCE = 9;
 const POINT_Y = 2.1;
+/** Opacity of a floor light pool at full glow, and its size: the counter's under the pendants, a round one in the seating. */
+export const POOL_OPACITY = 0.38;
+const POOL_COLOR = 0xffc988;
+const POOL_Y = 0.015;
+const POOL_COUNTER_DEPTH = 2.4;
+const POOL_COUNTER_MARGIN = 1;
+const POOL_SEATING = 2.8;
+/** Counter and seating, like the PointLights. */
+const POOLS = 2;
+
+/** Soft round falloff for the light pools; null without a DOM (tests, workers). */
+function poolTexture(): Texture | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.45)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}
 
 export const FAN_SPEED = 2.4;
 /** Sway of a plant (radians) and of the valance. */
@@ -104,6 +192,8 @@ export interface AmbientOptions {
 export interface AmbientStats {
   glow: number;
   pointLights: number;
+  /** Floor light pools in the scene. */
+  pools: number;
   motion: boolean;
   steam: boolean;
 }
@@ -118,6 +208,9 @@ export class AmbientView {
   private readonly reducedMotion: () => boolean;
   private config: Readonly<AmbientConfig>;
   private readonly lights: PointLight[] = [];
+  private readonly pools: Mesh[] = [];
+  private readonly poolGeometry = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  private readonly poolMaterial: MeshBasicMaterial;
   private readonly light = createLighting();
   private readonly dummy = new Object3D();
   private readonly steam: Steam;
@@ -141,6 +234,14 @@ export class AmbientView {
     this.steam.group.name = 'machine-steam';
     this.steam.group.scale.setScalar(STEAM_SCALE);
     this.shop.root.add(this.steam.group);
+    this.poolMaterial = new MeshBasicMaterial({
+      color: POOL_COLOR,
+      map: poolTexture(),
+      transparent: true,
+      opacity: 0,
+      blending: AdditiveBlending,
+      depthWrite: false,
+    });
     this.syncLights();
   }
 
@@ -176,7 +277,7 @@ export class AmbientView {
   }
 
   stats(): AmbientStats {
-    return { glow: this.glow, pointLights: this.lights.length, motion: this.config.motion, steam: this.steam.active };
+    return { glow: this.glow, pointLights: this.lights.length, pools: this.pools.length, motion: this.config.motion, steam: this.steam.active };
   }
 
   dispose(): void {
@@ -185,12 +286,27 @@ export class AmbientView {
       l.dispose();
     }
     this.lights.length = 0;
+    for (const p of this.pools) p.removeFromParent();
+    this.pools.length = 0;
+    this.poolGeometry.dispose();
+    this.poolMaterial.map?.dispose();
+    this.poolMaterial.dispose();
     this.steam.group.removeFromParent();
     this.steam.dispose();
   }
 
-  /** Adds or removes PointLights to match the quality (only on a quality change). */
+  /** Adds or removes PointLights and floor pools to match the quality (only on a quality change). */
   private syncLights(): void {
+    const pools = this.config.pools ? POOLS : 0;
+    while (this.pools.length > pools) this.pools.pop()!.removeFromParent();
+    while (this.pools.length < pools) {
+      const p = new Mesh(this.poolGeometry, this.poolMaterial);
+      p.name = 'light-pool';
+      p.visible = false;
+      p.raycast = () => {};
+      this.pools.push(p);
+      this.shop.root.add(p);
+    }
     const want = Math.min(MAX_POINT_LIGHTS, this.config.pointLights);
     while (this.lights.length > want) {
       const l = this.lights.pop()!;
@@ -216,6 +332,16 @@ export class AmbientView {
       const p = i === 0 ? layout.counter.pos : seating;
       this.lights[i]!.position.set(p.x, POINT_Y, p.z);
     }
+    for (let i = 0; i < this.pools.length; i++) {
+      const pool = this.pools[i]!;
+      if (i === 0) {
+        pool.position.set(layout.counter.pos.x, POOL_Y, layout.counter.pos.z);
+        pool.scale.set(layout.counter.width + POOL_COUNTER_MARGIN, 1, POOL_COUNTER_DEPTH);
+      } else {
+        pool.position.set(seating.x, POOL_Y, seating.z);
+        pool.scale.set(POOL_SEATING, 1, POOL_SEATING);
+      }
+    }
     const machine = layout.machines[0];
     if (machine) this.steam.group.position.set(machine.pos.x - 0.2, STEAM_Y, machine.pos.z + 0.05);
   }
@@ -226,6 +352,9 @@ export class AmbientView {
     GLOW_MATERIAL.color.setHex(PALETTE.bulb).multiplyScalar(BULB_DAY + BULB_GLOW * g);
     this.shop.facade.setSignGlow(g);
     for (let i = 0; i < this.lights.length; i++) this.lights[i]!.intensity = g * POINT_INTENSITY;
+    // Hidden by day so the pools cost no draw; showing a mesh does not recompile its shader.
+    this.poolMaterial.opacity = g * POOL_OPACITY;
+    for (let i = 0; i < this.pools.length; i++) this.pools[i]!.visible = g > 0;
   }
 
   private animate(brewing: boolean): void {
