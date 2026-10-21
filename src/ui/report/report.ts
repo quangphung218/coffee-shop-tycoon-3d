@@ -313,9 +313,12 @@ function suggestions(r: DailyReport, weekEnded: boolean): HTMLElement {
 
 /** Unlock chips the level-up card shows (one line from 1024 px); the rest is counted as "+N". */
 export const LEVELUP_CHIPS = 3;
-/** The badge's rpt-badge-pop length (report.css), then the one sideways shake (±3 px). */
+/** The badge's rpt-badge-pop length (report.css), then the one sideways shake (±BADGE_SHAKE_PX). */
 export const BADGE_POP_MS = 400;
 export const BADGE_SHAKE_MS = 300;
+export const BADGE_SHAKE_PX = 3;
+/** The shake's easing comes from --easing-standard; this is used if it cannot be read. */
+export const BADGE_SHAKE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
 
 type UnlockGroup = 'menu' | 'upgrades' | 'tools';
 interface UnlockChip {
@@ -554,10 +557,14 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function shakeBadge(): void {
     const badge = summary.querySelector<HTMLElement>('.rpt-levelup-badge');
     if (!badge || typeof badge.animate !== 'function') return;
-    badge.animate(
-      [{ transform: 'translateX(0)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(0)' }],
-      { duration: BADGE_SHAKE_MS, delay: BADGE_POP_MS, easing: 'ease-in-out' },
-    );
+    const left = { transform: `translateX(-${BADGE_SHAKE_PX}px)` };
+    const right = { transform: `translateX(${BADGE_SHAKE_PX}px)` };
+    const easing = getComputedStyle(badge).getPropertyValue('--easing-standard').trim() || BADGE_SHAKE_EASING;
+    badge.animate([{ transform: 'translateX(0)' }, left, right, left, right, { transform: 'translateX(0)' }], {
+      duration: BADGE_SHAKE_MS,
+      delay: BADGE_POP_MS,
+      easing,
+    });
   }
 
   function endConfetti(): void {
