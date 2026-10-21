@@ -503,7 +503,6 @@ Mỗi slot là JSON:
   | `GameState.specialOrder` | Không có đơn hôm nay; ngày mở cửa tiếp theo rút đơn mới. |
   | `Staff.trait`, `Staff.level`, `Staff.exp` | Đặc điểm tính từ hash của seed và id (không ghi vào save), cấp 1, kinh nghiệm 0. |
   | `Customer.vip` | Không phải VIP. |
-
   | `GameState.regulars` | Chưa gặp khách quen nào; đếm từ lần ghé tiếp theo. |
   | `GameState.uniform` | Đồng phục `classic` (`uniformOf`); id lạ cũng mặc `classic`. |
   | `Customer.regularId` | Khách vô danh. |
