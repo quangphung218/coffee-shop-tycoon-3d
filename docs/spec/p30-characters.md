@@ -64,14 +64,14 @@ Nguồn: `UNIFORMS`, `DEFAULT_UNIFORM` trong `src/sim/data/uniforms.ts`; vẽ �
 
 | Id | Tên | Mở ở cấp quán | Áo | Mũ | Màu mũ |
 | --- | --- | --- | --- | --- | --- |
-| `classic` | Áo kem cổ điển | 1 | `#fff9f0` | Không | — |
-| `mint` | Áo bạc hà, mũ lưỡi trai | 3 | `#d9f6ea` | Mũ lưỡi trai (`cap`) | `#3dbd8f` |
-| `latte` | Áo latte, mũ nồi | 5 | `#d9a877` | Mũ nồi (`beret`) | `#6b3f24` |
-| `coral` | Áo san hô, khăn bandana | 7 | `#ffe3de` | Khăn bandana (`bandana`) | `#f76b5a` |
+| `classic` | Áo kem cổ điển | 1 | `0xfff9f0` | Không | — |
+| `mint` | Áo bạc hà, mũ lưỡi trai | 3 | `0xd9f6ea` | Mũ lưỡi trai (`cap`) | `0x3dbd8f` |
+| `latte` | Áo latte, mũ nồi | 5 | `0xd9a877` | Mũ nồi (`beret`) | `0x6b3f24` |
+| `coral` | Áo san hô, khăn bandana | 7 | `0xffe3de` | Khăn bandana (`bandana`) | `0xf76b5a` |
 
 - Một bộ cho cả đội: mọi nhân viên và người chơi đổi áo, tay áo và mũ; mũ thay tóc. Khách không mặc đồng phục.
-- Tạp dề giữ màu theo vai (`APRON_COLORS`): người chơi `#5c3a26`, pha chế `#0f6b57`, phục vụ `#3d6fd8`, dọn dẹp `#f2a516`, tiếp thị `#d8457a`, chưa giao việc `#8c7f75`.
-- Với `classic`, người chơi giữ mũ lưỡi trai đỏ `#e05a4f` (`CAP_COLOR`), nhân viên không đội mũ.
+- Tạp dề giữ màu theo vai (`APRON_COLORS`): người chơi `0x5c3a26`, pha chế `0x0f6b57`, phục vụ `0x3d6fd8`, dọn dẹp `0xf2a516`, tiếp thị `0xd8457a`, chưa giao việc `0x8c7f75`.
+- Với `classic`, người chơi giữ mũ lưỡi trai đỏ `0xe05a4f` (`CAP_COLOR`), nhân viên không đội mũ.
 - Đổi bằng lệnh `set_uniform` ở mọi pha. Bộ chưa mở trả `false` kèm `notify` "<tên> mở ở cấp quán N"; id lạ: "Không có bộ đồng phục này". Chọn lại bộ đang mặc không phát sự kiện.
 - Bảng Nhân viên có một nút cho mỗi bộ; bộ đang mặc có `aria-pressed="true"`, bộ chưa mở bị khoá và ghi "Cấp N" thay cho tên.
 
@@ -81,9 +81,9 @@ Nguồn: `customerMood`, `emoteForEvent`, `emoteFor`, `EMOTE_SECONDS` trong `src
 
 | Biểu cảm | Hình | Màu | Khi nào hiện | Thời lượng |
 | --- | --- | --- | --- | --- |
-| Tim (`heart`) | Khối kim cương hai thùy, trên đầu | `#e0475e` | Sự kiện `served` | 1,2 giây |
-| Giọt mồ hôi (`sweat`) | Giọt nhỏ ở thái dương | `#5bc0de` | Khách đang sốt ruột (mặt `impatient`) | Lặp mỗi 1,4 giây cho tới khi hết sốt ruột |
-| Đám mây (`cloud`) | Ba cụm mây trên đầu | `#9aa3ab` | Sự kiện `angry` khi khách còn kiên nhẫn, tức bỏ đi vì món hết hàng | 2,2 giây |
+| Tim (`heart`) | Khối kim cương hai thùy, trên đầu | `0xe0475e` | Sự kiện `served` | 1,2 giây |
+| Giọt mồ hôi (`sweat`) | Giọt nhỏ ở thái dương | `0x5bc0de` | Khách đang sốt ruột (mặt `impatient`) | Lặp mỗi 1,4 giây cho tới khi hết sốt ruột |
+| Đám mây (`cloud`) | Ba cụm mây trên đầu | `0x9aa3ab` | Sự kiện `angry` khi khách còn kiên nhẫn, tức bỏ đi vì món hết hàng | 2,2 giây |
 
 - Mỗi khách hiện tối đa một biểu cảm. Tim hay mây đang chạy được ưu tiên hơn giọt mồ hôi.
 - Mặt khách:
