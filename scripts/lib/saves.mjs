@@ -162,15 +162,15 @@ export function playToLevelUp(mods, seed = SEED) {
 /** One line on a scene state for the logs. */
 export const sceneInfo = (s) => `day ${s.day} ${hhmm(s.minute)} ${s.weather}, ${s.customers.length} customers, ${s.staff.length} staff`;
 
-/** The sim modules of the build at `root`, loaded through vite: state, sim, orders, save, menu. */
+/** The modules of the build at `root`, loaded through vite: sim state, sim, orders, save, menu, and the character rig (face prints). */
 export async function loadSim(root) {
   const { createServer } = await import('vite');
   const vite = await createServer({ root, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
   try {
-    const [stateMod, sim, orders, save, menu] = await Promise.all(
-      ['/src/sim/state.ts', '/src/sim/index.ts', '/src/sim/orders.ts', '/src/save/save.ts', '/src/sim/data/menu.ts'].map((p) => vite.ssrLoadModule(p)),
+    const [stateMod, sim, orders, save, menu, rig] = await Promise.all(
+      ['/src/sim/state.ts', '/src/sim/index.ts', '/src/sim/orders.ts', '/src/save/save.ts', '/src/sim/data/menu.ts', '/src/render/actors/rig.ts'].map((p) => vite.ssrLoadModule(p)),
     );
-    return { stateMod, sim, orders, save, menu };
+    return { stateMod, sim, orders, save, menu, rig };
   } finally {
     await vite.close();
   }

@@ -189,6 +189,13 @@ export function cropRound(box, w, h, view, down = 0) {
   };
 }
 
+/** Smallest box holding both. */
+export function union(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+
 /** Grows `box` by `pad` CSS px each side. */
 export const grow = (b, pad) => ({ x: b.x - pad, y: b.y - pad, w: b.w + 2 * pad, h: b.h + 2 * pad });
 

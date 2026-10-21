@@ -14,11 +14,11 @@ const proc = (globalThis as unknown as { process: { pid: number } }).process;
 const root = (name: string) => `perf-lock-test-${name}-${Date.now()}-${Math.random()}`;
 
 describe('lockPath', () => {
-  it('is one file per repo in the temp dir', () => {
+  it('is one file per machine in the temp dir: two worktrees of the repo share it', () => {
     const a = lockPath('/repo/a');
-    expect(a).toMatch(/cst3d-perf-[0-9a-f]{10}\.lock$/);
+    expect(a).toMatch(/cst3d-perf\.lock$/);
     expect(lockPath('/repo/a')).toBe(a);
-    expect(lockPath('/repo/b')).not.toBe(a);
+    expect(lockPath('/other/worktree/of/the/repo')).toBe(a);
   });
 });
 

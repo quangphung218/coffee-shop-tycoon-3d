@@ -144,7 +144,7 @@ node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 
 Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. Chrome headless cấp khung theo bội số nhịp màn hình, nên FPS từng khung chỉ ra vài mức (20, 15, 7,5…); dùng cột Average FPS để so.
 
-Lệnh giữ lockfile `cst3d-perf-<hash repo>.lock` trong thư mục tạm (`scripts/lib/perf-lock.mjs`) cùng với `perf:frames`: lượt đo thứ hai chờ lượt đầu xong (in `waiting for the measurement of pid …`, tối đa `PERF_LOCK_WAIT_S`, mặc định 1800 s; `PERF_LOCK_WAIT_S=0` để từ chối ngay). Hai lượt đo chạy song song giành GPU và CPU nên số đo nhiễu; đo tuần tự. Lệnh dừng khi WebGL chạy bằng phần mềm (`MEDIA_GPU=any` để đo dù vậy).
+Lệnh giữ lockfile `cst3d-perf.lock` trong thư mục tạm của máy (`scripts/lib/perf-lock.mjs`; một file cho mọi worktree, vì chung GPU) cùng với `perf:frames`: lượt đo thứ hai, ở bất kỳ worktree nào, chờ lượt đầu xong (in `waiting for the measurement of pid …`, tối đa `PERF_LOCK_WAIT_S`, mặc định 1800 s; `PERF_LOCK_WAIT_S=0` để từ chối ngay). Hai lượt đo chạy song song giành GPU và CPU nên số đo nhiễu; đo tuần tự. Lệnh dừng khi WebGL chạy bằng phần mềm (`MEDIA_GPU=any` để đo dù vậy).
 
 ## Ảnh màn tải
 
@@ -484,7 +484,7 @@ Một kịch bản xuất `default { id, out, base, tags, saves(mods, { isBase, 
 | Kiểu | Chụp gì | `opts` |
 | --- | --- | --- |
 | `scene` | Quán đang chạy sau `settleMs`; đọc đồng hồ HUD và ánh sáng | `settleMs`, `file` (JPEG) |
-| `emote` (cặp) | Chờ biểu cảm `emote` hiện, giữ đồng hồ trang ở khung đó, camera phóng quanh nó | `emote`, `waitMs`, `ppm`, `scan` (màu biểu cảm, đồng phục), `popFrames` |
+| `emote` (cặp) | Chờ đồng hồ HUD chạy (cảnh báo nếu đứng 15 s), chờ biểu cảm `emote` hiện (với `mood` + `marks`: chỉ trên mặt đúng tâm trạng), giữ đồng hồ trang ở khung đó, camera phóng quanh nó; bản gốc chụp khi HUD tới cùng giờ | `emote`, `waitMs`, `ppm`, `scan` (màu biểu cảm, đồng phục, `faceInk`), `marks` (`faceMarks(rig)`), `mood`, `popFrames` |
 | `team` (cặp) | Đội mặc đồng phục, khoanh từng người; bản gốc lấy người gần nhất mỗi chỗ | `settleMs`, `ppm`, `scan` |
 | `panel` | Mở bảng dock, cuộn (`'end'`, `{ into }`, `{ top, text, fallback }`), đo khung (`box.union`, `box.section`), đọc DOM (`read`) | `panel`, `scroll`, `box`, `read` |
 | `toast` (cặp) | Chờ toast khớp `match` | `match`, `waitMs` |
@@ -537,8 +537,9 @@ MEDIA_PORT=4200 npm run media:p30
 Kịch bản `scripts/scenarios/p30.mjs`. Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi chụp trước/sau bằng Chrome headless trên GPU (không cần `MEDIA_HEADED=1` nữa: Chromium của Playwright vẽ bằng CPU mới thiếu khung). Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
 
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi sửa giống nhau ở hai bản: mọi order đang mở thành sẵn sàng (tim), khách đang chờ còn 30% kiên nhẫn (giọt mồ hôi), nguyên liệu món của một khách đang xếp hàng về 0 (đám mây), cấp quán 5 với bộ latte (đội), lúc mở cửa ngày 3 (toast), sáng ngày 4 với cấp quán 3 và bộ bạc hà (hai bảng).
-2. Bản hiện tại chụp trước: chờ biểu cảm hay toast hiện (tối đa 40 s, tim, mây và toast ở tốc độ x4), camera phóng quanh biểu cảm. Bản gốc chụp cùng số giây sau **Tiếp tục**, camera ở cùng điểm, cùng vòng khoanh.
-3. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
+2. Biểu cảm (tim và mây ở tốc độ x4, giọt mồ hôi x1): sau **Tiếp tục**, kịch bản chờ đồng hồ HUD chạy (đứng 15 s thì `!!`), chờ biểu cảm hiện tối đa 40 s theo giờ thật; đám mây chỉ nhận khi mặt khách dưới nó là mặt buồn (so với dấu mặt `faceMarks` của rig bản hiện tại). Thấy rồi thì giữ đồng hồ trang ở khung đó, đẩy vài khung 1/60 s cho tim hay mây nở, phóng camera, vẽ một khung rồi chụp. Bản gốc chạy theo giờ thật và chụp khi đồng hồ HUD tới giờ của ảnh bản hiện tại (30 s không tới thì `!!`), camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt buồn.
+3. Toast (x4): bản hiện tại chờ toast khách quen tối đa 40 s theo giờ thật; bản gốc chụp cùng số giây sau **Tiếp tục**.
+4. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
 
 Ảnh JPEG trong `docs/reports/p30-characters/`, ghi đè mỗi lần chạy:
 
@@ -549,9 +550,9 @@ Kịch bản `scripts/scenarios/p30.mjs`. Lệnh build bản hiện tại, xuấ
 | `uniform-picker-390-before-after-p30.jpg` | Mục Đồng phục của bảng Nhân viên ở 390×844: đang mặc, mở, khoá. |
 | `regulars-390-before-after-p30.jpg` | Thẻ Khách quen của bảng Việc và toast khách quen ghé, 390×844. |
 
-Trước khi mở trình duyệt, kịch bản nạp lại save đám mây và chạy nó trong Node ở x4 theo khung 60 fps (`cloudCheck`, có test trong `tests/scripts/p30-cloud.test.ts`); dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
+Trước khi mở trình duyệt, kịch bản nạp lại save đám mây và chạy nó trong Node ở x4 theo khung 60 fps (`cloudCheck`, có test trong `tests/scripts/p30-cloud.test.ts`; dấu mặt `faceMarks`/`matchMood` ở `scripts/lib/probes.mjs` cũng có test ở đó); dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
 
-Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi đồng hồ HUD đầu và cuối lượt chờ, số khung trang đã vẽ và số lần biểu cảm hiện rồi mất trước lúc chụp. Khi scan thấy biểu cảm, shot `emote` **giữ đồng hồ trang** ở khung đó (`clockHooks` trong `scripts/lib/probes.mjs`: `performance.now` đứng, `requestAnimationFrame` xếp hàng), chạy thêm vài khung 1/60 s cho tim hay mây nở hết, phóng camera, vẽ đúng một khung rồi chụp, sau đó thả đồng hồ; nhờ vậy đám mây (khách bỏ đi ngay sau đó) cũng chụp được, không còn phụ thuộc tốc độ máy.
+Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, khi ảnh đám mây không có mặt buồn, khi đồng hồ HUD của bản gốc không tới giờ của ảnh, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi đồng hồ HUD đầu và cuối lượt chờ, số khung trang đã vẽ, số lần biểu cảm hiện rồi mất trước lúc chụp và số lần mây hiện trên mặt không buồn. Khi scan thấy biểu cảm, shot `emote` **giữ đồng hồ trang** ở khung đó (`clockHooks` trong `scripts/lib/probes.mjs`: `performance.now` đứng, `requestAnimationFrame` xếp hàng), chạy thêm vài khung 1/60 s cho tim hay mây nở hết, phóng camera, vẽ đúng một khung rồi chụp, sau đó thả đồng hồ; nhờ vậy đám mây (khách bỏ đi ngay sau đó) cũng chụp được, không còn phụ thuộc tốc độ máy. Dòng tiến độ của mây ghi mặt dưới nó ở cả hai bản (`faces: sad (9f662fd: neutral)`).
 
 | Lệnh | Việc |
 | --- | --- |

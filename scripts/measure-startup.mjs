@@ -15,8 +15,9 @@
 // the 5th-percentile frame rate of all those frames. --fps-only skips the
 // startup table; --quality limits the FPS pass to one setting. Chrome comes
 // from scripts/lib/browser.mjs ($CHROME_PATH, else the usual install
-// locations) so WebGL uses the GPU; the run holds the perf lock of
-// scripts/lib/perf-lock.mjs, so it never shares the GPU with perf:frames.
+// locations) so WebGL uses the GPU; the run holds the machine's perf lock
+// (scripts/lib/perf-lock.mjs), so it never shares the GPU with perf:frames
+// in any worktree.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

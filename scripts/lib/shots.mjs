@@ -93,24 +93,38 @@ async function sceneShot(page, t0, { settleMs = 2500, file, jpegQuality = 78, hi
 }
 
 /**
- * Working tree: waits up to `waitMs` for an emote of `emote` (a key of
- * `scan.emoteColors`) in view, holds the page clock on that frame
- * (clockHooks), steps it `popFrames` frames at 60 fps so the emote reaches
- * full size, centres the camera on it at `ppm` px/m for one more frame and
- * shoots; the game runs on after. An emote gone within those frames (a
- * cloud: the customer storms out) is counted in `vanished` and waited for
- * again. Without one: the toasts seen, the clock over the wait and the
- * frames the page drew (a clock that stops with few frames is the browser,
- * not the game), and no `box`.
+ * Working tree: once the HUD clock runs (within `hudWaitMs`; else
+ * `hudStuck` names the time it stayed at), waits up to `waitMs` for an emote
+ * of `emote` (a key of `scan.emoteColors`) in view, holds the page clock on
+ * that frame (clockHooks), steps it `popFrames` frames at 60 fps so the
+ * emote reaches full size, centres the camera on it at `ppm` px/m for one
+ * more frame and shoots; the game runs on after. With `mood` and `marks`
+ * (face prints of probes.faceMarks), only an emote over a face in that mood
+ * counts (a cloud over a sad face), and `face` { mood, box } comes back with
+ * the shot. An emote gone within the held frames (a cloud: the customer
+ * storms out) is counted in `vanished` and waited for again. Without one:
+ * the toasts seen, the clock over the wait and the frames the page drew (a
+ * clock that stops with few frames is the browser, not the game), and no
+ * `box`.
  */
-async function emoteAfter(page, t0, { emote, waitMs = 40_000, ppm = 150, scan, viewport = DESK, popFrames = { heart: 15, cloud: 3 } }) {
+async function emoteAfter(page, t0, { emote, waitMs = 40_000, hudWaitMs = 15_000, ppm = 150, scan, marks = null, mood = null, viewport = DESK, popFrames = { heart: 15, cloud: 3 } }) {
   await dock(page);
+  await page.locator('#scene.is-ready').waitFor();
   const args = { ...scan, withTeam: false };
+  const first = await hudClock(page);
+  // The fade-in after Tiếp tục is over once the HUD clock has moved.
+  const ran = await page
+    .waitForFunction((c) => (document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '') !== c, first, { timeout: hudWaitMs, polling: 50 })
+    .then(() => true)
+    .catch(() => false);
+  const hudStuck = ran ? null : first;
   const from = { clock: await hudClock(page), frames: await frames(page), t: Date.now() };
   const deadline = Date.now() + waitMs;
   const toasts = new Set();
   let vanished = 0;
+  let wrongFace = 0;
   const ofKind = (r) => r.emotes.filter((e) => e.kind === emote);
+  const faceAt = async (near) => (marks ? probes.faceOf((await page.evaluate(probes.scanActors, { ...args, near })).faces, marks) : null);
   const tick = (n) =>
     page.evaluate(
       async ({ n, ms }) => {
@@ -122,7 +136,11 @@ async function emoteAfter(page, t0, { emote, waitMs = 40_000, ppm = 150, scan, v
   while (Date.now() < deadline) {
     const { emotes } = await page.evaluate(probes.scanActors, args);
     // In the middle of the view first; the camera centres on it anyway.
-    const hit = emotes.find((e) => e.kind === emote && e.box.inside) ?? emotes.find((e) => e.kind === emote) ?? null;
+    let hit = emotes.find((e) => e.kind === emote && e.box.inside) ?? emotes.find((e) => e.kind === emote) ?? null;
+    if (hit && mood && (await faceAt(hit.world))?.mood !== mood) {
+      wrongFace++;
+      hit = null;
+    }
     if (!hit) {
       for (const t of await page.evaluate(probes.textsOf, '.toasts .toast-title')) toasts.add(t);
       await sleep(100);
@@ -138,11 +156,13 @@ async function emoteAfter(page, t0, { emote, waitMs = 40_000, ppm = 150, scan, v
     await setFocus(page, focus);
     // One frame drawn with the focus camera.
     await tick(1);
-    const shown = ofKind(await page.evaluate(probes.scanActors, args));
+    const look = await page.evaluate(probes.scanActors, { ...args, near: focus });
+    const shown = ofKind(look);
     const centre = { x: viewport.width / 2, y: viewport.height / 2 };
     const box = shown.map((e) => e.box).sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y))[0] ?? null;
-    if (!box) {
-      // Gone within those frames: back to the game's camera and clock, wait for the next one.
+    const face = marks ? probes.faceOf(look.faces, marks) : null;
+    if (!box || (mood && face?.mood !== mood)) {
+      // Gone within those frames (or the face changed): back to the game's camera and clock, wait for the next one.
       vanished++;
       await setFocus(page, null);
       await release();
@@ -151,23 +171,34 @@ async function emoteAfter(page, t0, { emote, waitMs = 40_000, ppm = 150, scan, v
     const clock = await hudClock(page);
     const png = await page.screenshot({ style: HIDE_TOASTS });
     await release();
-    return { at, focus, box, clock, png, count: shown.length, vanished };
+    return { at, focus, box, face, clock, png, count: shown.length, vanished, wrongFace, hudStuck };
   }
   const drawn = (await frames(page)) - from.frames;
   const sec = (Date.now() - from.t) / 1000;
-  return { box: null, vanished, toasts: [...toasts], clock: `${from.clock} → ${await hudClock(page)}`, frames: `${drawn} frames in ${Math.round(sec)} s (${(drawn / sec).toFixed(1)} fps)` };
+  return { box: null, vanished, wrongFace, hudStuck, toasts: [...toasts], clock: `${from.clock} → ${await hudClock(page)}`, frames: `${drawn} frames in ${Math.round(sec)} s (${(drawn / sec).toFixed(1)} fps)` };
 }
 
-/** Base: the same real time after Tiếp tục and the same camera point as `after`; counts the emote meshes it has. */
-async function emoteBefore(page, t0, { scan }, after) {
+/**
+ * Base, on the real clock: waits up to `reachMs` for its HUD clock to reach
+ * the HUD time of `after`, puts the camera on the same point and shoots;
+ * counts the emote meshes it has and reads the face under the point. Null
+ * when the clock never got there.
+ */
+async function emoteBefore(page, t0, { scan, marks = null, reachMs = 30_000 }, after) {
   await dock(page);
-  await until(t0, after.at);
+  await page.locator('#scene.is-ready').waitFor();
+  const reached = await page
+    .waitForFunction((c) => (document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '') >= c, after.clock, { timeout: reachMs, polling: 16 })
+    .then(() => true)
+    .catch(() => false);
+  if (!reached) return null;
   await setFocus(page, after.focus);
-  await sleep(120);
-  const { emotes } = await page.evaluate(probes.scanActors, { ...scan, withTeam: false });
+  // Long enough for a few frames drawn round the focus.
+  await sleep(300);
+  const { emotes, faces } = await page.evaluate(probes.scanActors, { ...scan, withTeam: false, near: after.focus });
   const clock = await hudClock(page);
   const png = await page.screenshot({ style: HIDE_TOASTS });
-  return { clock, png, count: emotes.length };
+  return { clock, png, count: emotes.length, face: marks ? probes.faceOf(faces, marks) : null };
 }
 
 /**

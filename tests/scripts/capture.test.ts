@@ -1,6 +1,6 @@
 // scripts/capture.mjs: the scenario runner's arguments, templates, step selection and the shipped scenarios.
 import { describe, expect, it } from 'vitest';
-import { fill, loadScenario, parseArgs, selectSteps } from '../../scripts/capture.mjs';
+import { fill, loadScenario, needsBase, parseArgs, selectSteps } from '../../scripts/capture.mjs';
 import { SHOTS } from '../../scripts/lib/shots.mjs';
 
 describe('parseArgs', () => {
@@ -41,6 +41,24 @@ describe('selectSteps', () => {
   it('keeps the steps tagged in only, and untagged steps always', () => {
     expect(selectSteps(steps, ['coin']).map((s) => s.id)).toEqual(['a', 'c']);
     expect(selectSteps(steps, null).map((s) => s.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('needsBase', () => {
+  it('builds the base for a pair, a base shot, or a save taken from the base', () => {
+    expect(needsBase([{ kind: 'pair' }], 'abc')).toBe(true);
+    expect(needsBase([{ kind: 'shot', build: 'base' }], 'abc')).toBe(true);
+    expect(needsBase([{ kind: 'shot', build: 'cur', from: 'base' }], 'abc')).toBe(true);
+  });
+
+  it('skips the base when no step uses it or no base commit is given', () => {
+    expect(needsBase([{ kind: 'shot', build: 'cur' }, { kind: 'board' }], 'abc')).toBe(false);
+    expect(needsBase([{ kind: 'pair' }], null)).toBe(false);
+  });
+
+  it('keeps --only compat of p30 runnable: its compat-old step loads the base save into the working tree', async () => {
+    const p30 = await loadScenario('p30');
+    expect(needsBase(selectSteps(p30.steps, ['compat']), p30.base)).toBe(true);
   });
 });
 

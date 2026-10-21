@@ -8,8 +8,10 @@
 //   uniform-picker-390-before-after-p30.jpg the Đồng phục section of Nhân viên at 390×844
 //   regulars-390-before-after-p30.jpg       the Khách quen card of Việc and a regular's toast, 390×844
 // The saves and what each board waits for are described in docs/media.md.
+// Exports buildSaves and cloudCheck for tests/scripts/p30-cloud.test.ts.
 import { DESK, PHONE } from '../lib/capture.mjs';
-import { cropAround, cropRound, grow } from '../lib/board.mjs';
+import { cropAround, cropRound, grow, union } from '../lib/board.mjs';
+import { faceMarks } from '../lib/probes.mjs';
 import { SEED, clockOf, loadSave, openNextMorning, playToReport, playToScene, saveText } from '../lib/saves.mjs';
 import { GAME_MINUTES_PER_SECOND, MAX_FRAME_S } from '../lib/shots.mjs';
 
@@ -27,12 +29,14 @@ const CLOUD_CHECK_MINUTES = 30;
 const SWEAT_PATIENCE = 0.3;
 /** Customer states the sweat drop shows in (RESTLESS in src/render/actors/sync.ts). */
 const RESTLESS = ['entering', 'queueing', 'ordering', 'waiting'];
-/** Colours of src/render/actors/emotes.ts, src/render/actors/rig.ts and src/sim/data/uniforms.ts. */
-const SCAN = { emoteColors: { heart: 0xe0475e, sweat: 0x5bc0de, cloud: 0x9aa3ab }, uniform: { shirt: 0xd9a877, hat: 0x6b3f24 } };
+/** Colours of src/render/actors/emotes.ts, src/render/actors/rig.ts (FACE_INK: brows and mouth) and src/sim/data/uniforms.ts. */
+const SCAN = { emoteColors: { heart: 0xe0475e, sweat: 0x5bc0de, cloud: 0x9aa3ab }, uniform: { shirt: 0xd9a877, hat: 0x6b3f24 }, faceInk: 0x2a211c };
+const MOOD_NAMES = { neutral: 'bình thường', happy: 'vui', impatient: 'sốt ruột', angry: 'giận', sad: 'buồn' };
+/** The cloud counts only over a sad face (the customer who gave up), told by the face prints of the working tree's rig. */
 const EMOTES = {
   heart: { name: 'Tim', when: 'khi được phục vụ món', speed: FAST },
   sweat: { name: 'Giọt mồ hôi', when: 'khi còn dưới 40% kiên nhẫn', speed: 1 },
-  cloud: { name: 'Đám mây', when: 'khi bỏ đi vì món hết hàng', speed: FAST },
+  cloud: { name: 'Đám mây', when: 'khi bỏ đi vì món hết hàng', speed: FAST, mood: 'sad' },
 };
 const PANEL = { x: 0, y: 0, w: PHONE.width, h: PHONE.height };
 const seed = Number(process.env.P30_SEED ?? SEED);
@@ -130,14 +134,25 @@ const emoteSteps = Object.entries(EMOTES).map(([kind, e]) => ({
   dpr: SHOT_DPR,
   speed: e.speed,
   errors: true,
-  opts: { emote: kind, waitMs: WAIT_MS, ppm: EMOTE_PPM, scan: SCAN },
+  opts: ({ scenario }) => ({ emote: kind, waitMs: WAIT_MS, ppm: EMOTE_PPM, scan: SCAN, marks: scenario.marks, mood: e.mood ?? null }),
   need: (after) => Boolean(after?.box),
-  log: ({ after }) => (after?.box ? `emote ${kind}: ${sec(after.at)} s after Tiếp tục, HUD ${after.clock}, box ${Math.round(after.box.w)}×${Math.round(after.box.h)} px, ${after.count} on screen${after.vanished ? `, ${after.vanished} earlier gone before the shot` : ''}` : []),
+  log: ({ after, before }) =>
+    after?.box
+      ? `emote ${kind}: ${sec(after.at)} s after Tiếp tục, HUD ${after.clock}, box ${Math.round(after.box.w)}×${Math.round(after.box.h)} px, ${after.count} on screen${after.vanished ? `, ${after.vanished} earlier gone before the shot` : ''}${after.wrongFace ? `, ${after.wrongFace} over another face` : ''}${e.mood ? `; faces: ${after.face?.mood ?? '?'} (${BASE}: ${before?.face?.mood ?? '?'})` : ''}`
+      : [],
   check: ({ after, before }) => [
-    ...(after?.box ? [] : [`emotes: no ${kind} on the working tree in ${WAIT_MS / 1000} s; HUD ${after?.clock}; ${after?.frames} (the clock moves at most ${MAX_FRAME_S * GAME_MINUTES_PER_SECOND * e.speed} game min a frame); ${after?.vanished ?? 0} seen but gone before the shot; toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${after?.errors?.slice(0, 3).join(' | ') || 'none'}`]),
+    ...(after?.hudStuck ? [`emotes: the HUD clock stayed at ${after.hudStuck} for 15 s before the ${kind}`] : []),
+    ...(after?.box ? [] : [`emotes: no ${kind}${e.mood ? ` over a ${e.mood} face` : ''} on the working tree in ${WAIT_MS / 1000} s; HUD ${after?.clock}; ${after?.frames} (the clock moves at most ${MAX_FRAME_S * GAME_MINUTES_PER_SECOND * e.speed} game min a frame); ${after?.vanished ?? 0} seen but gone before the shot, ${after?.wrongFace ?? 0} over another face; toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${after?.errors?.slice(0, 3).join(' | ') || 'none'}`]),
+    ...(after?.box && e.mood && after.face?.mood !== e.mood ? [`emotes: the ${kind} shot shows a ${after.face?.mood ?? 'unknown'} face, not ${e.mood}`] : []),
+    ...(after?.box && before === null ? [`emotes: the HUD clock of ${BASE} never reached ${after.clock} for the ${kind}`] : []),
     ...(before?.count > 0 ? [`emotes: ${before.count} emote mesh(es) on ${BASE}`] : []),
   ],
 }));
+
+/** The ring of a cloud takes in the sad face under it; its crop is taller, not pushed down. */
+const changedBox = (kind, after) => (EMOTES[kind].mood && after.face ? union(after.box, after.face.box) : after.box);
+const emoteCrop = (kind, box) => (EMOTES[kind].mood ? cropRound(box, 360, 380, DESK, 20) : cropRound(box, 360, 300, DESK, 70));
+const faceNote = (kind, f) => (EMOTES[kind].mood && f ? `; mặt ${MOOD_NAMES[f.mood]}` : '');
 
 const emoteBoard = {
   kind: 'board',
@@ -149,21 +164,22 @@ const emoteBoard = {
       .filter(([kind]) => results[`emote-${kind}`]?.before)
       .map(([kind, e]) => {
         const { after, before } = results[`emote-${kind}`];
-        const ringBox = grow(after.box, 4);
+        const changed = changedBox(kind, after);
+        const ringBox = grow(changed, 4);
         return {
-          crop: cropRound(after.box, 360, 300, DESK, 70),
+          crop: emoteCrop(kind, changed),
           dpr: SHOT_DPR,
           panels: [
-            { png: before.png, boxes: [ringBox], title: title(`Trước · ${BASE}`, before), caption: `Không có ${e.name.toLowerCase()}: ${before.count} khối biểu cảm trong cảnh` },
-            { png: after.png, boxes: [ringBox], title: (c) => title(`Sau · ${c.head}`, after), caption: `${e.name} ${e.when}; ${after.count} khách đang có ${e.name.toLowerCase()} trên màn` },
+            { png: before.png, boxes: [ringBox], title: title(`Trước · ${BASE}`, before), caption: `Không có ${e.name.toLowerCase()}: ${before.count} khối biểu cảm trong cảnh${faceNote(kind, before.face)}` },
+            { png: after.png, boxes: [ringBox], title: (c) => title(`Sau · ${c.head}`, after), caption: `${e.name} ${e.when}${faceNote(kind, after.face)}; ${after.count} khách đang có ${e.name.toLowerCase()} trên màn` },
           ],
         };
       }),
   notes: ({ results }) => [
     ...Object.entries(EMOTES)
       .filter(([kind]) => results[`emote-${kind}`]?.before)
-      .map(([kind, e]) => `${e.name}: chụp ${sec(results[`emote-${kind}`].after.at)} s sau Tiếp tục ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`),
-    `Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim và mây chạy tốc độ x${FAST}.`,
+      .map(([kind, e]) => `${e.name}: thấy ${sec(results[`emote-${kind}`].after.at)} s sau Tiếp tục, giữ đồng hồ trang ở khung đó rồi chụp; bản gốc chạy theo giờ thật, chụp khi HUD tới ${results[`emote-${kind}`].after.clock}; camera hai bản phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`),
+    `Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món, chỉ nhận mây trên mặt buồn. Tim và mây chạy tốc độ x${FAST}, giọt mồ hôi x1.`,
   ],
 };
 
@@ -373,10 +389,11 @@ export default {
   base: BASE,
   tags: ['compat', 'emotes', 'uniform', 'picker', 'regulars'],
   savesOnlyEnv: 'P30_SAVES_ONLY',
-  /** Both builds play the same edits on their own sim; the working tree's and the base's saves are kept for the checks. */
+  /** Both builds play the same edits on their own sim; the working tree's and the base's saves are kept for the checks, and the working tree's face prints for the cloud. */
   async saves(mods, { isBase, ctx }) {
     const r = buildSaves(mods, mods.save, !isBase, ctx.warn);
     this[isBase ? 'baseSaves' : 'curSaves'] = r.saves;
+    if (!isBase) this.marks = faceMarks(mods.rig);
     return r;
   },
   steps: [...compatSteps, ...emoteSteps, emoteBoard, teamPair, teamBoard, pickerAfter, pickerShot('base'), pickerBoard, cardAfter, cardShot('base'), toastPair, regularsBoard],

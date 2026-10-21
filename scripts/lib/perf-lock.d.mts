@@ -9,6 +9,7 @@ export interface PerfLock {
   release(): void;
 }
 
+/** The machine's lock file (one for every worktree of the game); `root` is the checkout, for the record. */
 export function lockPath(root: string): string;
 export function readHolder(file: string): LockHolder | null;
 export function alive(pid: number): boolean;

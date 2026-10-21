@@ -59,6 +59,9 @@ export function fill(text, ctx) {
 /** Steps with a tag in `only` (every step when `only` is null); a step with no tags runs always. */
 export const selectSteps = (steps, only) => (only ? steps.filter((s) => !s.tags?.length || s.tags.some((t) => only.includes(t))) : steps);
 
+/** True when `baseRef` is set and a step shoots the base, pairs with it, or loads one of its saves (`from: 'base'`). */
+export const needsBase = (steps, baseRef) => Boolean(baseRef) && steps.some((s) => s.kind === 'pair' || s.build === 'base' || s.from === 'base');
+
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   const sc = await loadScenario(args.scenario);
@@ -70,7 +73,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const steps = selectSteps(sc.steps, only);
   const baseRef = args.base ?? sc.base ?? null;
-  const needsBase = Boolean(baseRef) && steps.some((s) => s.kind === 'pair' || s.build === 'base');
+  const withBase = needsBase(steps, baseRef);
   const ctx = {
     scenario: sc,
     only,
@@ -105,7 +108,7 @@ export async function main(argv = process.argv.slice(2)) {
   };
   const builds = { cur };
   try {
-    if (needsBase) {
+    if (withBase) {
       progress(`building ${baseRef}`);
       baseDir = buildRef(baseRef);
       const base = { label: baseRef, root: baseDir };

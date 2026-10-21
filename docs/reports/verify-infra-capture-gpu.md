@@ -1,13 +1,13 @@
 # Hạ tầng verify: Chrome trên GPU, khoá đo hiệu năng, chụp theo kịch bản
 
-Đo ngày 21/10/2026 trên Apple M2 (8 lõi), Chrome 155, Playwright 1.64, trên commit `ff8e7cc` (nhánh tích hợp P30) và nhánh này. Máy đang chạy việc khác lúc đo (load trung bình 5–15), nên thời gian thực chỉ để so tương đối; CPU của tiến trình và renderer WebGL là số đáng tin.
+Đo ngày 21/10/2026 trên Apple M2 (8 lõi), Chrome 155, Playwright 1.64, trên commit `ff8e7cc` (nhánh tích hợp P30 lúc đó) và nhánh này; nhánh sau đó rebase lên `main` v0.11.0 (`fe1fe8e`, P30 đã gộp cùng 6 fix `capture-p30.mjs`) và gộp các fix đó vào kịch bản (mục 3). Máy đang chạy việc khác lúc đo (load trung bình 5–15), nên thời gian thực chỉ để so tương đối; CPU của tiến trình và renderer WebGL là số đáng tin.
 
 ## 1. Tóm tắt
 
 - 9/11 script chụp và kiểm (`npm run layout`, `media:p20`…`media:p30`, `review:p22`, `build-icons`, `capture-loading`) mở **chromium-headless-shell** của Playwright. Headless shell vẽ WebGL bằng **SwiftShader trên CPU**: `npm run layout` ăn trung bình 375% CPU (đỉnh 560%) trong 7,3 phút; `media:p30` ăn 433% (đỉnh 619%) trong 5,8 phút rồi thoát mã 1 vì trang vẽ quá ít khung, đồng hồ game không chạy nên không có biểu cảm nào để chụp.
 - Chrome cài sẵn ở chế độ headless mới vẽ WebGL bằng **ANGLE Metal (GPU)**. `scripts/lib/browser.mjs` giờ là chỗ duy nhất mở trình duyệt: Chrome thật (`CHROME_PATH`, chỗ cài quen thuộc, kênh `chrome`), in renderer mỗi lượt, chỉ rơi về headless shell khi không có Chrome và in `!! WebGL chạy bằng CPU`. Kết quả: `media:p30` còn 58 s, CPU user 52 s (trước 1486 s), cả ba biểu cảm chụp được ở headless, lệnh thoát mã 0; `npm run layout` còn 354 s, CPU user 147 s (trước 1463 s).
-- `perf:frames` và `measure-startup` giữ lockfile theo repo (`scripts/lib/perf-lock.mjs`): lượt đo thứ hai chờ lượt đầu, không còn hai lượt giành GPU.
-- Phần chung của các script chụp (preview, build bản gốc, nạp save, chờ `cst:world`, chụp, khoanh, vẽ bảng) nằm trong `scripts/lib/`; `scripts/capture.mjs` chạy **kịch bản** `scripts/scenarios/<id>.mjs`. P29 và P30 đã chuyển: `capture-p29.mjs` (1058 dòng) + `capture-p30.mjs` (937 dòng) thành `scenarios/p29.mjs` (250 dòng) + `scenarios/p30.mjs` (371 dòng), ra cùng số ảnh, cùng kích thước (mục 5).
+- `perf:frames` và `measure-startup` giữ một lockfile chung cả máy (`scripts/lib/perf-lock.mjs`, mọi worktree dùng chung vì chung GPU): lượt đo thứ hai chờ lượt đầu, không còn hai lượt giành GPU.
+- Phần chung của các script chụp (preview, build bản gốc, nạp save, chờ `cst:world`, chụp, khoanh, vẽ bảng) nằm trong `scripts/lib/`; `scripts/capture.mjs` chạy **kịch bản** `scripts/scenarios/<id>.mjs`. P29 và P30 đã chuyển: `capture-p29.mjs` (1058 dòng) + `capture-p30.mjs` (1095 dòng trên main, 937 ở `ff8e7cc`) thành `scenarios/p29.mjs` (250 dòng) + `scenarios/p30.mjs` (400 dòng, gồm luật mặt buồn), ra cùng số ảnh, cùng kích thước (mục 5).
 
 ## 2. Nguyên nhân
 
@@ -18,10 +18,12 @@ Playwright từ 1.49 mở `chromium.launch({ headless: true })` bằng `chromium
 | Việc | Ở đâu |
 | --- | --- |
 | Một hàm `launchBrowser()` dùng chung: Chrome thật, headless mới, in `browser: … WebGL: …`, cảnh báo `!!` khi SwiftShader, `MEDIA_GPU=require` để dừng, `MEDIA_CHROMIUM=1` để ép headless shell; 14 chỗ `chromium.launch` trong 14 script đổi sang hàm này, giữ `MEDIA_HEADED`/`LAYOUT_HEADED`; 3 bản `findChrome` bỏ | `scripts/lib/browser.mjs`, mọi `scripts/*.mjs` |
-| Khoá đo hiệu năng: lockfile `cst3d-perf-<hash>.lock` trong `os.tmpdir()`, lượt 2 chờ tới `PERF_LOCK_WAIT_S` (mặc định 1800 s; `0` từ chối ngay), lock của tiến trình chết được lấy lại; hai script đo từ chối WebGL phần mềm trừ khi `MEDIA_GPU=any` | `scripts/lib/perf-lock.mjs`, `measure-frames.mjs`, `measure-startup.mjs` |
+| Khoá đo hiệu năng: lockfile `cst3d-perf.lock` trong `os.tmpdir()`, một cho cả máy (mọi worktree của repo dùng chung, vì chung GPU), lượt 2 chờ tới `PERF_LOCK_WAIT_S` (mặc định 1800 s; `0` từ chối ngay), lock của tiến trình chết được lấy lại; hai script đo từ chối WebGL phần mềm trừ khi `MEDIA_GPU=any` | `scripts/lib/perf-lock.mjs`, `measure-frames.mjs`, `measure-startup.mjs` |
 | Phần chung của chụp: `capture.mjs` (root, cổng, `FIXED_NOW`, settings tắt tiếng, preview, `buildRef`, context, Main Menu, đồng hồ HUD, `progress`/`warn`), `saves.mjs` (chơi ván trên sim của từng bản, save text), `probes.mjs` (hook camera/đồng hồ trang, quét biểu cảm/đội/ánh sáng/bóng/vũng sáng, đọc DOM), `board.mjs` (vẽ bảng có khoanh, crop), `shots.mjs` (session + 9 kiểu shot) | `scripts/lib/` |
 | Runner kịch bản: `node scripts/capture.mjs <id> [--only] [--saves-only] [--out] [--base] [--headed]`; `npm run media -- --scenario <id>`; `media:p29`, `media:p30` trỏ sang runner | `scripts/capture.mjs`, `package.json`, `scripts/capture-media.mjs` |
-| Kịch bản P29 và P30 thay hai script cũ; test nạp kịch bản và kiểm kiểu shot | `scripts/scenarios/p29.mjs`, `p30.mjs`, `tests/scripts/capture.test.ts` |
+| Kịch bản P29 và P30 thay hai script cũ; test nạp kịch bản, kiểm kiểu shot và `needsBase` (một bước `from: 'base'` cũng cần bản gốc, nên `--only compat` chạy được) | `scripts/scenarios/p29.mjs`, `p30.mjs`, `tests/scripts/capture.test.ts` |
+| Sáu fix `capture-p30.mjs` của main gộp vào kịch bản: dấu mặt `faceMarks`/`matchMood` (có test `P30 face marks`) và `faces`/`near`/`faceInk` trong `scanActors`; mây chỉ nhận khi mặt dưới là mặt buồn, vòng khoanh gồm cả mặt, crop cao hơn; `!!` khi đồng hồ HUD đứng 15 s sau Tiếp tục, khi ảnh mây không có mặt buồn, khi đồng hồ HUD của bản gốc không tới giờ của ảnh; bản gốc chụp khi HUD tới cùng giờ với bản sau (không phải cùng số giây). Giữ cách của nhánh: tim và mây ở x4, giữ đồng hồ trang khi thấy biểu cảm | `scripts/lib/probes.mjs`, `shots.mjs`, `scenarios/p30.mjs`, `tests/scripts/p30-cloud.test.ts` |
+| `npm run media -- --scenario` không kèm tên in dòng Usage thay vì `TypeError` | `scripts/capture-media.mjs` |
 | Shot `emote` giữ đồng hồ trang ở khung biểu cảm hiện (`clockHooks`: `performance.now` đứng, rAF xếp hàng, `tick()` chạy từng khung 1/60 s), nở vài khung, phóng camera, vẽ một khung rồi chụp; biểu cảm nào mất trong lúc đó được chờ lại. Trước đây giữa lúc scan thấy mây và lúc chụp mất khoảng 0,4 s thật, mây (2,2 s, khách bỏ đi ngay) thường đã tắt: ở lượt đo "sau" chưa có hold, mây được chụp nhưng vòng khoanh rỗng; với hold, cả ba biểu cảm chụp được ở lần thử đầu, 0 lần hụt | `scripts/lib/probes.mjs` `clockHooks`, `scripts/lib/shots.mjs` `emoteAfter` |
 | `startPreview` nêu rõ cổng bị `fetch` của Node từ chối (4190, 4045, 5060, 6000…) thay vì "did not start" | `scripts/lib/capture.mjs` |
 | Luật cho hạng mục verify: viết kịch bản, không chép script; đo tuần tự; luôn kiểm renderer là GPU | `CLAUDE.md`, `docs/media.md` mục Kịch bản chụp, Yêu cầu, Tùy chọn, Lỗi hay gặp |
@@ -39,6 +41,14 @@ Cùng commit `ff8e7cc` cho cột "trước" (worktree riêng, script nguyên b�
 | `node scripts/capture-p30.mjs` cũ trên Chrome GPU (bước trung gian) | — | 55 s thực, 46,5 s CPU user, Chrome 64% TB / 238% đỉnh, mã 1: 1 `!!` (mây) |
 
 Renderer: trước `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0)), SwiftShader driver)`; sau `ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)`.
+
+Sau vòng sửa 1 (rebase lên `fe1fe8e`, gộp luật mặt buồn), đo lại ngày 22/10/2026 với `node scripts/capture.mjs p30` (không tính build, máy bận, load 8–20):
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `node scripts/capture.mjs p30` | 59 s thực, 47 s CPU user, Chrome 71% TB / 215% đỉnh, mã 0: tim 12:04, mồ hôi 12:01, mây 12:06 trên mặt buồn (bản gốc: mặt bình thường), 0 lần hụt |
+| `node scripts/capture.mjs p30 --only compat` | 14 s thực, 11 s CPU user, mã 0: PASS save v3 của `9f662fd` chạy 12:00 → 12:07, 0 lỗi riêng (trước vòng sửa: crash `build 'base' is not served`) |
+| `npm run check` | tsc, 1840 test trong 128 file, vite build |
 
 ## 5. Ảnh kịch bản so với script cũ
 

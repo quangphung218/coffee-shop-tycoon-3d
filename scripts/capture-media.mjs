@@ -1483,7 +1483,14 @@ const isEntry = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPa
 if (isEntry) {
   // `npm run media -- --scenario p30`: a scenario of scripts/capture.mjs instead of the README shots.
   const at = process.argv.indexOf('--scenario');
-  const run = at > 0 ? import('./capture.mjs').then((m) => m.main([process.argv[at + 1], ...process.argv.slice(2, at), ...process.argv.slice(at + 2)])) : main();
+  const run =
+    at > 0
+      ? import('./capture.mjs').then((m) => {
+          const id = process.argv[at + 1];
+          if (!id || id.startsWith('--')) throw new Error('Usage: npm run media -- --scenario <id> [--only tag,tag] [--saves-only] [--headed] [--out <dir>] [--base <ref>]');
+          return m.main([id, ...process.argv.slice(2, at), ...process.argv.slice(at + 2)]);
+        })
+      : main();
   run.catch((err) => {
     console.error(err);
     process.exitCode = 1;

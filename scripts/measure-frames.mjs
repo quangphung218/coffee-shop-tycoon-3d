@@ -19,8 +19,8 @@
 // between builds so drift spreads over both. Runs the installed Chrome
 // (scripts/lib/browser.mjs: $CHROME_PATH, else the usual install locations)
 // so WebGL uses the GPU, and refuses software WebGL unless MEDIA_GPU=any.
-// Holds the perf lock of scripts/lib/perf-lock.mjs: a second measurement
-// waits for this one, so they never share the GPU.
+// Holds the machine's perf lock (scripts/lib/perf-lock.mjs): a second
+// measurement, in any worktree, waits for this one, so they never share the GPU.
 // Each run also lists the confetti chunk and `tiers` atlas files requested
 // before the window ends: the Main Menu must not load them.
 //

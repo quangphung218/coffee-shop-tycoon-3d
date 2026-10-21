@@ -1,7 +1,8 @@
 // Functions that run inside the page (Playwright serialises their source, so
 // each is self-contained): hooks installed before the game's scripts, and
 // probes evaluated on the last frame drawn. Shared by the shot kinds of
-// scripts/lib/shots.mjs.
+// scripts/lib/shots.mjs. faceMarks and matchMood at the end run in Node: the
+// face prints a scan's `faces` are told apart by.
 
 /**
  * Runs in the page before its scripts. Keeps the last scene and camera of
@@ -243,13 +244,15 @@ export function alwaysVisible() {
  * drawn (__mediaView while focused): `emotes` [{ kind, world, box }] for the
  * emote meshes showing (a group of three meshes in `emoteColors`), and
  * `team` [{ world, box, shirt, hat }] for every body under 'actors' (shirt
- * and hat true when a mesh has the `uniform` colour), only `withTeam`.
- * Boxes are CSS px; `inside` is in the middle 85%.
+ * and hat true when a mesh has the `uniform` colour), only `withTeam`. With
+ * `near` ({ x, z }), `faces` [{ print, box }] lists the meshes in `faceInk`
+ * of the body nearest it across the floor, with the print of their geometry
+ * as faceMarks takes it. Boxes are CSS px; `inside` is in the middle 85%.
  */
-export function scanActors({ emoteColors, uniform, withTeam }) {
+export function scanActors({ emoteColors, uniform, withTeam, faceInk, near = null }) {
   const scene = window.__mediaScene;
   const cam = window.__mediaFocus ? window.__mediaView : window.__mediaCamera;
-  if (!scene || !cam) return { emotes: [], team: [] };
+  if (!scene || !cam) return { emotes: [], team: [], faces: [] };
   const r = document.getElementById('scene').getBoundingClientRect();
   const shown = (o) => {
     for (let e = o; e; e = e.parent) if (!e.visible) return false;
@@ -289,8 +292,24 @@ export function scanActors({ emoteColors, uniform, withTeam }) {
     if (!kind || !g || g.children.length !== 3 || !g.children.every((c) => c.isMesh && emoteHex.includes(hex(c)))) return;
     emotes.push({ kind, world: world(o), box: boxOf([o]) });
   });
+  const faces = [];
+  if (near) {
+    let best = null;
+    for (const root of scene.getObjectByName('actors')?.children ?? []) {
+      if (!root.visible) continue;
+      const p = world(root);
+      const d = Math.hypot(p.x - near.x, p.z - near.z);
+      if (!best || d < best.d) best = { root, d };
+    }
+    best?.root.traverse((o) => {
+      if (!o.isMesh || !shown(o) || hex(o) !== faceInk || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const { min, max } = o.geometry.boundingBox;
+      faces.push({ print: [min.x, min.y, min.z, max.x, max.y, max.z], box: boxOf([o]) });
+    });
+  }
   const team = [];
-  if (!withTeam) return { emotes, team };
+  if (!withTeam) return { emotes, team, faces };
   for (const root of scene.getObjectByName('actors')?.children ?? []) {
     if (!root.visible) continue;
     const meshes = [];
@@ -301,7 +320,42 @@ export function scanActors({ emoteColors, uniform, withTeam }) {
     if (meshes.length < 5) continue;
     team.push({ world: world(root), box: boxOf(meshes), shirt: meshes.some((m) => hex(m) === uniform.shirt), hat: meshes.some((m) => hex(m) === uniform.hat) });
   }
-  return { emotes, team };
+  return { emotes, team, faces };
+}
+
+// --- Node side: face prints. ---
+
+const boxPrint = (b) => [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z];
+
+/**
+ * Runs in Node. Prints of the faces of `rig` (src/render/actors/rig.ts):
+ * for each of its MOODS, the local bounding box of the merged brows-and-mouth
+ * geometry as [min x, y, z, max x, y, z]. The page tells a face apart by it.
+ */
+export function faceMarks(rig) {
+  const ch = rig.createCharacter({ role: 'customer', look: 0 });
+  const marks = {};
+  for (const mood of rig.MOODS) {
+    ch.setMood(mood);
+    const g = ch.face.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    marks[mood] = boxPrint(g.boundingBox);
+  }
+  return marks;
+}
+
+/** Runs in Node. The mood of `marks` whose print is `print` (within 0,1 mm), or null. */
+export function matchMood(print, marks) {
+  return Object.keys(marks).find((m) => marks[m].every((v, i) => Math.abs(v - print[i]) < 1e-4)) ?? null;
+}
+
+/** The first of a scan's `faces` that `marks` knows, as { mood, box }; null when none. */
+export function faceOf(faces, marks) {
+  for (const f of faces ?? []) {
+    const mood = matchMood(f.print, marks);
+    if (mood) return { mood, box: f.box };
+  }
+  return null;
 }
 
 /**

@@ -1,18 +1,20 @@
-// One measurement at a time: perf:frames and measure-startup take this lock
-// (a file in os.tmpdir() named after the repo) before they open a browser, so
-// two runs never share the GPU and the CPU and spoil each other's numbers.
+// One measurement at a time on this machine: perf:frames and measure-startup
+// take this lock (one file in os.tmpdir(), the same for every checkout and
+// worktree of the game, since they all share the GPU) before they open a
+// browser, so two runs never share the GPU and the CPU and spoil each
+// other's numbers.
 // A second run waits (PERF_LOCK_WAIT_S, default 1800 s), printing who holds
 // the lock, or refuses at once with PERF_LOCK_WAIT_S=0. A lock whose process
 // is gone is taken over.
-import { createHash } from 'node:crypto';
 import { closeSync, openSync, readFileSync, unlinkSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-/** Lock file of the repo at `root`. */
+/** The machine's lock file; `root` (the checkout) only names the run in the log, every worktree shares the lock. */
 export function lockPath(root) {
-  return join(tmpdir(), `cst3d-perf-${createHash('sha1').update(root).digest('hex').slice(0, 10)}.lock`);
+  void root;
+  return join(tmpdir(), 'cst3d-perf.lock');
 }
 
 /** The holder written in the lock file, or null when unreadable. */
@@ -35,7 +37,7 @@ export function alive(pid) {
 }
 
 /**
- * Takes the lock of `root`; resolves `{ file, release }` once held. Waits up
+ * Takes the machine's perf lock for the run at `root`; resolves `{ file, release }` once held. Waits up
  * to `waitMs` (default $PERF_LOCK_WAIT_S, 1800 s) for a live holder, polling
  * every `pollMs`; throws when the wait runs out. `label` names this run in
  * the lock file.
