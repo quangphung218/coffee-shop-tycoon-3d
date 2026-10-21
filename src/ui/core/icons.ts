@@ -51,6 +51,8 @@ export const ICON_IDS = [
   'i-grinder', 'i-pastry-case', 'i-blender', 'i-ice-maker', 'i-dishwasher',
   // Món mới, cấp quán và nhiệm vụ
   'i-frappe', 'i-level', 'i-mission',
+  // P31: cold brew, lò nướng và món đi kèm
+  'i-cold-brew', 'i-cookie', 'i-cold-brew-tower', 'i-oven',
 ] as const;
 
 export type IconId = (typeof ICON_IDS)[number];

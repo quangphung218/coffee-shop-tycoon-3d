@@ -141,6 +141,48 @@ export function cake(): Group {
   return facing(g, 0.2);
 }
 
+/** i-cold-brew: straight jar glass of black coffee with a steel lip, a handle and three ice cubes on top. */
+export function coldBrew(): Group {
+  const jar = cupBody([[0, 0], [0.5, 0], [0.54, 0.1], [0.54, 1.3], [0, 1.3]], 'coffeeDark');
+  const lip = at(part(new TorusGeometry(0.54, 0.08, 8, 18).rotateX(Math.PI / 2), 'skyLight'), 0, 1.3);
+  const ice = (
+    [
+      [-0.2, 1.45, 0.12, 0.34],
+      [0.22, 1.42, -0.06, 0.3],
+      [0.02, 1.68, -0.1, 0.3],
+    ] as const
+  ).map(([x, y, z, s], i) => {
+    const cube = at(iceCube(s), x, y, z);
+    cube.rotation.set(0.3 - i * 0.2, 0.4 + i * 0.3, 0.2);
+    return cube;
+  });
+  return group(jar, lip, ...ice, handle(0.62, 0.7, 0.26, 'skyLight'));
+}
+
+/** One round cookie with big chocolate chips on top, standing on y = 0. */
+function chipCookie(): Group {
+  const dough = part(lathe([[0, 0], [0.82, 0], [0.9, 0.12], [0.8, 0.26], [0, 0.3]], 18), 'honeyDeep');
+  const chips = (
+    [
+      [-0.38, 0.12],
+      [0.3, 0.3],
+      [0.02, -0.36],
+      [0.42, -0.24],
+      [-0.2, 0.46],
+    ] as const
+  ).map(([x, z]) => at(part(new SphereGeometry(0.15, 8, 6).scale(1, 0.6, 1), 'coffeeDark'), x, 0.28, z));
+  return group(dough, ...chips);
+}
+
+/** i-cookie: two chocolate chip cookies, one leaning on the one lying flat. */
+export function cookie(): Group {
+  const flat = at(chipCookie(), -0.2, 0, -0.1);
+  // Tipped towards the camera with its front edge on the table, so its chips face the viewer.
+  const leaning = at(chipCookie(), 0.3, 0.8, 0.45);
+  leaning.rotation.set(1.05, 0.2, 0);
+  return group(flat, leaning);
+}
+
 // Ingredients
 
 const BEAN = { rx: 0.5, ry: 0.32, rz: 0.72 };

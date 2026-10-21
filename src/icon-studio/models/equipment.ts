@@ -1,6 +1,6 @@
 /**
  * Equipment the shop levels unlock (grinder, pastry case, blender, ice maker,
- * dishwasher), the frappe drink, and the two progression glyphs (shop level,
+ * dishwasher, cold brew tower, oven), the frappe drink, and the two progression glyphs (shop level,
  * daily mission). Machines stand on y = 0 and face +Z; the glyphs are shot
  * straight on (`glyph` pose).
  */
@@ -119,6 +119,44 @@ export function dishwasher(tier: Tier = 1): Group {
   if (tier >= 2) {
     g.add(at(part(box(0.96, 0.06, 0.7, 0.03), trim(tier, 'latte')), 0, 1.58, -0.05));
     for (const x of [-0.24, 0.24]) g.add(at(part(lathe([[0, 0], [0.13, 0], [0.17, 0.22], [0, 0.22]]), 'skyLight'), x, 1.6, -0.08));
+  }
+  return g;
+}
+
+/** i-cold-brew-tower: slow-drip tower, a water globe over a grounds chamber dripping into a carafe, in a wooden frame. Tier 2 adds a steel ring on a bigger globe and a glass coil above the carafe; tier 3 a gold ring and a star on a post. */
+export function coldBrewTower(tier: Tier = 1): Group {
+  const board = at(part(box(1.3, 0.16, 0.8, 0.05), 'coffee'), 0, 0.08);
+  const posts = [-0.55, 0.55].map((x) => at(part(box(0.14, 2.2, 0.14, 0.04), 'coffee'), x, 1.26));
+  const bar = at(part(box(1.3, 0.14, 0.5, 0.05), 'coffee'), 0, 2.36);
+  const r = tier >= 2 ? 0.42 : 0.36;
+  const globe = at(part(new SphereGeometry(r, 16, 12), 'skyLight'), 0, 2.28 - r);
+  const valve = at(part(new SphereGeometry(0.1, 8, 6), 'honey'), 0, 1.6);
+  const chamber = at(part(new CylinderGeometry(0.3, 0.26, 0.36, 16), 'latte'), 0, 1.3);
+  const drop = at(part(new SphereGeometry(0.08, 8, 6).scale(1, 1.4, 1), 'coffeeDark'), 0, 0.95);
+  const carafe = at(part(lathe([[0, 0], [0.32, 0], [0.38, 0.3], [0.2, 0.55], [0, 0.55]], 16), 'coffeeDark'), 0, 0.16);
+  const g = group(board, ...posts, bar, globe, valve, chamber, drop, carafe);
+  if (tier >= 2) {
+    g.add(at(part(new TorusGeometry(r, 0.06, 6, 20).rotateX(Math.PI / 2), trim(tier, 'skyLight')), 0, 2.28 - r));
+    g.add(stroke([[-0.16, 1.04], [0.16, 0.94], [-0.16, 0.84], [0.06, 0.76]], 0.05, 'skyLight', { z: 0.2 }));
+  }
+  if (tier === 3) g.add(at(tierStar(0.16), 0.55, 0.55, 0.1));
+  return g;
+}
+
+/** i-oven: a berry countertop oven on short legs, cookies behind the warm window, a dial panel at the side. Tier 2 adds a cooling tray of cookies on top and a steel handle; tier 3 a gold tray and handle, and a star takes the place of the lower dial. */
+export function oven(tier: Tier = 1): Group {
+  const legs = [-0.6, 0.6].flatMap((x) => [-0.32, 0.32].map((z) => at(part(new CylinderGeometry(0.07, 0.07, 0.12, 8), 'coffeeDark'), x, 0.06, z)));
+  const body = at(part(box(1.5, 1.0, 0.95, 0.14), 'coral'), 0, 0.62);
+  const window = at(part(box(0.86, 0.58, 0.06, 0.05), 'honeyLight'), -0.22, 0.58, 0.48);
+  const cookies = [-0.44, 0.0].map((x) => at(part(disc(0.15, 0.06, 14), 'honeyDeep'), x, 0.5, 0.52));
+  const handleBar = at(part(box(0.86, 0.09, 0.09, 0.04), trim(tier, 'cream')), -0.22, 0.98, 0.54);
+  const panel = at(part(box(0.34, 0.8, 0.06, 0.04), 'coffeeDark'), 0.5, 0.62, 0.48);
+  const dial = (y: number) => at(part(new SphereGeometry(0.09, 8, 6), 'honey'), 0.5, y, 0.54);
+  const lower = tier === 3 ? at(tierStar(0.14), 0.5, 0.4, 0.53) : dial(0.4);
+  const g = group(...legs, body, window, ...cookies, handleBar, panel, dial(0.78), lower);
+  if (tier >= 2) {
+    g.add(at(part(box(1.2, 0.06, 0.7, 0.03), trim(tier, 'cream')), 0, 1.15));
+    for (const [x, z] of [[-0.36, 0.1], [0.0, -0.12], [0.36, 0.1]] as const) g.add(at(part(new CylinderGeometry(0.16, 0.16, 0.06, 14), 'honeyDeep'), x, 1.21, z));
   }
   return g;
 }

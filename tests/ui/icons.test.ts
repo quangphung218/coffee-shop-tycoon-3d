@@ -51,7 +51,7 @@ afterEach(() => {
 
 describe('icon atlas', () => {
   it('has a 48 px and a 24 px cell for every icon and every avatar look, in atlas order', () => {
-    expect(ICON_IDS).toHaveLength(113);
+    expect(ICON_IDS).toHaveLength(117);
     expect(Object.keys(ATLAS.icons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
     expect(Object.keys(ATLAS.smallIcons)).toEqual([...ICON_IDS, ...AVATAR_CELLS]);
     expect(AVATAR_CELL_COUNT).toBe(AVATAR_LOOKS.length);
@@ -232,10 +232,7 @@ describe('icon map', () => {
   });
 
   it('gives each menu item its own icon', () => {
-    // TODO P31 icons: Cold brew and the cookie borrow the americano and croissant icons until theirs are drawn.
-    const borrowed = new Set(['cold_brew', 'cookie']);
-    const own = MENU.filter((m) => !borrowed.has(m.id));
-    expect(new Set(own.map((m) => MENU_ICONS[m.id])).size).toBe(own.length);
+    expect(new Set(MENU.map((m) => MENU_ICONS[m.id])).size).toBe(MENU.length);
   });
 
   it('only uses icons that have a cell in the atlas', () => {
