@@ -26,6 +26,7 @@ Mọi số đo và ảnh làm trên commit `48a9945` (HEAD của nhánh tích h�
 | CSS chính `index-*.css` gzip | Gần như không đổi | PASS: `index-G0d7UaCo.css` 9,6 kB, cùng file (cùng hash) với base |
 | p95 headed | Không xấu hơn base quá 1 ms | PASS: 18 ms ở mọi bảng; base 18–19 ms |
 | Khung > 50 ms, headed | Không thêm khung > 50 ms | PASS theo trung vị (0 ở mọi bảng của P31). Đếm từng lần: P31 có 13 khung trong 8/60 lần, base 6 khung trong 5/60 lần ([mục 3](#3-khung-hình)) |
+| Cảnh cấp 8 có tháp và lò bậc 2 (`--scene tools-p31`) | p95 không xấu hơn base quá 1 ms, không thêm khung > 50 ms | PASS: p95 18 ms cả hai bản; P31 0 khung > 50 ms trong 10 lần ([mục 3](#cảnh-có-tháp-và-lò---scene-tools-p31)) |
 | `npm run layout` | Không tràn ngang ở 390–1440 | PASS: 98/98 mục |
 | Save v0–v3 | Nạp được, chơi tiếp được | PASS: `tests/save` 12 file, 201 test; save v3 của `fe1fe8e` chạy 12:00 → 12:08 trong bản P31, 0 lỗi mới |
 | Ảnh | Trước/sau có khoanh, 390 và 1280 | PASS: kịch bản `p31` thoát mã 0, không có dòng `!!`; 3 ảnh ghép ([mục 6](#6-ảnh)) |
@@ -108,6 +109,24 @@ Save ngày 2 do sim của từng bản chơi ra; quán ở cấp thấp nên c�
 | `noon-sunny` | Di động | P31 | 17 / 18 / 18 ms | 0 (0/0/0/0/0) | 0 (0/0/0/0/0) |
 
 Khung dài nhất của P31 trong từng lần là 272 ms (`dusk-rain` di động, lần đo 1, lần 3); lần 4 cùng bảng có 5 khung > 50 ms, p95 31 ms. Base có khung 167 ms (5 s đầu máy bàn, lần 1). Tổng cả 60 lần mỗi bản: P31 13 khung > 50 ms trong 8 lần, base 6 khung trong 5 lần; trung vị mọi bảng của P31 là 0. p95 vẫn 18 ms, chưa đạt 16,7 ms (nợ cũ từ P27).
+
+### Cảnh có tháp và lò (`--scene tools-p31`)
+
+Đo trên commit `f24a267` (sau `48a9945` có thêm các bản sửa fix1-1: nhãn Menu và đế của tháp), Chrome 155.0.8059.85 headed, WebGL `ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)`. Save 12:00 ngày 2 (giờ cao điểm), trời nắng, cấp quán 8, camera mặc định; bản P31 mua Tháp cold brew và Lò nướng cấp 2 (bậc 2), bản `fe1fe8e` không có hai công cụ nên chỉ đặt cùng cấp và cùng giờ. Lúc đo cả hai bản có 6 khách và 2 nhân viên; HUD 12:03 ở mọi lần.
+
+| Hồ sơ | Bản | p50 / p95 / dài nhất | Khung > 50 ms | Long task |
+| --- | --- | --- | --- | --- |
+| Máy bàn | `fe1fe8e` | 17 / 18 / 19 ms | 0 (1/0/0/0/0) | 0 (0/0/0/0/0) |
+| Máy bàn | P31 | 17 / 18 / 21 ms | 0 (0/0/0/0/0) | 0 (0/0/0/0/0) |
+| Di động | `fe1fe8e` | 17 / 18 / 19 ms | 0 (0/0/0/0/0) | 0 (0/0/0/0/0) |
+| Di động | P31 | 17 / 18 / 19 ms | 0 (0/0/0/0/0) | 0 (0/0/0/0/0) |
+
+| Ngưỡng | Kết quả |
+| --- | --- |
+| p95 không xấu hơn base quá 1 ms | PASS: 18 ms cả hai bản, cả hai hồ sơ |
+| Không thêm khung > 50 ms | PASS: P31 0 khung trong 10/10 lần; base 1 khung (141 ms, máy bàn, lần 1) |
+
+Khung dài nhất của P31 trong từng lần là 24 ms (máy bàn, lần 5).
 
 ## 4. Layout
 
