@@ -460,7 +460,7 @@ node scripts/capture.mjs p30 --out /tmp/p30 --base abc1234 --headed
 | Cờ | Tác dụng |
 | --- | --- |
 | `--only a,b` | Chỉ chạy các bước có tag `a` hoặc `b` (bước không tag luôn chạy); kịch bản có thể đặt biến môi trường tương đương (`P29_ONLY`). |
-| `--saves-only` | Chơi save của bản hiện tại, in tóm tắt rồi dừng (`P29_SAVES_ONLY=1`, `P30_SAVES_ONLY=1`). |
+| `--saves-only` | Chơi save của bản hiện tại, in tóm tắt rồi dừng (`P29_SAVES_ONLY=1`, `P30_SAVES_ONLY=1`, `P31_SAVES_ONLY=1`). |
 | `--out <dir>` | Ghi ảnh vào thư mục khác (so hai lần chạy). |
 | `--base <ref>` | Commit "trước" thay cho commit kịch bản ghi. |
 | `--headed` | Mở cửa sổ Chrome (`MEDIA_HEADED=1`). |
@@ -492,6 +492,7 @@ Một kịch bản xuất `default { id, out, base, tags, saves(mods, { isBase, 
 | `dusk` | Cảnh chạng vạng: ánh sáng, vũng sáng, bóng một vật bên đường | `settleMs`, `shadow` |
 | `levelup` | Thẻ Lên cấp của Daily Report, khoanh, ghi `file` | `file`, `settleMs` |
 | `clock` | Đồng hồ HUD lúc cảnh sẵn sàng và sau `waitMs` (save cũ còn chạy không) | `waitMs` |
+| `machines` (cặp) | Quầy sau cận cảnh: camera phóng quanh `focus`, đo khung trên màn của máy đứng ở từng x của `spots`; bản gốc chụp cùng điểm | `focus`, `ppm`, `spots`, `settleMs` |
 
 Đợt chụp mới: chép `scripts/scenarios/p30.mjs` làm mẫu, giữ lại các bước cần, đổi save và chú thích; thiếu kiểu shot thì thêm vào `scripts/lib/shots.mjs` (một hàm `(page, t0, opts)`), không viết `capture-pNN.mjs` mới. `tests/scripts/capture.test.ts` kiểm mọi kịch bản nạp được và chỉ dùng kiểu shot có thật.
 
@@ -557,6 +558,35 @@ Trước khi mở trình duyệt, kịch bản nạp lại save đám mây và c
 | Lệnh | Việc |
 | --- | --- |
 | `P30_SAVES_ONLY=1 node scripts/capture.mjs p30` | Chỉ chơi và in tóm tắt save của bản hiện tại (gồm kiểm save đám mây), không mở server hay trình duyệt; có `!!` thì mã 1. |
+
+## Ảnh P31
+
+```sh
+MEDIA_PORT=4200 npm run media -- --scenario p31
+```
+
+Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuất bản gốc `fe1fe8e` (v0.11.0) ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi chụp bằng Chrome headless trên GPU. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `fe1fe8e`.
+
+1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi đặt cấp quán 8 và 50.000.000 đ. Bản hiện tại thêm hai save: mua Tháp cold brew và Lò nướng 1 cấp (bậc 1), và 2 cấp (bậc 2). Bản gốc không có hai công cụ này nên ba save của nó giống nhau.
+2. Nâng cấp ở 390×844 và 1280×800, cuộn tới hàng Máy rửa ly: khoanh hai hàng công cụ mới.
+3. Menu ở 390×844 và 1280×800, cuộn tới hàng Bánh ngọt: bản gốc, bản hiện tại chưa mua (nhãn "Cần Tháp cold brew", "Cần Lò nướng", công tắc khoá), bản hiện tại đã mua bậc 1 (hai món tự bật).
+4. Quầy sau ở 1280×800 và 390×844: camera hai bản phóng quanh điểm giữa chỗ đặt lò và tháp; khoanh hai máy ở bậc 1 và bậc 2, ảnh bản gốc khoanh cùng chỗ.
+5. Nạp save trưa ngày 2 của bản gốc (save v3) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
+
+Ảnh JPEG trong `docs/reports/p31-equipment/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `upgrades-lv8-before-after-p31.jpg` | Cuối nhóm Dụng cụ của Nâng cấp ở cấp 8, 390 và 1280. |
+| `menu-cold-brew-before-after-p31.jpg` | Hàng Cold brew và Bánh quy sô-cô-la của Menu: trước, chưa mua, đã mua; 390 và 1280. |
+| `back-counter-before-after-p31.jpg` | Quầy sau: bản gốc, bậc 1, bậc 2; 1280 và 390. |
+
+Ảnh dùng trong [báo cáo P31](reports/p31-equipment.md). Lệnh in `!!` khi thiếu hàng công cụ trong Nâng cấp, khi hàng Cold brew không có nhãn "Cần Tháp cold brew" trước lúc mua hay hai món không bật sau khi mua, khi quầy sau thiếu tháp hay lò, khi bản gốc có máy ở chỗ đó, hoặc save cũ nạp lỗi; có `!!` thì mã 1.
+
+| Lệnh | Việc |
+| --- | --- |
+| `node scripts/capture.mjs p31 --only menu` | Chỉ chụp bảng Menu; tag: `compat`, `upgrades`, `menu`, `counter`. |
+| `P31_SAVES_ONLY=1 node scripts/capture.mjs p31` | Chỉ chơi và in tóm tắt save của bản hiện tại, không mở server hay trình duyệt. |
 
 ## Tùy chọn
 
