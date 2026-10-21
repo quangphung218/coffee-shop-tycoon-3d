@@ -48,14 +48,16 @@ afterEach(() => {
 });
 
 describe('fresh store', () => {
-  it('collects menu and upgrade ids from level_up and week_unlocks, ignoring tools', () => {
+  it('collects menu, upgrade and tool ids from level_up and week_unlocks; tools go to Nâng cấp', () => {
     const store = createFreshStore();
     store.handleEvents([levelUp(2), { type: 'week_unlocks', day: 3, unlocks: { menu: ['orange_juice'], upgrades: [], tools: ['pastry_case'] } }]);
     expect(store.has('menu', 'cappuccino')).toBe(true);
     expect(store.has('menu', 'orange_juice')).toBe(true);
     expect(store.has('upgrades', 'fast_machine')).toBe(true);
+    expect(store.has('upgrades', 'grinder')).toBe(true);
+    expect(store.has('upgrades', 'pastry_case')).toBe(true);
     expect(store.count('menu')).toBe(LEVEL_2.menu.length + 1);
-    expect(store.count('upgrades')).toBe(LEVEL_2.upgrades.length);
+    expect(store.count('upgrades')).toBe(LEVEL_2.upgrades.length + LEVEL_2.tools.length + 1);
     expect(store.count('inventory')).toBe(0);
   });
 
