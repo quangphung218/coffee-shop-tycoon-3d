@@ -36,9 +36,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { basename, join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
 import { OrthographicCamera, Vector3 } from 'three';
 import { buildRef, FIXED_NOW, makeBoard, newContext, openMenu, OUT, startPreview, urlFor } from './capture-media.mjs';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** The P24 release the boards compare against (git archive). */
@@ -192,15 +192,6 @@ export async function playSaves(root) {
 function printSaves(who, { levelUpDay, levelsAt }) {
   console.log(`${who}: Normal, seed ${SEED}; first level-up after day ${levelUpDay}`);
   for (const t of TIERS) console.log(`  tier ${t} save: ${Object.entries(levelsAt[t]).map(([id, g]) => `${id} ${g.level} (t${g.tier})`).join(', ')}`);
-}
-
-// --- Browser. ---
-
-/** Installed Chrome, as in measure-frames.mjs; null when there is none. */
-function findChrome() {
-  if (process.env.MEDIA_CHROMIUM === '1') return null;
-  const candidates = [process.env.CHROME_PATH, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'];
-  return candidates.find((p) => p && existsSync(p)) ?? null;
 }
 
 // --- In-page probes (viewport CSS px, deviceScaleFactor 1). ---
@@ -941,9 +932,7 @@ async function main() {
 
     servers.push(await startPreview(ROOT, PORT));
     servers.push(await startPreview(baseRoot, BASE_PORT));
-    const executablePath = findChrome();
-    browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: process.env.MEDIA_HEADED !== '1', args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'], ignoreDefaultArgs: ['--hide-scrollbars'] });
-    progress('both', `browser ${executablePath ?? 'Playwright Chromium'} ${browser.version()}`);
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1', ignoreDefaultArgs: ['--hide-scrollbars'], log: (line) => progress('both', line) });
     const curUrl = urlFor(PORT);
     const baseUrl = urlFor(BASE_PORT);
 

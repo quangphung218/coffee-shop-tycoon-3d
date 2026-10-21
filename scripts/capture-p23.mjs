@@ -31,7 +31,7 @@ import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:f
 import { basename, join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 import { buildRef, FIXED_NOW, makeBoard, newContext, openMenu, OUT, startPreview, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -642,11 +642,7 @@ async function main() {
 
     servers.push(await startPreview(ROOT, PORT));
     servers.push(await startPreview(baseRoot, BASE_PORT));
-    browser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-      ignoreDefaultArgs: ['--hide-scrollbars'],
-    });
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1', ignoreDefaultArgs: ['--hide-scrollbars'] });
     const curUrl = urlFor(PORT);
     const baseUrl = urlFor(BASE_PORT);
 

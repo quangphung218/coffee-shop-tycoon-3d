@@ -12,7 +12,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 import {
   buildRef,
   cameraHome,
@@ -1076,11 +1076,7 @@ async function main() {
     const sim = await loadSim(ROOT);
     servers.push(await startPreview(ROOT, PORT));
     servers.push(await startPreview(baseRoot, BASE_PORT));
-    browser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-      ignoreDefaultArgs: ['--hide-scrollbars'],
-    });
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1', ignoreDefaultArgs: ['--hide-scrollbars'] });
 
     // Both builds play their day side by side (each in its own context), so the run takes one day, not two.
     progress('both', 'playing day 1 on P20 and P19');

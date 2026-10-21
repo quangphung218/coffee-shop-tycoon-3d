@@ -26,8 +26,8 @@ import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
 import { buildRef, cuboid, FIXED_NOW, freeze, newContext, observeThree, OUT, sceneSnapshot, startPreview, thaw, urlFor, worldBox } from './capture-media.mjs';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** The P26 release the before shots come from (git archive). */
@@ -621,7 +621,7 @@ async function main() {
       const w = v.width;
       // A fresh browser per width: after a dozen WebGL pages one browser left the loading screen up.
       if (browser) await browser.close();
-      browser = await chromium.launch({ headless: true, args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+      browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1' });
       progress('both', `sessions at ${w}`);
       const [m1, m0] = await Promise.all([session(browser, curUrl, cur.saves.morning, v, (p) => menuShot(p, curUrl)), session(browser, baseUrl, base.saves.morning, v, (p) => menuShot(p, baseUrl))]);
       files.push(

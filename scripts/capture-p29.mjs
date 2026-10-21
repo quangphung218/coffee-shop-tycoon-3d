@@ -38,6 +38,7 @@ import { join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FIXED_NOW, OUT, buildRef, newContext, observeThree, openMenu, startPreview, urlFor } from './capture-media.mjs';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.MEDIA_PORT ?? process.env.PORT ?? 4173);
@@ -997,7 +998,6 @@ async function main() {
   if (process.env.P29_SAVES_ONLY === '1') return;
 
   mkdirSync(P29_OUT, { recursive: true });
-  const { chromium } = await import('playwright');
   const server = await startPreview(ROOT, PORT);
   const url = urlFor(PORT);
   const files = [];
@@ -1005,7 +1005,7 @@ async function main() {
   // A fresh browser per width and for the coin board: after a dozen WebGL pages one browser left the loading screen up (P27).
   const launch = async () => {
     if (browser) await browser.close();
-    browser = await chromium.launch({ headless: process.env.MEDIA_HEADED !== '1', args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1' });
   };
   // Sunny Cao 1280 shots for the hours board, by minute.
   const hours = new Map();

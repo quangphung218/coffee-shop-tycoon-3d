@@ -45,6 +45,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FIXED_NOW, buildRef, newContext, openMenu, startPreview, urlFor } from './capture-media.mjs';
 import { playToScene, saveText } from './capture-p29.mjs';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.MEDIA_PORT ?? process.env.PORT ?? 4173);
@@ -1063,11 +1064,7 @@ async function main() {
     const base = await savesOf(baseDir, false);
     progress(`${BASE_COMMIT} saves: ${base.info}`);
     servers.push(await startPreview(ROOT, PORT), await startPreview(baseDir, PORT + 1));
-    const { chromium } = await import('playwright');
-    browser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
-    });
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1', log: progress });
     const c = { url: urlFor(PORT), saves: cur.saves, marks: cur.marks };
     const b = { url: urlFor(PORT + 1), saves: base.saves };
     await compatCheck(browser, c, b);

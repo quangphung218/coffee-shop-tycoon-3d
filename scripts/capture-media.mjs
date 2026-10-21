@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const OUT = join(ROOT, 'docs', 'media');
@@ -1479,11 +1479,7 @@ async function main() {
     const plans = { p18: await simPlan(p18Root), p19: await simPlan(ROOT) };
     servers.push(await startPreview(ROOT, PORT));
     servers.push(await startPreview(p18Root, P18_PORT));
-    const browser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      // Lets WebGL fall back to software rendering when headless Chromium has no GPU.
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-    });
+    const browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1' });
     browsers.push(browser);
     const context = await newContext(browser, { viewport: VIEWPORT, recordVideo: withVideo ? { dir: tmp, size: VIEWPORT } : undefined });
     await context.addInitScript(observeThree);
@@ -1495,11 +1491,7 @@ async function main() {
     await makeGlowPair(browser, glow, join(OUT, 'facade-day-evening.png'));
 
     // Headless Chromium hides scrollbars unless told otherwise; the Kho frames need them.
-    const khoBrowser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-      ignoreDefaultArgs: ['--hide-scrollbars'],
-    });
+    const khoBrowser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1', ignoreDefaultArgs: ['--hide-scrollbars'] });
     browsers.push(khoBrowser);
     const p19 = await khoSession(khoBrowser, URL_BASE, null);
     const p18 = await khoSession(khoBrowser, urlFor(P18_PORT), p19.focus);

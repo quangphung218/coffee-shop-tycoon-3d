@@ -13,13 +13,21 @@
 // graphics setting, <n> times per build taking turns between builds, and prints
 // the median over runs of the average frame rate across FPS_SECONDS of play and
 // the 5th-percentile frame rate of all those frames. --fps-only skips the
-// startup table; --quality limits the FPS pass to one setting. Chrome: $CHROME_PATH, else the usual install locations.
+// startup table; --quality limits the FPS pass to one setting. Chrome comes
+// from scripts/lib/browser.mjs ($CHROME_PATH, else the usual install
+// locations) so WebGL uses the GPU; the run holds the perf lock of
+// scripts/lib/perf-lock.mjs, so it never shares the GPU with perf:frames.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { build, preview } from 'vite';
+import { BROWSER_ARGS, findChrome, isSoftwareGl } from './lib/browser.mjs';
+import { acquirePerfLock } from './lib/perf-lock.mjs';
+
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 const PROFILES = [
   { name: 'Desktop, no throttling' },
@@ -119,20 +127,6 @@ function basePort() {
   return port;
 }
 
-function findChrome() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ];
-  const found = candidates.find((p) => p && existsSync(p));
-  if (!found) throw new Error('Chrome not found; set CHROME_PATH');
-  return found;
-}
-
 /** Exports <ref> into a temp dir sharing this checkout's node_modules. */
 function checkoutRef(ref) {
   // macOS tmpdir() is under the /var -> /private/var symlink; vite needs the real path.
@@ -193,8 +187,7 @@ function launchChrome(path, profileDir) {
     `--user-data-dir=${profileDir}`,
     '--no-first-run',
     '--no-default-browser-check',
-    '--ignore-gpu-blocklist',
-    '--enable-unsafe-swiftshader',
+    ...BROWSER_ARGS,
     '--window-size=1280,800',
     'about:blank',
   ]);
@@ -371,6 +364,8 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const port = basePort();
   const chromePath = findChrome();
+  if (!chromePath) throw new Error('Chrome not found; set CHROME_PATH (startup and FPS numbers need WebGL on the GPU)');
+  const lock = await acquirePerfLock(ROOT, { label: `measure-startup ${process.argv.slice(2).join(' ')}` });
   const temps = [];
   const builds = [];
   if (args.base) {
@@ -397,7 +392,12 @@ async function main() {
 
     chrome = launchChrome(chromePath, profileDir);
     cdp = await connect(await chrome.wsUrl);
-    console.log(`Chrome: ${chromePath}\nWebGL: ${await gpuName(cdp)}\nRuns per cell: ${args.runs} (median)\n`);
+    const gpu = await gpuName(cdp);
+    console.log(`Chrome: ${chromePath}\nWebGL: ${gpu}\nRuns per cell: ${args.runs} (median)\n`);
+    if (isSoftwareGl(gpu)) {
+      if (process.env.MEDIA_GPU !== 'any') throw new Error(`WebGL runs in software (${gpu}): the numbers would say nothing; set MEDIA_GPU=any to measure anyway`);
+      console.log('!! WebGL runs in software: every frame is CPU-bound.\n');
+    }
 
     for (const b of builds) {
       console.log(`## ${b.label}\n\n| Chunk | Raw | Gzip |\n| --- | --- | --- |`);
@@ -460,6 +460,7 @@ async function main() {
     }
     for (const s of servers) await s.close();
     for (const t of temps) rmSync(t, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    lock.release();
   }
 }
 

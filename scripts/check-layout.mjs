@@ -45,7 +45,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.LAYOUT_PORT ?? 4173);
@@ -878,11 +878,7 @@ function printTable(title, rows) {
 
 async function main() {
   const server = await startPreview();
-  const browser = await chromium.launch({
-    headless: process.env.LAYOUT_HEADED !== '1',
-    // Lets WebGL fall back to software rendering when headless Chromium has no GPU.
-    args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-  });
+  const browser = await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
   // LAYOUT_ONLY=day,hud,event,p25,p27 runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
