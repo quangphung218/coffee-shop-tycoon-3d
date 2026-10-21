@@ -662,6 +662,11 @@ async function writeBoard(browser, name, { panels, crop, dpr, scale, notes }) {
       red: RED,
       quality: 0.86,
     });
+    // An empty canvas (NaN or zero size) gives "data:," and no JPEG.
+    if (!jpeg) {
+      console.warn(`!! ${name}: the board drew nothing`);
+      return null;
+    }
     const file = join(P29_OUT, name);
     writeFileSync(file, Buffer.from(jpeg, 'base64'));
     return relative(ROOT, file);
@@ -705,7 +710,7 @@ async function hoursBoard(browser, hours) {
       caption: `HUD ${h.clock || '?'}; nắng ${f2(l.sun)} từ phía ${sunSide(l)}, cao ${Math.round(l.elevation)}°; trời ${f2(l.hemi)}; tổng sáng ${f2(l.total)}`,
     };
   });
-  const crop = { x: 0, y: 0, ...DESK };
+  const crop = { x: 0, y: 0, w: DESK.width, h: DESK.height };
   const scale = Math.min(1, (BOARD_WIDTH - 48 - 24 * (panels.length - 1)) / (panels.length * crop.w));
   const notes = [`Cùng save ngày ${SCENE_DAY}, trời nắng, 1280×800, mức Cao, bản ${head}. Tổng sáng = trời + env × 6 + nắng, ngân sách 3,4.`];
   return writeBoard(browser, HOURS_BOARD, { panels, crop, dpr: 1, scale, notes });
@@ -903,7 +908,7 @@ async function duskBoard(browser, url, save, base) {
     { png: before.png, boxes: boxesOf(before), title: `Trước · ${BASE_COMMIT} · HUD ${before.clock || '?'} · nắng, Cao`, caption: caption(before) },
     { png: after.png, boxes: boxesOf(after), title: `Sau · ${head} · HUD ${after.clock || '?'} · nắng, Cao`, caption: caption(after) },
   ];
-  const crop = { x: 0, y: 0, ...DESK };
+  const crop = { x: 0, y: 0, w: DESK.width, h: DESK.height };
   const scale = Math.min(1, (BOARD_WIDTH - 48 - 24) / (2 * crop.w));
   return writeBoard(browser, DUSK_BOARD, { panels, crop, dpr: 1, scale, notes });
 }
