@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
-import { createHud, MONEY_BOUNCE_GAP_MS, MONEY_BOUNCE_MS } from '../../src/ui/hud/hud';
+import { formatMoney } from '../../src/ui/core/format';
+import { createHud, MONEY_BOUNCE_EASING, MONEY_BOUNCE_GAP_MS, MONEY_BOUNCE_MS } from '../../src/ui/hud/hud';
 
 let animate: ReturnType<typeof vi.fn>;
 let now = 0;
@@ -49,7 +50,7 @@ describe('HUD money bounce', () => {
     expect(bounces(moneyEl)).toHaveLength(0);
   });
 
-  it('bounces once (scale only, 220 ms) when money rises', () => {
+  it('bounces once (scale only) when money rises', () => {
     const { moneyEl, set } = mount(500_000);
     set(525_000);
     const calls = bounces(moneyEl);
@@ -92,12 +93,44 @@ describe('HUD money bounce', () => {
     expect(bounces(moneyEl)).toHaveLength(0);
   });
 
-  it('still counts up to the new sum and keeps the label when it bounces', () => {
+  it('takes its length and easing from --duration-base and --easing-out', () => {
     const { moneyEl, set } = mount(500_000);
-    const text = moneyEl.textContent;
+    moneyEl.style.setProperty('--duration-base', '180ms');
+    moneyEl.style.setProperty('--easing-out', 'cubic-bezier(0.1, 0.9, 0.2, 1)');
+    set(525_000);
+    const [, opts] = bounces(moneyEl)[0] as [Keyframe[], KeyframeAnimationOptions];
+    expect(opts).toEqual({ duration: 180, easing: 'cubic-bezier(0.1, 0.9, 0.2, 1)' });
+  });
+
+  it('falls back to MONEY_BOUNCE_MS and MONEY_BOUNCE_EASING without the tokens', () => {
+    const { moneyEl, set } = mount(500_000);
+    set(525_000);
+    const [, opts] = bounces(moneyEl)[0] as [Keyframe[], KeyframeAnimationOptions];
+    expect(opts).toEqual({ duration: MONEY_BOUNCE_MS, easing: MONEY_BOUNCE_EASING });
+  });
+
+  it('still counts up to the new sum when it bounces', () => {
+    // A manual rAF: each frame runs the queued callbacks at the given time.
+    let queue: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => queue.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', () => {
+      queue = [];
+    });
+    const frame = (t: number): void => {
+      const run = queue;
+      queue = [];
+      run.forEach((cb) => cb(t));
+    };
+    const { moneyEl, set } = mount(500_000);
     set(525_000);
     expect(bounces(moneyEl)).toHaveLength(1);
-    // jsdom has no --duration-count; the count-up runs on rAF, so the text is not cut short to the end value at once.
-    expect(moneyEl.textContent).toBe(text);
+    expect(moneyEl.textContent).toBe(formatMoney(500_000));
+    // jsdom has no --duration-count, so the count-up lasts COUNT_FALLBACK_MS (400 ms).
+    frame(0);
+    frame(200);
+    expect(moneyEl.textContent).not.toBe(formatMoney(525_000));
+    frame(400);
+    expect(moneyEl.textContent).toBe(formatMoney(525_000));
+    expect(queue).toHaveLength(0);
   });
 });
