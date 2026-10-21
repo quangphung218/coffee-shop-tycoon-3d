@@ -7,7 +7,7 @@ import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { Toasts } from '../core/toast';
-import { toastForEvent, uniformUnlockToast } from '../hud/events';
+import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
@@ -163,6 +163,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     logPlay('run_start');
     hud.closePanel();
     toasts.clear();
+    resetRegularToasts();
     hud.el.hidden = false;
     screens.show(null);
     hud.update(state);

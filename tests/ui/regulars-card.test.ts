@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState } from '../../src/sim/types';
+import { createMemoryStorage } from '../../src/save/storage';
 import { REGULAR_TOAST_GAP_MS, resetRegularToasts, toastForEvent } from '../../src/ui/hud/events';
 import type { PanelContext, PanelHandle } from '../../src/ui/hud/panels';
 import { regularRows, renderTasksPanel } from '../../src/ui/panels/tasks';
+import { createShell } from '../../src/ui/screens/shell';
 
 const game = (): GameState => createNewGame('Quán Thử', 'normal', 42);
 
@@ -90,5 +92,27 @@ describe('regular_arrived toast', () => {
     const state = game();
     expect(toastForEvent(arrived('gone_id', 1), state, 0)).toBeNull();
     expect(toastForEvent(arrived('em_vy', 1), state, 10)!.title).toBe('Khách quen mới: Em Vy');
+  });
+
+  it('toasts the first regular of a new game even inside the 20 s gap', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = createShell({ root, storage: createMemoryStorage() });
+    const titles = () => [...root.querySelectorAll('.toast-title')].map((p) => p.textContent);
+    try {
+      shell.startGame(game());
+      shell.handleEvents([arrived('co_lan', 2)]);
+      expect(titles()).toEqual(['Cô Lan ghé quán (lần 2)']);
+      // Same game, a moment later: held back by the gap.
+      shell.handleEvents([arrived('anh_minh', 1)]);
+      expect(titles()).toEqual(['Cô Lan ghé quán (lần 2)']);
+      // Ván mới, Chơi lại and loading a save all go through startGame, which starts the gap over.
+      shell.startGame(game());
+      shell.handleEvents([arrived('anh_minh', 1)]);
+      expect(titles()).toEqual(['Khách quen mới: Anh Minh']);
+    } finally {
+      shell.dispose();
+      root.remove();
+    }
   });
 });

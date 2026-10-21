@@ -54,7 +54,7 @@ export const REGULAR_TOAST_GAP_MS = 20_000;
 
 let lastRegularToastAt: number | null = null;
 
-/** Forgets the last regular toast, so the next arrival toasts again (new game, tests). */
+/** Forgets the last regular toast, so the next arrival toasts again; called by the shell's `startGame` (Ván mới, Chơi lại, loading a save) and by tests. */
 export function resetRegularToasts(): void {
   lastRegularToastAt = null;
 }

@@ -192,6 +192,52 @@ describe('emotes in the actors', () => {
     actors.dispose();
   });
 
+  /** Local scale and position of the shown `kind` mesh at each frame, through the real actors. */
+  function emoteFrames(options: { quality: 'low' | 'high'; reducedMotion: boolean }, kind: 'heart' | 'sweat'): string[] {
+    let ms = 100_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => ms);
+    const scene = new Scene();
+    const actors = createActors(scene, options);
+    const state = newState();
+    const c =
+      kind === 'heart'
+        ? addCustomer(state, { state: 'drinking', timer: 20 })
+        : addCustomer(state, { state: 'queueing', patience: 5 });
+    actors.update(state, 0);
+    if (kind === 'heart') state.events.push({ type: 'served', customerId: c.id, itemId: 'latte' });
+    const frames: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      actors.update(state, 0);
+      state.events.length = 0;
+      expect(actors.inspect(`c${c.id}`)!.emote).toBe(kind);
+      const shown: Mesh[] = [];
+      scene.traverse((o) => {
+        if ((o as Mesh).isMesh && o.visible && (o as Mesh).geometry === emoteGeometry()[kind]) shown.push(o as Mesh);
+      });
+      expect(shown).toHaveLength(1);
+      const m = shown[0]!;
+      frames.push(JSON.stringify([m.scale.toArray(), m.position.toArray().map((v) => v.toFixed(5))]));
+      ms += (EMOTE_SECONDS.heart * 1000) / 14;
+    }
+    actors.dispose();
+    return frames;
+  }
+
+  it('keeps the emote shown but still on low quality and with reduced motion', () => {
+    for (const options of [
+      { quality: 'low', reducedMotion: false },
+      { quality: 'high', reducedMotion: true },
+    ] as const) {
+      for (const kind of ['heart', 'sweat'] as const) {
+        const frames = emoteFrames(options, kind);
+        expect(new Set(frames).size, `${options.quality}/${options.reducedMotion}/${kind}`).toBe(1);
+        expect(JSON.parse(frames[0]!)[0]).toEqual([1, 1, 1]);
+      }
+    }
+    // The same frames move on high quality without reduced motion, so the check above can fail.
+    expect(new Set(emoteFrames({ quality: 'high', reducedMotion: false }, 'heart')).size).toBeGreaterThan(1);
+  });
+
   it('freezes emotes while paused and hides them when the body goes back to the pool', () => {
     let ms = 100_000;
     vi.spyOn(performance, 'now').mockImplementation(() => ms);

@@ -244,11 +244,11 @@ export type CustomerState =
   | 'leaving'
   | 'angry_leave';
 
-/** Customer personality, chosen by a hash of the seed and the customer id. */
 /** Team uniform id, see `src/sim/data/uniforms.ts`. */
 export type UniformId = 'classic' | 'mint' | 'latte' | 'coral';
 
-export type PersonaId ='office' | 'student' | 'regular' | 'connoisseur' | 'family';
+/** Customer personality, chosen by a hash of the seed and the customer id. */
+export type PersonaId = 'office' | 'student' | 'regular' | 'connoisseur' | 'family';
 
 export interface Customer {
   id: number;
