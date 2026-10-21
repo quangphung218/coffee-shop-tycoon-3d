@@ -34,7 +34,7 @@ Quy ước dữ liệu: `GameState` là JSON thuần; tiền là số nguyên đ
 
 ### Đọc mục nào khi sửa gì
 
-`docs/architecture.md` dài khoảng 640 dòng. Chỉ đọc mục cần:
+`docs/architecture.md` dài khoảng 680 dòng. Chỉ đọc mục cần:
 
 | Sửa | Đọc |
 | --- | --- |
