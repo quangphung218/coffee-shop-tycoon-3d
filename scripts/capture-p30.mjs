@@ -1037,7 +1037,7 @@ async function main() {
       headless: process.env.MEDIA_HEADED !== '1',
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
     });
-    const c = { url: urlFor(PORT), saves: cur.saves };
+    const c = { url: urlFor(PORT), saves: cur.saves, marks: cur.marks };
     const b = { url: urlFor(PORT + 1), saves: base.saves };
     await compatCheck(browser, c, b);
     files.push(await emoteBoard(browser, c, b, head));
