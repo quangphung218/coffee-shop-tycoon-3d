@@ -5,7 +5,8 @@
 // narrows the run. Files (JPEG, docs/reports/p31-equipment):
 //   upgrades-lv8-before-after-p31.jpg   the end of Dụng cụ in Nâng cấp at shop level 8: the tower and oven rows
 //   menu-cold-brew-before-after-p31.jpg the Cold brew and cookie rows of Menu: 'Cần <công cụ>', then on after buying
-//   back-counter-before-after-p31.jpg   the back counter close up: tower and oven at tier 1 and 2
+//   back-counter-before-after-p31.jpg   the back counter at 1280, pendant lamps dropped: tower and oven at tier 1 and 2, then each close up
+//                                       (the tools have 2 levels and no shop-level bonus, so no tier 3)
 // The saves are described in docs/media.md.
 import { DESK, PHONE } from '../lib/capture.mjs';
 import { cropAround, grow } from '../lib/board.mjs';
@@ -23,8 +24,33 @@ const ITEMS = { cold_brew: 'Cold brew', cookie: 'Bánh quy sô-cô-la' };
 const SPOTS = { cold_brew_tower: -0.32, oven: -2.97 };
 const MACHINE_Z = -3.3;
 const FOCUS = { x: (SPOTS.cold_brew_tower + SPOTS.oven) / 2, y: 1.35, z: MACHINE_Z };
-/** Camera zoom round the back counter, CSS px per metre, per viewport width. */
-const PPM = { [DESK.width]: 240, [PHONE.width]: 105 };
+/** Camera zoom round the back counter at 1280, CSS px per metre: both tools, then one tool close up. */
+const PPM = 240;
+const CLOSE_PPM = 600;
+/** Close-up point of each tool: its spot, half way up the tower, the oven's top. */
+const CLOSE = { oven: { focus: { x: SPOTS.oven, y: 1.15, z: MACHINE_Z }, ppm: CLOSE_PPM }, cold_brew_tower: { focus: { x: SPOTS.cold_brew_tower, y: 1.35, z: MACHINE_Z }, ppm: CLOSE_PPM } };
+/**
+ * What tier 2 adds to each tool (src/render/scene/equipment.ts), metres in
+ * the machine's own frame: the steel plinth under both, the cold brew glass
+ * by the tower, the cookie tray on the oven.
+ */
+const TIER2_PARTS = {
+  cold_brew_tower: [
+    { min: { x: -0.13, y: 0.9, z: -0.19 }, max: { x: 0.13, y: 0.94, z: 0.19 } },
+    { min: { x: 0.035, y: 0.94, z: 0.085 }, max: { x: 0.105, y: 1.03, z: 0.155 } },
+  ],
+  oven: [
+    { min: { x: -0.24, y: 0.9, z: -0.24 }, max: { x: 0.24, y: 0.94, z: 0.24 } },
+    { min: { x: -0.17, y: 1.31, z: -0.12 }, max: { x: 0.17, y: 1.34, z: 0.12 } },
+  ],
+};
+/**
+ * World box of the three pendant lamps over the front counter (shades,
+ * bulbs and cords at z -2 from 2.11 m up, src/render/scene/facade.ts): they
+ * stand between the camera and the back counter, so the counter shots drop
+ * them (clearBox) before shooting.
+ */
+const PENDANTS = { min: { x: -2, y: 1.95, z: -2.45 }, max: { x: 2, y: 3.5, z: -1.55 } };
 const VIEWS = [PHONE, DESK];
 const seed = Number(process.env.P31_SEED ?? SEED);
 
@@ -184,48 +210,65 @@ const menuBoard = {
   notes: [`Cùng save cấp quán ${LEVEL} như bảng Nâng cấp; ảnh thứ ba mua Tháp cold brew và Lò nướng bậc 1 bằng sim trước khi ghi save (buy_upgrade tự bật món). Bảng Menu cuộn tới hàng Bánh ngọt ở mọi ảnh.`],
 };
 
-/** (c) The back counter close up: tier 1 and tier 2 of both tools, the base's same camera point. */
-const counterPair = (save, v) => ({
+/**
+ * (c) The back counter at 1280, pendant lamps dropped: both tools, then each
+ * close up, at tier 1 and tier 2; the base at the same camera points.
+ */
+const counterPair = (save) => ({
   kind: 'pair',
-  id: `counter-${save}-${w(v)}`,
+  id: `counter-${save}`,
   tags: ['counter'],
   shot: 'machines',
   save,
-  viewport: v,
+  viewport: DESK,
   dpr: SHOT_DPR,
-  opts: { focus: FOCUS, ppm: PPM[w(v)], spots: SPOTS },
-  need: (after) => TOOLS.every((id) => after?.boxes?.[id]),
-  log: ({ after, before }) => `back counter ${save} ${w(v)}: ${TOOLS.map((id) => `${id} ${after.boxes[id] ? `${Math.round(after.boxes[id].w)}×${Math.round(after.boxes[id].h)} px` : 'missing'}`).join(', ')}; ${BASE}: ${TOOLS.filter((id) => before?.boxes?.[id]).length} of them`,
+  opts: { focus: FOCUS, ppm: PPM, spots: SPOTS, marks: TIER2_PARTS, clear: PENDANTS, close: CLOSE },
+  need: (after) => TOOLS.every((id) => after?.boxes?.[id] && after.close[id]?.boxes[id]),
+  log: ({ after, before }) =>
+    `back counter ${save}: ${after.cleared} pendant triangles dropped; ${TOOLS.map((id) => `${id} ${after.boxes[id] ? `${Math.round(after.boxes[id].w)}×${Math.round(after.boxes[id].h)} px, close ${Math.round(after.close[id]?.boxes[id]?.w ?? 0)}×${Math.round(after.close[id]?.boxes[id]?.h ?? 0)} px` : 'missing'}`).join(', ')}; ${BASE}: ${TOOLS.filter((id) => before?.boxes?.[id]).length} of them`,
   check: ({ after, before }) => [
-    ...(TOOLS.every((id) => after?.boxes?.[id]) ? [] : [`back counter ${save} ${w(v)}: ${TOOLS.filter((id) => !after?.boxes?.[id]).join(', ')} not on the working tree's back counter`]),
-    ...(before && TOOLS.some((id) => before.boxes[id]) ? [`back counter ${save} ${w(v)}: ${BASE} has a machine at a P31 spot`] : []),
+    ...(TOOLS.every((id) => after?.boxes?.[id] && after.close[id]?.boxes[id]) ? [] : [`back counter ${save}: ${TOOLS.filter((id) => !after?.boxes?.[id] || !after.close[id]?.boxes[id]).join(', ')} not on the working tree's back counter`]),
+    ...(after?.cleared ? [] : [`back counter ${save}: no pendant lamp dropped before the shot`]),
+    ...(before && TOOLS.some((id) => before.boxes[id]) ? [`back counter ${save}: ${BASE} has a machine at a P31 spot`] : []),
   ],
 });
-const counterSteps = VIEWS.flatMap((v) => ['tier1', 'tier2'].map((save) => counterPair(save, v)));
+const counterSteps = ['tier1', 'tier2'].map(counterPair);
+
+/** Rows of the counter board: both tools, then the oven and the tower close up. */
+const COUNTER_ROWS = [
+  { pick: (r) => r, tools: TOOLS, min: { w: 820, h: 420 }, name: `Lò nướng và Tháp cold brew, ${PPM} px/m` },
+  { pick: (r) => r.close.oven, tools: ['oven'], min: { w: 540, h: 560 }, name: `Lò nướng cận cảnh, ${CLOSE_PPM} px/m` },
+  { pick: (r) => r.close.cold_brew_tower, tools: ['cold_brew_tower'], min: { w: 540, h: 640 }, name: `Tháp cold brew cận cảnh, ${CLOSE_PPM} px/m` },
+];
 
 const counterBoard = {
   kind: 'board',
   tags: ['counter'],
   file: 'back-counter-before-after-p31.jpg',
   width: 1800,
-  rows: ({ results }) =>
-    [DESK, PHONE]
-      .filter((v) => results[`counter-tier1-${w(v)}`]?.before && results[`counter-tier2-${w(v)}`]?.before)
-      .map((v) => {
-        const t1 = results[`counter-tier1-${w(v)}`];
-        const t2 = results[`counter-tier2-${w(v)}`];
-        const rings = (r) => TOOLS.map((id) => grow(r.after.boxes[id], 4));
-        return {
-          crop: cropAround([...rings(t1), ...rings(t2)], { pad: 50, min: v === PHONE ? { w: 390, h: 340 } : { w: 820, h: 420 }, view: v }),
-          dpr: SHOT_DPR,
-          panels: [
-            { png: t1.before.png, boxes: rings(t1), title: `Trước · ${BASE} · HUD ${t1.before.clock} · ${viewName(v)}`, caption: 'Quầy sau không có tháp hay lò' },
-            { png: t1.after.png, boxes: rings(t1), title: `Sau · {head} · bậc 1 · ${viewName(v)}`, caption: 'Lò nướng (trái) và Tháp cold brew (giữa) bậc 1' },
-            { png: t2.after.png, boxes: rings(t2), title: `Sau · {head} · bậc 2 · ${viewName(v)}`, caption: 'Bậc 2: bệ, khay bánh quy trên lò, ly cold brew dưới tháp' },
-          ],
-        };
-      }),
-  notes: [`Cùng save cấp quán ${LEVEL}; bản sau mua mỗi công cụ 1 rồi 2 cấp bằng sim (bậc 1, bậc 2), bản gốc không có công cụ nào. Camera hai bản phóng quanh cùng một điểm giữa hai chỗ đặt máy (${PPM[DESK.width]} px mỗi mét ở 1280, ${PPM[PHONE.width]} ở 390), mức Cao. Vòng đỏ ở ảnh trước là chỗ máy đứng ở bản sau.`],
+  rows: ({ results }) => {
+    const t1 = results['counter-tier1'];
+    const t2 = results['counter-tier2'];
+    if (!t1?.before || !t2?.before) return [];
+    return COUNTER_ROWS.map(({ pick, tools, min, name }) => {
+      const [b, a1, a2] = [pick(t1.before), pick(t1.after), pick(t2.after)];
+      // Base and tier 1: the whole machine is new; tier 2: only the plinth and the glass or tray.
+      const whole = tools.map((id) => grow(a1.boxes[id], 4));
+      const parts = tools.flatMap((id) => (a2.marks[id] ?? []).map((m) => grow(m, 3)));
+      return {
+        crop: cropAround([...whole, ...tools.map((id) => grow(a2.boxes[id], 4))], { pad: 50, min, view: DESK }),
+        dpr: SHOT_DPR,
+        panels: [
+          { png: b.png, boxes: whole, title: `Trước · ${BASE} · ${name}`, caption: 'Quầy sau không có tháp hay lò' },
+          { png: a1.png, boxes: whole, title: `Sau · {head} · bậc 1 · ${name}`, caption: tools.length > 1 ? 'Lò nướng (trái) và Tháp cold brew (giữa) bậc 1' : 'Bậc 1: máy mới' },
+          { png: a2.png, boxes: parts, title: `Sau · {head} · bậc 2 · ${name}`, caption: 'Bậc 2 thêm bục thép dưới máy, khay bánh quy trên lò, ly cold brew trước tháp' },
+        ],
+      };
+    });
+  },
+  notes: [
+    `Cùng save cấp quán ${LEVEL}, 1280×800, mức Cao; bản sau mua mỗi công cụ 1 rồi 2 cấp bằng sim (bậc 1, bậc 2), bản gốc không có công cụ nào. Camera hai bản phóng quanh cùng điểm. Ba đèn thả trên quầy trước bị ẩn khi chụp (chỉ trong ảnh) để không che quầy sau. Vòng đỏ: cả máy ở ảnh trước và bậc 1; bục thép và ly hay khay ở bậc 2. Công cụ mới có tối đa 2 cấp, không có cấp thưởng, nên không có bậc 3.`,
+  ],
 };
 
 /**
@@ -236,6 +279,8 @@ const counterBoard = {
 const compatSteps = [
   { kind: 'shot', id: 'compat-own', tags: ['compat'], build: 'cur', shot: 'clock', save: 'noon', viewport: DESK, dpr: SHOT_DPR, errors: true, opts: {} },
   { kind: 'shot', id: 'compat-old', tags: ['compat'], build: 'cur', shot: 'clock', save: 'noon', from: 'base', viewport: DESK, dpr: SHOT_DPR, errors: true, opts: {} },
+  // The base build on its own save: an error it shows too is not P31's.
+  { kind: 'shot', id: 'compat-base', tags: ['compat'], build: 'base', shot: 'clock', save: 'noon', viewport: DESK, dpr: SHOT_DPR, errors: true, opts: {} },
   {
     kind: 'check',
     id: 'compat',
@@ -243,11 +288,13 @@ const compatSteps = [
     run: ({ results, scenario, warn, progress }) => {
       const own = results['compat-own'];
       const old = results['compat-old'];
+      const base = results['compat-base'];
       const v = JSON.parse(scenario.baseSaves.noon.text).version;
       const extra = old.errors.filter((e) => !own.errors.includes(e));
       const line = `save v${v} of ${BASE} in the working tree: HUD ${old.a} → ${old.b}, ${old.errors.length} errors (own save: ${own.errors.length}), ${extra.length} only with the old save`;
       const all = [...new Set([...own.errors, ...old.errors])];
       if (all.length) progress(`errors seen: ${all.slice(0, 4).join(' | ')}`);
+      progress(`${BASE} on its own save: ${base.errors.length} errors${base.errors.length ? `: ${base.errors.slice(0, 4).join(' | ')}` : ''}`);
       if (old.a !== old.b && extra.length === 0) progress(`PASS ${line}`);
       else warn(`${line}${extra.length ? `: ${extra.slice(0, 3).join(' | ')}` : ''}`);
     },

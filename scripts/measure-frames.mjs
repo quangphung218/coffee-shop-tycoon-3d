@@ -34,9 +34,11 @@
 // level-up run where the confetti chunk did not load or no canvas.fx-confetti
 // joined the DOM fails: it stays out of the table and the script exits 1.
 //
-// --scene <id> measures a P29 scene instead: 'dusk-rain' (rainy day, 19:00,
-// customers in the shop) or 'noon-sunny' (12:00, sunny), from a save each
-// build's sim writes (scripts/lib/saves.mjs sceneSaves). After cst:world it
+// --scene <id> measures a scene instead: 'dusk-rain' (rainy day, 19:00,
+// customers in the shop), 'noon-sunny' (12:00, sunny) or 'tools-p31'
+// (12:00 sunny at shop level 8 with the cold brew tower and the oven at
+// level 2; a base without them gets the same save without them), from a
+// save each build's sim writes (scripts/lib/saves.mjs SCENES, sceneSaves). After cst:world it
 // presses Tiếp tục, waits SCENE_SETTLE_MS for the camera and the weather to
 // set in and records SCENE_WINDOW_MS of the running day.
 import { rmSync } from 'node:fs';

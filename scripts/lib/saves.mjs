@@ -16,10 +16,16 @@ export const LEVELUP_LAST_DAY = 14;
 /** Seed of the scenario saves: MEDIA_SEED (the page's fixed clock) as a 32-bit seed. */
 export const SEED = Number(process.env.MEDIA_SEED ?? 1760400000000) >>> 0;
 
-/** measure-frames.mjs --scene ids: weather and game minute of each save. */
+/**
+ * measure-frames.mjs --scene ids: weather and game minute of each save, and
+ * the edits made at that minute: `shopLevel`, `money` and `buy` (upgrade id →
+ * levels bought through the sim; a build that has no such upgrade skips it).
+ */
 export const SCENES = {
   'dusk-rain': { weather: 'rainy', minute: 19 * 60 },
   'noon-sunny': { weather: 'sunny', minute: 12 * 60 },
+  // P31: shop level 8, peak hour, cold brew tower and oven at level 2 (tier 2).
+  'tools-p31': { weather: 'sunny', minute: 12 * 60, shopLevel: 8, money: 50_000_000, buy: { cold_brew_tower: 2, oven: 2 } },
 };
 export const SCENE_IDS = Object.keys(SCENES);
 /** Shot minutes of the P29 scene shots: 07:00, 12:00, 19:30. */
@@ -145,6 +151,29 @@ export function playToScene(mods, { weather, minute }, seed = SEED) {
   return s;
 }
 
+/**
+ * playToScene, then the scene's edits: `shopLevel`, `money`, and `buy` levels
+ * of each upgrade through the sim. An upgrade the build does not know (the
+ * base of a newer upgrade) is skipped; one it knows but refuses throws.
+ */
+export function sceneState(mods, scene, seed = SEED) {
+  const s = playToScene(mods, scene, seed);
+  if (scene.shopLevel !== undefined) s.shopLevel = scene.shopLevel;
+  if (scene.money !== undefined) s.money = scene.money;
+  for (const [id, levels] of Object.entries(scene.buy ?? {})) {
+    try {
+      mods.sim.nextUpgradeCost(s, id);
+    } catch {
+      continue;
+    }
+    for (let i = 0; i < levels; i++) {
+      if (!mods.sim.dispatch(s, { type: 'buy_upgrade', upgradeId: id })) throw new Error(`scene: buy_upgrade ${id} refused at level ${s.upgrades[id] ?? 0}`);
+    }
+  }
+  s.events = [];
+  return s;
+}
+
 /** The GameState at the report of the first day with a level-up. */
 export function playToLevelUp(mods, seed = SEED) {
   const s = newGame(mods, seed);
@@ -160,7 +189,10 @@ export function playToLevelUp(mods, seed = SEED) {
 }
 
 /** One line on a scene state for the logs. */
-export const sceneInfo = (s) => `day ${s.day} ${hhmm(s.minute)} ${s.weather}, ${s.customers.length} customers, ${s.staff.length} staff`;
+export const sceneInfo = (s) => {
+  const ups = Object.entries(s.upgrades).filter(([, n]) => n > 0);
+  return `day ${s.day} ${hhmm(s.minute)} ${s.weather}, level ${s.shopLevel}, ${s.customers.length} customers, ${s.staff.length} staff${ups.length ? `, upgrades ${ups.map(([id, n]) => `${id} ${n}`).join(', ')}` : ''}`;
+};
 
 /** The modules of the build at `root`, loaded through vite: sim state, sim, orders, save, menu, and the character rig (face prints). */
 export async function loadSim(root) {
@@ -188,7 +220,7 @@ export async function sceneSaves(root, scenes, options = {}) {
 export function sceneSavesOf(mods, scenes, { withLevelUp = false, seed = SEED } = {}) {
   const out = {};
   for (const sc of scenes) {
-    const s = playToScene(mods, sc, seed);
+    const s = sceneState(mods, sc, seed);
     out[sc.id] = { ...saveText(mods.save, s), info: sceneInfo(s) };
   }
   if (withLevelUp) {

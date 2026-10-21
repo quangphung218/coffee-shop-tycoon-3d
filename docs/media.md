@@ -403,9 +403,10 @@ npm run perf:frames
 npm run perf:frames -- --fx
 npm run perf:frames -- --scene dusk-rain
 npm run perf:frames -- --scene noon-sunny
+npm run perf:frames -- --scene tools-p31
 ```
 
-`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--scene` nạp save ngày 2 do sim mỗi bản chơi ra (`sceneSaves()` của `scripts/lib/saves.mjs`): `dusk-rain` là 19:00 trời mưa, `noon-sunny` là 12:00 trời nắng. Sau `cst:world` lệnh bấm **Tiếp tục**, chờ 1,5 s rồi đo 5 s ngày đang chạy; không dùng chung với `--fx`. `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
+`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--scene` nạp save ngày 2 do sim mỗi bản chơi ra (`SCENES` và `sceneSaves()` của `scripts/lib/saves.mjs`): `dusk-rain` là 19:00 trời mưa, `noon-sunny` là 12:00 trời nắng, `tools-p31` là 12:00 trời nắng ở cấp quán 8 với Tháp cold brew và Lò nướng cấp 2 (bản không có hai công cụ này nhận cùng save, không mua gì). Sau `cst:world` lệnh bấm **Tiếp tục**, chờ 1,5 s rồi đo 5 s ngày đang chạy; không dùng chung với `--fx`. `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
 
 | Hiệu ứng | Cửa sổ đo |
 | --- | --- |
@@ -570,8 +571,8 @@ Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuấ
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi đặt cấp quán 8 và 50.000.000 đ. Bản hiện tại thêm hai save: mua Tháp cold brew và Lò nướng 1 cấp (bậc 1), và 2 cấp (bậc 2). Bản gốc không có hai công cụ này nên ba save của nó giống nhau.
 2. Nâng cấp ở 390×844 và 1280×800, cuộn tới hàng Máy rửa ly: khoanh hai hàng công cụ mới.
 3. Menu ở 390×844 và 1280×800, cuộn tới hàng Bánh ngọt: bản gốc, bản hiện tại chưa mua (nhãn "Cần Tháp cold brew", "Cần Lò nướng", công tắc khoá), bản hiện tại đã mua bậc 1 (hai món tự bật).
-4. Quầy sau ở 1280×800 và 390×844: camera hai bản phóng quanh điểm giữa chỗ đặt lò và tháp; khoanh hai máy ở bậc 1 và bậc 2, ảnh bản gốc khoanh cùng chỗ.
-5. Nạp save trưa ngày 2 của bản gốc (save v3) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
+4. Quầy sau ở 1280×800, mức Cao: trước khi chụp, ẩn ba đèn thả trên quầy trước (chỉ trong ảnh, `clearBox` của `scripts/lib/shots.mjs`). Camera hai bản phóng quanh điểm giữa lò và tháp (240 px mỗi mét), rồi cận cảnh từng máy (600 px mỗi mét). Ảnh bản gốc và bậc 1 khoanh cả máy; ảnh bậc 2 khoanh phần thêm: bục thép, khay bánh quy trên lò, ly cold brew trước tháp. Hai công cụ có tối đa 2 cấp, không có cấp thưởng, nên không có bậc 3.
+5. Nạp save trưa ngày 2 của bản gốc (save v3) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có. Lệnh in mọi request lỗi kèm URL, của bản hiện tại và của bản gốc trên save của nó.
 
 Ảnh JPEG trong `docs/reports/p31-equipment/`, ghi đè mỗi lần chạy:
 
@@ -579,13 +580,14 @@ Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuấ
 | --- | --- |
 | `upgrades-lv8-before-after-p31.jpg` | Cuối nhóm Dụng cụ của Nâng cấp ở cấp 8, 390 và 1280. |
 | `menu-cold-brew-before-after-p31.jpg` | Hàng Cold brew và Bánh quy sô-cô-la của Menu: trước, chưa mua, đã mua; 390 và 1280. |
-| `back-counter-before-after-p31.jpg` | Quầy sau: bản gốc, bậc 1, bậc 2; 1280 và 390. |
+| `back-counter-before-after-p31.jpg` | Quầy sau 1280: bản gốc, bậc 1, bậc 2; hàng đầu cả hai máy, hai hàng sau cận cảnh lò và tháp. |
 
-Ảnh dùng trong [báo cáo P31](reports/p31-equipment.md). Lệnh in `!!` khi thiếu hàng công cụ trong Nâng cấp, khi hàng Cold brew không có nhãn "Cần Tháp cold brew" trước lúc mua hay hai món không bật sau khi mua, khi quầy sau thiếu tháp hay lò, khi bản gốc có máy ở chỗ đó, hoặc save cũ nạp lỗi; có `!!` thì mã 1.
+Ảnh dùng trong [báo cáo P31](reports/p31-equipment.md). Lệnh in `!!` khi thiếu hàng công cụ trong Nâng cấp, khi hàng Cold brew không có nhãn "Cần Tháp cold brew" trước lúc mua hay hai món không bật sau khi mua, khi quầy sau thiếu tháp hay lò, khi không ẩn được đèn thả nào, khi bản gốc có máy ở chỗ đó, hoặc save cũ nạp lỗi; có `!!` thì mã 1.
 
 | Lệnh | Việc |
 | --- | --- |
 | `node scripts/capture.mjs p31 --only menu` | Chỉ chụp bảng Menu; tag: `compat`, `upgrades`, `menu`, `counter`. |
+| `npm run perf:frames -- --base fe1fe8e --runs 5 --headed --scene tools-p31` | Đo khung hình cảnh có tháp và lò bậc 2 so với bản gốc ([Đo khung hình khi có hiệu ứng](#đo-khung-hình-khi-có-hiệu-ứng)). |
 | `P31_SAVES_ONLY=1 node scripts/capture.mjs p31` | Chỉ chơi và in tóm tắt save của bản hiện tại, không mở server hay trình duyệt. |
 
 ## Tùy chọn
