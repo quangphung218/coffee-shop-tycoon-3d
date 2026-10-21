@@ -26,7 +26,7 @@ Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 l�
 | p95 headed, mọi bảng | Không tệ hơn base quá 1 ms | PASS: lệch lớn nhất +1 ms (`noon-sunny` máy bàn, 19 / 18 ms) |
 | Long task mới > 50 ms | Không có | PASS: 0 long task ở mọi lần đo của P29 (headless, headed, `--fx`, hai `--scene`) |
 | Save v0–v3 | Nạp được, vào cảnh, không lỗi console | PASS: `tests/save` 10 file, 189 test; Playwright 4/4 |
-| Ảnh | Trước/sau có khoanh | 7 ảnh ghép trước/sau, 24 ảnh cảnh và 1 ảnh thẻ Lên cấp của `media:p29` |
+| Ảnh | Trước/sau có khoanh | 7 ảnh ghép trước/sau, 1 ảnh ghép ba giờ, 24 ảnh cảnh và 1 ảnh thẻ Lên cấp của `media:p29` |
 
 ## 2. Khởi động
 
@@ -138,22 +138,26 @@ Tổng sáng tính như `totalLightOf` trong `src/render/scene/renderer.ts`: hem
 
 ## 6. Ảnh
 
-Ảnh trước/sau: bên trái build `774be34`, bên phải P29 `1fb13be` (riêng ảnh đồng xu chụp trên `48c32ed`, sau fix2-1), cùng save do sim của từng bản chơi ra (cùng seed, cùng khổ 1280×800 trừ thẻ Lên cấp 390×844). Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
+Ảnh trước/sau: bên trái build `774be34`, bên phải P29 `1fb13be` (riêng ảnh đồng xu và ảnh 19:30 nắng chụp trên `85fe8d3`, sau fix2-1), cùng save do sim của từng bản chơi ra (cùng seed, cùng khổ 1280×800 trừ thẻ Lên cấp 390×844). Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
 
 | Cảnh | Đã sửa gì | Ảnh |
 | --- | --- | --- |
 | 12:00 nắng, Vừa | Ánh sáng theo giờ không còn đè mức đồ họa: tổng sáng 4,15 → 3,40, về đúng ngân sách 3,4; tường và sàn quán (khoanh) bớt cháy màu | ![12:00 Vừa](../media/p29/noon-medium-before-after-p29.jpg) |
-| 19:30 nắng, Cao | Đèn quán bật lúc chạng vạng có thêm 2 vũng sáng ấm trên sàn (khoanh); cả hai bản đều có 2 PointLight | ![19:30 nắng](../media/p29/dusk-sunny-high-before-after-p29.jpg) |
+| 19:30 nắng, Cao | (1) Đèn quán bật lúc chạng vạng có thêm 2 vũng sáng ấm trên sàn; cả hai bản đều có 2 PointLight. (2) Cảnh tối hơn: tổng sáng 2,39 → 1,73, vùng khoanh sáng 59% → 43% màu trắng. (3) Mặt trời đi theo giờ: base đứng yên phía đông, cao 51°; P29 ở phía tây, cao 32°, bóng cây cao 3,8 m bên đường dài 3,0 → 6,0 m | ![19:30 nắng](../media/p29/dusk-sunny-high-before-after-p29.jpg) |
 | 19:30 mưa, Cao | Mưa có thêm 120 tia bắn trên mặt đất (vùng khoanh là chỗ tia bắn dày nhất) và vệt mưa nghiêng; số vệt giữ 900 | ![19:30 mưa Cao](../media/p29/dusk-rainy-high-before-after-p29.jpg) |
 | 19:30 mưa, Thấp | Mức Thấp có mưa: 0 → 120 vệt, không có tia bắn | ![19:30 mưa Thấp](../media/p29/dusk-rainy-low-before-after-p29.jpg) |
-| Đồng xu khi bán, Cao | Base: xu và chip "+25.000đ" trôi thẳng lên 0,34 m rồi mờ dần. P29, cùng một đồng xu: 0,25 s nảy theo cung (cao 0,29 m) với chip bay trên xu, 0,60 s xoay quanh trục đứng (bề ngang còn 54%), 0,85 s vỡ thành 6 xu nhỏ; camera phóng quanh xu | ![Đồng xu](../media/p29/coin-before-after-p29.jpg) |
+| Đồng xu khi bán, Cao | Base: xu và chip "+25.000đ" trôi thẳng lên 0,34 m rồi mờ dần. P29, cùng một đồng xu: 0,25 s nảy theo cung (cao 0,29 m) với chip bay trên xu, 0,60 s xoay quanh trục đứng (bề ngang còn 56%), 0,85 s vỡ thành 6 xu nhỏ; camera phóng quanh xu | ![Đồng xu](../media/p29/coin-before-after-p29.jpg) |
 | Thẻ Lên cấp, 390 | Huy hiệu cấp rung ngang một lần sau khi hiện: giữ ở chỗ lệch xa nhất (490 ms) thì lệch −2,8 px so với nét đứt xanh; base không rung | ![Lên cấp](../media/p29/levelup-shake-before-after-p29.jpg) |
 
 Ảnh Lên cấp chỉ cho thấy một khung của chuyển động; số đo dưới ảnh là phần chứng minh. Ảnh đồng xu dừng đồng hồ trang ở khung xu hiện rồi chạy từng 1/60 s tới tuổi xu ghi trên mỗi khung; chỉ chụp lại ảnh này: `MEDIA_PORT=<cổng> P29_ONLY=coin npm run media:p29`.
 
 ### Ảnh `media:p29`
 
-`npm run media:p29` chụp P29 trên `48c32ed` (src giống nhánh tích hợp `5f56374`, sau fix2-1) ở 07:00, 12:00, 19:30 × nắng, mưa × Cao, Thấp × 390, 1280 px: 24 ảnh `docs/media/p29/scene-<giờ>-<thời tiết>-<mức>-<khổ>-p29.jpg`, cùng `levelup-390-p29.jpg` khoanh thẻ Lên cấp và ảnh ghép `coin-before-after-p29.jpg` ở trên. HUD trong ảnh chạy trước giờ đặt 3–5 phút.
+`npm run media:p29` chụp P29 trên `85fe8d3` (src giống nhánh tích hợp `5f56374`, sau fix2-1) ở 07:00, 12:00, 19:30 × nắng, mưa × Cao, Thấp × 390, 1280 px: 24 ảnh `docs/media/p29/scene-<giờ>-<thời tiết>-<mức>-<khổ>-p29.jpg`, cùng `levelup-390-p29.jpg` khoanh thẻ Lên cấp, ảnh ghép ba giờ bên dưới và hai ảnh ghép đồng xu, 19:30 nắng ở trên. HUD trong ảnh chạy trước giờ đặt 2–5 phút.
+
+Ba giờ, nắng, Cao, 1280: 07:00 sáng và vàng nhạt (tổng sáng 2,89, nắng từ phía đông, cao 33°), 12:00 sáng nhất (3,40, đúng ngân sách), 19:30 tối và ấm (1,73, nắng từ phía tây, cao 32°).
+
+![07:00, 12:00, 19:30 nắng Cao](../media/p29/hours-sunny-high-1280-p29.jpg)
 
 | Giờ | Nắng, Cao, 1280 | Mưa, Cao, 1280 | Mưa, Thấp, 390 |
 | --- | --- | --- | --- |
@@ -166,4 +170,4 @@ Tổng sáng tính như `totalLightOf` trong `src/render/scene/renderer.ts`: hem
 | Bản sửa | Đổi gì | Số đo khung hình |
 | --- | --- | --- |
 | fix1-1 (`672cb6f`) | Mưa theo Giảm chuyển động (cài đặt và hệ điều hành). Vũng sáng đèn quán (mức Vừa, Cao: 2 vũng) vẽ cả ban ngày với opacity 0 thay vì ẩn, nên shader compile trong `prepare()` chứ không ở khung chạng vạng đầu tiên. Xu bay khi bán đứng yên khi tạm dừng. | Không đo lại. Ban ngày mức Vừa, Cao vẽ thêm 2 mặt phẳng trong suốt mỗi khung. |
-| fix2-1 (`42d5df6`, `b3c45f4`, `50dadf1`, `1a25991`) | 07:00 sáng và vàng nhạt: nắng 0,82, trời 0,88 (trước 0,615 và 0,73), màu nắng kem vàng; mốc 12:00 và 19:30 giữ nguyên. Vệt mưa và tia bắn ẩn bằng số vẽ 0 thay vì ẩn, nên shader mưa compile trong `prepare()` cả khi ngày nắng. Hơi nước trên ly của nhân viên đứng yên khi tạm dừng. Huy hiệu cấp rung theo token `--easing-standard`. Ảnh `media:p29` sau fix2-1, nắng, Cao: tổng sáng 07:00 là 2,90 (nắng 1,48 từ phía đông, cao 33°), 19:30 là 1,72. | Vẫn dùng được: chỉ đổi cường độ và màu buổi sáng và lúc compile mưa, không thêm lượt vẽ; các cảnh đo ở mục 3 (12:00, 19:00) không đi qua 07:00–08:00. |
+| fix2-1 (`42d5df6`, `b3c45f4`, `50dadf1`, `1a25991`) | 07:00 sáng và vàng nhạt: nắng 0,82, trời 0,88 (trước 0,615 và 0,73), màu nắng kem vàng; mốc 12:00 và 19:30 giữ nguyên. Vệt mưa và tia bắn ẩn bằng số vẽ 0 thay vì ẩn, nên shader mưa compile trong `prepare()` cả khi ngày nắng. Hơi nước trên ly của nhân viên đứng yên khi tạm dừng. Huy hiệu cấp rung theo token `--easing-standard`. Ảnh `media:p29` sau fix2-1, nắng, Cao: tổng sáng 07:00 là 2,89 (nắng 1,48 từ phía đông, cao 33°), 19:30 là 1,73. | Vẫn dùng được: chỉ đổi cường độ và màu buổi sáng và lúc compile mưa, không thêm lượt vẽ; các cảnh đo ở mục 3 (12:00, 19:00) không đi qua 07:00–08:00. |
