@@ -36,7 +36,7 @@
 //
 // --scene <id> measures a P29 scene instead: 'dusk-rain' (rainy day, 19:00,
 // customers in the shop) or 'noon-sunny' (12:00, sunny), from a save each
-// build's sim writes (scripts/capture-p29.mjs sceneSaves). After cst:world it
+// build's sim writes (scripts/lib/saves.mjs sceneSaves). After cst:world it
 // presses Tiếp tục, waits SCENE_SETTLE_MS for the camera and the weather to
 // set in and records SCENE_WINDOW_MS of the running day.
 import { rmSync } from 'node:fs';
@@ -44,7 +44,7 @@ import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildRef, startPreview, urlFor } from './capture-media.mjs';
-import { SCENES, SCENE_IDS } from './capture-p29.mjs';
+import { SCENES, SCENE_IDS, sceneSaves } from './lib/saves.mjs';
 import { launchBrowser } from './lib/browser.mjs';
 import { acquirePerfLock } from './lib/perf-lock.mjs';
 
@@ -403,7 +403,6 @@ async function main() {
       }
     }
     if (args.scene) {
-      const { sceneSaves } = await import('./capture-p29.mjs');
       for (const b of builds) {
         console.error(`Playing the ${args.scene} save of ${b.label}…`);
         const s = await sceneSaves(b.root, [{ id: args.scene, ...SCENES[args.scene] }]);

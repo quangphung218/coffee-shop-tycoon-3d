@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCENES, SCENE_DAY, SHOT_MINUTES, SHOT_WEATHERS, hhmm, playToScene, saveText, shotName } from '../../scripts/capture-p29.mjs';
+import { SCENES, SCENE_DAY, SHOT_MINUTES, SHOT_WEATHERS, hhmm, playToScene, saveText, shotName } from '../../scripts/lib/saves.mjs';
 import { parseArgs } from '../../scripts/measure-frames.mjs';
 import * as save from '../../src/save/save';
 import * as sim from '../../src/sim/index';

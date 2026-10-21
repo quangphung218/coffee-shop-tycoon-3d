@@ -8,6 +8,7 @@
 
 ## Báo cáo
 
+- [reports/verify-infra-capture-gpu.md](reports/verify-infra-capture-gpu.md): hạ tầng verify: mọi script chụp/kiểm mở Chrome trên GPU thay vì headless shell SwiftShader (`media:p30` 348 s → dưới 1 phút, CPU 1486 s → dưới 60 s), lockfile cho `perf:frames`/`measure-startup`, chụp theo kịch bản `scripts/capture.mjs` với P29/P30 đã chuyển và so ảnh.
 - [reports/hud-390-overlap.md](reports/hud-390-overlap.md): HUD 390 px, cụm Tiến độ đè Điều khiển lúc chuẩn bị với số liệu cuối game; ba phương án sửa có ảnh mô phỏng và số đo; kết quả sửa theo phương án A (tiền gọn ở ≤ 480 px) với ảnh trước/sau.
 - [reports/hud-top-row.md](reports/hud-top-row.md): HUD trên, nguyên nhân cụm Điều khiển rớt hàng ở ngày sự kiện cuối game, cách giữ ba cụm một hàng, ảnh trước/sau ở 1440 và 1100 px.
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.

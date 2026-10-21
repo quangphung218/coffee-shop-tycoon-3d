@@ -1,6 +1,7 @@
 import type { Mesh } from 'three';
 import { describe, expect, it } from 'vitest';
-import { buildSaves, cloudCheck, faceMarks, matchMood } from '../../scripts/capture-p30.mjs';
+import { faceMarks, matchMood } from '../../scripts/lib/probes.mjs';
+import { buildSaves, cloudCheck } from '../../scripts/scenarios/p30.mjs';
 import * as rig from '../../src/render/actors/rig';
 import * as save from '../../src/save/save';
 import * as menu from '../../src/sim/data/menu';

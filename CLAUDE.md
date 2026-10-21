@@ -11,12 +11,19 @@ Lõi mô phỏng (`src/sim`) tất định và tách khỏi phần vẽ; chữ t
 | `npm test` | Chỉ chạy test (`vitest run`, gom `tests/**/*.test.ts`). |
 | `npx vitest run tests/sim/day.test.ts` | Chạy một file test. |
 | `npm run layout` | Build rồi kiểm tràn ngang, HUD, các bảng ở 390–1440 px. Chạy khi sửa `src/ui`. |
-| `npm run perf:frames` | Build rồi đo frame time; `-- --base <commit>` để so bản cũ, `-- --scene dusk-rain` hoặc `noon-sunny` để đo cảnh P29. |
+| `npm run perf:frames` | Build rồi đo frame time; `-- --base <commit>` để so bản cũ, `-- --scene dusk-rain` hoặc `noon-sunny` để đo cảnh P29. Giữ lockfile: hai lượt đo không chạy song song. |
+| `npm run media -- --scenario <id>` | Build rồi chụp theo kịch bản `scripts/scenarios/<id>.mjs` (`p29`, `p30`…); `media:p29`, `media:p30` là tên tắt. Xem `docs/media.md` mục Kịch bản chụp. |
 | `npm run dev` | Dev server; `/?preview=actors` xem nhân vật riêng. |
 | `node scripts/release.mjs --dry-run` | Xem version kế tiếp, không sửa gì. |
 
-- `layout`, `perf:frames`, `media*` cần Chromium: `npx playwright install chromium`.
-- Các `media:pNN` (p20–p29) và `review:p22` là script chụp ảnh theo từng đợt cũ. Chỉ chạy khi task nhắc đúng tên. Ảnh hiện hành dùng `npm run media`.
+- `layout`, `perf:frames`, `media*` mở **Google Chrome cài sẵn** (hoặc `CHROME_PATH`) qua `scripts/lib/browser.mjs` để WebGL chạy trên GPU; mỗi lượt in dòng `browser: … WebGL: …`. Thiếu Chrome thì rơi về Chromium của Playwright (`npx playwright install chromium`) vẽ bằng CPU và in `!! WebGL chạy bằng CPU`: ảnh và số đo lúc đó không dùng được.
+- Các `media:pNN` (p20–p27) và `review:p22` là script chụp ảnh theo từng đợt cũ. Chỉ chạy khi task nhắc đúng tên. Ảnh hiện hành dùng `npm run media`; P29, P30 là kịch bản của `scripts/capture.mjs`.
+
+## Hạng mục verify (chụp ảnh, đo hiệu năng)
+
+- **Chụp ảnh đợt mới: viết kịch bản, không chép script.** Thêm `scripts/scenarios/<id>.mjs` (save nào, chụp gì, bảng nào; mẫu: `p30.mjs`, `p29.mjs`) rồi chạy `npm run media -- --scenario <id>`. Phần dựng preview, nạp save, chờ `cst:world`, chụp, so với bản gốc, vẽ bảng đã có trong `scripts/lib/`; thiếu kiểu shot thì thêm vào `scripts/lib/shots.mjs`, không tạo `capture-pNN.mjs` mới.
+- **Đo hiệu năng tuần tự.** `perf:frames` và `measure-startup` giữ lockfile (`scripts/lib/perf-lock.mjs`); không chạy hai lượt đo (hay một lượt đo cạnh một lượt chụp) cùng lúc, số đo sẽ nhiễu vì giành GPU.
+- **Luôn kiểm renderer là GPU.** Dòng `WebGL:` phải là GPU (vd `ANGLE Metal Renderer: Apple M2`), không phải `SwiftShader`; thấy `!! WebGL chạy bằng CPU` thì sửa môi trường (cài Chrome, `CHROME_PATH`) rồi chạy lại, không ghi số đo đó vào báo cáo.
 
 ## Cấu trúc
 

@@ -2,28 +2,18 @@
 // and the P18/P19 before/after boards. Run through `npm run media` (builds
 // first). Needs Playwright with Chromium, ffmpeg and the git history back to
 // P18_COMMIT; see docs/media.md.
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './lib/browser.mjs';
+import { BOARD_WIDTH, FIXED_NOW, OUT, PHONE, PORT, ROOT, SETTINGS, VIEWPORT, buildRef, newContext, observeThree, openMenu, startPreview, urlFor } from './lib/capture.mjs';
 
-const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const OUT = join(ROOT, 'docs', 'media');
-const PORT = Number(process.env.MEDIA_PORT ?? 4173);
 /** The P18 build is served on the next port. */
 const P18_PORT = PORT + 1;
-const urlFor = (port) => `http://127.0.0.1:${port}/`;
 const URL_BASE = urlFor(PORT);
-/** Date.now() inside the page is frozen at this value, so New Game always gets the same seed. */
-const FIXED_NOW = Number(process.env.MEDIA_SEED ?? 1760400000000);
-const VIEWPORT = { width: 1280, height: 720 };
-/** Phone screen of the Kho boards (the 390 px of the P19 layout check). */
-const PHONE = { width: 390, height: 844 };
-/** Settings stored before each page loads. */
-const SETTINGS = { musicVolume: 0, sfxVolume: 0, quality: 'high', gameSpeed: 1, cameraKeys: 'qe-wasd' };
 /** README limit per file. */
 const MAX_BYTES = 5 * 1024 * 1024;
 /** Length of the sped-up day in the clip, seconds. */
@@ -102,8 +92,6 @@ const AISLE = 1;
 const TABLE_TOP = 0.9;
 /** The aisle strip stops this far inside the front wall (world units). */
 const FRONT_CLEAR = 0.3;
-/** Most board width, px; frames are cropped to their rings and enlarged to fill it. */
-const BOARD_WIDTH = 1900;
 /**
  * Width of the strip ringed at the body's right edge for the scrollbar.
  * Chromium on macOS draws overlay scrollbars with no gutter, so it is not measured.
@@ -127,41 +115,6 @@ function ffmpeg(args) {
 
 function sizeMb(path) {
   return statSync(path).size / 1024 / 1024;
-}
-
-/** Serves the build in `root`/dist with `vite preview` on `port`. */
-async function startPreview(root, port) {
-  const vite = join(ROOT, 'node_modules', '.bin', 'vite');
-  const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' });
-  for (let i = 0; i < 100; i++) {
-    if (server.exitCode !== null) throw new Error(`vite preview exited (port ${port} busy?)`);
-    try {
-      if ((await fetch(urlFor(port))).ok) return server;
-    } catch {
-      // not listening yet
-    }
-    await sleep(200);
-  }
-  server.kill();
-  throw new Error('vite preview did not start');
-}
-
-/** Exports `ref` into a temp dir sharing this checkout's node_modules and builds it there. */
-function buildRef(ref) {
-  // macOS tmpdir() is under the /var -> /private/var symlink; vite needs the real path.
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'cst3d-media-ref-')));
-  const tar = spawnSync('git', ['archive', '--format=tar', ref], { cwd: ROOT, maxBuffer: 1 << 30 });
-  if (tar.status !== 0) throw new Error(`git archive ${ref} failed (shallow clone?): ${tar.stderr}`);
-  const file = join(dir, 'src.tar');
-  writeFileSync(file, tar.stdout);
-  const x = spawnSync('tar', ['-xf', file, '-C', dir]);
-  if (x.status !== 0) throw new Error(`tar failed: ${x.stderr}`);
-  rmSync(file);
-  symlinkSync(realpathSync(join(ROOT, 'node_modules')), join(dir, 'node_modules'));
-  const vite = join(ROOT, 'node_modules', '.bin', 'vite');
-  const b = spawnSync(vite, ['build', '--logLevel', 'warn'], { cwd: dir, stdio: 'inherit' });
-  if (b.status !== 0) throw new Error(`vite build of ${ref} failed`);
-  return dir;
 }
 
 /** Waits until the HUD clock reads `hhmm` or later. */
@@ -212,42 +165,6 @@ async function dragSpin(page) {
     await sleep(SPIN_DRAG_MS / SPIN_STEPS);
   }
   await page.mouse.up();
-}
-
-/**
- * Runs in the page before its scripts. three.js announces each WebGLRenderer
- * to window.__THREE_DEVTOOLS__; the one drawing #scene gets its render()
- * wrapped so the last scene and camera drawn are kept for sceneSnapshot().
- */
-function observeThree() {
-  const hook = new EventTarget();
-  hook.addEventListener('observe', (e) => {
-    const renderer = e.detail;
-    if (!renderer?.isWebGLRenderer || renderer.domElement?.id !== 'scene') return;
-    // After the constructor has finished setting up render().
-    queueMicrotask(() => {
-      const render = renderer.render;
-      renderer.render = function (scene, camera) {
-        window.__mediaScene = scene;
-        window.__mediaCamera = camera;
-        return render.call(this, scene, camera);
-      };
-    });
-  });
-  window.__THREE_DEVTOOLS__ = hook;
-}
-
-/** A browser context whose pages get the fixed clock and SETTINGS. */
-async function newContext(browser, options) {
-  const context = await browser.newContext({ deviceScaleFactor: 1, ...options });
-  await context.addInitScript(
-    ({ now, settings }) => {
-      Date.now = () => now;
-      localStorage.setItem('cst3d:settings', JSON.stringify(settings));
-    },
-    { now: FIXED_NOW, settings: SETTINGS },
-  );
-  return context;
 }
 
 /**
@@ -385,17 +302,6 @@ async function measured(page, shoot) {
   } finally {
     await thaw(page);
   }
-}
-
-/** Loads `url` and waits for the Main Menu with the 3D scene behind it. Returns the "Ván mới" button. */
-async function openMenu(page, url) {
-  await page.goto(url);
-  const newGame = page.getByRole('button', { name: 'Ván mới', exact: true });
-  await newGame.waitFor();
-  // The menu comes up before the 3D scene; wait for the loading screen to go and the scene to fade in.
-  await page.locator('#boot').waitFor({ state: 'detached' });
-  await page.locator('#scene.is-ready').waitFor({ timeout: 60_000 });
-  return newGame;
 }
 
 /** From the Main Menu: New Game on Easy, into the day-1 preparation. */
@@ -1536,8 +1442,10 @@ async function main() {
   if (over || !withVideo) process.exitCode = 1;
 }
 
-// Reusable pieces for scripts/capture-p20.mjs. Importing this module must not
-// start a capture, so main() only runs when the file is the entry point.
+// Reusable pieces for the older scripts/capture-pNN.mjs (the ones shared with
+// scripts/capture.mjs live in scripts/lib/capture.mjs and are re-exported
+// here). Importing this module must not start a capture, so main() only
+// runs when the file is the entry point.
 export {
   OUT,
   VIEWPORT,
@@ -1573,7 +1481,10 @@ export {
 
 const isEntry = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isEntry) {
-  main().catch((err) => {
+  // `npm run media -- --scenario p30`: a scenario of scripts/capture.mjs instead of the README shots.
+  const at = process.argv.indexOf('--scenario');
+  const run = at > 0 ? import('./capture.mjs').then((m) => m.main([process.argv[at + 1], ...process.argv.slice(2, at), ...process.argv.slice(at + 2)])) : main();
+  run.catch((err) => {
     console.error(err);
     process.exitCode = 1;
   });
