@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng và khách VIP bằng `npm run media:p27` (mục [Ảnh P27](#ảnh-p27)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng và khách VIP bằng `npm run media:p27` (mục [Ảnh P27](#ảnh-p27)), ảnh cảnh quán theo giờ và thời tiết, đồng xu và thẻ Lên cấp bằng `npm run media:p29` (mục [Ảnh P29](#ảnh-p29)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -398,9 +398,11 @@ P25_SAVES_ONLY=1 node scripts/capture-p25.mjs
 ```sh
 npm run perf:frames
 npm run perf:frames -- --fx
+npm run perf:frames -- --scene dusk-rain
+npm run perf:frames -- --scene noon-sunny
 ```
 
-`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
+`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--scene` nạp save ngày 2 do sim mỗi bản chơi ra (`sceneSaves()` của `scripts/capture-p29.mjs`): `dusk-rain` là 19:00 trời mưa, `noon-sunny` là 12:00 trời nắng. Sau `cst:world` lệnh bấm **Tiếp tục**, chờ 1,5 s rồi đo 5 s ngày đang chạy; không dùng chung với `--fx`. `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
 
 | Hiệu ứng | Cửa sổ đo |
 | --- | --- |
@@ -441,6 +443,39 @@ P27_SAVES_ONLY=1 node scripts/capture-p27.mjs
 
 Chỉ chụp một khổ (lệnh ngắn hơn): `P27_WIDTHS=390 npm run media:p27`.
 
+## Ảnh P29
+
+```sh
+MEDIA_PORT=4180 npm run media:p29
+```
+
+Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc định `$PORT`, rồi `4173`), rồi `scripts/capture-p29.mjs` chụp bằng Chromium headless. Hai bảng trước/sau xuất bản gốc `774be34` ra thư mục tạm, build và mở ở cổng kế tiếp. Chỗ đổi khoanh đỏ, chú thích xuống dòng trong ảnh. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `774be34`.
+
+1. Sim của mỗi bản chơi ván Vừa (seed `MEDIA_SEED >>> 0`, tuyển 1 pha chế và 1 phục vụ ngày 1, tự phục vụ) hết ngày 1, rồi mở ngày 2 với thời tiết của ảnh và chơi tới giờ của ảnh. Save báo cáo lấy ngày lên cấp đầu tiên. Save nạp qua **Tiếp tục**, game chạy 1x nên HUD trong ảnh chạy trước giờ đặt vài phút.
+2. Mỗi khổ 390×844 và 1280×800, mỗi giờ 07:00, 12:00, 19:30, trời nắng và mưa, mức Cao và Thấp: chờ 2,5 s rồi chụp. Lệnh in giờ HUD và tổng sáng của từng ảnh.
+3. Bảng ba giờ: ba ảnh nắng, Cao, 1280 cạnh nhau, mỗi khung có nhãn giờ và cường độ nắng, trời, hướng nắng.
+4. 12:00 nắng, Cao, 1280: chờ một đồng xu hiện, dừng đồng hồ trang rồi chạy từng 1/60 s tới tuổi xu của từng khung, camera phóng quanh xu.
+5. 19:30 nắng, Cao, 1280 ở cả hai bản: khoanh (1) vũng sáng dưới đèn quán, (2) vùng tối đi nhiều nhất, (3) một cây hay cột đèn bên đường cùng bóng của nó. Chú thích ghi số vũng sáng, tổng sáng và độ sáng vùng khoanh, độ cao mặt trời và chiều dài bóng.
+6. Báo cáo ngày lên cấp ở 390×844, mức Cao: khoanh thẻ Lên cấp.
+
+Ảnh JPEG trong `docs/media/p29/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `scene-<giờ>-<thời tiết>-<mức>-<khổ>-p29.jpg` | 24 ảnh cảnh, ví dụ `scene-1930-rainy-high-390-p29.jpg`. |
+| `hours-sunny-high-1280-p29.jpg` | 07:00, 12:00, 19:30 nắng, Cao, 1280 cạnh nhau. |
+| `coin-before-after-p29.jpg` | Một đồng xu của `774be34`, rồi một đồng xu của bản hiện tại lúc 0,25, 0,6 và 0,85 s. |
+| `dusk-sunny-high-before-after-p29.jpg` | 19:30 nắng, Cao: `774be34` cạnh bản hiện tại, ba vòng khoanh đánh số. |
+| `levelup-390-p29.jpg` | Thẻ Lên cấp của Daily Report. |
+
+Ảnh dùng trong [báo cáo P29](reports/p29-juice-lighting.md). Lệnh in `!!` khi không có đồng xu, thẻ Lên cấp, vũng sáng hay bóng cây bên đường để khoanh; có `!!` thì lệnh kết thúc với mã 1.
+
+| Lệnh | Việc |
+| --- | --- |
+| `P29_ONLY=coin npm run media:p29` | Chỉ chụp bảng đồng xu. |
+| `P29_ONLY=dusk npm run media:p29` | Chỉ chụp bảng 19:30 trước/sau. |
+| `P29_SAVES_ONLY=1 node scripts/capture-p29.mjs` | Chỉ chơi và in các save, không mở server hay trình duyệt. |
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -467,6 +502,10 @@ Chỉ chụp một khổ (lệnh ngắn hơn): `P27_WIDTHS=390 npm run media:p27
 | `P27_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p27` chơi trên sim mỗi bản. |
 | `P27_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p27.mjs` chỉ chơi ván, in các save rồi dừng. |
 | `P27_WIDTHS` | `390,1280` | Khổ mà `npm run media:p27` chụp. |
+| `P29_BASE` | `774be34` | Commit "trước" của bảng đồng xu và bảng 19:30 trong `npm run media:p29`. |
+| `P29_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p29` chơi trên sim mỗi bản. |
+| `P29_ONLY` | (trống) | `coin` hoặc `dusk` để `npm run media:p29` chỉ chụp một bảng trước/sau. |
+| `P29_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p29.mjs` chỉ chơi ván, in các save rồi dừng. |
 | `MEDIA_CHROMIUM` | (trống) | `1` để `scripts/capture-p25.mjs` dùng Chromium của Playwright thay cho Chrome cài sẵn. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.

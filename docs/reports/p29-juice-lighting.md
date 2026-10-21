@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P29 so với base `774be34` (merge-base của nhánh với `origin/main`): kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước CSS và JS chính, khung hình và long task, nạp save v0–v3, ảnh trước/sau có khoanh. Cách P29 vẽ ánh sáng, mưa và hiệu ứng: [architecture.md](../architecture.md).
 
-Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 lúc đo). Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal. Sau lần đo, bản sửa fix1-1 chỉ đổi lúc compile vũng sáng đèn quán và mưa khi bật Giảm chuyển động, nên số đo khung hình trong báo cáo vẫn đúng và không đo lại.
+Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 lúc đo). Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal. Hai bản sửa sau lần đo không đo lại khung hình ([mục 7](#7-bản-sửa-sau-lần-đo)).
 
 | Phần | Lệnh |
 | --- | --- |
@@ -160,3 +160,10 @@ Tổng sáng tính như `totalLightOf` trong `src/render/scene/renderer.ts`: hem
 | 07:00 | ![](../media/p29/scene-0700-sunny-high-1280-p29.jpg) | ![](../media/p29/scene-0700-rainy-high-1280-p29.jpg) | ![](../media/p29/scene-0700-rainy-low-390-p29.jpg) |
 | 12:00 | ![](../media/p29/scene-1200-sunny-high-1280-p29.jpg) | ![](../media/p29/scene-1200-rainy-high-1280-p29.jpg) | ![](../media/p29/scene-1200-rainy-low-390-p29.jpg) |
 | 19:30 | ![](../media/p29/scene-1930-sunny-high-1280-p29.jpg) | ![](../media/p29/scene-1930-rainy-high-1280-p29.jpg) | ![](../media/p29/scene-1930-rainy-low-390-p29.jpg) |
+
+## 7. Bản sửa sau lần đo
+
+| Bản sửa | Đổi gì | Số đo khung hình |
+| --- | --- | --- |
+| fix1-1 (`672cb6f`) | Mưa theo Giảm chuyển động (cài đặt và hệ điều hành). Vũng sáng đèn quán (mức Vừa, Cao: 2 vũng) vẽ cả ban ngày với opacity 0 thay vì ẩn, nên shader compile trong `prepare()` chứ không ở khung chạng vạng đầu tiên. Xu bay khi bán đứng yên khi tạm dừng. | Không đo lại. Ban ngày mức Vừa, Cao vẽ thêm 2 mặt phẳng trong suốt mỗi khung. |
+| fix2-1 (`42d5df6`, `b3c45f4`, `50dadf1`, `1a25991`) | 07:00 sáng và vàng nhạt: nắng 0,82, trời 0,88 (trước 0,615 và 0,73), màu nắng kem vàng; mốc 12:00 và 19:30 giữ nguyên. Vệt mưa và tia bắn ẩn bằng số vẽ 0 thay vì ẩn, nên shader mưa compile trong `prepare()` cả khi ngày nắng. Hơi nước trên ly của nhân viên đứng yên khi tạm dừng. Huy hiệu cấp rung theo token `--easing-standard`. | Vẫn dùng được: chỉ đổi cường độ và màu buổi sáng và lúc compile mưa, không thêm lượt vẽ; các cảnh đo ở mục 3 (12:00, 19:00) không đi qua 07:00–08:00. |
