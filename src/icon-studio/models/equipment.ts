@@ -123,7 +123,7 @@ export function dishwasher(tier: Tier = 1): Group {
   return g;
 }
 
-/** i-cold-brew-tower: slow-drip tower, a water globe over a grounds chamber dripping into a carafe, in a wooden frame. Tier 2 adds a steel ring on a bigger globe and a glass coil above the carafe; tier 3 a gold ring and a star on a post. */
+/** i-cold-brew-tower: slow-drip tower, a water globe over a grounds chamber dripping into a carafe, in a wooden frame. Tier 2 adds a poured glass of cold brew with a steel lip in front of the carafe and a steel ring on a bigger globe; tier 3 a gold lip and ring and a star on the left post. */
 export function coldBrewTower(tier: Tier = 1): Group {
   const board = at(part(box(1.3, 0.16, 0.8, 0.05), 'coffee'), 0, 0.08);
   const posts = [-0.55, 0.55].map((x) => at(part(box(0.14, 2.2, 0.14, 0.04), 'coffee'), x, 1.26));
@@ -137,16 +137,18 @@ export function coldBrewTower(tier: Tier = 1): Group {
   const g = group(board, ...posts, bar, globe, valve, chamber, drop, carafe);
   if (tier >= 2) {
     g.add(at(part(new TorusGeometry(r, 0.06, 6, 20).rotateX(Math.PI / 2), trim(tier, 'skyLight')), 0, 2.28 - r));
-    g.add(stroke([[-0.16, 1.04], [0.16, 0.94], [-0.16, 0.84], [0.06, 0.76]], 0.05, 'skyLight', { z: 0.2 }));
+    // The scene's tier 2 glass of cold brew on the base, at the front right where the camera sees it whole.
+    g.add(at(part(lathe([[0, 0], [0.2, 0], [0.24, 0.62], [0, 0.62]], 14), 'coffeeDark'), 0.4, 0.16, 0.32));
+    g.add(at(part(new TorusGeometry(0.24, 0.06, 6, 16).rotateX(Math.PI / 2), trim(tier, 'skyLight')), 0.4, 0.78, 0.32));
   }
-  if (tier === 3) g.add(at(tierStar(0.16), 0.55, 0.55, 0.1));
+  if (tier === 3) g.add(at(tierStar(0.16), -0.55, 0.55, 0.1));
   return g;
 }
 
-/** i-oven: a berry countertop oven on short legs, cookies behind the warm window, a dial panel at the side. Tier 2 adds a cooling tray of cookies on top and a steel handle; tier 3 a gold tray and handle, and a star takes the place of the lower dial. */
+/** i-oven: a steel countertop oven on short legs (sky, the steel of the other machines), cookies behind the warm window, a dial panel at the side. Tier 2 adds a cooling tray of cookies on top and a steel handle; tier 3 a gold tray and handle, and a star takes the place of the lower dial. */
 export function oven(tier: Tier = 1): Group {
   const legs = [-0.6, 0.6].flatMap((x) => [-0.32, 0.32].map((z) => at(part(new CylinderGeometry(0.07, 0.07, 0.12, 8), 'coffeeDark'), x, 0.06, z)));
-  const body = at(part(box(1.5, 1.0, 0.95, 0.14), 'coral'), 0, 0.62);
+  const body = at(part(box(1.5, 1.0, 0.95, 0.14), 'sky'), 0, 0.62);
   const window = at(part(box(0.86, 0.58, 0.06, 0.05), 'honeyLight'), -0.22, 0.58, 0.48);
   const cookies = [-0.44, 0.0].map((x) => at(part(disc(0.15, 0.06, 14), 'honeyDeep'), x, 0.5, 0.52));
   const handleBar = at(part(box(0.86, 0.09, 0.09, 0.04), trim(tier, 'cream')), -0.22, 0.98, 0.54);
