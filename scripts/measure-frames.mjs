@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measures how smooth the first seconds after loading are, in headless Chromium.
 //
-//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>] [--headed] [--fx]
+//   node scripts/measure-frames.mjs [--base <git-ref>] [--runs <n>] [--headed] [--fx | --scene <id>]
 //
 // Headless Chrome hands out frames on whole vsync intervals (about 83 ms
 // each here even with no main-thread work), so frame times there only show
@@ -30,12 +30,19 @@
 // the Daily Report with its level-up card and confetti. A working-tree
 // level-up run where the confetti chunk did not load or no canvas.fx-confetti
 // joined the DOM fails: it stays out of the table and the script exits 1.
+//
+// --scene <id> measures a P29 scene instead: 'dusk-rain' (rainy day, 19:00,
+// customers in the shop) or 'noon-sunny' (12:00, sunny), from a save each
+// build's sim writes (scripts/capture-p29.mjs sceneSaves). After cst:world it
+// presses Tiếp tục, waits SCENE_SETTLE_MS for the camera and the weather to
+// set in and records SCENE_WINDOW_MS of the running day.
 import { existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { buildRef, startPreview, urlFor } from './capture-media.mjs';
+import { SCENES, SCENE_IDS } from './capture-p29.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.MEDIA_PORT ?? process.env.PORT ?? 4173);
@@ -45,6 +52,9 @@ const LAZY = /confetti-|icons3d\/tiers/;
 const FX_WINDOW_MS = 3000;
 const FX_LEAD_MS = 500;
 const FX_ROW = '.panel:not([hidden]) li[data-upgrade="better_machine"]';
+/** --scene: wait after Tiếp tục, then the recorded window, ms. */
+const SCENE_SETTLE_MS = 1500;
+const SCENE_WINDOW_MS = 5000;
 const PROFILES = [
   { name: 'Desktop, no throttling' },
   // Lighthouse's mobile preset: slow 4G and a 4x slower CPU.
@@ -133,15 +143,20 @@ const PROBE = `(() => {
   });
 })();`;
 
-function parseArgs(argv) {
-  const args = { base: null, runs: 3, headed: false, fx: false };
+export function parseArgs(argv) {
+  const args = { base: null, runs: 3, headed: false, fx: false, scene: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--base') args.base = argv[++i];
     else if (argv[i] === '--headed') args.headed = true;
     else if (argv[i] === '--fx') args.fx = true;
     else if (argv[i] === '--runs') args.runs = Math.max(1, Number(argv[++i]) || 1);
-    else throw new Error(`Unknown argument: ${argv[i]}`);
+    else if (argv[i] === '--scene') {
+      const id = argv[++i];
+      if (!SCENE_IDS.includes(id)) throw new Error(`Unknown scene: ${id ?? '(none)'}; one of ${SCENE_IDS.join(', ')}`);
+      args.scene = id;
+    } else throw new Error(`Unknown argument: ${argv[i]}`);
   }
+  if (args.fx && args.scene) throw new Error('--fx and --scene measure different windows; pick one');
   return args;
 }
 
@@ -289,6 +304,56 @@ async function measureFx(browser, url, profile, kind, save) {
   }
 }
 
+/** --scene, one cold load of `url` with `save`: after cst:world, Tiếp tục, SCENE_SETTLE_MS, then SCENE_WINDOW_MS recorded. */
+async function measureScene(browser, url, profile, save) {
+  const { context, page } = await openPage(browser, profile, save);
+  try {
+    await page.goto(url, { waitUntil: 'commit' });
+    await page.waitForFunction(() => performance.getEntriesByName('cst:world').length > 0, null, { timeout: TIMEOUT_MS, polling: 100 });
+    const resume = page.getByRole('button', { name: /^Tiếp tục/ });
+    await resume.waitFor({ timeout: TIMEOUT_MS });
+    await resume.click();
+    await page.locator('nav.dock').waitFor({ timeout: TIMEOUT_MS });
+    await sleep(SCENE_SETTLE_MS);
+    const clock = await page.evaluate(() => document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '');
+    const r = await page.evaluate((ms) => window.__record(ms), SCENE_WINDOW_MS);
+    return { ...stats(r), clock };
+  } finally {
+    await context.close();
+  }
+}
+
+/** --scene table: per build and profile, the median over `runs` of measureScene. Throws after the table when a run failed. */
+async function runScene(browser, builds, runs, id) {
+  const failures = [];
+  console.log(`| Build | Profile | Scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time |`);
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const profile of PROFILES) {
+    const cells = builds.map((build) => ({ build, runs: [] }));
+    for (let i = 0; i < runs; i++) {
+      for (const c of cells) {
+        const who = `${c.build.label} · ${profile.name} · ${id} · run ${i + 1}`;
+        try {
+          const r = await measureScene(browser, c.build.url, profile, c.build.scene);
+          console.error(`  ${who}: HUD ${r.clock}, p95 ${ms(r.p95)}, max ${ms(r.max)}, ${r.janky}/${r.frames} frames > ${JANK_MS} ms, ${r.longTasks} long tasks`);
+          c.runs.push(r);
+        } catch (err) {
+          const msg = `${who}: ${String(err.message ?? err).split('\n')[0]}`;
+          console.error(`  ${msg}`);
+          failures.push(msg);
+        }
+      }
+    }
+    for (const c of cells) {
+      const pick = (k) => median(c.runs.map((r) => r[k]));
+      console.log(
+        `| ${c.build.label} | ${profile.name} | ${id} | ${pick('frames') ?? 'n/a'} | ${ms(pick('p50'))} | ${ms(pick('p95'))} | ${ms(pick('max'))} | ${pick('janky') ?? 'n/a'} (${c.runs.map((r) => r.janky).join('/')}) | ${pick('longTasks') ?? 'n/a'} (${c.runs.map((r) => r.longTasks).join('/')}) | ${ms(pick('longTaskMs'))} |`,
+      );
+    }
+  }
+  if (failures.length) throw new Error(`FAIL: ${failures.length} --scene run(s) not counted:\n  ${failures.join('\n  ')}`);
+}
+
 /** --fx: why a level-up run of a build that has confetti shows none, or null when it ran. */
 function confettiMissing(r) {
   if (!r.confetti) return null;
@@ -365,6 +430,15 @@ async function main() {
         b.fx = { upgrade: s.tiers[1], 'level-up': s.saves.levelUp };
       }
     }
+    if (args.scene) {
+      const { sceneSaves } = await import('./capture-p29.mjs');
+      for (const b of builds) {
+        console.error(`Playing the ${args.scene} save of ${b.label}…`);
+        const s = await sceneSaves(b.root, [{ id: args.scene, ...SCENES[args.scene] }]);
+        b.scene = s[args.scene];
+        console.error(`  ${s[args.scene].info}`);
+      }
+    }
     for (const [i, b] of builds.entries()) {
       servers.push(await startPreview(b.root, PORT + i));
       b.url = urlFor(PORT + i);
@@ -375,11 +449,19 @@ async function main() {
       args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
     });
     const gpu = await gpuName(browser);
-    const windowText = args.fx ? `${FX_WINDOW_MS / 1000} s around each effect` : `${WINDOW_MS / 1000} s after cst:world`;
+    const windowText = args.fx
+      ? `${FX_WINDOW_MS / 1000} s around each effect`
+      : args.scene
+        ? `${SCENE_WINDOW_MS / 1000} s of ${args.scene}, ${SCENE_SETTLE_MS / 1000} s after Tiếp tục`
+        : `${WINDOW_MS / 1000} s after cst:world`;
     console.log(`Chrome ${browser.version()}${args.headed ? ' (headed)' : ' (headless)'}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${windowText}, ${args.runs} runs per cell (median)\n`);
     if (/swiftshader|llvmpipe|software/i.test(gpu)) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
     if (args.fx) {
       await runFx(browser, builds, args.runs);
+      return;
+    }
+    if (args.scene) {
+      await runScene(browser, builds, args.runs, args.scene);
       return;
     }
     console.log(`| Build | Profile | 3D scene | Frames | p50 | p95 | Max | Frames > ${JANK_MS} ms | Long tasks | Long task time | Confetti, tiers loaded |`);
@@ -409,10 +491,13 @@ async function main() {
   }
 }
 
-main().then(
-  () => process.exit(0),
-  (err) => {
-    console.error(err);
-    process.exit(1);
-  },
-);
+// tests/scripts/p29-scenarios.test.ts imports parseArgs; only a direct run measures.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().then(
+    () => process.exit(0),
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    },
+  );
+}
