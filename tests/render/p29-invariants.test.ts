@@ -2,6 +2,7 @@ import {
   Color,
   DirectionalLight,
   HemisphereLight,
+  type InstancedMesh,
   type Material,
   type Object3D,
   PointLight,
@@ -304,8 +305,8 @@ describe('P29 reduced motion', () => {
       expect(stats.rainSplashes, q).toBe(0);
       expect(stats.rainDrops, q).toBeGreaterThan(0);
       expect(stats.rainDrops, q).toBeLessThanOrEqual(densityFor(q).rainDrops);
-      expect(scene.getObjectByName('rain-streaks')!.visible, q).toBe(true);
-      expect(scene.getObjectByName('rain-splashes')!.visible, q).toBe(false);
+      expect((scene.getObjectByName('rain-streaks') as LineSegments).geometry.drawRange.count, q).toBeGreaterThan(0);
+      expect((scene.getObjectByName('rain-splashes') as InstancedMesh).count, q).toBe(0);
       street.dispose();
     }
   });

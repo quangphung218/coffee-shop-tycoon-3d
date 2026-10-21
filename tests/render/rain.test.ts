@@ -59,8 +59,8 @@ describe('rain density', () => {
     rain.update(1, 'rainy', true);
     expect(rain.stats().streaks).toBe(Math.round(densityFor('high').rainDrops * 0.4));
     expect(rain.stats().splashes).toBe(0);
-    expect(parts(rain).streaks.visible).toBe(true);
-    expect(parts(rain).splashes.visible).toBe(false);
+    expect(parts(rain).streaks.geometry.drawRange.count).toBe(rain.stats().streaks * 2);
+    expect(parts(rain).splashes.count).toBe(0);
     rain.update(1.1, 'rainy', false);
     expect(rain.stats().splashes).toBe(densityFor('high').rainSplashes);
     rain.dispose();
@@ -83,10 +83,33 @@ describe('rain density', () => {
     for (const weather of ['sunny', 'hot'] as const) {
       rain.update(2, weather, false);
       expect(rain.stats()).toEqual({ streaks: 0, splashes: 0 });
-      expect(parts(rain).streaks.visible).toBe(false);
-      expect(parts(rain).splashes.visible).toBe(false);
+      expect(parts(rain).streaks.geometry.drawRange.count).toBe(0);
+      expect(parts(rain).splashes.count).toBe(0);
     }
     rain.dispose();
+  });
+
+  it('stays in traverseVisible on a dry day so prepare() compiles both shaders, drawing nothing', () => {
+    for (const q of ['medium', 'high'] as const) {
+      for (const weather of ['sunny', 'hot'] as const) {
+        const rain = createRain(q);
+        const seen = (): Set<string> => {
+          const names = new Set<string>();
+          rain.object.traverseVisible((o) => names.add(o.name));
+          return names;
+        };
+        // Before the first frame, as prepare() sees it, and after a dry frame.
+        for (const step of ['created', 'updated']) {
+          if (step === 'updated') rain.update(1, weather, false);
+          const names = seen();
+          expect(names.has('rain-streaks'), `${q} ${weather} ${step}`).toBe(true);
+          expect(names.has('rain-splashes'), `${q} ${weather} ${step}`).toBe(true);
+          expect(parts(rain).streaks.geometry.drawRange.count, `${q} ${weather} ${step}`).toBe(0);
+          expect(parts(rain).splashes.count, `${q} ${weather} ${step}`).toBe(0);
+        }
+        rain.dispose();
+      }
+    }
   });
 });
 
