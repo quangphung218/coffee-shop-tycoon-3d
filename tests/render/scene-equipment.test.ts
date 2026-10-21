@@ -101,6 +101,28 @@ describe('machineGeometry', () => {
     }
   });
 
+  it('keeps the cold brew tower base off the plinth faces at tiers 2 and 3 (no z-fighting)', () => {
+    const plinthHalfWidth = (MACHINE_SIZE.cold_brew_tower.width - 0.02) / 2;
+    const plinthTop = BACK_COUNTER_HEIGHT + 0.04;
+    const wood = new Color(PALETTE.woodDark);
+    for (const tier of [2, 3]) {
+      const geo = machine('cold_brew_tower', tier);
+      const pos = geo.getAttribute('position');
+      const c = geo.getAttribute('color');
+      let maxX = 0;
+      let maxY = 0;
+      for (let i = 0; i < c.count; i++) {
+        if (Math.abs(c.getX(i) - wood.r) > 1e-4 || Math.abs(c.getY(i) - wood.g) > 1e-4 || Math.abs(c.getZ(i) - wood.b) > 1e-4) continue;
+        maxX = Math.max(maxX, Math.abs(pos.getX(i)));
+        maxY = Math.max(maxY, pos.getY(i));
+      }
+      // The dark wood base is the only woodDark part: its sides and top sit about 0.005 off the plinth's.
+      expect(maxX, `tier ${tier}`).toBeLessThan(plinthHalfWidth - 0.004);
+      expect(maxY, `tier ${tier}`).toBeGreaterThan(plinthTop + 0.004);
+      geo.dispose();
+    }
+  });
+
   it('keeps UVs on the merged model so it merges with the other parts', () => {
     for (const tier of [1, 3]) {
       const geo = machine('grinder', tier);
