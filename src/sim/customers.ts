@@ -1,6 +1,7 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
+import { REGULARS_FROM_DAY, pickRegular } from './data/regulars';
 import { totalUpgradeEffect } from './data/upgrades';
 import { hourOf, recordRevenue } from './economy';
 import { canMake, consume, servingCost } from './inventory';
@@ -351,6 +352,8 @@ export function spawnCustomer(state: GameState): Customer | null {
     arrivedMinute: state.minute,
   };
   if (vip) customer.vip = true;
+  const regular = persona.id === 'regular' ? admitRegular(state, customer.id) : null;
+  if (regular) customer.regularId = regular.id;
   state.customers.push(customer);
   state.today.customersArrived += 1;
   const hour = hourOf(state.minute);
@@ -358,7 +361,28 @@ export function spawnCustomer(state: GameState): Customer | null {
   if (byHour && hour >= 0 && hour < 24) byHour[hour] = (byHour[hour] ?? 0) + 1;
   state.events.push({ type: 'doorbell', customerId: customer.id });
   if (vip) state.events.push({ type: 'vip_arrived', customerId: customer.id });
+  if (regular) {
+    state.events.push({ type: 'regular_arrived', customerId: customer.id, regularId: regular.id, visits: regular.visits });
+  }
   return customer;
+}
+
+/**
+ * Matches a 'regular' persona arriving as customer `id` to a named regular
+ * from day 2 on and counts the visit. The pick is a hash, so the RNG is not
+ * touched. A regular comes at most once a day; a repeat stays anonymous.
+ */
+function admitRegular(state: GameState, id: number): { id: string; visits: number } | null {
+  if (state.day < REGULARS_FROM_DAY) return null;
+  const regular = pickRegular(state.seed, id);
+  const regulars = (state.regulars ??= {});
+  const seen = regulars[regular.id];
+  if (seen && seen.lastDay === state.day) return null;
+  const entry = seen ?? { visits: 0, firstDay: state.day, lastDay: state.day };
+  entry.visits += 1;
+  entry.lastDay = state.day;
+  regulars[regular.id] = entry;
+  return { id: regular.id, visits: entry.visits };
 }
 
 /** Adds this minute's arrivals. Arrivals blocked by a full shop wait outside (at most one). */

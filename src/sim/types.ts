@@ -269,6 +269,16 @@ export interface Customer {
   arrivedMinute?: number;
   /** Regular who pays out tickets when served. Absent (old saves) = not a VIP. */
   vip?: boolean;
+  /** Named regular (`REGULARS` id) this customer is; absent for anonymous customers and old saves. */
+  regularId?: string;
+}
+
+/** How often a named regular has come in. */
+export interface RegularVisits {
+  visits: number;
+  /** Game day of the first and the latest visit. */
+  firstDay: number;
+  lastDay: number;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';
@@ -682,6 +692,8 @@ export interface GameState {
   retention?: RetentionState;
   /** Today's special order; absent or null when there is none. */
   specialOrder?: SpecialOrder | null;
+  /** Visits per named regular id; absent in older saves and before the first regular comes in. */
+  regulars?: Record<string, RegularVisits>;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -743,4 +755,6 @@ export type GameEvent =
   | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' }
   | { type: 'achievement_unlocked'; id: AchievementId; tier: number }
   | { type: 'special_order'; status: 'completed' | 'failed'; itemId: MenuItemId }
-  | { type: 'vip_arrived'; customerId: number };
+  | { type: 'vip_arrived'; customerId: number }
+  /** A named regular came through the door; `visits` counts this one. Comes after 'doorbell'. */
+  | { type: 'regular_arrived'; customerId: number; regularId: string; visits: number };

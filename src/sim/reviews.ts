@@ -1,4 +1,5 @@
 import { PERSONAS } from './data/personas';
+import { regularById } from './data/regulars';
 import { STAFF_NAMES } from './data/staffNames';
 import { UPGRADES, totalUpgradeEffect } from './data/upgrades';
 import { priceStarBonus } from './policies';
@@ -13,8 +14,8 @@ const FAST_WAIT = 0.35;
 const SLOW_WAIT = 0.65;
 
 export type Experience =
-  | { kind: 'served'; waitShare: number; dirtyTable: boolean; persona?: PersonaId }
-  | { kind: 'angry'; reason: 'long_wait' | 'out_of_stock'; persona?: PersonaId };
+  | { kind: 'served'; waitShare: number; dirtyTable: boolean; persona?: PersonaId; regularId?: string }
+  | { kind: 'angry'; reason: 'long_wait' | 'out_of_stock'; persona?: PersonaId; regularId?: string };
 
 /** Chance a connoisseur rewards an extra star when premium coffee gear is in. */
 const CONNOISSEUR_GEAR_BONUS = 0.5;
@@ -75,7 +76,11 @@ export function writeReview(state: GameState, exp: Experience): Review {
   const { stars, reason } = rateExperience(state, exp);
   const persona = exp.persona ? PERSONAS[exp.persona] : null;
   const lines = persona?.reviewTexts[reason] ?? TEXTS[reason];
-  const review: Review = { day: state.day, stars, text: pick(state, lines), author: pick(state, STAFF_NAMES), reason };
+  const text = pick(state, lines);
+  // Always draw the stand-in author so the RNG sequence is the same with or without a named regular.
+  const stranger = pick(state, STAFF_NAMES);
+  const author = (exp.regularId && regularById(exp.regularId)?.name) || stranger;
+  const review: Review = { day: state.day, stars, text, author, reason };
   addReview(state, review);
   return review;
 }
@@ -92,13 +97,18 @@ export function recordExperience(state: GameState, exp: Experience): void {
 /** What a customer went through, read right after the served or angry event. */
 export function experienceOf(state: GameState, customer: Customer, event: 'served' | 'angry'): Experience {
   if (event === 'angry') {
-    return { kind: 'angry', reason: customer.patience <= 0 ? 'long_wait' : 'out_of_stock', persona: customer.persona };
+    return {
+      kind: 'angry',
+      reason: customer.patience <= 0 ? 'long_wait' : 'out_of_stock',
+      persona: customer.persona,
+      regularId: customer.regularId,
+    };
   }
   const waitShare = customer.maxPatience > 0 ? Math.min(1, Math.max(0, 1 - customer.patience / customer.maxPatience)) : 0;
   // Served without a seat while a table with free seats was waiting to be cleaned.
   const dirtyTable =
     customer.tableId === null && state.tables.some((t) => t.trash > 0 && t.occupants.length < t.seats);
-  return { kind: 'served', waitShare, dirtyTable, persona: customer.persona };
+  return { kind: 'served', waitShare, dirtyTable, persona: customer.persona, regularId: customer.regularId };
 }
 
 /**
