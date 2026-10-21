@@ -3,7 +3,7 @@
 // through `npm run media -- --scenario p31` (= scripts/capture.mjs p31);
 // P31_SAVES_ONLY=1 plays the saves and stops; --only compat,upgrades,menu,counter
 // narrows the run. Files (JPEG, docs/reports/p31-equipment):
-//   upgrades-lv8-before-after-p31.jpg   the end of Dụng cụ in Nâng cấp at shop level 8: the tower and oven rows
+//   upgrades-lv8-before-after-p31.jpg   the end of Dụng cụ in Nâng cấp at shop level 8: the tower and oven rows, then at tier 2 ('Bậc 2/2')
 //   menu-cold-brew-before-after-p31.jpg the Cold brew and cookie rows of Menu: 'Cần <công cụ>', then on after buying
 //   back-counter-before-after-p31.jpg   the back counter at 1280, pendant lamps dropped: tower and oven at tier 1 and 2, then each close up
 //                                       (the tools have 2 levels and no shop-level bonus, so no tier 3)
@@ -100,14 +100,18 @@ const w = (v) => v.width;
 const viewName = (v) => `${v.width}×${v.height}`;
 const cropOf = (v, boxes, min) => (v === PHONE ? { x: 0, y: 0, w: PHONE.width, h: PHONE.height } : cropAround(boxes, { pad: 40, min, view: v }));
 
-/** (a) Nâng cấp at level 8, the end of Dụng cụ (the dishwasher row at the top of the view in both builds). */
-const upgradesShot = (build, v) => ({
+/**
+ * (a) Nâng cấp at level 8, the end of Dụng cụ (the dishwasher row at the top
+ * of the view in both builds); `save` lv8 before buying, tier2 after (the
+ * tier icon and "Bậc 2/2").
+ */
+const upgradesShot = (build, v, save = 'lv8') => ({
   kind: 'shot',
-  id: `upgrades-${build}-${w(v)}`,
+  id: `upgrades-${build}-${save === 'lv8' ? '' : `${save}-`}${w(v)}`,
   tags: ['upgrades'],
   build,
   shot: 'panel',
-  save: 'lv8',
+  save,
   viewport: v,
   dpr: SHOT_DPR,
   opts: {
@@ -128,21 +132,23 @@ const upgradesBoard = {
   kind: 'board',
   tags: ['upgrades'],
   file: 'upgrades-lv8-before-after-p31.jpg',
-  width: 1500,
+  width: 1800,
   rows: ({ results }) =>
     VIEWS.filter((v) => results[`upgrades-cur-${w(v)}`]?.box).map((v) => {
       const a = results[`upgrades-cur-${w(v)}`];
+      const t = results[`upgrades-cur-tier2-${w(v)}`];
       const b = results[`upgrades-base-${w(v)}`];
       return {
         crop: cropOf(v, [a.box], { w: 620, h: 520 }),
         dpr: SHOT_DPR,
         panels: [
           { png: b.png, boxes: [grow(a.box, 2)], title: `Trước · ${BASE} · Nâng cấp, cấp ${LEVEL}, ${viewName(v)}`, caption: 'Dụng cụ dừng ở Máy rửa ly; không có công cụ mở ở cấp 7–8' },
-          { png: a.png, boxes: [grow(a.box, 2)], title: `Sau · {head} · Nâng cấp, cấp ${LEVEL}, ${viewName(v)}`, caption: `Thêm 2 hàng: ${a.rows.map((x) => `${x.name} (${x.buy || x.meta})`).join(', ')}` },
+          { png: a.png, boxes: [grow(a.box, 2)], title: `Sau · {head} · chưa mua, ${viewName(v)}`, caption: `Thêm 2 hàng: ${a.rows.map((x) => `${x.name} (${x.buy || x.meta})`).join(', ')}` },
+          { png: t.png, boxes: t.box ? [grow(t.box, 2)] : [], title: `Sau · {head} · đã mua bậc 2, ${viewName(v)}`, caption: `Icon bậc 2, ${t.rows.map((x) => x.meta.match(/Bậc \d+\/\d+/)?.[0] ?? 'không có Bậc').join(', ')}` },
         ],
       };
     }),
-  notes: [`Save trưa ngày 2 do sim mỗi bản chơi ra (cùng seed), đặt cấp quán ${LEVEL} và ${MONEY.toLocaleString('vi-VN')} đ, chưa mua công cụ nào. Bảng Nâng cấp cuộn tới hàng Máy rửa ly ở cả hai bản.`],
+  notes: [`Save trưa ngày 2 do sim mỗi bản chơi ra (cùng seed), đặt cấp quán ${LEVEL} và ${MONEY.toLocaleString('vi-VN')} đ, chưa mua công cụ nào; ảnh thứ ba mua Tháp cold brew và Lò nướng 2 cấp (bậc 2, cấp cao nhất). Bảng Nâng cấp cuộn tới hàng Máy rửa ly ở cả hai bản.`],
 };
 
 /** (b) Menu at level 8: the last rows (cake at the top of the view); `save` lv8 before buying, tier1 after. */
@@ -315,7 +321,15 @@ export default {
   },
   steps: [
     ...compatSteps,
-    ...VIEWS.flatMap((v) => [upgradesShot('cur', v), upgradesShot('base', v)]),
+    ...VIEWS.flatMap((v) => [
+      upgradesShot('cur', v),
+      {
+        ...upgradesShot('cur', v, 'tier2'),
+        log: (r) => `upgrades ${w(v)} at tier 2: ${r.rows.map((x) => `${x.name} "${x.meta}"`).join('; ')}`,
+        check: (r) => (r.rows.length === TOOLS.length && r.rows.every((x) => x.meta.includes('Bậc 2/2')) ? [] : `upgrades ${w(v)}: ${r.rows.filter((x) => x.meta.includes('Bậc 2/2')).length} of ${TOOLS.length} tool rows read "Bậc 2/2" at tier 2`),
+      },
+      upgradesShot('base', v),
+    ]),
     upgradesBoard,
     ...menuSteps,
     menuBoard,

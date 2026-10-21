@@ -569,7 +569,7 @@ MEDIA_PORT=4200 npm run media -- --scenario p31
 Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuất bản gốc `fe1fe8e` (v0.11.0) ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi chụp bằng Chrome headless trên GPU. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `fe1fe8e`.
 
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi đặt cấp quán 8 và 50.000.000 đ. Bản hiện tại thêm hai save: mua Tháp cold brew và Lò nướng 1 cấp (bậc 1), và 2 cấp (bậc 2). Bản gốc không có hai công cụ này nên ba save của nó giống nhau.
-2. Nâng cấp ở 390×844 và 1280×800, cuộn tới hàng Máy rửa ly: khoanh hai hàng công cụ mới.
+2. Nâng cấp ở 390×844 và 1280×800, cuộn tới hàng Máy rửa ly: bản gốc, bản hiện tại chưa mua, bản hiện tại đã mua bậc 2 (icon bậc 2, "Bậc 2/2"); khoanh hai hàng công cụ mới.
 3. Menu ở 390×844 và 1280×800, cuộn tới hàng Bánh ngọt: bản gốc, bản hiện tại chưa mua (nhãn "Cần Tháp cold brew", "Cần Lò nướng", công tắc khoá), bản hiện tại đã mua bậc 1 (hai món tự bật).
 4. Quầy sau ở 1280×800, mức Cao: trước khi chụp, ẩn ba đèn thả trên quầy trước (chỉ trong ảnh, `clearBox` của `scripts/lib/shots.mjs`). Camera hai bản phóng quanh điểm giữa lò và tháp (240 px mỗi mét), rồi cận cảnh từng máy (600 px mỗi mét). Ảnh bản gốc và bậc 1 khoanh cả máy; ảnh bậc 2 khoanh phần thêm: bục thép, khay bánh quy trên lò, ly cold brew trước tháp. Hai công cụ có tối đa 2 cấp, không có cấp thưởng, nên không có bậc 3.
 5. Nạp save trưa ngày 2 của bản gốc (save v3) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có. Lệnh in mọi request lỗi kèm URL, của bản hiện tại và của bản gốc trên save của nó.
@@ -578,11 +578,11 @@ Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuấ
 
 | File | Nội dung |
 | --- | --- |
-| `upgrades-lv8-before-after-p31.jpg` | Cuối nhóm Dụng cụ của Nâng cấp ở cấp 8, 390 và 1280. |
+| `upgrades-lv8-before-after-p31.jpg` | Cuối nhóm Dụng cụ của Nâng cấp ở cấp 8: trước, chưa mua, bậc 2; 390 và 1280. |
 | `menu-cold-brew-before-after-p31.jpg` | Hàng Cold brew và Bánh quy sô-cô-la của Menu: trước, chưa mua, đã mua; 390 và 1280. |
 | `back-counter-before-after-p31.jpg` | Quầy sau 1280: bản gốc, bậc 1, bậc 2; hàng đầu cả hai máy, hai hàng sau cận cảnh lò và tháp. |
 
-Ảnh dùng trong [báo cáo P31](reports/p31-equipment.md). Lệnh in `!!` khi thiếu hàng công cụ trong Nâng cấp, khi hàng Cold brew không có nhãn "Cần Tháp cold brew" trước lúc mua hay hai món không bật sau khi mua, khi quầy sau thiếu tháp hay lò, khi không ẩn được đèn thả nào, khi bản gốc có máy ở chỗ đó, hoặc save cũ nạp lỗi; có `!!` thì mã 1.
+Ảnh dùng trong [báo cáo P31](reports/p31-equipment.md). Lệnh in `!!` khi thiếu hàng công cụ trong Nâng cấp hay hàng bậc 2 không ghi "Bậc 2/2", khi hàng Cold brew không có nhãn "Cần Tháp cold brew" trước lúc mua hay hai món không bật sau khi mua, khi quầy sau thiếu tháp hay lò, khi không ẩn được đèn thả nào, khi bản gốc có máy ở chỗ đó, hoặc save cũ nạp lỗi; có `!!` thì mã 1.
 
 | Lệnh | Việc |
 | --- | --- |

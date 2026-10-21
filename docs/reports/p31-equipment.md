@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P31 so với base `fe1fe8e` (v0.11.0, bản P30 đã deploy): kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, khung hình, layout, nạp save v0–v3, ảnh trước/sau có khoanh. Luật và con số của P31: [spec/p31-equipment.md](../spec/p31-equipment.md).
 
-Số đo và ảnh làm trên commit `48a9945` (HEAD của nhánh tích hợp P31 lúc đo), cộng kịch bản chụp `scripts/scenarios/p31.mjs` và kiểu shot `machines` chưa commit lúc đo (chỉ đổi script, không đổi `src/`). Riêng cảnh `tools-p31` đo trên `f24a267`, còn ảnh quầy sau và nguồn 404 lấy trên `1df0efb` (cùng `src/` với `f24a267`). Máy đo: Apple M2, Chrome 155.0.8059.85, WebGL `ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)` ở mọi lệnh.
+Số đo và ảnh làm trên commit `48a9945` (HEAD của nhánh tích hợp P31 lúc đo), cộng kịch bản chụp `scripts/scenarios/p31.mjs` và kiểu shot `machines` chưa commit lúc đo (chỉ đổi script, không đổi `src/`). Riêng cảnh `tools-p31` đo trên `f24a267`, ảnh quầy sau và nguồn 404 lấy trên `1df0efb` (cùng `src/` với `f24a267`), ảnh Nâng cấp và Menu chụp lại trên `79c5560`. Máy đo: Apple M2, Chrome 155.0.8059.85, WebGL `ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)` ở mọi lệnh.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -144,15 +144,25 @@ Khung dài nhất của P31 trong từng lần là 24 ms (máy bàn, lần 5).
 
 ## 6. Ảnh
 
-Bên trái build `fe1fe8e`, bên phải P31 (`48a9945`, quầy sau `1df0efb`), cùng save do sim của từng bản chơi ra (cùng seed), đặt cấp quán 8 và 50.000.000 đ. Chụp bằng `npm run media -- --scenario p31`, thoát mã 0, không có dòng `!!`. Vòng đỏ là chỗ đổi.
+Bên trái build `fe1fe8e`, bên phải P31: Nâng cấp và Menu chụp lại trên `79c5560` (sau các bản sửa ở [mục dưới](#sửa-nhãn-và-icon-sau-khi-đo)), quầy sau trên `1df0efb`. Cùng save do sim của từng bản chơi ra (cùng seed), đặt cấp quán 8 và 50.000.000 đ. Chụp bằng `npm run media -- --scenario p31`, thoát mã 0, không có dòng `!!`. Vòng đỏ là chỗ đổi.
 
 | Mục | Đã đổi gì | Ảnh |
 | --- | --- | --- |
-| Nâng cấp, cấp 8, 390×844 và 1280×800 | Cuối nhóm Dụng cụ thêm 2 hàng: Tháp cold brew (1.800.000 đ, cấp 0/2) và Lò nướng (2.000.000 đ, cấp 0/2), nút Mua. Base: sau Máy rửa ly là nhóm Không gian | ![Nâng cấp](p31-equipment/upgrades-lv8-before-after-p31.jpg) |
-| Menu, 390×844 và 1280×800 | Chưa mua: Cold brew và Bánh quy sô-cô-la tắt, công tắc khoá, nhãn "Cần Tháp cold brew", "Cần Lò nướng" mở Nâng cấp. Mua bậc 1 hai công cụ: cả hai món tự bật, nhãn "Cần …" biến mất (Bánh quy còn nhãn kho "Thiếu Bột bánh"). Base: Menu dừng ở Bánh ngọt | ![Menu](p31-equipment/menu-cold-brew-before-after-p31.jpg) |
+| Nâng cấp, cấp 8, 390×844 và 1280×800 | Chưa mua: cuối nhóm Dụng cụ thêm 2 hàng, Tháp cold brew (1.800.000 đ, cấp 0/2) và Lò nướng (2.000.000 đ, cấp 0/2), có icon mới và nút Mua. Mua 2 cấp: icon bậc 2 (tháp có ly cold brew, lò thép), dòng "Cấp 2/2 · Bậc 2/2", nhãn Tối đa. Base: sau Máy rửa ly là nhóm Không gian | ![Nâng cấp](p31-equipment/upgrades-lv8-before-after-p31.jpg) |
+| Menu, 390×844 và 1280×800 | Chưa mua: Cold brew và Bánh quy sô-cô-la tắt, công tắc khoá, nhãn "Cần Tháp cold brew", "Cần Lò nướng" có icon cảnh báo như nhãn "Thiếu …" và mở Nâng cấp. Mua bậc 1 hai công cụ: cả hai món tự bật, nhãn "Cần …" biến mất (Bánh quy còn nhãn kho "Thiếu Bột bánh +2"). Base: Menu dừng ở Bánh ngọt | ![Menu](p31-equipment/menu-cold-brew-before-after-p31.jpg) |
 | Quầy sau, 1280×800, chụp trên `1df0efb` | Hàng đầu: Lò nướng bên trái, Tháp cold brew cạnh máy espresso (240 px mỗi mét). Hai hàng sau: cận cảnh lò và tháp (600 px mỗi mét). Ảnh base và bậc 1 khoanh cả máy; ảnh bậc 2 khoanh phần thêm: bục thép dưới máy, khay hai bánh quy trên lò, ly cold brew trước tháp. Ba đèn thả trên quầy trước bị ẩn chỉ khi chụp (156 tam giác, `clearBox`) để không che quầy sau. Base: chỗ đó trống | ![Quầy sau](p31-equipment/back-counter-before-after-p31.jpg) |
 
 Tháp cold brew và Lò nướng có `maxLevel` 2 và không có trong `maxLevelBonus` của cấp quán 7–10 (`src/sim/data/levels.ts`), nên cấp cao nhất là 2 và bậc hình cao nhất là bậc 2. Trong game không có bậc 3 của hai công cụ này; dòng kế hoạch ghi "bậc 3 (cấp thưởng)" là sai. Nhánh bậc 3 của hai máy trong `src/render/scene/equipment.ts` (sao vàng) không bao giờ được vẽ.
+
+### Sửa nhãn và icon sau khi đo
+
+| Commit | Đổi gì | Tệp |
+| --- | --- | --- |
+| `fae5c8d`, `af0f5a3` | Nhãn "Cần …" của Menu dùng icon cảnh báo như "Thiếu …"; dòng bậc của Nâng cấp ghi "Bậc n/2" cho tháp và lò (trước đó "Bậc n/3"); công cụ mới mở có nhãn "Mới" | `src/ui/panels/menu.ts`, `src/ui/panels/upgrades.ts`, `src/ui/core/fresh.ts` |
+| `bc9c0e7`, `1e88f01` | Dựng lại icon bánh quy (to hơn), tháp cold brew và lò nướng. Atlas chính 602×708: @1x 119.340 byte (trước 112.036), @2x 294.482 byte (trước 297.656) | `public/icons3d/atlas@1x.webp`, `public/icons3d/atlas@2x.webp` |
+| `92a4889` | Dựng lại atlas bậc: tháp bậc 2 có ly cold brew, lò bậc 2 bằng thép. Atlas 302×406: @1x 46.976 byte (trước 46.810), @2x 110.650 byte (trước 111.446) | `public/icons3d/tiers@1x.webp`, `public/icons3d/tiers@2x.webp` |
+
+Không đo lại khung hình và Main Menu sau các commit này: chúng chỉ đổi nhãn UI và ảnh atlas icon, không đổi code vẽ hay chunk tải trước Main Menu. So với `f24a267`, `src/render/` chỉ thêm comment; `vite build` của `npm run check` cho JS chính 39,78 kB (15,63 kB gzip) và CSS chính vẫn là `index-G0d7UaCo.css`.
 
 ## 7. Đối chiếu P30
 
