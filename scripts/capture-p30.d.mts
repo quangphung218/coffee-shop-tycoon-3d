@@ -14,3 +14,8 @@ export type SaveText = { key: string; text: string };
 
 export function buildSaves(mods: P30Modules, save: P30SaveModule, p30: boolean): { saves: Record<'noon' | 'heart' | 'sweat' | 'cloud' | 'team' | 'toast' | 'prep', SaveText>; info: string };
 export function cloudCheck(mods: P30Modules, save: P30SaveModule, saved: SaveText): { at: number | null; end: number };
+
+/** Face prints per mood: [min x, y, z, max x, y, z] of the brows-and-mouth geometry. */
+export type FaceMarks = Record<string, number[]>;
+export function faceMarks(rig: typeof import('../src/render/actors/rig')): FaceMarks;
+export function matchMood(print: readonly number[], marks: FaceMarks): string | null;

@@ -17,10 +17,14 @@
 // queued customer's drink at 0 for the cloud (out of stock at the order),
 // shop level 5 and 'latte' for the team, the opening of day 3 for the toast,
 // shop level 3 and 'mint' with the day-4 morning for the panels. The heart,
-// cloud and toast run at game speed FAST. The working tree is shot first; the
-// base is shot the same real time after Tiếp tục, with the camera on the same
-// point, and gets the same rings. Run headed (MEDIA_HEADED=1): headless
-// software WebGL draws too few frames for the game clock to move.
+// cloud and toast run at game speed FAST. The working tree is shot first and
+// the base gets the same rings. The emotes run on a held page clock (as the
+// coin board of capture-p29.mjs): held once the scene shows after Tiếp tục,
+// then stepped 1/60 s a frame until the emote is up (the cloud over a sad
+// face, told by the face prints of the working tree's rig); the base is shot
+// at the same frame with the camera on the same point. The toast waits on the
+// real clock, the base shot the same real time after Tiếp tục: run headed
+// (MEDIA_HEADED=1), headless software WebGL draws too few frames for it.
 // Also loads the base's untouched noon save (a v3 save of the P29 release)
 // into the working-tree build and checks the clock runs with no error that
 // the working tree's own save does not have.
@@ -28,8 +32,9 @@
 // FAST in 60 fps frames; the summary gives the minute of the walk-out.
 // P30_SAVES_ONLY=1 plays the working tree's saves and stops.
 // Prints `!!` for an emote, team, section, card or toast that never showed,
-// a cloud save nobody walks out of, or a failed load; a missing emote also
-// gives the HUD clock and the frames the page drew over the wait. Any `!!`
+// a cloud save nobody walks out of, a cloud shot without a sad face, or a
+// failed load; a missing emote also gives the HUD clock over the frames it
+// stepped. Any `!!`
 // ends the run with exit code 1 and names where it hit.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -53,16 +58,23 @@ const SHOT_DPR = 2;
 const BOARD_WIDTH = 1900;
 /** Camera ease after Tiếp tục, ms. */
 const SETTLE_MS = 2500;
-/** Longest wait for an emote or a regular's toast, ms. */
+/** Longest wait for a regular's toast, ms. */
 const WAIT_MS = 40_000;
+/** Frame rate of the stepped page clock of the emote shots. */
+const EMOTE_FPS = 60;
+/** Most stepped frames to wait for an emote (20 s of page time). */
+const EMOTE_MAX_FRAMES = 20 * EMOTE_FPS;
+/** Stepped frames between two looks for an emote. */
+const EMOTE_STEP = 2;
+/** Stepped frames from first sight to the shot: hearts and clouds pop in first (0,25 s). */
+const EMOTE_POP = 15;
 /** Camera zoom round an emote and round the team, CSS px per metre. */
 const EMOTE_PPM = 150;
 const TEAM_PPM = 95;
 /** Game speed of the saves that wait for an event (the top of SPEEDS in src/save/settings.ts). */
 const FAST = 4;
-/** Game minutes per real second and the longest frame step, s (GAME_MINUTES_PER_SECOND, MAX_FRAME_S in src/main.ts). */
+/** Game minutes per real second (GAME_MINUTES_PER_SECOND in src/main.ts). */
 const GAME_MINUTES_PER_SECOND = 2;
-const MAX_FRAME_S = 0.1;
 /** Game minutes the Node check of the cloud save plays, at FAST in 60 fps frames. */
 const CLOUD_CHECK_MINUTES = 30;
 /** Patience left in the sweat save, a share of the most (impatient below 0.4). */
@@ -72,6 +84,9 @@ const RESTLESS = ['entering', 'queueing', 'ordering', 'waiting'];
 /** Colours of src/render/actors/emotes.ts, src/render/actors/rig.ts and src/sim/data/uniforms.ts. */
 const EMOTE_COLORS = { heart: 0xe0475e, sweat: 0x5bc0de, cloud: 0x9aa3ab };
 const LATTE = { shirt: 0xd9a877, hat: 0x6b3f24 };
+/** Brows and mouth colour (FACE_INK in src/render/actors/rig.ts). */
+const FACE_INK = 0x2a211c;
+const MOOD_NAMES = { neutral: 'bình thường', happy: 'vui', impatient: 'sốt ruột', angry: 'giận', sad: 'buồn' };
 const EMOTE_NAMES = { heart: 'Tim', sweat: 'Giọt mồ hôi', cloud: 'Đám mây' };
 const EMOTE_WHEN = {
   heart: 'khi được phục vụ món',
@@ -210,7 +225,31 @@ export function buildSaves(mods, save, p30) {
   return { saves: out, info: `${restless} restless customers at noon, cloud ${queued.order} at ${clockOf(cloud.minute)} (sim: ${cloudAt}), day ${prep.day} ${prep.phase}, regulars: ${regulars.join(', ') || 'none'}` };
 }
 
-/** Loads `root`'s sim and save code through vite and returns its buildSaves. */
+const boxPrint = (b) => [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z];
+
+/**
+ * Prints of the faces of `rig` (src/render/actors/rig.ts): for each of its
+ * MOODS, the local bounding box of the merged brows-and-mouth geometry as
+ * [min x, y, z, max x, y, z]. The page tells a face apart by it.
+ */
+export function faceMarks(rig) {
+  const ch = rig.createCharacter({ role: 'customer', look: 0 });
+  const marks = {};
+  for (const mood of rig.MOODS) {
+    ch.setMood(mood);
+    const g = ch.face.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    marks[mood] = boxPrint(g.boundingBox);
+  }
+  return marks;
+}
+
+/** The mood of `marks` whose print is `print` (within 0,1 mm), or null. */
+export function matchMood(print, marks) {
+  return Object.keys(marks).find((m) => marks[m].every((v, i) => Math.abs(v - print[i]) < 1e-4)) ?? null;
+}
+
+/** Loads `root`'s sim and save code through vite and returns its buildSaves, and with `p30` its faceMarks. */
 async function savesOf(root, p30) {
   const { createServer } = await import('vite');
   const vite = await createServer({ root, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
@@ -218,13 +257,47 @@ async function savesOf(root, p30) {
     const [stateMod, sim, orders, save, menu] = await Promise.all(
       ['/src/sim/state.ts', '/src/sim/index.ts', '/src/sim/orders.ts', '/src/save/save.ts', '/src/sim/data/menu.ts'].map((p) => vite.ssrLoadModule(p)),
     );
-    return buildSaves({ stateMod, sim, orders, menu }, save, p30);
+    const out = buildSaves({ stateMod, sim, orders, menu }, save, p30);
+    return p30 ? { ...out, marks: faceMarks(await vite.ssrLoadModule('/src/render/actors/rig.ts')) } : out;
   } finally {
     await vite.close();
   }
 }
 
 // --- Browser. ---
+
+/**
+ * Runs in the page before its scripts, as the clock of the coin board of
+ * capture-p29.mjs. The game loop keeps the requestAnimationFrame it finds at
+ * start-up, so the clock has to be in place first. window.__mediaClock:
+ * frames run on the real clock until `hold()`; then frames only run on
+ * `tick(ms)`, with performance.now() and the frame time moved on by `ms`.
+ */
+function clockHooks() {
+  const raf = window.requestAnimationFrame.bind(window);
+  const realNow = performance.now.bind(performance);
+  const clock = { manual: false, t: 0, held: [] };
+  clock.hold = () => {
+    clock.manual = true;
+    clock.t = realNow();
+  };
+  clock.tick = (ms) => {
+    clock.t += ms;
+    for (const cb of clock.held.splice(0)) cb(clock.t);
+  };
+  window.__mediaClock = clock;
+  performance.now = () => (clock.manual ? clock.t : realNow());
+  window.requestAnimationFrame = (cb) => {
+    if (clock.manual) {
+      clock.held.push(cb);
+      return 0;
+    }
+    return raf((ts) => {
+      if (clock.manual) clock.held.push(cb);
+      else cb(ts);
+    });
+  };
+}
 
 /**
  * Runs in the page before its scripts. Keeps the last scene and camera of
@@ -274,12 +347,15 @@ function focusHooks() {
  * drawn (__mediaView while focused): `emotes` [{ kind, world, box }] for the
  * emote meshes showing (a group of three meshes in the emote colours), and
  * `team` [{ world, box, latteShirt, latteHat }] for every body under 'actors'
- * (teamShot picks the team). Boxes are CSS px; `inside` is in the middle 85%.
+ * (teamShot picks the team). With `near` ({ x, z }), `faces` [{ print, box }]
+ * lists the meshes in `faceInk` of the body nearest it across the floor, with
+ * the print of their geometry as faceMarks takes it. Boxes are CSS px;
+ * `inside` is in the middle 85%.
  */
-function scan({ emoteColors, latte, withTeam }) {
+function scan({ emoteColors, latte, withTeam, faceInk, near = null }) {
   const scene = window.__mediaScene;
   const cam = window.__mediaFocus ? window.__mediaView : window.__mediaCamera;
-  if (!scene || !cam) return { emotes: [], team: [] };
+  if (!scene || !cam) return { emotes: [], team: [], faces: [] };
   const r = document.getElementById('scene').getBoundingClientRect();
   const shown = (o) => {
     for (let e = o; e; e = e.parent) if (!e.visible) return false;
@@ -319,8 +395,24 @@ function scan({ emoteColors, latte, withTeam }) {
     if (!kind || !g || g.children.length !== 3 || !g.children.every((c) => c.isMesh && emoteHex.includes(hex(c)))) return;
     emotes.push({ kind, world: world(o), box: boxOf([o]) });
   });
+  const faces = [];
+  if (near) {
+    let best = null;
+    for (const root of scene.getObjectByName('actors')?.children ?? []) {
+      if (!root.visible) continue;
+      const p = world(root);
+      const d = Math.hypot(p.x - near.x, p.z - near.z);
+      if (!best || d < best.d) best = { root, d };
+    }
+    best?.root.traverse((o) => {
+      if (!o.isMesh || !shown(o) || hex(o) !== faceInk || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const { min, max } = o.geometry.boundingBox;
+      faces.push({ print: [min.x, min.y, min.z, max.x, max.y, max.z], box: boxOf([o]) });
+    });
+  }
   const team = [];
-  if (!withTeam) return { emotes, team };
+  if (!withTeam) return { emotes, team, faces };
   for (const root of scene.getObjectByName('actors')?.children ?? []) {
     if (!root.visible) continue;
     const meshes = [];
@@ -331,10 +423,10 @@ function scan({ emoteColors, latte, withTeam }) {
     if (meshes.length < 5) continue;
     team.push({ world: world(root), box: boxOf(meshes), latteShirt: meshes.some((m) => hex(m) === latte.shirt), latteHat: meshes.some((m) => hex(m) === latte.hat) });
   }
-  return { emotes, team };
+  return { emotes, team, faces };
 }
 
-const scanArgs = { emoteColors: EMOTE_COLORS, latte: LATTE, withTeam: false };
+const scanArgs = { emoteColors: EMOTE_COLORS, latte: LATTE, withTeam: false, faceInk: FACE_INK };
 /** scan() with every body boxed: slow, so only for the team shot. */
 const teamArgs = { ...scanArgs, withTeam: true };
 const clockText = (page) => page.evaluate(() => document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '');
@@ -343,9 +435,9 @@ const clockText = (page) => page.evaluate(() => document.querySelector('.hud [da
  * Opens `url` with `save` in the 'auto' slot at `viewport` (SHOT_DPR), presses
  * Tiếp tục and calls fn(page, t0) with the time of the click; `errors` gets
  * console errors and page errors. The game runs at `speed` (the Settings
- * game speed wins over the save's).
+ * game speed wins over the save's). `stepped` puts in clockHooks.
  */
-async function session(browser, url, save, viewport, fn, { errors = [], speed = 1 } = {}) {
+async function session(browser, url, save, viewport, fn, { errors = [], speed = 1, stepped = false } = {}) {
   const context = await newContext(browser, { viewport, deviceScaleFactor: SHOT_DPR });
   await context.addInitScript(
     ({ key, text, speed }) => {
@@ -355,16 +447,8 @@ async function session(browser, url, save, viewport, fn, { errors = [], speed = 
     },
     { ...save, speed },
   );
+  if (stepped) await context.addInitScript(clockHooks);
   await context.addInitScript(focusHooks);
-  // Frames the page drew (window.__mediaFrames): a clock that stops with few frames is the browser, not the game.
-  await context.addInitScript(() => {
-    window.__mediaFrames = 0;
-    const tick = () => {
-      window.__mediaFrames++;
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
   // A headed window behind others reads as hidden, and the game pauses on a hidden tab.
   await context.addInitScript(() => {
     Object.defineProperty(document, 'hidden', { get: () => false });
@@ -557,58 +641,95 @@ const grow = (b, pad) => ({ x: b.x - pad, y: b.y - pad, w: b.w + 2 * pad, h: b.h
 
 // --- Shots. ---
 
-/** Working tree: waits for an emote of `kind` in view, centres the camera on it and shoots. */
-async function emoteAfter(page, t0, kind) {
+/** Moves the held page clock on by `n` frames of 1/EMOTE_FPS s. */
+const step = (page, n) =>
+  page.evaluate(
+    ({ n, ms }) => {
+      for (let i = 0; i < n; i++) window.__mediaClock.tick(ms);
+    },
+    { n, ms: 1000 / EMOTE_FPS },
+  );
+
+/** Holds the page clock once the game is on screen (a session with `stepped`). */
+async function holdClock(page) {
   await page.locator('nav.dock').waitFor();
-  const frames = () => page.evaluate(() => window.__mediaFrames ?? 0);
-  const from = { clock: await clockText(page), frames: await frames(), t: Date.now() };
-  const deadline = Date.now() + WAIT_MS;
-  let hit = null;
+  await page.locator('#scene.is-ready').waitFor();
+  await page.evaluate(() => window.__mediaClock.hold());
+}
+
+/** The first of scan's `faces` that `marks` knows, as { mood, box }; null when none. */
+function faceOf(faces, marks) {
+  for (const f of faces) {
+    const mood = matchMood(f.print, marks);
+    if (mood) return { mood, box: f.box };
+  }
+  return null;
+}
+
+/** Smallest box holding both. */
+function union(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+
+/**
+ * Working tree, on the held clock: steps it until an emote of `kind` is in
+ * view (a cloud only over a sad face), lets it pop in, centres the camera on
+ * it and shoots. `frames` is the frame of the shot and `focusAt` the frame the
+ * camera moved, both counted from the hold.
+ */
+async function emoteAfter(page, kind, marks) {
+  await holdClock(page);
+  const from = await clockText(page);
   const toasts = new Set();
-  while (!hit && Date.now() < deadline) {
-    const { emotes } = await page.evaluate(scan, scanArgs);
+  let frame = 0;
+  let hit = null;
+  for (;;) {
+    const seen = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
     // In the middle of the view first; the camera centres on it anyway.
-    hit = emotes.find((e) => e.kind === kind && e.box.inside) ?? emotes.find((e) => e.kind === kind) ?? null;
-    if (!hit) {
-      for (const t of await page.evaluate(() => [...document.querySelectorAll('.toasts .toast-title')].map((e) => e.textContent.trim()))) toasts.add(t);
-      await sleep(100);
-    }
+    hit = seen.find((e) => e.box.inside) ?? seen[0] ?? null;
+    if (hit && kind === 'cloud' && faceOf((await page.evaluate(scan, { ...scanArgs, near: hit.world })).faces, marks)?.mood !== 'sad') hit = null;
+    if (hit || frame >= EMOTE_MAX_FRAMES) break;
+    for (const t of await page.evaluate(() => [...document.querySelectorAll('.toasts .toast-title')].map((e) => e.textContent.trim()))) toasts.add(t);
+    await step(page, EMOTE_STEP);
+    frame += EMOTE_STEP;
   }
-  if (!hit) {
-    const drawn = (await frames()) - from.frames;
-    const sec = (Date.now() - from.t) / 1000;
-    return { toasts: [...toasts], clock: `${from.clock} → ${await clockText(page)}`, frames: `${drawn} frames in ${Math.round(sec)} s (${(drawn / sec).toFixed(1)} fps)` };
+  if (!hit) return { toasts: [...toasts], clock: `${from} → ${await clockText(page)}`, frames: frame };
+  if (kind !== 'sweat') {
+    await step(page, EMOTE_POP);
+    frame += EMOTE_POP;
   }
-  // Hearts and clouds pop in first; let them reach full size.
-  if (kind !== 'sweat') await sleep(250);
   const again = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
   const near = again.sort((a, b) => Math.hypot(a.world.x - hit.world.x, a.world.z - hit.world.z) - Math.hypot(b.world.x - hit.world.x, b.world.z - hit.world.z))[0] ?? hit;
   const focus = { ...near.world, ppm: EMOTE_PPM };
-  const at = Date.now() - t0;
+  const focusAt = frame;
   await page.evaluate((f) => {
     window.__mediaFocus = f;
   }, focus);
-  await sleep(120);
-  const shown = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
+  await step(page, 1);
+  frame += 1;
+  const { emotes, faces } = await page.evaluate(scan, { ...scanArgs, near: focus });
+  const shown = emotes.filter((e) => e.kind === kind);
   const centre = { x: DESK.width / 2, y: DESK.height / 2 };
   const box = shown.map((e) => e.box).sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y))[0] ?? null;
   const clock = await clockText(page);
   const png = await page.screenshot({ style: HIDE_TOASTS });
-  return { at, focus, box, clock, png, count: shown.length };
+  return { frames: frame, focusAt, focus, box, face: faceOf(faces, marks), clock, png, count: shown.length };
 }
 
-/** Base: the same real time after Tiếp tục and the same camera point as `after`. */
-async function emoteBefore(page, t0, after) {
-  await page.locator('nav.dock').waitFor();
-  await until(t0, after.at);
+/** Base: the same frames on the held clock and the same camera point as `after`. */
+async function emoteBefore(page, after, marks) {
+  await holdClock(page);
+  await step(page, after.focusAt);
   await page.evaluate((f) => {
     window.__mediaFocus = f;
   }, after.focus);
-  await sleep(120);
-  const { emotes } = await page.evaluate(scan, scanArgs);
+  await step(page, after.frames - after.focusAt);
+  const { emotes, faces } = await page.evaluate(scan, { ...scanArgs, near: after.focus });
   const clock = await clockText(page);
   const png = await page.screenshot({ style: HIDE_TOASTS });
-  return { clock, png, count: emotes.length };
+  return { clock, png, count: emotes.length, face: faceOf(faces, marks) };
 }
 
 async function emoteBoard(browser, cur, base, head) {
@@ -617,28 +738,34 @@ async function emoteBoard(browser, cur, base, head) {
   for (const kind of ['heart', 'sweat', 'cloud']) {
     const speed = kind === 'sweat' ? 1 : FAST;
     const errors = [];
-    const after = await session(browser, cur.url, cur.saves[kind], DESK, (p, t0) => emoteAfter(p, t0, kind), { speed, errors });
+    const after = await session(browser, cur.url, cur.saves[kind], DESK, (p) => emoteAfter(p, kind, cur.marks), { speed, errors, stepped: true });
     if (!after?.box) {
-      warn(`emotes: no ${kind} on the working tree in ${WAIT_MS / 1000} s; HUD ${after?.clock}; ${after?.frames} (the clock moves at most ${MAX_FRAME_S * GAME_MINUTES_PER_SECOND * speed} game min a frame); toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${errors.slice(0, 3).join(' | ') || 'none'}`);
+      const over = kind === 'cloud' ? ' over a sad face' : '';
+      warn(`emotes: no ${kind}${over} on the working tree in ${after?.frames} frames of 1/${EMOTE_FPS} s; HUD ${after?.clock}; toasts: ${after?.toasts?.join(' | ') || 'none'}; errors: ${errors.slice(0, 3).join(' | ') || 'none'}`);
       continue;
     }
-    const before = await session(browser, base.url, base.saves[kind], DESK, (p, t0) => emoteBefore(p, t0, after), { speed });
+    if (kind === 'cloud' && after.face?.mood !== 'sad') warn(`emotes: the cloud shot shows a ${after.face?.mood ?? 'unknown'} face, not sad`);
+    const before = await session(browser, base.url, base.saves[kind], DESK, (p) => emoteBefore(p, after, cur.marks), { speed, stepped: true });
     if (before.count > 0) warn(`emotes: ${before.count} emote mesh(es) on ${BASE_COMMIT}`);
-    const ringBox = grow(after.box, 4);
-    const crop = cropRound(after.box, 360, 300, DESK, 70);
-    const sec = (after.at / 1000).toFixed(1).replace('.', ',');
-    progress(`emote ${kind}: ${sec} s after Tiếp tục, HUD ${after.clock}, box ${Math.round(after.box.w)}×${Math.round(after.box.h)} px, ${after.count} on screen`);
+    // The cloud's ring takes in the sad face under it.
+    const changed = kind === 'cloud' && after.face ? union(after.box, after.face.box) : after.box;
+    const ringBox = grow(changed, 4);
+    const crop = cropRound(changed, 360, 300, DESK, 70);
+    const sec = (after.frames / EMOTE_FPS).toFixed(2).replace('.', ',');
+    const faces = kind === 'cloud' ? `; faces: ${after.face?.mood ?? '?'} (${BASE_COMMIT}: ${before.face?.mood ?? '?'})` : '';
+    progress(`emote ${kind}: frame ${after.frames} (${sec} s) after the hold, HUD ${after.clock}, box ${Math.round(after.box.w)}×${Math.round(after.box.h)} px, ${after.count} on screen${faces}`);
+    const face = (f) => (kind === 'cloud' && f ? `; mặt ${MOOD_NAMES[f.mood]}` : '');
     rows.push({
       crop,
       panels: [
-        { png: before.png, boxes: [ringBox], title: `Trước · ${BASE_COMMIT} · HUD ${before.clock || '?'}`, caption: `Không có ${EMOTE_NAMES[kind].toLowerCase()}: ${before.count} khối biểu cảm trong cảnh` },
-        { png: after.png, boxes: [ringBox], title: `Sau · ${head} · HUD ${after.clock || '?'}`, caption: `${EMOTE_NAMES[kind]} ${EMOTE_WHEN[kind]}; ${after.count} khách đang có ${EMOTE_NAMES[kind].toLowerCase()} trên màn` },
+        { png: before.png, boxes: [ringBox], title: `Trước · ${BASE_COMMIT} · HUD ${before.clock || '?'}`, caption: `Không có ${EMOTE_NAMES[kind].toLowerCase()}: ${before.count} khối biểu cảm trong cảnh${face(before.face)}` },
+        { png: after.png, boxes: [ringBox], title: `Sau · ${head} · HUD ${after.clock || '?'}`, caption: `${EMOTE_NAMES[kind]} ${EMOTE_WHEN[kind]}${face(after.face)}; ${after.count} khách đang có ${EMOTE_NAMES[kind].toLowerCase()} trên màn` },
       ],
     });
-    notes.push(`${EMOTE_NAMES[kind]}: chụp ${sec} s sau Tiếp tục ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
+    notes.push(`${EMOTE_NAMES[kind]}: chụp ở khung thứ ${after.frames} (${sec} s đồng hồ trang) sau khi giữ đồng hồ, ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
   }
   if (rows.length === 0) return null;
-  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim và mây chạy tốc độ x${FAST}.`);
+  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi cảnh hiện sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim và mây chạy tốc độ x${FAST}.`);
   return writeBoard(browser, 'emotes-before-after-p30.jpg', rows, notes, 1500);
 }
 
