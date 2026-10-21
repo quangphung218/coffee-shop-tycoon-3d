@@ -121,6 +121,41 @@ describe('named regulars', () => {
     expect(wiped.state.reviews.map(({ author: _a, ...r }) => r)).toEqual(run.state.reviews.map(({ author: _a, ...r }) => r));
   });
 
+  it('gives a regular the same look on every visit', () => {
+    const s = createNewGame('Quán Quen', 'normal', 2024);
+    const looks = new Map<string, number[]>();
+    const seen = new Set<number>();
+    const record = (st: GameState) => {
+      for (const c of st.customers) {
+        if (!c.regularId || seen.has(c.id)) continue;
+        seen.add(c.id);
+        looks.set(c.regularId, [...(looks.get(c.regularId) ?? []), c.look]);
+      }
+    };
+    for (let day = 1; day <= 4; day++) {
+      if (day > 1) dispatch(s, { type: 'next_day' });
+      dispatch(s, { type: 'apply_restock' });
+      playDay(s, { onMinute: record });
+    }
+    expect([...looks.values()].some((l) => l.length >= 2)).toBe(true);
+    for (const [id, l] of looks) {
+      const look = REGULARS.find((r) => r.id === id)!.look;
+      expect(l).toEqual(l.map(() => look));
+    }
+  });
+
+  it('plays the same day 2 whatever the customers look like', () => {
+    const flat = createNewGame('Quán Quen', 'normal', 2024);
+    dispatch(flat, { type: 'apply_restock' });
+    playDay(flat);
+    dispatch(flat, { type: 'next_day' });
+    dispatch(flat, { type: 'apply_restock' });
+    // Every look reset to 0 each minute: the look is drawn and shown but never read by the sim.
+    playDay(flat, { onMinute: (st) => st.customers.forEach((c) => (c.look = 0)) });
+    expect(flat.today).toEqual(run.state.today);
+    expect(flat.rngState).toBe(run.state.rngState);
+  });
+
   it('signs reviews with the regular name and keeps the RNG draw', () => {
     const named = createNewGame('Quán Quen', 'normal', 99);
     const plain = createNewGame('Quán Quen', 'normal', 99);

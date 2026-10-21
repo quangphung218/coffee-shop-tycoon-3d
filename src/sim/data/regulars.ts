@@ -3,7 +3,8 @@ import type { MenuItemId } from '../types';
 /**
  * Named regulars. A customer with the 'regular' persona is matched to one of
  * them by a hash of the seed and the customer id, never from the game RNG, so
- * naming them does not change orders, patience, looks or the economy.
+ * naming them does not change orders, patience or the economy. A named
+ * regular wears their own `look` on every visit.
  */
 export interface Regular {
   id: string;

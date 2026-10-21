@@ -1,7 +1,7 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
-import { REGULARS_FROM_DAY, pickRegular } from './data/regulars';
+import { REGULARS_FROM_DAY, pickRegular, regularById } from './data/regulars';
 import { totalUpgradeEffect } from './data/upgrades';
 import { hourOf, recordRevenue } from './economy';
 import { canMake, consume, servingCost } from './inventory';
@@ -353,7 +353,11 @@ export function spawnCustomer(state: GameState): Customer | null {
   };
   if (vip) customer.vip = true;
   const regular = persona.id === 'regular' ? admitRegular(state, customer.id) : null;
-  if (regular) customer.regularId = regular.id;
+  if (regular) {
+    customer.regularId = regular.id;
+    // After the look roll above, so the RNG stream is unchanged; a regular looks the same on every visit.
+    customer.look = regularById(regular.id)!.look;
+  }
   state.customers.push(customer);
   state.today.customersArrived += 1;
   const hour = hourOf(state.minute);
