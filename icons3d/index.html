@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Icon 3D – Coffee Shop Tycoon 3D</title>
+    <style>
+      /* Values copied from src/ui/styles/tokens.css (this page is static, outside the Vite build). */
+      :root {
+        --text-primary: #3a2216;
+        --text-inverse: #fffaf2;
+        --text-danger: #b3261e;
+        --surface-app: #f6e7d2;
+        --surface-hud-solid: #fffaf2;
+        --surface-ink: #3a2216;
+        --surface-danger: #ffe3de;
+        --border-strong: #3a2216;
+        --font-family-base: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-size-xs: 12px;
+        --font-size-sm: 14px;
+        --font-size-lg: 20px;
+        --font-weight-bold: 700;
+        --line-height-base: 1.5;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --radius-md: 12px;
+        color: var(--text-primary);
+        font: var(--font-size-sm) / var(--line-height-base) var(--font-family-base);
+      }
+      body {
+        margin: 0;
+        padding: var(--space-4);
+        background: var(--surface-app);
+      }
+      h1 {
+        font-size: var(--font-size-lg);
+        margin: 0 0 var(--space-1);
+      }
+      p {
+        margin: 0 0 var(--space-4);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+        gap: var(--space-3);
+      }
+      .card {
+        min-width: 0;
+        border: 2px solid var(--border-strong);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        background: var(--surface-hud-solid);
+      }
+      .card code {
+        display: block;
+        padding: 6px 10px;
+        font-weight: var(--font-weight-bold);
+        border-bottom: 2px solid var(--border-strong);
+      }
+      .cols,
+      .bg {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+      .cols {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+      }
+      .cols > span {
+        padding: var(--space-1) var(--space-2) 0;
+      }
+      .bg > span {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: var(--space-2);
+        padding: var(--space-2);
+      }
+      .bg > span + span {
+        border-left: 2px dashed currentColor;
+      }
+      .bg.dark {
+        background: var(--surface-ink);
+        color: var(--text-inverse);
+      }
+      .flat {
+        display: block;
+        flex: none;
+      }
+      .none {
+        font-size: var(--font-size-xs);
+      }
+      .ic3d {
+        display: block;
+        flex: none;
+        background-repeat: no-repeat;
+        background-image: url('atlas@1x.webp');
+        background-image: image-set(url('atlas@1x.webp') 1x, url('atlas@2x.webp') 2x);
+      }
+      .error {
+        padding: var(--space-2) var(--space-3);
+        border: 2px solid var(--text-danger);
+        border-radius: var(--radius-md);
+        background: var(--surface-danger);
+        color: var(--text-danger);
+        font-weight: var(--font-weight-bold);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Icon 3D</h1>
+    <p id="meta">Đang tải atlas.json…</p>
+    <div class="grid" id="grid"></div>
+    <script>
+      const SIZES = [16, 24, 32, 48];
+
+      /** The game's rule (src/ui/core/icons.ts): sizes up to the small cell use it, larger sizes the 48 px cell. */
+      function sprite(manifest, id, size) {
+        const small = manifest.small && manifest.smallIcons?.[id] && size <= manifest.small.cell;
+        const cell = small ? manifest.smallIcons[id] : manifest.icons[id];
+        const k = size / cell.w;
+        const el = document.createElement('i');
+        el.className = 'ic3d';
+        el.style.width = el.style.height = `${size}px`;
+        el.style.backgroundSize = `${manifest.width * k}px ${manifest.height * k}px`;
+        el.style.backgroundPosition = `${-cell.x * k}px ${-cell.y * k}px`;
+        el.title = `${size} px, ô ${cell.w} px`;
+        return el;
+      }
+
+      /** The old flat SVG as an image, so symbol ids of different icons never clash. */
+      function flat(markup, size) {
+        const img = document.createElement('img');
+        img.className = 'flat';
+        img.width = img.height = size;
+        img.alt = '';
+        img.title = `${size} px`;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+        return img;
+      }
+
+      function column(children) {
+        const span = document.createElement('span');
+        span.append(...children);
+        return span;
+      }
+
+      const json = (url, optional) =>
+        fetch(url).then((r) => {
+          if (r.ok) return r.json();
+          if (optional) return {};
+          throw new Error(`${url}: HTTP ${r.status}`);
+        });
+
+      /** Resolves when `url` loads as an image, rejects with its name otherwise. */
+      const image = (url) =>
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = resolve;
+          img.onerror = () => reject(new Error(`${url} hỏng hoặc không tìm thấy`));
+          img.src = url;
+        });
+
+      Promise.all([json('atlas.json'), json('svg.json', true).catch(() => ({})), image('atlas@1x.webp'), image('atlas@2x.webp')])
+        .then(([manifest, svgs]) => {
+          const ids = Object.keys(manifest.icons);
+          const cells = manifest.small ? `ô ${manifest.cell} px và ô ${manifest.small.cell} px` : `ô ${manifest.cell} px`;
+          document.getElementById('meta').textContent =
+            `${ids.length} icon, ${cells}, atlas ${manifest.width}×${manifest.height} px @1x. Cỡ: ${SIZES.join(' / ')} px. Trái: SVG cũ, phải: 3D.`;
+          const grid = document.getElementById('grid');
+          for (const id of ids) {
+            const card = document.createElement('section');
+            card.className = 'card';
+            const name = document.createElement('code');
+            name.textContent = id;
+            const head = document.createElement('div');
+            head.className = 'cols';
+            head.append(column(['SVG cũ']), column(['3D']));
+            card.append(name, head);
+            for (const tone of ['light', 'dark']) {
+              const row = document.createElement('div');
+              row.className = `bg ${tone}`;
+              const old = svgs[id] ? SIZES.map((size) => flat(svgs[id], size)) : [Object.assign(document.createElement('span'), { className: 'none', textContent: 'Không có SVG' })];
+              row.append(column(old), column(SIZES.map((size) => sprite(manifest, id, size))));
+              card.append(row);
+            }
+            grid.append(card);
+          }
+        })
+        .catch((err) => {
+          const meta = document.getElementById('meta');
+          meta.className = 'error';
+          meta.setAttribute('role', 'alert');
+          meta.textContent = `Không tải được atlas: ${err.message}. Chạy npm run icons để tạo lại.`;
+        });
+    </script>
+  </body>
+</html>
