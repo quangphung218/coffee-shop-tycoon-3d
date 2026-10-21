@@ -215,8 +215,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
         toolBadge.hidden = !needs;
         if (needs && tool) {
-          // The item's icon: the tool icons (a tall frame, a box) shrink to a blob at 16 px.
-          setChildren(toolBadge, ...withIcon(MENU_ICONS[item.id], needs), icon('i-forward', { size: 16 }));
+          // Same build as "Thiếu …" below: only the words differ.
+          setChildren(toolBadge, ...withIcon('i-warning', needs), icon('i-forward', { size: 16 }));
           toolBadge.setAttribute('aria-label', `${needs}, mở Nâng cấp`);
         } else toolBadge.replaceChildren();
         missBadge.hidden = !locked;

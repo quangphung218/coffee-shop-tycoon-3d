@@ -277,6 +277,8 @@ function coldBrewTowerGeometry(tier: number): BufferGeometry {
     parts.push(part(cyl(0.035, 0.03, 0.08, 6), PALETTE.glass, 0.07, y + 0.08, 0.12));
     parts.push(part(cyl(0.032, 0.032, 0.01, 6), PALETTE.coffee, 0.07, y + 0.125, 0.12));
   }
+  // Not reached in play: maxLevel 2 with no shop-level bonus tops out at tier 2 ("Bậc 2/2").
+  // Kept so a later bonus level has a look ready.
   if (tier >= 3) parts.push(star(0.035, -0.08, y + 0.3, 0.121));
   return merge(parts);
 }
@@ -302,6 +304,7 @@ function ovenGeometry(tier: number): BufferGeometry {
     // Two five-sided cookies keep tier 3 within the triangle budget.
     for (const x of [-0.08, 0.08]) parts.push(part(cyl(0.045, 0.045, 0.015, 5), PALETTE.woodLight, x, y + 0.4325, 0));
   }
+  // Not reached in play, as for the cold brew tower: the oven tops out at tier 2.
   if (tier >= 3) parts.push(star(0.03, 0.17, y + 0.08, front + 0.021));
   return merge(parts);
 }

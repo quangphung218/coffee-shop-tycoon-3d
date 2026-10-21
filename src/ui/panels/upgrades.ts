@@ -1,5 +1,5 @@
-import { LEVELS, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
-import { getUpgrade, UPGRADE_TIERS, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
+import { LEVELS, MAX_SHOP_LEVEL, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
+import { getUpgrade, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import {
   DECOR_REFUND_SHARE,
@@ -60,12 +60,14 @@ export function effectText(e: UpgradeEffect): string {
 /**
  * "Bậc 1/3 · mua để lên bậc 2 · " for the upgrade meta line once bought; the
  * hint only when the next level (`canBuy`) changes the look. Empty at level 0.
+ * The number after "/" is the highest tier the upgrade reaches at MAX_SHOP_LEVEL.
  */
 export function tierText(id: UpgradeId, level: number, canBuy: boolean): string {
   const tier = upgradeTier(id, level);
   if (tier === 0) return '';
   const next = canBuy ? upgradeTier(id, level + 1) : tier;
-  return `Bậc ${tier}/${UPGRADE_TIERS} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
+  const top = upgradeTier(id, getUpgrade(id).maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, id));
+  return `Bậc ${tier}/${top} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
 }
 
 /** Next shop level (7..10) that raises the upgrade's cap, or null when none is left. */
