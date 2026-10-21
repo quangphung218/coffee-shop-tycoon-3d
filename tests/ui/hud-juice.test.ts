@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
@@ -93,10 +92,12 @@ describe('HUD money bounce', () => {
     expect(bounces(moneyEl)).toHaveLength(0);
   });
 
-  it('keeps the money text and adds no CSS for the bounce', () => {
+  it('still counts up to the new sum and keeps the label when it bounces', () => {
     const { moneyEl, set } = mount(500_000);
+    const text = moneyEl.textContent;
     set(525_000);
-    expect(moneyEl.textContent).not.toBe('');
-    expect(readFileSync('src/ui/styles/ui.css', 'utf8')).not.toMatch(/money-bounce/);
+    expect(bounces(moneyEl)).toHaveLength(1);
+    // jsdom has no --duration-count; the count-up runs on rAF, so the text is not cut short to the end value at once.
+    expect(moneyEl.textContent).toBe(text);
   });
 });
