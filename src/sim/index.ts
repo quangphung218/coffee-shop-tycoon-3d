@@ -15,6 +15,7 @@ import { getUpgrade } from './data/upgrades';
 import { claimDailyGift } from './retention';
 import { startDaySpecialOrder, tickSpecialOrders } from './specialOrders';
 import { trainStaff } from './staffGrowth';
+import { uniformById, uniformOf } from './data/uniforms';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -157,12 +158,28 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       return trainStaff(state, cmd.staffId);
     case 'claim_daily_gift':
       return claimDailyGift(state, cmd.dateKey);
+    case 'set_uniform': {
+      const uniform = uniformById(cmd.uniformId);
+      if (!uniform) {
+        state.events.push({ type: 'notify', level: 'error', text: 'Không có bộ đồng phục này' });
+        return false;
+      }
+      if (state.shopLevel < uniform.unlockLevel) {
+        state.events.push({ type: 'notify', level: 'error', text: `${uniform.name} mở ở cấp quán ${uniform.unlockLevel}` });
+        return false;
+      }
+      if (uniformOf(state).id === uniform.id) return true;
+      state.uniform = uniform.id;
+      state.events.push({ type: 'uniform_changed', uniformId: uniform.id });
+      return true;
+    }
     default:
       return false;
   }
 }
 
 export { endOfDay, openShop, startNextDay } from './clock';
+export { uniformOf, unlockedUniforms } from './data/uniforms';
 export { brew, cleanTable, collectCash, deliver, takeOrder } from './orders';
 export {
   applyRestockSuggestion,

@@ -245,7 +245,10 @@ export type CustomerState =
   | 'angry_leave';
 
 /** Customer personality, chosen by a hash of the seed and the customer id. */
-export type PersonaId = 'office' | 'student' | 'regular' | 'connoisseur' | 'family';
+/** Team uniform id, see `src/sim/data/uniforms.ts`. */
+export type UniformId = 'classic' | 'mint' | 'latte' | 'coral';
+
+export type PersonaId ='office' | 'student' | 'regular' | 'connoisseur' | 'family';
 
 export interface Customer {
   id: number;
@@ -694,6 +697,8 @@ export interface GameState {
   specialOrder?: SpecialOrder | null;
   /** Visits per named regular id; absent in older saves and before the first regular comes in. */
   regulars?: Record<string, RegularVisits>;
+  /** Team uniform (`UNIFORMS` id); absent in older saves = 'classic'. Looks only. */
+  uniform?: UniformId;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -722,6 +727,8 @@ export type Command =
   | { type: 'collect_cash'; tableId: number }
   | { type: 'clean_table'; tableId: number }
   | { type: 'train_staff'; staffId: number }
+  /** Any phase; refused with a notify when the uniform is locked at this shop level or unknown. */
+  | { type: 'set_uniform'; uniformId: UniformId }
   /** `dateKey` is the player's local date 'YYYY-MM-DD'; the sim only compares keys. */
   | { type: 'claim_daily_gift'; dateKey: string };
 
@@ -757,4 +764,6 @@ export type GameEvent =
   | { type: 'special_order'; status: 'completed' | 'failed'; itemId: MenuItemId }
   | { type: 'vip_arrived'; customerId: number }
   /** A named regular came through the door; `visits` counts this one. Comes after 'doorbell'. */
-  | { type: 'regular_arrived'; customerId: number; regularId: string; visits: number };
+  | { type: 'regular_arrived'; customerId: number; regularId: string; visits: number }
+  /** `set_uniform` switched the team to another uniform. */
+  | { type: 'uniform_changed'; uniformId: UniformId };
