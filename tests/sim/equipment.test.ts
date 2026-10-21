@@ -154,10 +154,12 @@ function cleanQueue(s: GameState, n: number): GameState {
 }
 
 describe('every tool works from its first level', () => {
-  const SPEED_TOOLS: Record<'grinder' | 'pastry_case' | 'blender', (item: MenuItemDef) => boolean> = {
+  const SPEED_TOOLS: Record<'grinder' | 'pastry_case' | 'blender' | 'cold_brew_tower' | 'oven', (item: MenuItemDef) => boolean> = {
     grinder: isCoffeeDrink,
     pastry_case: (item) => item.category === 'food',
     blender: (item) => item.temperature === 'cold',
+    cold_brew_tower: (item) => item.temperature === 'cold',
+    oven: (item) => item.category === 'food',
   };
 
   for (const [tool, applies] of Object.entries(SPEED_TOOLS) as [keyof typeof SPEED_TOOLS, (item: MenuItemDef) => boolean][]) {
@@ -203,6 +205,7 @@ describe('every tool works from its first level', () => {
       return food;
     };
     expect(foodShare({ pastry_case: 1 })).toBeGreaterThan(foodShare({}));
+    expect(foodShare({ oven: 1 })).toBeGreaterThan(foodShare({}));
 
     const addOns = (levels: Partial<Record<UpgradeId, number>>): number => {
       const g = rich();
@@ -256,25 +259,25 @@ describe('every tool works from its first level', () => {
 });
 
 describe('layout', () => {
+  /** Every piece of back-counter equipment, the P31 cold brew tower and oven included. */
+  const TOOLS = ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher', 'cold_brew_tower', 'oven'] as const;
+
   it('stays valid with every equipment unit at its top level', () => {
     const s = rich();
-    for (const id of ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'] as const) maxOut(s, id);
+    for (const id of TOOLS) maxOut(s, id);
     expect(validateLayout(getShopLayout(s))).toEqual([]);
   });
 
   it('keeps a valid layout with every machine upgrade maxed together', () => {
     const s = rich();
-    for (const id of ['fast_machine', 'grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'] as const) {
-      maxOut(s, id);
-    }
+    for (const id of ['fast_machine', ...TOOLS] as const) maxOut(s, id);
     const layout = getShopLayout(s);
-    // Espresso plus three fast machines plus five equipment units.
-    expect(layout.machines).toHaveLength(1 + 3 + 5);
+    // Espresso plus three fast machines plus seven equipment units.
+    expect(layout.machines).toHaveLength(1 + 3 + 7);
     expect(validateLayout(layout)).toEqual([]);
   });
 
   it('never lets two machines on the back counter overlap, at any combination of levels', () => {
-    const TOOLS = ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'] as const;
     let checked = 0;
     for (let fast = 0; fast <= getUpgrade('fast_machine').maxLevel; fast++) {
       for (let mask = 0; mask < 1 << TOOLS.length; mask++) {
@@ -302,7 +305,7 @@ describe('layout', () => {
         }
       }
     }
-    expect(checked).toBe((getUpgrade('fast_machine').maxLevel + 1) * 32 * 2);
+    expect(checked).toBe((getUpgrade('fast_machine').maxLevel + 1) * (1 << TOOLS.length) * 2);
   });
 
   it('keeps the pastry case clear of the espresso machine', () => {

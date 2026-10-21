@@ -33,7 +33,18 @@ import {
 
 const FURNITURE = ['neon_sign', 'bookshelf', 'record_player', 'sofa_corner'] as const;
 const DECOR: readonly UpgradeId[] = ['plants', 'paintings', 'lights', ...FURNITURE];
-const EQUIPMENT: readonly UpgradeId[] = ['better_machine', 'fast_machine', 'big_counter', 'grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'];
+const EQUIPMENT: readonly UpgradeId[] = [
+  'better_machine',
+  'fast_machine',
+  'big_counter',
+  'grinder',
+  'pastry_case',
+  'blender',
+  'ice_maker',
+  'dishwasher',
+  'cold_brew_tower',
+  'oven',
+];
 const OUTSIDE: Vec2 = { x: 0, z: 9.2 };
 
 /** A Normal game at `shopLevel` with money and tickets to spare. */

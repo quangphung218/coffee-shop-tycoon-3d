@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
-import { MAX_SHOP_LEVEL, xpToReach } from '../../src/sim/data/levels';
+import { LEVELS, MAX_SHOP_LEVEL, xpToReach } from '../../src/sim/data/levels';
 import { createNewGame } from '../../src/sim/state';
 import type { ActiveCampaign, Command, DailyReport, GameState, Mission, Staff, Unlocks } from '../../src/sim/types';
 import { createHud } from '../../src/ui/hud/hud';
@@ -433,10 +433,21 @@ describe('daily report: missions, XP and level-up', () => {
   });
 
   it('says so when a level unlocks nothing', () => {
-    const band = q(summary(report({ levelUp: { level: 7, unlocks: { menu: [], upgrades: [], tools: [] } } })), '[data-block="level-up"]');
+    // Level 9 opens nothing new (P31 gave levels 7 and 8 a tool each).
+    const band = q(summary(report({ levelUp: { level: 9, unlocks: { menu: [], upgrades: [], tools: [] } } })), '[data-block="level-up"]');
     expect(band.querySelector('.rpt-unlocks')).toBeNull();
     expect(band.textContent).toContain('Cấp này chưa mở thêm');
-    expect(q(band, '[data-block="level-badge"] .rpt-levelup-num').textContent).toBe('7');
+    expect(q(band, '[data-block="level-badge"] .rpt-levelup-num').textContent).toBe('9');
+  });
+
+  it('lists the P31 tool and its menu item on the level 7 and 8 bands', () => {
+    const expected: Record<number, string[]> = { 7: ['cold_brew', 'cold_brew_tower'], 8: ['cookie', 'sofa_corner', 'oven'] };
+    for (const def of LEVELS.filter((l) => l.level === 7 || l.level === 8)) {
+      const band = q(summary(report({ levelUp: { level: def.level, unlocks: def.unlocks } })), '[data-block="level-up"]');
+      const chips = [...band.querySelectorAll<HTMLElement>('.rpt-unlock')].map((c) => c.dataset.unlock);
+      expect(chips, `level ${def.level}`).toEqual(expected[def.level]);
+      expect(band.textContent).not.toContain('Cấp này chưa mở thêm');
+    }
   });
 
   it('says so when an old save has no missions or XP in its report', () => {

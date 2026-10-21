@@ -7,14 +7,16 @@ import { STAFF_NAMES } from '../../src/sim/data/staffNames';
 import { UPGRADES, totalUpgradeEffect, upgradeCost } from '../../src/sim/data/upgrades';
 
 describe('menu', () => {
-  it('has the 11 required items with unique ids', () => {
-    expect(MENU).toHaveLength(11);
-    expect(new Set(MENU.map((m) => m.id)).size).toBe(11);
+  it('has the 11 required items and the 2 P31 items with unique ids', () => {
+    expect(MENU).toHaveLength(13);
+    expect(new Set(MENU.map((m) => m.id)).size).toBe(13);
     expect(MENU.map((m) => m.id).sort()).toEqual(
       [
         'americano',
         'cake',
         'cappuccino',
+        'cold_brew',
+        'cookie',
         'croissant',
         'espresso',
         'frappe',
@@ -77,12 +79,16 @@ describe('ingredients', () => {
 });
 
 describe('upgrades', () => {
-  it('has the 15 P23 upgrades and the 4 P27 furniture items with unique ids', () => {
+  it('has the 15 P23 upgrades, the 4 P27 furniture items and the 2 P31 tools with unique ids', () => {
     // P27 adds neon_sign, bookshelf, record_player and sofa_corner (decor) to the 15 earlier upgrades.
-    expect(UPGRADES).toHaveLength(19);
-    expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(19);
+    expect(UPGRADES).toHaveLength(21);
+    expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(21);
     for (const id of ['neon_sign', 'bookshelf', 'record_player', 'sofa_corner']) {
       expect(UPGRADES.find((u) => u.id === id)?.category, id).toBe('decor');
+    }
+    // P31: the cold brew tower and the oven are equipment with two levels.
+    for (const id of ['cold_brew_tower', 'oven']) {
+      expect(UPGRADES.find((u) => u.id === id), id).toMatchObject({ category: 'equipment', maxLevel: 2 });
     }
   });
 
