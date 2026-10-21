@@ -1,8 +1,9 @@
 import { Group, type Object3D, type Raycaster, type Scene, type Texture } from 'three';
 import type { Quality } from '../../save/settings';
 import { PERSONA_IDS } from '../../sim/data/personas';
+import { UNIFORMS, uniformOf } from '../../sim/data/uniforms';
 import { buildNavGrid, type NavGrid } from '../../sim/nav';
-import type { Command, GameState, PersonaId, Vec2 } from '../../sim/types';
+import type { Command, GameState, PersonaId, UniformId, Vec2 } from '../../sim/types';
 import { getShopLayout, type ShopLayout } from '../../sim/upgrades';
 import { layoutKey } from '../scene/shop';
 import {
@@ -122,8 +123,8 @@ const SECONDS_PER_GAME_MINUTE = 0.5;
 const LOOK_AHEAD = 0.3;
 /** Seconds to blend between the stride and the standing pose when starting or stopping. */
 const BLEND_SECONDS = 0.18;
-/** Characters built before the scene shows: one per persona and a staff member. */
-export const WARM_BODIES = PERSONA_IDS.length + 1;
+/** Characters built before the scene shows: one per persona and a staff member per uniform. */
+export const WARM_BODIES = PERSONA_IDS.length + UNIFORMS.length;
 /** Coin popups built before the scene shows. */
 export const WARM_COINS = 3;
 /** Every face, sad included, so none uploads mid-game. */
@@ -226,9 +227,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   let coinTime = 0;
   let frame = 0;
 
-  function spawn(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId): Actor {
+  function spawn(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId, uniform?: UniformId): Actor {
     const body = pool.acquire();
-    body.char.setLook({ role, look, persona });
+    body.char.setLook({ role, look, persona, uniform });
     body.char.root.visible = true;
     const actor: Actor = {
       key,
@@ -269,10 +270,14 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     if (actor) actor.seen = frame;
   }
 
-  function ensure(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId): Actor {
+  /** Finds or spawns a person; a new role, look or uniform re-dresses the same body in place. */
+  function ensure(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId, uniform?: UniformId): Actor {
     let actor = actors.get(key);
-    if (!actor) actor = spawn(key, kind, id, role, look, pos, persona);
-    else if (actor.body.char.role !== role || actor.body.char.look !== look) actor.body.char.setLook({ role, look, persona });
+    if (!actor) actor = spawn(key, kind, id, role, look, pos, persona, uniform);
+    else {
+      const char = actor.body.char;
+      if (char.role !== role || char.look !== look || (uniform !== undefined && char.uniform !== uniform)) char.setLook({ role, look, persona, uniform });
+    }
     actor.seen = frame;
     return actor;
   }
@@ -451,9 +456,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         }
       }
 
+      // The team uniform; switching it re-dresses staff and the player, the scene stays as is.
+      const uniform = uniformOf(state).id;
       for (const s of state.staff) {
         const role: CharacterRole = s.role;
-        const actor = ensure(`s${s.id}`, 'staff', s.id, role, s.look, s.pos);
+        const actor = ensure(`s${s.id}`, 'staff', s.id, role, s.look, s.pos, undefined, uniform);
         // s.pos is the spot the sim holds for them (staffSpots).
         actor.goal = workerGoal(state, s.task, shop, s.pos);
         const moving = animate(actor, (m) => workerAnim(s.task, m), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null, now);
@@ -463,7 +470,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       }
 
       const head = state.playerTasks[0] ?? null;
-      const player = ensure('player', 'player', 0, 'player', 3, playerHome(shop));
+      const player = ensure('player', 'player', 0, 'player', 3, playerHome(shop), undefined, uniform);
       const tick = state.day * 1440 + state.minute;
       const k = playerKey;
       if (!playerAt || k.clock !== tick || k.layout !== sig || k.task !== head || k.customers !== state.customers.length || k.staff !== state.staff.length) {
@@ -543,7 +550,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       const bodies = Array.from({ length: WARM_BODIES }, () => pool.acquire());
       bodies.forEach((body, i) => {
         const persona = PERSONA_IDS[i];
-        body.char.setLook(persona ? { role: 'customer', look: i, persona } : { role: 'barista', look: i });
+        // After the personas, one worker per uniform, so every hat and shirt colour uploads now;
+        // the 'classic' one is the player, for the red cap.
+        const uniform = UNIFORMS[i - PERSONA_IDS.length]?.id;
+        const role = uniform === 'classic' ? 'player' : 'barista';
+        body.char.setLook(persona ? { role: 'customer', look: i, persona } : { role, look: i, uniform });
         body.char.setMood(WARM_MOODS[i % WARM_MOODS.length]!);
         body.char.root.position.set(home.x + (i % 3) * 0.5 - 0.5, 0, home.z + Math.floor(i / 3) * 0.5);
         body.char.root.visible = true;

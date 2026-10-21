@@ -1,7 +1,8 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, type BufferGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import type { PersonaId, StaffRole } from '../../sim/types';
+import { DEFAULT_UNIFORM, uniformById, type HatKind } from '../../sim/data/uniforms';
+import type { PersonaId, StaffRole, UniformId } from '../../sim/types';
 import { propsFor, type AnimName, type Bounce, type Mood, type Pose } from './animations';
 
 /**
@@ -22,6 +23,8 @@ export interface CharacterOptions {
   look: number;
   /** Customer personality; adds a persona accessory (briefcase, backpack, beanie, scarf, tote). Absent = none. */
   persona?: PersonaId;
+  /** Team uniform for staff and the player (shirt, sleeves, hat). Absent = 'classic'; customers ignore it. */
+  uniform?: UniformId;
 }
 
 /** Standing hip height; the legs are this long. */
@@ -42,8 +45,8 @@ export const APRON_COLORS: Readonly<Record<Exclude<CharacterRole, 'customer'>, n
   marketer: 0xd8457a,
   none: 0x8c7f75,
 };
-const STAFF_SHIRT = 0xfff9f0;
-const CAP_COLOR = 0xe05a4f;
+/** The player's red cap, kept with the 'classic' uniform (which gives the staff no hat). */
+export const CAP_COLOR = 0xe05a4f;
 /** A gentle flush while storming out; softer than a full red so it reads cartoon, not alarming. */
 const ANGRY_SKIN = 0xe3917c;
 const TRAY_COLOR = 0x9aa3ab;
@@ -167,8 +170,21 @@ function sharedGeometry(): Record<string, BufferGeometry> {
     head: rbox(0.3, 0.28, 0.27, 0.14, 0, 0.045),
     hair: rbox(0.32, 0.1, 0.29, 0.29, 0, 0.04),
     eye: box(0.045, 0.055, 0.03),
-    cap: new CylinderGeometry(0.17, 0.17, 0.08, 8).translate(0, 0.33, 0),
-    brim: box(0.24, 0.02, 0.14, 0.3, 0.17),
+    // Hats replace the hair. Each is one merged geometry, swapped in the one hat slot.
+    hat_cap: merged([new CylinderGeometry(0.17, 0.17, 0.08, 8).translate(0, 0.33, 0), box(0.24, 0.02, 0.14, 0.3, 0.17)]),
+    // Beret: a band round the head under a wide flat crown tipped to one side, with a stalk on top.
+    hat_beret: merged([
+      box(0.31, 0.05, 0.28, 0.29),
+      new BoxGeometry(0.37, 0.06, 0.34).rotateZ(0.12).translate(0.02, 0.33, 0),
+      box(0.04, 0.04, 0.04, 0.38),
+    ]),
+    // Bandana: a cloth cap over the top of the head, knotted at the back with two tails.
+    hat_bandana: merged([
+      box(0.33, 0.1, 0.3, 0.295),
+      box(0.08, 0.06, 0.04, 0.27, -0.16),
+      new BoxGeometry(0.04, 0.1, 0.02).rotateZ(0.3).translate(-0.03, 0.2, -0.165),
+      new BoxGeometry(0.04, 0.1, 0.02).rotateZ(-0.3).translate(0.03, 0.2, -0.165),
+    ]),
     tray: new CylinderGeometry(0.2, 0.2, 0.02, 10),
     cup: new CylinderGeometry(0.05, 0.04, 0.11, 8).translate(0, 0.055, 0),
     coffee: new CylinderGeometry(0.045, 0.045, 0.01, 8).translate(0, 0.11, 0),
@@ -227,13 +243,15 @@ export class Character {
   readonly steamAnchor = new Group();
   role: CharacterRole = 'customer';
   look = 0;
+  /** Uniform last dressed in; customers keep the default. */
+  uniform: UniformId = DEFAULT_UNIFORM;
 
   private readonly body: Mesh;
   private readonly apron: Mesh;
   private readonly neck: Mesh;
   private readonly headMesh: Mesh;
   private readonly hair: Mesh;
-  private readonly cap: Group;
+  private readonly hat: Mesh;
   private readonly arms: Mesh[];
   private readonly hands: Mesh[];
   private readonly legs: Mesh[];
@@ -282,9 +300,8 @@ export class Character {
     this.eyes[0]!.position.set(-0.07, 0.16, 0.14);
     this.eyes[1]!.position.set(0.07, 0.16, 0.14);
     this.face = mesh(g.face_neutral!, FACE_INK);
-    this.cap = new Group();
-    this.cap.add(mesh(g.cap!, CAP_COLOR), mesh(g.brim!, CAP_COLOR));
-    this.head.add(this.headMesh, this.hair, this.eyes[0]!, this.eyes[1]!, this.face, this.cap);
+    this.hat = mesh(g.hat_cap!, CAP_COLOR);
+    this.head.add(this.headMesh, this.hair, this.eyes[0]!, this.eyes[1]!, this.face, this.hat);
     this.torso.add(this.head);
 
     this.accessory = mesh(g[DEFAULT_ACCESSORY]!, 0xd8457a);
@@ -324,15 +341,17 @@ export class Character {
     this.showProps('idle');
   }
 
-  /** Dresses the character for a role and look; reuses the shared materials. */
+  /** Dresses the character for a role, look and (staff and player) uniform; reuses the shared materials. */
   setLook(opts: CharacterOptions): void {
     const g = sharedGeometry();
     this.role = opts.role;
     this.look = opts.look;
     const look = opts.look;
     const customer = opts.role === 'customer';
+    const uniform = (opts.uniform && uniformById(opts.uniform)) || uniformById(DEFAULT_UNIFORM)!;
+    this.uniform = customer ? DEFAULT_UNIFORM : uniform.id;
     this.skin = pick(SKINS, look * 3 + 1);
-    const shirt = customer ? pick(SHIRTS, look) : STAFF_SHIRT;
+    const shirt = customer ? pick(SHIRTS, look) : uniform.shirt;
     const pants = pick(PANTS, look + (customer ? 0 : 1));
     this.body.material = materialFor(shirt);
     for (const arm of this.arms) arm.material = materialFor(shirt);
@@ -342,8 +361,19 @@ export class Character {
     this.hair.material = materialFor(pick(HAIRS, look * 5 + 2));
     this.apron.visible = !customer;
     if (!customer) this.apron.material = materialFor(APRON_COLORS[opts.role as Exclude<CharacterRole, 'customer'>]);
-    this.cap.visible = opts.role === 'player';
-    this.hair.visible = opts.role !== 'player';
+    // The player keeps the red cap with 'classic'; any other uniform puts its own hat on everyone.
+    let hat: HatKind = customer ? 'none' : uniform.hat;
+    let hatColor = uniform.hatColor;
+    if (opts.role === 'player' && hat === 'none') {
+      hat = 'cap';
+      hatColor = CAP_COLOR;
+    }
+    this.hat.visible = hat !== 'none';
+    if (hat !== 'none') {
+      this.hat.geometry = g[`hat_${hat}`]!;
+      this.hat.material = materialFor(hatColor);
+    }
+    this.hair.visible = hat === 'none';
     // Reset the face to neutral; a pooled body may have left angry or smiling.
     this.angry = false;
     this.mood = 'neutral';
