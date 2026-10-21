@@ -2,7 +2,7 @@
 
 Báo cáo kiểm chứng P29 so với base `774be34` (merge-base của nhánh với `origin/main`): kết quả `npm run check`, thời gian tới Main Menu và cảnh 3D, kích thước CSS và JS chính, khung hình và long task, nạp save v0–v3, ảnh trước/sau có khoanh. Cách P29 vẽ ánh sáng, mưa và hiệu ứng: [architecture.md](../architecture.md).
 
-Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 lúc đo). Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal.
+Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 lúc đo). Máy đo: Apple M2, Chrome 155, WebGL ANGLE Metal. Sau lần đo, bản sửa fix1-1 chỉ đổi lúc compile vũng sáng đèn quán và mưa khi bật Giảm chuyển động, nên số đo khung hình trong báo cáo vẫn đúng và không đo lại.
 
 | Phần | Lệnh |
 | --- | --- |
@@ -138,7 +138,7 @@ Tổng sáng tính như `totalLightOf` trong `src/render/scene/renderer.ts`: hem
 
 ## 6. Ảnh
 
-Ảnh trước/sau: bên trái build `774be34`, bên phải P29 `1fb13be`, cùng save do sim của từng bản chơi ra (cùng seed, cùng khổ 1280×800 trừ thẻ Lên cấp 390×844). Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
+Ảnh trước/sau: bên trái build `774be34`, bên phải P29 `1fb13be` (riêng ảnh đồng xu chụp trên `9950c34`), cùng save do sim của từng bản chơi ra (cùng seed, cùng khổ 1280×800 trừ thẻ Lên cấp 390×844). Vòng đỏ là chỗ đổi, dòng đỏ dưới ảnh là số đo của đúng khung đó.
 
 | Cảnh | Đã sửa gì | Ảnh |
 | --- | --- | --- |
@@ -146,14 +146,14 @@ Tổng sáng tính như `totalLightOf` trong `src/render/scene/renderer.ts`: hem
 | 19:30 nắng, Cao | Đèn quán bật lúc chạng vạng có thêm 2 vũng sáng ấm trên sàn (khoanh); cả hai bản đều có 2 PointLight | ![19:30 nắng](../media/p29/dusk-sunny-high-before-after-p29.jpg) |
 | 19:30 mưa, Cao | Mưa có thêm 120 tia bắn trên mặt đất (vùng khoanh là chỗ tia bắn dày nhất) và vệt mưa nghiêng; số vệt giữ 900 | ![19:30 mưa Cao](../media/p29/dusk-rainy-high-before-after-p29.jpg) |
 | 19:30 mưa, Thấp | Mức Thấp có mưa: 0 → 120 vệt, không có tia bắn | ![19:30 mưa Thấp](../media/p29/dusk-rainy-low-before-after-p29.jpg) |
-| Đồng xu khi bán, Cao | Đồng xu nảy theo cung rồi vỡ thành xu nhỏ: khung có nhiều sprite xu nhất trong 20 s là 2 (xu và nhãn tiền) ở base, 7 (xu nhỏ vỡ ra) ở P29; ảnh phóng 4x | ![Đồng xu](../media/p29/coin-before-after-p29.jpg) |
+| Đồng xu khi bán, Cao | Base: xu và chip "+25.000đ" trôi thẳng lên 0,34 m rồi mờ dần. P29, cùng một đồng xu: 0,25 s nảy theo cung (cao 0,29 m) với chip bay trên xu, 0,60 s xoay quanh trục đứng (bề ngang còn 57%), 0,85 s vỡ thành 6 xu nhỏ; camera phóng quanh xu | ![Đồng xu](../media/p29/coin-before-after-p29.jpg) |
 | Thẻ Lên cấp, 390 | Huy hiệu cấp rung ngang một lần sau khi hiện: giữ ở chỗ lệch xa nhất (490 ms) thì lệch −2,8 px so với nét đứt xanh; base không rung | ![Lên cấp](../media/p29/levelup-shake-before-after-p29.jpg) |
 
-Ảnh đồng xu và Lên cấp chỉ cho thấy một khung của chuyển động; số đo dưới ảnh là phần chứng minh.
+Ảnh Lên cấp chỉ cho thấy một khung của chuyển động; số đo dưới ảnh là phần chứng minh. Ảnh đồng xu dừng đồng hồ trang ở khung xu hiện rồi chạy từng 1/60 s tới tuổi xu ghi trên mỗi khung; chỉ chụp lại ảnh này: `MEDIA_PORT=<cổng> P29_ONLY=coin npm run media:p29`.
 
 ### Ảnh `media:p29`
 
-`npm run media:p29` chụp P29 ở 07:00, 12:00, 19:30 × nắng, mưa × Cao, Thấp × 390, 1280 px: 24 ảnh `docs/media/p29/scene-<giờ>-<thời tiết>-<mức>-<khổ>-p29.jpg`, cùng `levelup-390-p29.jpg` khoanh thẻ Lên cấp. HUD trong ảnh chạy trước giờ đặt 3–5 phút.
+`npm run media:p29` chụp P29 ở 07:00, 12:00, 19:30 × nắng, mưa × Cao, Thấp × 390, 1280 px: 24 ảnh `docs/media/p29/scene-<giờ>-<thời tiết>-<mức>-<khổ>-p29.jpg`, cùng `levelup-390-p29.jpg` khoanh thẻ Lên cấp và ảnh ghép `coin-before-after-p29.jpg` ở trên. HUD trong ảnh chạy trước giờ đặt 3–5 phút.
 
 | Giờ | Nắng, Cao, 1280 | Mưa, Cao, 1280 | Mưa, Thấp, 390 |
 | --- | --- | --- | --- |
