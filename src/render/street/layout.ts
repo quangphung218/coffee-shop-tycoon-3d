@@ -237,10 +237,19 @@ export function minWalkerGap(slots: readonly WalkerSlot[], t: number): number {
   return best;
 }
 
-/** Light for one moment of the day; written into an existing object so the frame loop allocates nothing. */
+/**
+ * Light for one moment of the day; written into an existing object so the
+ * frame loop allocates nothing. Intensities are factors of a sunny noon (1),
+ * applied on top of the quality's rig (src/render/scene/dayCycle.ts), so the
+ * clock never lifts the light past the quality's budget.
+ */
 export interface Lighting {
-  sunIntensity: number;
-  hemiIntensity: number;
+  /** Sun (DirectionalLight) factor. */
+  sunScale: number;
+  /** Fill (hemisphere and environment map) factor. */
+  fillScale: number;
+  /** Unit vector from the ground toward the sun: +x east, +y up, +z the street side. */
+  sunDir: [number, number, number];
   /** Linear-ish sRGB components 0..1. */
   sun: [number, number, number];
   sky: [number, number, number];
@@ -249,33 +258,49 @@ export interface Lighting {
 }
 
 export function createLighting(): Lighting {
-  return { sunIntensity: 0, hemiIntensity: 0, sun: [1, 1, 1], sky: [1, 1, 1], lamps: 0 };
+  return { sunScale: 0, fillScale: 0, sunDir: [0, 1, 0], sun: [1, 1, 1], sky: [1, 1, 1], lamps: 0 };
 }
 
 interface Key {
   minute: number;
   sun: number;
-  hemi: number;
+  fill: number;
   sunColor: number;
   sky: number;
   lamps: number;
 }
 
-/** Keyframes over the opening day: soft warm morning, bright noon, golden afternoon, blue dusk. */
+/** Keyframes over the opening day: pale warm morning, white noon, orange late afternoon, blue dusk. */
 const KEYS: readonly Key[] = [
-  { minute: 6 * 60, sun: 1.1, hemi: 1.2, sunColor: 0xffd6a8, sky: 0xf5d9c4, lamps: 0.6 },
-  { minute: 8 * 60, sun: 1.6, hemi: 1.5, sunColor: 0xffecd2, sky: 0xcde9f2, lamps: 0 },
-  { minute: 12 * 60, sun: 1.9, hemi: 1.65, sunColor: 0xffffff, sky: 0xbfe6f5, lamps: 0 },
-  { minute: 16 * 60, sun: 1.75, hemi: 1.55, sunColor: 0xfff0d8, sky: 0xc4e3f0, lamps: 0 },
-  { minute: 18 * 60, sun: 1.35, hemi: 1.3, sunColor: 0xffb877, sky: 0xf7c59f, lamps: 0.5 },
-  { minute: 19 * 60 + 30, sun: 0.8, hemi: 1.0, sunColor: 0xd98a7a, sky: 0x8f8fc4, lamps: 1 },
-  { minute: 21 * 60, sun: 0.5, hemi: 0.85, sunColor: 0x9aa6d9, sky: 0x4f5d8f, lamps: 1 },
+  { minute: 6 * 60, sun: 0.45, fill: 0.62, sunColor: 0xffd49a, sky: 0xf3d6bc, lamps: 0.6 },
+  { minute: 8 * 60, sun: 0.78, fill: 0.84, sunColor: 0xffe6b0, sky: 0xd6e8ea, lamps: 0 },
+  { minute: 12 * 60, sun: 1, fill: 1, sunColor: 0xffffff, sky: 0xbfe6f5, lamps: 0 },
+  { minute: 16 * 60, sun: 0.92, fill: 0.95, sunColor: 0xfff0d8, sky: 0xc4e3f0, lamps: 0 },
+  { minute: 18 * 60, sun: 0.7, fill: 0.8, sunColor: 0xffa860, sky: 0xf7b98f, lamps: 0.5 },
+  { minute: 19 * 60 + 30, sun: 0.4, fill: 0.64, sunColor: 0xe0806a, sky: 0x8a8cc6, lamps: 1 },
+  { minute: 21 * 60, sun: 0.24, fill: 0.52, sunColor: 0x8fa2dc, sky: 0x46558c, lamps: 1 },
 ];
+
+/** The sun rises in the east (+x) at 06:00, is highest at noon and sets in the west (-x) at 21:00. */
+const SUN_RISE = 6 * 60;
+const SUN_NOON = 12 * 60;
+const SUN_SET = 21 * 60;
+/** Elevation at the ends of the arc and at noon; the low end keeps the shadows on the shop's lot. */
+const SUN_LOW = (22 * Math.PI) / 180;
+const SUN_HIGH = (62 * Math.PI) / 180;
+/** How far the sun leans toward the street (+z) all day, so the shop front stays lit. */
+const SUN_SOUTH = 0.7;
 
 /** Grey overcast colour mixed in while it rains. */
 const RAIN_SKY = 0x9fb0bb;
 const RAIN_MIX = 0.55;
 const RAIN_DIM = 0.72;
+const RAIN_FILL = 0.9;
+/** Hot days: a harsher sun on a slightly lower fill (more contrast, same budget), tinted warm. */
+const HOT_SUN = 1.08;
+const HOT_FILL = 0.9;
+const HOT_TINT = 0xffdcae;
+const HOT_MIX = 0.3;
 
 function channel(hex: number, shift: number): number {
   return ((hex >> shift) & 0xff) / 255;
@@ -295,14 +320,15 @@ export function lightingAt(minute: number, weather: Weather, out: Lighting = cre
   const a = KEYS[i]!;
   const b = KEYS[i + 1]!;
   const t = Math.min(1, Math.max(0, (m - a.minute) / (b.minute - a.minute)));
-  out.sunIntensity = a.sun + (b.sun - a.sun) * t;
-  out.hemiIntensity = a.hemi + (b.hemi - a.hemi) * t;
+  out.sunScale = a.sun + (b.sun - a.sun) * t;
+  out.fillScale = a.fill + (b.fill - a.fill) * t;
   out.lamps = a.lamps + (b.lamps - a.lamps) * t;
   mixInto(out.sun, a.sunColor, b.sunColor, t);
   mixInto(out.sky, a.sky, b.sky, t);
+  sunDirAt(m, out.sunDir);
   if (weather === 'rainy') {
-    out.sunIntensity *= RAIN_DIM;
-    out.hemiIntensity *= 0.9;
+    out.sunScale *= RAIN_DIM;
+    out.fillScale *= RAIN_FILL;
     out.lamps = Math.max(out.lamps, 0.4);
     for (let c = 0; c < 3; c++) {
       const grey = channel(RAIN_SKY, 16 - c * 8);
@@ -310,9 +336,25 @@ export function lightingAt(minute: number, weather: Weather, out: Lighting = cre
       out.sun[c] = out.sun[c]! + (0.85 - out.sun[c]!) * 0.4;
     }
   } else if (weather === 'hot') {
-    out.sunIntensity *= 1.08;
+    out.sunScale *= HOT_SUN;
+    out.fillScale *= HOT_FILL;
+    for (let c = 0; c < 3; c++) out.sun[c] = out.sun[c]! + (channel(HOT_TINT, 16 - c * 8) - out.sun[c]!) * HOT_MIX;
   }
   return out;
+}
+
+/** Writes the unit vector toward the sun at `minute` (clamped to sunrise..sunset) into `out`. */
+function sunDirAt(minute: number, out: [number, number, number]): void {
+  const m = Math.min(SUN_SET, Math.max(SUN_RISE, minute));
+  // 0 at sunrise, 0.5 at noon, 1 at sunset, so noon is the top of the arc.
+  const p = m <= SUN_NOON ? ((m - SUN_RISE) / (SUN_NOON - SUN_RISE)) * 0.5 : 0.5 + ((m - SUN_NOON) / (SUN_SET - SUN_NOON)) * 0.5;
+  const elevation = SUN_LOW + (SUN_HIGH - SUN_LOW) * Math.sin(Math.PI * p);
+  const hx = Math.cos(Math.PI * p);
+  const hLen = Math.hypot(hx, SUN_SOUTH);
+  const flat = Math.cos(elevation) / hLen;
+  out[0] = hx * flat;
+  out[1] = Math.sin(elevation);
+  out[2] = SUN_SOUTH * flat;
 }
 
 /** A building block: centre x/z, footprint, height, and whether its front faces +z (shop side) or -z. */
