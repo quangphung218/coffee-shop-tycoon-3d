@@ -431,48 +431,48 @@
   "smallQuality": {
     "i-tables-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.642,
-      "creamShare": 0.096
+      "edgeContrast": 10.647,
+      "creamShare": 0.105
     },
     "i-tables-t3": {
       "edgeInk": 1,
-      "edgeContrast": 8.949,
+      "edgeContrast": 8.921,
       "creamShare": 0.023
     },
     "i-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.974,
+      "edgeContrast": 10.08,
       "creamShare": 0.003
     },
     "i-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.904,
+      "edgeContrast": 9.876,
       "creamShare": 0.003
     },
     "i-fast-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.356,
+      "edgeContrast": 9.377,
       "creamShare": 0
     },
     "i-fast-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.61,
+      "edgeContrast": 9.649,
       "creamShare": 0
     },
     "i-counter-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.918,
+      "edgeContrast": 10.954,
       "creamShare": 0.076
     },
     "i-counter-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.932,
+      "edgeContrast": 10.989,
       "creamShare": 0.074
     },
     "i-outdoor-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.27,
-      "creamShare": 0.118
+      "edgeContrast": 9.277,
+      "creamShare": 0.114
     },
     "i-outdoor-t3": {
       "edgeInk": 1,
@@ -486,52 +486,52 @@
     },
     "i-expand-t3": {
       "edgeInk": 1,
-      "edgeContrast": 8.939,
+      "edgeContrast": 8.942,
       "creamShare": 0
     },
     "i-plants-t2": {
       "edgeInk": 1,
-      "edgeContrast": 8.988,
+      "edgeContrast": 8.95,
       "creamShare": 0.006
     },
     "i-plants-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.537,
+      "edgeContrast": 10.558,
       "creamShare": 0
     },
     "i-paintings-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.532,
+      "edgeContrast": 11.476,
       "creamShare": 0.025
     },
     "i-paintings-t3": {
       "edgeInk": 1,
-      "edgeContrast": 11.779,
+      "edgeContrast": 11.684,
       "creamShare": 0
     },
     "i-lights-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.341,
+      "edgeContrast": 9.35,
       "creamShare": 0.192
     },
     "i-lights-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.276,
+      "edgeContrast": 9.287,
       "creamShare": 0
     },
     "i-window-bar-t2": {
       "edgeInk": 1,
-      "edgeContrast": 7.923,
+      "edgeContrast": 7.882,
       "creamShare": 0
     },
     "i-window-bar-t3": {
       "edgeInk": 1,
-      "edgeContrast": 7.932,
+      "edgeContrast": 7.911,
       "creamShare": 0.003
     },
     "i-grinder-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.073,
+      "edgeContrast": 11.059,
       "creamShare": 0.059
     },
     "i-grinder-t3": {
@@ -541,62 +541,62 @@
     },
     "i-pastry-case-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.762,
+      "edgeContrast": 10.765,
       "creamShare": 0
     },
     "i-pastry-case-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.836,
+      "edgeContrast": 10.827,
       "creamShare": 0
     },
     "i-blender-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.304,
+      "edgeContrast": 9.235,
       "creamShare": 0
     },
     "i-blender-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.042,
+      "edgeContrast": 8.974,
       "creamShare": 0
     },
     "i-ice-maker-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.126,
-      "creamShare": 0.085
+      "edgeContrast": 9.079,
+      "creamShare": 0.082
     },
     "i-ice-maker-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.411,
+      "edgeContrast": 9.344,
       "creamShare": 0.022
     },
     "i-dishwasher-t2": {
       "edgeInk": 1,
-      "edgeContrast": 7.543,
+      "edgeContrast": 7.551,
       "creamShare": 0.03
     },
     "i-dishwasher-t3": {
       "edgeInk": 1,
-      "edgeContrast": 7.456,
+      "edgeContrast": 7.47,
       "creamShare": 0.027
     },
     "i-cold-brew-tower-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.353,
-      "creamShare": 0.011
+      "edgeContrast": 10.378,
+      "creamShare": 0.008
     },
     "i-cold-brew-tower-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.385,
+      "edgeContrast": 10.532,
       "creamShare": 0.011
     },
     "i-oven-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.865,
-      "creamShare": 0.019
+      "edgeContrast": 10.882,
+      "creamShare": 0.034
     },
     "i-oven-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.81,
+      "edgeContrast": 10.765,
       "creamShare": 0
     }
   }
