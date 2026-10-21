@@ -59,14 +59,14 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene, options.quality ?? 'medium');
   const actors = createActors(view.scene, { quality: options.quality ?? 'medium', reducedMotion: options.reducedMotion ?? false });
-  const street = createStreet(view.scene, { quality: options.quality ?? 'medium' });
-  const dayCycle = createDayCycle(view.scene, view.sun, options.quality ?? 'medium');
-  // Forced by the setting, or the OS media query when not forced. Ambient and
-  // the camera read this each frame / on drag release, so toggling it at
-  // runtime takes effect without rebuilding anything.
+  // Forced by the setting, or the OS media query when not forced. The street,
+  // ambient and the camera read this each frame / on drag release, so toggling
+  // it at runtime takes effect without rebuilding anything.
   let reducedMotionForced = options.reducedMotion ?? false;
   const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const reducedMotion = (): boolean => reducedMotionForced || (motionQuery?.matches ?? false);
+  const street = createStreet(view.scene, { quality: options.quality ?? 'medium', reducedMotion });
+  const dayCycle = createDayCycle(view.scene, view.sun, options.quality ?? 'medium');
   const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const upgradeFx = new UpgradeFx(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const ray = new Raycaster();

@@ -252,6 +252,48 @@ describe('P29 reduced motion', () => {
     }
   });
 
+  it('hands the street the world reduced-motion switch (setting or OS query)', async () => {
+    // createWorld needs WebGL and a DOM, so stub the renderer and stop at the street.
+    const got: Array<(() => boolean) | undefined> = [];
+    const stop = new Error('stop after createStreet');
+    vi.resetModules();
+    vi.doMock('../../src/render/scene/renderer', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('../../src/render/scene/renderer')>()),
+      createRenderer: () => ({ scene: new Scene(), sun: new DirectionalLight() }),
+    }));
+    vi.doMock('../../src/render/street', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('../../src/render/street')>()),
+      createStreet: (_scene: Scene, options: { reducedMotion?: () => boolean }) => {
+        got.push(options.reducedMotion);
+        throw stop;
+      },
+    }));
+    let osReduce = false;
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return osReduce;
+      },
+    }));
+    try {
+      const { createWorld } = await import('../../src/render/scene');
+      const canvas = {} as HTMLCanvasElement;
+      expect(() => createWorld(canvas, { quality: 'high', reducedMotion: true })).toThrow(stop);
+      expect(() => createWorld(canvas, { quality: 'high', reducedMotion: false })).toThrow(stop);
+      expect(got).toHaveLength(2);
+      const [forced, fromOs] = got;
+      expect(forced?.()).toBe(true);
+      expect(fromOs?.()).toBe(false);
+      // Read live, so the OS setting flipping at runtime reaches the rain.
+      osReduce = true;
+      expect(fromOs?.()).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.doUnmock('../../src/render/scene/renderer');
+      vi.doUnmock('../../src/render/street');
+      vi.resetModules();
+    }
+  });
+
   it('drops the splashes to 0 but keeps the rain falling', () => {
     for (const q of QUALITIES) {
       const scene = new Scene();
@@ -285,9 +327,7 @@ describe('P29 pause', () => {
     street.dispose();
   });
 
-  // Known gap: CoinFx runs on performance.now(), not the street/shop clock,
-  // so a coin keeps flying while paused. Turn this into `it` once it freezes.
-  it.fails('holds a flying coin in place between two updates while paused', () => {
+  it('holds a flying coin in place between two updates while paused', () => {
     const clock = fakeClock(300);
     const scene = new Scene();
     const actors = createActors(scene, { quality: 'high', reducedMotion: false });
@@ -311,6 +351,12 @@ describe('P29 pause', () => {
     clock.set(300.5);
     actors.update(state, 0);
     expect(snapshot()).toEqual(before);
+    expect(actors.stats().coins).toBe(1);
+    // Resumes from where it stopped once the game runs again.
+    state.paused = false;
+    clock.set(300.7);
+    actors.update(state, 0);
+    expect(snapshot()).not.toEqual(before);
     expect(actors.stats().coins).toBe(1);
     actors.dispose();
   });
