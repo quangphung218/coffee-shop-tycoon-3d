@@ -375,20 +375,17 @@ async function levelUpShot(page, t0, { file, settleMs = 1200, timeoutMs = 5000 }
  * Runs in the page. Screen box (CSS px, in the view drawn) of the machine
  * mesh standing at each x of `spots` ({ name: x }) on the back counter: the
  * meshes ShopView marks `userData.pick = 'machine'`, placed at the layout x.
- * Null for a spot with no machine.
+ * Null for a spot with no machine. `marks` ({ name: [{ min, max }] }, metres
+ * in the machine's own frame) also gives `marks[name]`, the screen box of
+ * each part box of the machine at that spot.
  */
-function machineBoxes(spots) {
+function machineBoxes({ spots, marks = {} }) {
   const scene = window.__mediaScene;
   const cam = window.__mediaFocus ? window.__mediaView : window.__mediaCamera;
-  const out = Object.fromEntries(Object.keys(spots).map((k) => [k, null]));
+  const out = { boxes: Object.fromEntries(Object.keys(spots).map((k) => [k, null])), marks: {} };
   if (!scene || !cam) return out;
   const r = document.getElementById('scene').getBoundingClientRect();
-  scene.traverse((o) => {
-    if (!o.isMesh || o.userData?.pick !== 'machine' || !o.geometry) return;
-    const name = Object.keys(spots).find((k) => Math.abs(o.position.x - spots[k]) < 0.01);
-    if (!name) return;
-    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-    const b = o.geometry.boundingBox;
+  const project = (o, b) => {
     let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
     for (const x of [b.min.x, b.max.x]) {
       for (const y of [b.min.y, b.max.y]) {
@@ -400,28 +397,90 @@ function machineBoxes(spots) {
         }
       }
     }
-    out[name] = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  };
+  scene.traverse((o) => {
+    if (!o.isMesh || o.userData?.pick !== 'machine' || !o.geometry) return;
+    const name = Object.keys(spots).find((k) => Math.abs(o.position.x - spots[k]) < 0.01);
+    if (!name) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    out.boxes[name] = project(o, o.geometry.boundingBox);
+    if (marks[name]) out.marks[name] = marks[name].map((b) => project(o, b));
   });
   return out;
 }
 
 /**
- * The back counter close up: once the scene is ready and `settleMs` later,
- * centres the camera on `focus` ({ x, y, z }) at `ppm` px/m and shoots, with
- * the screen box of the machine at each x of `spots` (machineBoxes). The base
- * of a pair shoots the same point, ringed where the working tree's machines stand.
+ * Runs in the page. Drops from the scene every triangle that lies wholly
+ * inside the world box `{ min, max }` (metres), on meshes nothing picks
+ * (machines, tables and people stay whole): a mesh left with no triangle
+ * is hidden, the others get a copy of their geometry without them. Returns
+ * the number of triangles dropped. The back-counter shots clear the pendant
+ * lamps over the front counter with it.
  */
-async function machinesShot(page, t0, { settleMs = 2500, focus, ppm = 200, spots }) {
+export function clearBox({ min, max }) {
+  const scene = window.__mediaScene;
+  if (!scene) return 0;
+  const inside = (v) => v.x >= min.x && v.x <= max.x && v.y >= min.y && v.y <= max.y && v.z >= min.z && v.z <= max.z;
+  const meshes = [];
+  scene.updateMatrixWorld();
+  scene.traverse((o) => {
+    if (o.isMesh && !o.isInstancedMesh && o.visible && !o.userData?.pick && !Array.isArray(o.material) && o.geometry?.attributes?.position) meshes.push(o);
+  });
+  let dropped = 0;
+  for (const o of meshes) {
+    const g = o.geometry;
+    const pos = g.attributes.position;
+    const count = g.index ? g.index.count : pos.count;
+    const at = (i) => (g.index ? g.index.getX(i) : i);
+    const v = new o.position.constructor();
+    const keep = [];
+    let drop = 0;
+    for (let t = 0; t + 2 < count; t += 3) {
+      const tri = [at(t), at(t + 1), at(t + 2)];
+      if (tri.every((k) => inside(v.fromBufferAttribute(pos, k).applyMatrix4(o.matrixWorld)))) drop++;
+      else keep.push(...tri);
+    }
+    if (!drop) continue;
+    dropped += drop;
+    if (!keep.length) {
+      o.visible = false;
+      continue;
+    }
+    const copy = g.clone();
+    copy.setIndex(keep);
+    // One material: the groups only cut the old index.
+    copy.clearGroups();
+    o.geometry = copy;
+  }
+  return dropped;
+}
+
+/**
+ * The back counter close up: once the scene is ready and `settleMs` later,
+ * drops what lies inside the world box `clear` (clearBox; the count goes to
+ * `cleared`), centres the camera on `focus` ({ x, y, z }) at `ppm` px/m and
+ * shoots, with the screen box of the machine at each x of `spots` and of
+ * its `marks` (machineBoxes). Each `close` entry ({ name: { focus, ppm } })
+ * adds `close[name]`, one more shot with its boxes and marks round that
+ * point. The base of a pair shoots the same points, ringed where the
+ * working tree's machines stand.
+ */
+async function machinesShot(page, t0, { settleMs = 2500, focus, ppm = 200, spots, marks, clear, close = {} }) {
   await dock(page);
   await page.locator('#scene.is-ready').waitFor();
   await sleep(settleMs);
-  await setFocus(page, { ...focus, ppm });
-  // Long enough for a few frames drawn round the focus.
-  await sleep(300);
-  const boxes = await page.evaluate(machineBoxes, spots);
-  const clock = await hudClock(page);
-  const png = await page.screenshot({ style: HIDE_TOASTS });
-  return { boxes, clock, png };
+  const cleared = clear ? await page.evaluate(clearBox, clear) : 0;
+  const view = async (f) => {
+    await setFocus(page, f);
+    // Long enough for a few frames drawn round the focus.
+    await sleep(300);
+    const at = await page.evaluate(machineBoxes, { spots, marks });
+    return { ...at, png: await page.screenshot({ style: HIDE_TOASTS }) };
+  };
+  const out = { ...(await view({ ...focus, ppm })), clock: await hudClock(page), cleared, close: {} };
+  for (const [name, c] of Object.entries(close)) out.close[name] = await view({ ...c.focus, ppm: c.ppm });
+  return out;
 }
 
 /** The HUD clock when the scene is ready and `waitMs` later (does the game run on this save?). */
