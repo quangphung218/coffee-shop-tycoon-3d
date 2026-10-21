@@ -181,13 +181,28 @@ describe('shop lights by time of day', () => {
     ambient.dispose();
   });
 
-  it('hides the floor pools by day and shows them warm and additive at night', () => {
+  it('keeps the floor pools visible at noon (so compileAsync warms them) and turns them off through opacity', () => {
+    for (const q of ['medium', 'high'] as const) {
+      const { scene, ambient, state } = setup(q);
+      state.minute = 12 * 60;
+      ambient.update(state, 0, 0.016);
+      const pools = lightPools(scene);
+      expect(pools.length, q).toBeGreaterThan(0);
+      // compileAsync in three 0.180 walks traverseVisible, so a hidden pool would miss the warm-up.
+      const shown: Mesh[] = [];
+      scene.traverseVisible((o) => {
+        if (o instanceof Mesh && o.name === 'light-pool') shown.push(o);
+      });
+      expect(shown, q).toEqual(pools);
+      for (const p of pools) expect((p.material as MeshBasicMaterial).opacity, q).toBe(0);
+      ambient.dispose();
+    }
+  });
+
+  it('shows the floor pools warm and additive at night', () => {
     const { scene, ambient, state } = setup('medium');
-    state.minute = 12 * 60;
-    ambient.update(state, 0, 0.016);
     const pools = lightPools(scene);
     expect(pools.length).toBeGreaterThan(0);
-    for (const p of pools) expect(p.visible).toBe(false);
     state.minute = 20 * 60;
     ambient.update(state, 0, 0.016);
     for (const p of pools) {
