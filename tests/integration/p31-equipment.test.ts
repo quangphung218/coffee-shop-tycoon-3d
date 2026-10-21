@@ -44,6 +44,33 @@ describe('P31 equipment in a played day', { timeout: 120_000 }, () => {
     expect(s.today.sold.cookie ?? 0).toBeGreaterThan(0);
   });
 
+  it('at level 7 the tower can be bought but the oven cannot', () => {
+    const s = rich(7);
+    expect(dispatch(s, { type: 'buy_upgrade', upgradeId: 'cold_brew_tower' })).toBe(true);
+    const money = s.money;
+    expect(dispatch(s, { type: 'buy_upgrade', upgradeId: 'oven' })).toBe(false);
+    expect(upgradeLevel(s, 'cold_brew_tower')).toBe(1);
+    expect(upgradeLevel(s, 'oven')).toBe(0);
+    expect(s.money).toBe(money);
+    expect(enabled(s, 'cold_brew')).toBe(true);
+    expect(enabled(s, 'cookie')).toBe(false);
+  });
+
+  it('rejects set_menu_item for the cookie at level 8 until the oven is bought', () => {
+    const s = rich(8);
+    s.events = [];
+    expect(dispatch(s, { type: 'set_menu_item', itemId: 'cookie', enabled: true })).toBe(false);
+    expect(enabled(s, 'cookie')).toBe(false);
+    expect(notes(s.events)).toContainEqual({ type: 'notify', level: 'error', text: 'Cần Lò nướng' });
+
+    expect(dispatch(s, { type: 'buy_upgrade', upgradeId: 'oven' })).toBe(true);
+    expect(enabled(s, 'cookie')).toBe(true);
+    // Off and on again works once the oven is owned.
+    expect(dispatch(s, { type: 'set_menu_item', itemId: 'cookie', enabled: false })).toBe(true);
+    expect(dispatch(s, { type: 'set_menu_item', itemId: 'cookie', enabled: true })).toBe(true);
+    expect(enabled(s, 'cookie')).toBe(true);
+  });
+
   it(`at level ${FULL_UNLOCK_LEVEL} neither tool can be bought`, () => {
     const s = rich(FULL_UNLOCK_LEVEL);
     const money = s.money;
