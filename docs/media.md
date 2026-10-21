@@ -482,11 +482,12 @@ Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc đ�
 MEDIA_HEADED=1 MEDIA_PORT=4180 npm run media:p30
 ```
 
-Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1`: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
+Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1` cho toast khách quen: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
 
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi sửa giống nhau ở hai bản: mọi order đang mở thành sẵn sàng (tim), khách đang chờ còn 30% kiên nhẫn (giọt mồ hôi), nguyên liệu món của một khách đang xếp hàng về 0 (đám mây), cấp quán 5 với bộ latte (đội), lúc mở cửa ngày 3 (toast), sáng ngày 4 với cấp quán 3 và bộ bạc hà (hai bảng).
-2. Bản hiện tại chụp trước: chờ biểu cảm hay toast hiện (tối đa 40 s, tim, mây và toast ở tốc độ x4), camera phóng quanh biểu cảm. Bản gốc chụp cùng số giây sau **Tiếp tục**, camera ở cùng điểm, cùng vòng khoanh.
-3. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
+2. Biểu cảm (tim và mây ở tốc độ x4): khi cảnh hiện sau **Tiếp tục**, script giữ đồng hồ trang rồi đẩy từng khung 1/60 s tới khi biểu cảm hiện (tối đa 1200 khung; đám mây phải kèm mặt buồn), camera phóng quanh biểu cảm. Bản gốc chụp ở cùng khung, camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt.
+3. Toast (x4): bản hiện tại chờ toast khách quen tối đa 40 s theo đồng hồ thật; bản gốc chụp cùng số giây sau **Tiếp tục**.
+4. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
 
 Ảnh JPEG trong `docs/reports/p30-characters/`, ghi đè mỗi lần chạy:
 
@@ -499,7 +500,7 @@ Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạ
 
 Trước khi mở trình duyệt, script nạp lại save đám mây và chạy nó trong Node ở x4 theo khung 60 fps; dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
 
-Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi đồng hồ HUD đầu và cuối lượt chờ cùng số khung trang đã vẽ: đồng hồ đứng mà ít khung (vài khung trong 40 s) là trình duyệt không vẽ, không phải game dừng.
+Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, khi ảnh đám mây không có mặt buồn, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi số khung đã đẩy và đồng hồ HUD đầu, cuối lượt chờ.
 
 | Lệnh | Việc |
 | --- | --- |
