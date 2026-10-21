@@ -33,7 +33,7 @@ import {
 } from '../../sim/nav/footprints';
 import { getShopLayout, type Area, type DecorKind, type MachineKind, type ShopLayout } from '../../sim/upgrades';
 import type { GameState, UpgradeId } from '../../sim/types';
-import { BACK_COUNTER_HEIGHT, COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
+import { BACK_COUNTER_HEIGHT, COLD_BREW_TOWER_HEIGHT, COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
 import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
 import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part } from './parts';
 
@@ -452,6 +452,11 @@ const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
   oven: 'oven',
 };
 
+/** Sparkle height over a machine: half a metre above the back counter, the top of the frame for the tall cold brew tower. */
+const MACHINE_SPARKLE_Y: Partial<Record<MachineKind, number>> = {
+  cold_brew_tower: BACK_COUNTER_HEIGHT + COLD_BREW_TOWER_HEIGHT,
+};
+
 const DECOR_FOR_UPGRADE = {
   plants: 'plant',
   paintings: 'painting',
@@ -665,7 +670,7 @@ export class ShopView {
       const i = layout.machines.findIndex((m) => m.kind === kind);
       if (i < 0) return null;
       const m = layout.machines[i]!;
-      return { x: m.pos.x, y: BACK_COUNTER_HEIGHT + 0.5, z: m.pos.z, object: this.machines.children[i] ?? null, pivotY: BACK_COUNTER_HEIGHT };
+      return { x: m.pos.x, y: MACHINE_SPARKLE_Y[kind] ?? BACK_COUNTER_HEIGHT + 0.5, z: m.pos.z, object: this.machines.children[i] ?? null, pivotY: BACK_COUNTER_HEIGHT };
     }
     switch (id) {
       case 'big_counter': {
