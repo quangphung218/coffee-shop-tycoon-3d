@@ -57,10 +57,12 @@ export type MenuItemId =
   | 'lemon_tea'
   | 'orange_juice'
   | 'croissant'
-  | 'cake';
+  | 'cake'
+  | 'cold_brew'
+  | 'cookie';
 
 /** Equipment upgrades, a subset of UpgradeId that a shop level unlocks as `tools`. */
-export type ToolId = 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
+export type ToolId = 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher' | 'cold_brew_tower' | 'oven';
 
 export type UpgradeId =
   | 'tables'

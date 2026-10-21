@@ -18,6 +18,9 @@ export const MENU_ICONS: Readonly<Record<MenuItemId, IconId>> = {
   orange_juice: 'i-orange-juice',
   croissant: 'i-croissant',
   cake: 'i-cake',
+  // TODO P31 icons: placeholders until the cold brew and cookie icons are drawn.
+  cold_brew: 'i-americano',
+  cookie: 'i-croissant',
 };
 
 export const INGREDIENT_ICONS: Readonly<Record<IngredientId, IconId>> = {
@@ -58,6 +61,9 @@ export const UPGRADE_ICONS: Readonly<Record<UpgradeId, IconId>> = {
   blender: 'i-blender',
   ice_maker: 'i-ice-maker',
   dishwasher: 'i-dishwasher',
+  // TODO P31 icons: placeholders until the cold brew tower and oven icons are drawn.
+  cold_brew_tower: 'i-blender',
+  oven: 'i-pastry-case',
   // P27 furniture borrows the nearest upgrade icon, so its tiers 2–3 reuse that icon's tier cells (no new atlas).
   neon_sign: 'i-lights',
   bookshelf: 'i-window-bar',

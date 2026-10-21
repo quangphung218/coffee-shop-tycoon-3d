@@ -259,6 +259,11 @@ export function machineGeometry(m: LayoutMachine): BufferGeometry {
       return iceMakerGeometry(tier);
     case 'dishwasher':
       return dishwasherGeometry(tier);
+    // Placeholders until the P31 3D models: the tower borrows the blender, the oven the pastry case.
+    case 'cold_brew_tower':
+      return blenderGeometry(tier);
+    case 'oven':
+      return pastryCaseGeometry(tier);
   }
 }
 

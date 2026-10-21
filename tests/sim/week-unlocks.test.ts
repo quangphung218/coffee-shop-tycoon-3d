@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS } from '../../src/sim/data/levels';
+import { FULL_UNLOCK_LEVEL, LEVELS } from '../../src/sim/data/levels';
 import { WEEK_LENGTH, WEEK_UNLOCKS, dayUnlockDay } from '../../src/sim/data/week';
 import { dispatch } from '../../src/sim/index';
 import { validateLayout } from '../../src/sim/nav';
@@ -35,8 +35,13 @@ describe('week unlock calendar', () => {
     }
   });
 
-  it('opens every tool by day 5, so none is bought for the last one or two days only', () => {
-    for (const id of LEVELS.flatMap((l) => l.unlocks.tools)) expect(dayUnlockDay('upgrade', id), id).toBeLessThanOrEqual(5);
+  it('opens every tool of levels 1–6 by day 5, so none is bought for the last one or two days only', () => {
+    for (const id of LEVELS.filter((l) => l.level <= FULL_UNLOCK_LEVEL).flatMap((l) => l.unlocks.tools)) {
+      expect(dayUnlockDay('upgrade', id), id).toBeLessThanOrEqual(5);
+    }
+    // P31: the cold brew tower, the oven and their items open by shop level only.
+    for (const id of ['cold_brew_tower', 'oven'] as const) expect(dayUnlockDay('upgrade', id), id).toBe(Infinity);
+    for (const id of ['cold_brew', 'cookie'] as const) expect(dayUnlockDay('menu', id), id).toBe(Infinity);
     expect(dayUnlockDay('upgrade', 'ice_maker')).toBe(2);
     expect(dayUnlockDay('upgrade', 'dishwasher')).toBe(4);
   });

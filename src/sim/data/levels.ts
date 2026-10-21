@@ -3,7 +3,11 @@ import type { LevelDef, MenuItemId, ToolId, Unlocks, UpgradeId } from '../types'
 /** The highest shop level the game defines. */
 export const MAX_SHOP_LEVEL = 10;
 
-/** The level at which every menu item and upgrade but the sofa corner (level 8) is unlocked; levels above it mostly raise upgrade caps. */
+/**
+ * The level at which every menu item and upgrade of the base game is unlocked;
+ * levels above it mostly raise upgrade caps, and 7..8 also open the cold brew
+ * tower, the oven, their two menu items and the sofa corner.
+ */
 export const FULL_UNLOCK_LEVEL = 6;
 
 /** Price multiplier on upgrade levels above the upgrade's own maxLevel (the ones shop levels 7..10 open). */
@@ -14,8 +18,9 @@ export type ShopLevelDef = LevelDef & { maxLevelBonus?: Partial<Record<UpgradeId
 
 /**
  * Ten shop levels, from a corner stall to a legend of the street. Levels 1..6
- * newly unlock menu items, upgrades and tools and together cover every menu
- * item and every upgrade but the sofa corner, which level 8 opens. `tools` are
+ * newly unlock most menu items, upgrades and tools; level 7 adds the cold brew
+ * tower and Cold brew, level 8 the oven, the cookie and the sofa corner (see
+ * docs/spec/p31-equipment.md). `tools` are
  * equipment upgrades (a subset of UpgradeId): they gate buying the same way as
  * `upgrades` but stay a separate list so the UI can present them as
  * equipment. Each of levels 7..10 raises the cap of a few owned upgrades by
@@ -69,14 +74,14 @@ export const LEVELS: readonly ShopLevelDef[] = [
     level: 7,
     name: 'Điểm hẹn của quận',
     xpToReach: 27000,
-    unlocks: { menu: [], upgrades: [], tools: [] },
+    unlocks: { menu: ['cold_brew'], upgrades: [], tools: ['cold_brew_tower'] },
     maxLevelBonus: { better_machine: 1, grinder: 1, expand_area: 1 },
   },
   {
     level: 8,
     name: 'Thương hiệu được săn đón',
     xpToReach: 37000,
-    unlocks: { menu: [], upgrades: ['sofa_corner'], tools: [] },
+    unlocks: { menu: ['cookie'], upgrades: ['sofa_corner'], tools: ['oven'] },
     maxLevelBonus: { tables: 1, pastry_case: 1 },
   },
   {

@@ -16,7 +16,7 @@ import { validateLayout } from '../../src/sim/nav/validate';
 import { MISSION_POOL, XP_PER_SERVED, grantWeekReward, makeMission } from '../../src/sim/progression';
 import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
-import type { DayStats, GameState, MissionId, UpgradeId, WeekResult } from '../../src/sim/types';
+import type { DayStats, GameState, MissionId, Unlocks, UpgradeId, WeekResult } from '../../src/sim/types';
 import {
   DECOR_REFUND_SHARE,
   INDOOR_AREA,
@@ -72,12 +72,18 @@ describe('shop levels 7–10', () => {
     while (nextUpgradeCost(s, id) !== null) expect(buyUpgrade(s, id).ok).toBe(true);
   }
 
-  it('unlocks only the sofa corner (level 8) and raises the cap of some upgrades by one level each', () => {
+  it('unlocks the P31 tools and their items (7–8) and the sofa corner (8), and raises the cap of some upgrades by one level each', () => {
     expect(MAX_SHOP_LEVEL).toBe(10);
+    // P27: the sofa corner stands in the side room, so it opens after the side room's third level (shop level 7).
+    // P31: the cold brew tower and Cold brew at 7, the oven and the cookie at 8.
+    const expected: Record<number, Unlocks> = {
+      7: { menu: ['cold_brew'], upgrades: [], tools: ['cold_brew_tower'] },
+      8: { menu: ['cookie'], upgrades: ['sofa_corner'], tools: ['oven'] },
+      9: { menu: [], upgrades: [], tools: [] },
+      10: { menu: [], upgrades: [], tools: [] },
+    };
     for (const def of LEVELS.filter((l) => l.level > FULL_UNLOCK_LEVEL)) {
-      // P27: the sofa corner stands in the side room, so it opens after the side room's third level (shop level 7).
-      const upgrades = def.level === 8 ? ['sofa_corner'] : [];
-      expect(def.unlocks, `level ${def.level}`).toEqual({ menu: [], upgrades, tools: [] });
+      expect(def.unlocks, `level ${def.level}`).toEqual(expected[def.level]);
       expect(Object.keys(def.maxLevelBonus ?? {}).length, `level ${def.level}`).toBeGreaterThan(0);
     }
     for (const def of LEVELS.filter((l) => l.level <= FULL_UNLOCK_LEVEL)) expect(def.maxLevelBonus).toBeUndefined();

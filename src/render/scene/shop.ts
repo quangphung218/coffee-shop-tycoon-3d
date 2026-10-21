@@ -448,6 +448,8 @@ const MACHINE_FOR_UPGRADE: Partial<Record<UpgradeId, MachineKind>> = {
   blender: 'blender',
   ice_maker: 'ice_maker',
   dishwasher: 'dishwasher',
+  cold_brew_tower: 'cold_brew_tower',
+  oven: 'oven',
 };
 
 const DECOR_FOR_UPGRADE = {

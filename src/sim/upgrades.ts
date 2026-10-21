@@ -1,11 +1,13 @@
 import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { BONUS_LEVEL_PRICE_MULT, maxLevelBonus } from './data/levels';
+import { getMenuItem } from './data/menu';
 import { getUpgrade, upgradeCost, upgradeTier } from './data/upgrades';
 import { BOOKSHELF_SIZE, CHAIR_OFFSET, SOFA_SIZE } from './nav/footprints';
+import { isUnlocked } from './progression';
 import { ensureRetention } from './retention';
 import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
-import type { GameState, Table, UpgradeId, Vec2 } from './types';
+import type { GameState, MenuItemId, Table, ToolId, UpgradeId, Vec2 } from './types';
 
 /** Axis-aligned floor area in world units. */
 export interface Area {
@@ -25,7 +27,16 @@ export interface LayoutTable {
 }
 
 /** espresso and fast brew coffee; the rest are equipment that change the sim. */
-export type MachineKind = 'espresso' | 'fast' | 'grinder' | 'pastry_case' | 'blender' | 'ice_maker' | 'dishwasher';
+export type MachineKind =
+  | 'espresso'
+  | 'fast'
+  | 'grinder'
+  | 'pastry_case'
+  | 'blender'
+  | 'ice_maker'
+  | 'dishwasher'
+  | 'cold_brew_tower'
+  | 'oven';
 
 export interface LayoutMachine {
   pos: Vec2;
@@ -73,10 +84,12 @@ const COUNTER_WIDTH = 3;
 const COUNTER_WIDTH_PER_LEVEL = 1.5;
 const MACHINE_POS: Vec2 = { x: -1, z: -3.3 };
 /**
- * Where each equipment unit stands on the back counter: the grinder and the
- * pastry case left of the espresso machine, the rest in the gaps between the
- * fast machines. No two machine tops (MACHINE_SIZE) overlap at any combination
- * of owned machines, and the extended back counter still clears the back-left
+ * Where each equipment unit stands on the back counter: the oven, the grinder
+ * and the pastry case left of the espresso machine, the cold brew tower
+ * between the espresso machine and the first fast machine, the rest in the
+ * gaps between the fast machines. No two machine tops (MACHINE_SIZE) overlap
+ * at any combination of owned machines, and the back counter (backCounterSpan,
+ * which stops at BACK_COUNTER_MIN_X on the left) still clears the back-left
  * planter and both side walls. Shown only when owned.
  */
 const EQUIPMENT_SPOTS: Readonly<Record<Exclude<MachineKind, 'espresso' | 'fast'>, Vec2>> = {
@@ -85,6 +98,9 @@ const EQUIPMENT_SPOTS: Readonly<Record<Exclude<MachineKind, 'espresso' | 'fast'>
   blender: { x: 0.8, z: MACHINE_POS.z },
   ice_maker: { x: 2, z: MACHINE_POS.z },
   dishwasher: { x: 3.24, z: MACHINE_POS.z },
+  // P31, listed last so the older machines keep their order in ShopLayout.machines.
+  cold_brew_tower: { x: -0.32, z: MACHINE_POS.z },
+  oven: { x: -2.97, z: MACHINE_POS.z },
 };
 const OUTDOOR_TABLE_X: readonly number[] = [-2.5, 2.5, -2.5 - TABLE_PITCH, 2.5 + TABLE_PITCH];
 const OUTDOOR_TABLE_Z = 7.8;
@@ -138,6 +154,12 @@ const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = {
 /** Upgrades that need another one owned first: the sofa corner stands in the side room. */
 const UPGRADE_REQUIRES: Partial<Record<UpgradeId, { id: UpgradeId; level: number }>> = {
   sofa_corner: { id: 'expand_area', level: 1 },
+};
+
+/** Menu items made on a piece of equipment: they can be put on the menu once it is owned. */
+export const MENU_REQUIRES: Partial<Record<MenuItemId, { id: ToolId; level: number }>> = {
+  cold_brew: { id: 'cold_brew_tower', level: 1 },
+  cookie: { id: 'oven', level: 1 },
 };
 
 function expansionArea(level: number): Area {
@@ -257,6 +279,24 @@ export function upgradeBlockedReason(state: GameState, id: UpgradeId): string | 
   return `Cần ${getUpgrade(need.id).name} trước khi mua ${getUpgrade(id).name}`;
 }
 
+/** Why the menu item cannot go on the menu whatever the shop level (the equipment it needs is missing), or null. */
+export function menuBlockedReason(state: GameState, itemId: MenuItemId): string | null {
+  const need = MENU_REQUIRES[itemId];
+  if (!need || upgradeLevel(state, need.id) >= need.level) return null;
+  return `Cần ${getUpgrade(need.id).name}`;
+}
+
+/** Puts the menu items that the upgrade just made possible on the menu, when they are unlocked and still off. */
+function enableMadePossible(state: GameState, id: UpgradeId, level: number): void {
+  for (const [itemId, need] of Object.entries(MENU_REQUIRES) as [MenuItemId, { id: ToolId; level: number }][]) {
+    if (need.id !== id || need.level !== level || !isUnlocked(state, 'menu', itemId)) continue;
+    const entry = state.menu.find((m) => m.id === itemId);
+    if (!entry || entry.enabled) continue;
+    entry.enabled = true;
+    state.events.push({ type: 'notify', level: 'info', text: `Món mới: ${getMenuItem(itemId).name} đã lên Menu` });
+  }
+}
+
 /**
  * Raises an upgrade one level without charging for it, adding the tables a
  * seating upgrade brings. Returns the new level. The caller checks the max level.
@@ -280,7 +320,8 @@ function refuse(state: GameState, reason: string): UpgradeResult {
  * decor such as the window bar) add tables to `state.tables`; rating, appeal and brew speed take effect through the upgrade
  * levels. Refused at max level, while an upgrade it needs is missing
  * (upgradeBlockedReason), or when the money or the tickets (ticketCost) do
- * not cover the price.
+ * not cover the price. The first level of a tool in MENU_REQUIRES also puts
+ * its menu item on the menu when the shop has unlocked it.
  */
 export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   const def = getUpgrade(id);
@@ -300,6 +341,7 @@ export function buyUpgrade(state: GameState, id: UpgradeId): UpgradeResult {
   state.today.upgradeCost += cost;
   const level = grantUpgradeLevel(state, id);
   state.events.push({ type: 'spend', kind: 'upgrade', label: `${def.name} lên cấp ${level}`, amount: cost, moneyLeft: state.money });
+  enableMadePossible(state, id, level);
   return { ok: true, cost, level };
 }
 

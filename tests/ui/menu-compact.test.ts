@@ -56,7 +56,7 @@ describe('compact Menu rows', () => {
   it('draws every item switch compact, with no Bán/Không text', () => {
     const { body } = mountMenu(createNewGame('Quán Gọn', 'normal', 7));
     const switches = body.querySelectorAll<HTMLButtonElement>('li[data-item] [role="switch"]');
-    expect(switches).toHaveLength(11);
+    expect(switches).toHaveLength(13);
     for (const sw of switches) expect(sw.classList.contains('toggle-compact')).toBe(true);
     expect(body.querySelector('.toggle-state')).toBeNull();
     expect(body.textContent).not.toMatch(/\bBán\b|\bKhông\b/);

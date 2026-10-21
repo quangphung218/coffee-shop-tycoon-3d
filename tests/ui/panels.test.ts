@@ -92,13 +92,13 @@ describe('registration', () => {
 });
 
 describe('menu panel', () => {
-  it('lists the 11 items and lets one that lacks an ingredient be switched on, with one warning label', () => {
+  it('lists the 13 items and lets one that lacks an ingredient be switched on, with one warning label', () => {
     const state = game();
     // Mocha opens at a later shop level; reach it so only the ingredient blocks it.
     state.shopLevel = 6;
     state.inventory.find((i) => i.id === 'cacao')!.qty = 0;
     const { body, sent } = mount(renderMenuPanel, state);
-    expect(body.querySelectorAll('li.item')).toHaveLength(11);
+    expect(body.querySelectorAll('li.item')).toHaveLength(13);
 
     const mocha = q(body, '[data-item="mocha"]');
     const sw = q<HTMLButtonElement>(mocha, '[role="switch"]');
