@@ -199,7 +199,7 @@ Hệ cấp quán ở `src/sim/progression.ts` và bảng cấp `src/sim/data/lev
 
 | Khái niệm | Chi tiết |
 | --- | --- |
-| Cấp (`state.shopLevel`, 1–10) | Cấp 1–6 mở thêm món và nâng cấp, tới cấp 6 (`FULL_UNLOCK_LEVEL`) đủ 11 món và 18 trong 19 nâng cấp; góc sofa mở ở cấp 8, mọi cấp 7–10 khác không mở gì mới. Mỗi cấp 7–10 nâng trần một số nâng cấp lên 1 (`maxLevelBonus`): 7 máy cao cấp + máy xay hạt + mở rộng diện tích (cấp 3), 8 bàn ghế + tủ bánh, 9 đèn + máy sinh tố + mở rộng diện tích (cấp 4), 10 máy cao cấp + máy rửa ly. Mỗi cấp mở rộng thêm một cột 3 bàn vào khu mở rộng, khu rộng thêm 2 đơn vị (`expansionArea`). `maxUpgradeLevel(state, id)` = `maxLevel` + phần cộng; cấp vượt `maxLevel` đắt gấp `BONUS_LEVEL_PRICE_MULT` (3) lần ([báo cáo](reports/p23-long-economy.md)). Nhóm `tools` là 5 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần 1 đã tới ngày mở theo lịch (từ tuần 2 cả lịch đã mở) ([spec/week-7-days.md](spec/week-7-days.md)). |
+| Cấp (`state.shopLevel`, 1–10) | Cấp 1–6 mở thêm món và nâng cấp, tới cấp 6 (`FULL_UNLOCK_LEVEL`) đủ 11 món và 18 trong 19 nâng cấp gốc. Cấp 7 mở Tháp cold brew và món Cold brew, cấp 8 mở Lò nướng, Bánh quy sô-cô-la và góc sofa; cấp 9–10 không mở gì mới ([spec/p31-equipment.md](spec/p31-equipment.md)). Mỗi cấp 7–10 nâng trần một số nâng cấp lên 1 (`maxLevelBonus`): 7 máy cao cấp + máy xay hạt + mở rộng diện tích (cấp 3), 8 bàn ghế + tủ bánh, 9 đèn + máy sinh tố + mở rộng diện tích (cấp 4), 10 máy cao cấp + máy rửa ly. Mỗi cấp mở rộng thêm một cột 3 bàn vào khu mở rộng, khu rộng thêm 2 đơn vị (`expansionArea`). `maxUpgradeLevel(state, id)` = `maxLevel` + phần cộng; cấp vượt `maxLevel` đắt gấp `BONUS_LEVEL_PRICE_MULT` (3) lần ([báo cáo](reports/p23-long-economy.md)). Nhóm `tools` là 7 dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`, `cold_brew_tower`, `oven`), cũng là nâng cấp `category: 'equipment'` và mở khóa, mua như nâng cấp khác. `isUnlocked(state, kind, id)` trả `true` khi cấp hiện tại đạt cấp mở khóa, hoặc khi ván có `state.week` và ngày trong tuần 1 đã tới ngày mở theo lịch (từ tuần 2 cả lịch đã mở) ([spec/week-7-days.md](spec/week-7-days.md)). |
 | Tuần (`state.week`) | Ván mới chơi liên tục từng tuần 7 ngày; tuần 1 mở khóa thêm theo lịch `WEEK_UNLOCKS` ([Tuần 7 ngày](#tuần-7-ngày)). Save không có `week` chỉ mở khóa theo cấp. |
 | XP (`state.xp`) | Mỗi khách phục vụ +2, mỗi review 4–5 sao trong ngày +6, mỗi nhiệm vụ hoàn thành cộng thưởng XP; tổng nhân `xpMult` của độ khó (Dễ 1,25 · Vừa 1 · Khó 0,8). Cộng lúc `closeDay`; qua ngưỡng `xpToReach` (cấp 2–10: 1100, 3500, 7000, 12000, 19000, 27000, 37000, 49000, 63000) thì lên cấp và phát `level_up`. Mốc thiết kế: chiến lược mẫu ở Vừa lên cấp 2 vào ngày 2–4, cấp 6 vào ngày 20–35 (`tests/integration/level-balance.test.ts`). |
 | Nhiệm vụ ngày (`state.missions`) | 3 nhiệm vụ rút từ pool 6 loại bằng hash(`seed`, `day`) — không rút từ `rngState`, nên cùng seed ra cùng nhiệm vụ. Mục tiêu N theo cấp. Chấm lúc `closeDay`; nhiệm vụ xong thưởng 50–70 XP và 80.000–120.000 đ. Kết quả nằm trong `DailyReport` (`missions`, `xpGained`, `levelUp?`). Ngày không có khách thì không nhiệm vụ nào tính; `food_cost` cần có doanh thu mới tính đạt. |
@@ -225,7 +225,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 
 ### Nâng cấp và dụng cụ
 
-14 nâng cấp và 5 dụng cụ ở `src/sim/data/upgrades.ts`; mỗi loại có `category` (`equipment` / `space` / `decor`) và `effectPerLevel`. `totalUpgradeEffect(state.upgrades)` cộng dồn hiệu ứng mọi cấp đã mua:
+14 nâng cấp và 7 dụng cụ ở `src/sim/data/upgrades.ts`; mỗi loại có `category` (`equipment` / `space` / `decor`) và `effectPerLevel`. `totalUpgradeEffect(state.upgrades)` cộng dồn hiệu ứng mọi cấp đã mua:
 
 | Trường hiệu ứng | Tác dụng trong sim | Áp ở |
 | --- | --- | --- |
@@ -240,7 +240,7 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 | `iceCostReduction` | Giảm chi phí đá cho đồ lạnh | `inventory.ts` |
 | `ratingBonus` | +sao cộng vào mỗi đơn | `reviews.ts`, `rating.ts` |
 
-Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); máy làm đá (ngày 2, giá gốc 60k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
+Dụng cụ (`grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`, `cold_brew_tower`, `oven`) là nâng cấp `category: 'equipment'`; chúng chỉ khác ở chỗ `LEVELS.tools` liệt kê riêng để UI xếp vào nhóm Dụng cụ. Mua một cấp gọi `buyUpgrade`; cấp có `capacity` thì thêm bàn và chạy `relayoutTables`. Ở Vừa, cấp 1 của mỗi dụng cụ cấp 2–6 hoàn vốn trong ≤ 15 ngày (`tests/integration/level-balance.test.ts`). Trong tuần 7 ngày mọi dụng cụ cấp 2–6 mở muộn nhất ngày 5 (`WEEK_UNLOCKS`); Tháp cold brew và Lò nướng không có trong lịch, chỉ mở theo cấp quán (7 và 8); máy làm đá (ngày 2, giá gốc 60k) và máy rửa ly (ngày 4, giá gốc 400k) hoàn vốn trong tuần ở Dễ (`tests/sim/week-tool-payback.test.ts`: máy làm đá lãi ở mọi seed, máy rửa ly lãi trung bình ở Dễ và lãi ít nhất một seed ở Thường).
 
 Nội thất (`category: 'decor'`, `appeal` và `ratingBonus` nhỏ):
 
@@ -252,6 +252,15 @@ Nội thất (`category: 'decor'`, `appeal` và `ratingBonus` nhỏ):
 | `sofa_corner` Góc sofa | 8 | 1 | Tường sau khu mở rộng; cần `expand_area` ≥ 1 | 5 |
 
 `buyUpgrade` từ chối theo thứ tự: cấp tối đa, thiếu nâng cấp cần trước (`upgradeBlockedReason`, ví dụ góc sofa khi chưa mở rộng), thiếu tiền, thiếu Tem (`notify` "Thiếu N Tem"). Đủ thì trừ tiền và trừ Tem ở `ensureRetention(state).tickets`; nâng cấp không có `ticketCost` không đụng tới `state.retention`. UI đọc giá Tem của cấp kế tiếp bằng `nextUpgradeTicketCost(state, id)` (0 khi không cần, `null` ở cấp tối đa).
+
+Món cần dụng cụ (`MENU_REQUIRES` trong `src/sim/upgrades.ts`, cùng mẫu `UPGRADE_REQUIRES`):
+
+| Món | Cần | Khi thiếu | Khi mua cấp 1 dụng cụ |
+| --- | --- | --- | --- |
+| `cold_brew` Cold brew | `cold_brew_tower` ≥ 1 | `set_menu_item` bật món bị từ chối, `notify` lỗi "Cần Tháp cold brew" (`menuBlockedReason`) | `buyUpgrade` bật món nếu đã mở khóa, `notify` info "Món mới: Cold brew đã lên Menu" |
+| `cookie` Bánh quy sô-cô-la | `oven` ≥ 1 | "Cần Lò nướng" | "Món mới: Bánh quy sô-cô-la đã lên Menu" |
+
+Tắt món không cần dụng cụ. Món chưa mở khóa theo cấp vẫn báo "chưa mở khóa ở cấp quán này" trước. Dụng cụ không gỡ được nên điều kiện không mất.
 
 Gỡ trang trí (`removeDecor`) áp cho mọi `decor` không có `capacity` (`isRemovableDecor`): cây, tranh, đèn và 4 nội thất trên; `window_bar` có bàn nên không gỡ được. Gỡ giảm 1 cấp, hoàn `DECOR_REFUND_SHARE` = 50% tiền của cấp đó theo `priceMult`, không hoàn Tem. `appeal`, `ratingBonus` và chỗ đặt trong `layout.decor` giảm theo cấp.
 
@@ -265,7 +274,7 @@ Phản hồi khi quán tiến bộ nằm ở render và UI, sim không đổi; s
 
 | Trường | Bậc của |
 | --- | --- |
-| `machines[].tier` | `better_machine` cho máy `espresso` và `fast`; nâng cấp của chính nó cho 5 dụng cụ |
+| `machines[].tier` | `better_machine` cho máy `espresso` và `fast`; nâng cấp của chính nó cho 7 dụng cụ |
 | `counter.tier` | `big_counter` |
 | `furnitureTier` | `tables` (bàn, ghế) |
 | `outdoorTier` | `outdoor_seating` (dù) |
