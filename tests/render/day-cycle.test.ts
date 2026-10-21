@@ -75,6 +75,20 @@ describe('day cycle light', () => {
     expect(dusk.sky[2]).toBeGreaterThan(dusk.sky[0]!);
   });
 
+  it('opens on a bright pale-yellow 07:00, at least 1.3× the light of 19:30', () => {
+    const morning = lightingAt(7 * 60, 'sunny');
+    const dusk = lightingAt(19 * 60 + 30, 'sunny');
+    for (const q of QUALITIES) {
+      const am = totalLightOf(scaleLighting(lightingFor(q), morning, { hemi: 0, sun: 0, env: 0 }));
+      const pm = totalLightOf(scaleLighting(lightingFor(q), dusk, { hemi: 0, sun: 0, env: 0 }));
+      expect(am, q).toBeGreaterThanOrEqual(1.3 * pm);
+    }
+    const [r, g, b] = morning.sun;
+    expect(r).toBeGreaterThanOrEqual(g!);
+    expect(g).toBeGreaterThan(b!);
+    expect(g).toBeGreaterThanOrEqual(0.8);
+  });
+
   it('leaves enough fill to see the shop at closing time', () => {
     for (const w of WEATHERS) expect(lightingAt(DAY_END_MINUTE, w).fillScale, w).toBeGreaterThanOrEqual(0.45);
   });
