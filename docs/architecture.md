@@ -611,6 +611,8 @@ Thêm `--headed` để đo frame time trên cửa sổ có vsync; headless chỉ
 - Bàn, ghế, đồ trang trí trong quán và nhà, cây, đèn ngoài phố dùng `InstancedMesh` với vật liệu dùng chung.
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.
 - Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
+- Tiền bay khi bán (`CoinFx` trong `src/render/actors/fx.ts`): đồng xu nhảy theo cung, xoay quanh trục y rồi vỡ thành xu vụn ở `COIN_BURST`; chip "+X đ" giữ kiểu nổi lên rồi mờ. Tối đa `COIN_POOL` (8) xu cùng lúc, quá thì lấy lại xu cũ nhất. Mức Thấp và Giảm chuyển động giữ kiểu cũ: xu đứng yên, mờ dần, không vỡ.
+- HUD và Daily Report nảy bằng Web Animations (`element.animate`), không thêm CSS: tiền tăng thì số tiền phóng 1 → 1,12 → 1 trong `MONEY_BOUNCE_MS` (220 ms), cách nhau ít nhất `MONEY_BOUNCE_GAP_MS` (300 ms) (`src/ui/hud/hud.ts`); thẻ lên cấp rung huy hiệu cấp ±3 px trong `BADGE_SHAKE_MS` (300 ms) sau khi huy hiệu bật lên `BADGE_POP_MS` (400 ms) (`shakeBadge` trong `src/ui/report/report.ts`). Cả hai bỏ qua khi Giảm chuyển động bật (`prefers-reduced-motion` hay class `reduce-motion`).
 
 Chất lượng đồ họa:
 
@@ -620,9 +622,23 @@ Chất lượng đồ họa:
 | Vừa | 1,5 | Tắt | Bật | Vừa | Đủ, trừ hộp hoa dưới cửa sổ | Bật | 0 |
 | Cao | 2 | Bật | Bật | Cao | Đủ | Bật | 2 |
 
-Ánh sáng và vật liệu cảnh (`src/render/scene/renderer.ts`, `parts.ts`, `environment.ts`):
+Hiệu ứng theo mức:
+
+| Mức | Vệt mưa (`rainDrops`) | Giọt bắn (`rainSplashes`) | Xu vụn mỗi lần vỡ (`DEBRIS_BY_QUALITY`) | Hơi nước mỗi cột (`STEAM_PUFFS_BY_QUALITY`) | Vùng sáng dưới đèn |
+| --- | --- | --- | --- | --- | --- |
+| Thấp | 120 | 0 | 0 | 0 | Không |
+| Vừa | 350 | 48 | 4 | 3 | Có |
+| Cao | 900 | 120 | 6 | 5 | Có |
+
+Giảm chuyển động giữ `RAIN_REDUCED_SHARE` (40%) vệt mưa, bỏ giọt bắn, xu vụn và hơi nước.
+
+Ánh sáng và vật liệu cảnh (`src/render/scene/renderer.ts`, `dayCycle.ts`, `parts.ts`, `environment.ts`):
 
 - Chiếu sáng gồm `HemisphereLight` + `DirectionalLight` tông ấm, cộng `scene.environment` lấy từ `RoomEnvironment` của three qua `PMREMGenerator` (0 byte tải). Env map dựng một lần, dùng lại qua các lần đổi mức; mức Thấp tắt env để bớt một lần lấy mẫu mỗi điểm ảnh.
+- Mỗi mức có một bộ đèn trong `LIGHTING` (Thấp hemi 1,6 + sun 1,8; Vừa và Cao hemi 1 + sun 1,8 + env 0,1). Tổng `totalLightOf` không vượt `LIGHT_BUDGET` (3,4), env tính bằng `ENV_AS_HEMI` (6) lần hemi.
+- Ánh sáng theo giờ (`createDayCycle` trong `dayCycle.ts`, gọi mỗi khung sau `street.update`): `lightingAt(minute, weather)` (`src/render/street/layout.ts`) nội suy 7 mốc 06:00–21:00 ra hệ số tương đối so với trưa nắng (`sunScale`, `fillScale`; trưa nắng là 1), màu nắng, màu trời và `lamps`. `scaleLighting` nhân hệ số với `LIGHTING` của mức: sun × `sunScale`, hemi và env × `fillScale`, nên không giờ nào vượt `LIGHT_BUDGET`.
+- Mưa: nắng × 0,72, fill × 0,9, trời pha xám, `lamps` tối thiểu 0,4. Nóng: nắng × 1,08 nhưng fill × 0,9 (tương phản gắt hơn, tổng vẫn trong ngân sách) và tông nắng ấm hơn.
+- Hướng nắng `sunDir`: mặt trời mọc ở đông (+x) lúc 06:00, cao nhất 62° lúc trưa, lặn ở tây (−x) lúc 21:00, thấp nhất 22°, luôn nghiêng về phía phố (+z) để mặt tiền có nắng. `DirectionalLight` đặt cách tâm quán `SUN_DISTANCE` (20) theo hướng đó, nên bóng đổ (mức Cao) đổi theo giờ; shadow camera giữ nguyên.
 - Đồ trong quán và ngoài phố dùng chung một `MeshStandardMaterial` phẳng (flatShading, roughness cao) để bắt ánh sáng môi trường mà vẫn giữ nét hoạt hình; một `CanvasTexture` vân nhỏ (≤ 128 px) vẽ lúc chạy, lát lên mọi mặt làm map màu.
 - Mỗi máy và dụng cụ (`espresso`, `fast`, `grinder`, `pastry_case`, `blender`, `ice_maker`, `dishwasher`) là một mesh gộp (`machineGeometry` trong `equipment.ts`), một draw call. Quầy (`counterGeometry`) cũng vậy.
 - Máy và quầy đổi hình theo bậc `upgradeTier` (0..3, `getShopLayout` ghi vào `tier`): bậc 0 và 1 là hình gốc; bậc 2 thêm chi tiết chức năng và đế thép; bậc 3 có đế vàng và huy hiệu sao vàng. Số tam giác bậc 3 không quá 1,6 lần bậc 1. Bàn ghế, dù và trang trí cũng đổi hình theo bậc ([Lên cấp, bậc nâng cấp và mục mới](#lên-cấp-bậc-nâng-cấp-và-mục-mới)).
@@ -642,4 +658,10 @@ Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 - Mức Vừa và Cao thêm 2 vùng sáng ấm trên sàn (quầy dưới đèn thả, khu ghế ngồi): mesh phẳng blending cộng, chỉ đổi opacity theo hệ số và ẩn ban ngày. Mức Thấp không có.
 - Mức Cao thêm 2 `PointLight` ấm không đổ bóng. Đèn và vùng sáng tạo theo mức đồ họa chứ không theo giờ.
 - Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn.
+- Hơi nước máy pha và cốc nóng dùng chung `Steam` của `src/render/actors/fx.ts`: mỗi cột dựng sẵn `STEAM_PUFFS` (5) sprite, `setSteamQuality` chọn số sprite hiện theo mức (Vừa 3, Cao 5).
+
+Mưa (`src/render/street/rain.ts`):
+
+- `createRain` vẽ vệt mưa xiên theo gió `RAIN_WIND` trong một `LineSegments`, dài và đậm khác nhau từng giọt (`rainDrop`). Mức Vừa và Cao thêm vòng giọt bắn trên vỉa hè, mặt đường và mái hiên trong một `InstancedMesh` (`splashAt`, sống `SPLASH_LIFE` 0,3 s).
+- Buffer cấp một lần theo mức Cao; mỗi khung chỉ ghi lại vị trí và số vẽ. Không mưa thì không vẽ gì. Mưa theo đồng hồ phố nên đứng yên khi tạm dừng.
 - Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi Giảm chuyển động bật — do cài đặt `reducedMotion` là `reduce` (`world.setReducedMotion`) hay trình duyệt bật `prefers-reduced-motion`.
