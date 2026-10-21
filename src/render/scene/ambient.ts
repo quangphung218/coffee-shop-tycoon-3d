@@ -302,7 +302,6 @@ export class AmbientView {
     while (this.pools.length < pools) {
       const p = new Mesh(this.poolGeometry, this.poolMaterial);
       p.name = 'light-pool';
-      p.visible = false;
       p.raycast = () => {};
       this.pools.push(p);
       this.shop.root.add(p);
@@ -352,9 +351,9 @@ export class AmbientView {
     GLOW_MATERIAL.color.setHex(PALETTE.bulb).multiplyScalar(BULB_DAY + BULB_GLOW * g);
     this.shop.facade.setSignGlow(g);
     for (let i = 0; i < this.lights.length; i++) this.lights[i]!.intensity = g * POINT_INTENSITY;
-    // Hidden by day so the pools cost no draw; showing a mesh does not recompile its shader.
+    // Off by day through opacity 0 (additive, so it adds nothing), never through
+    // `visible`: compileAsync skips hidden meshes, and the pools must be warmed in prepare().
     this.poolMaterial.opacity = g * POOL_OPACITY;
-    for (let i = 0; i < this.pools.length; i++) this.pools[i]!.visible = g > 0;
   }
 
   private animate(brewing: boolean): void {

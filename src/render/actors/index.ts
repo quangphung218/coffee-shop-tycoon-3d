@@ -204,6 +204,8 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   let lastState: GameState | null = null;
   let lastClock = -1;
   let lastTime = -1;
+  /** Seconds the coin popups have run: real time, frozen while the game is paused. */
+  let coinTime = 0;
   let frame = 0;
 
   function spawn(key: string, kind: Actor['kind'], id: number, role: CharacterRole, look: number, pos: Vec2, persona?: PersonaId): Actor {
@@ -345,8 +347,11 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       lastState = state;
       frame += 1;
       const now = performance.now() / 1000;
-      const dtReal = lastTime < 0 ? 0 : Math.min(Math.max(0, now - lastTime), MAX_FRAME_DT);
+      const elapsed = lastTime < 0 ? 0 : Math.max(0, now - lastTime);
+      const dtReal = Math.min(elapsed, MAX_FRAME_DT);
       lastTime = now;
+      // Not capped like dtReal, so a coin still ends on time after a slow frame.
+      if (!state.paused && Number.isFinite(elapsed)) coinTime += elapsed;
       const still = calm();
       const clock = state.day * 1440 + state.minute + Math.min(1, Math.max(0, Number.isFinite(alpha) ? alpha : 0));
       let dtGame = lastClock < 0 ? 0 : clock - lastClock;
@@ -440,9 +445,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
 
       // Money coming in (take-away paid at the counter, cash picked up from a table).
       for (const e of state.events) {
-        if (e.type === 'cash' && e.amount > 0) coins.spawn(e.amount, e.pos, now);
+        if (e.type === 'cash' && e.amount > 0) coins.spawn(e.amount, e.pos, coinTime);
       }
-      coins.update(now, still);
+      coins.update(coinTime, still);
     },
 
     pick(ray: Raycaster): Command | null {
@@ -483,9 +488,8 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     prebuild(): Texture[] {
       const bodies = Array.from({ length: WARM_BODIES }, () => pool.acquire());
       for (const body of bodies) pool.release(body);
-      const now = performance.now() / 1000;
-      for (let i = 0; i < WARM_COINS; i++) coins.spawn(1, { x: 0, z: 0 }, now);
-      coins.update(now + COIN_FORGET_S, true);
+      for (let i = 0; i < WARM_COINS; i++) coins.spawn(1, { x: 0, z: 0 }, coinTime);
+      coins.update(coinTime + COIN_FORGET_S, true);
       const textures = assets.prebuild();
       return puff ? [...textures, puff] : textures;
     },
@@ -503,7 +507,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         body.label.set({ icon: LABEL_BUBBLES[i % LABEL_BUBBLES.length]!, patience: 0.5, ready: false, face: faceFor(0.5) }, now);
         body.steam.update(true, now);
       });
-      coins.spawn(1, home, now);
+      coins.spawn(1, home, coinTime);
       try {
         draw();
       } finally {
@@ -511,7 +515,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
           body.label.set(NO_LABEL, now);
           pool.release(body);
         }
-        coins.update(now + COIN_FORGET_S, true);
+        coins.update(coinTime + COIN_FORGET_S, true);
       }
     },
 
