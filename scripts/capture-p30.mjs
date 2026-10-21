@@ -20,7 +20,7 @@
 // and toast run at game speed FAST; the cloud at 1x, as at FAST the customer
 // reaches the door a moment after it pops up. The working tree is shot first and
 // the base gets the same rings. The emotes run on a held page clock (as the
-// coin board of capture-p29.mjs): held once the scene shows after Tiếp tục,
+// coin board of capture-p29.mjs): held once the HUD clock runs after Tiếp tục,
 // then stepped 1/60 s a frame until the emote is up (the cloud over a sad
 // face, told by the face prints of the working tree's rig); the base is shot
 // at the same frame with the camera on the same point. The toast waits on the
@@ -653,10 +653,19 @@ const step = (page, n) =>
     { n, ms: 1000 / EMOTE_FPS },
   );
 
-/** Holds the page clock once the game is on screen (a session with `stepped`). */
+/**
+ * Holds the page clock once the game runs (a session with `stepped`): the HUD
+ * clock has moved on the real clock, so the fade-in after Tiếp tục is over.
+ */
 async function holdClock(page) {
   await page.locator('nav.dock').waitFor();
   await page.locator('#scene.is-ready').waitFor();
+  const from = await clockText(page);
+  const ran = await page
+    .waitForFunction((t) => (document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '') !== t, from, { timeout: 15_000, polling: 50 })
+    .then(() => true)
+    .catch(() => false);
+  if (!ran) warn(`emotes: the HUD clock stayed at ${from} for 15 s before the hold`);
   await page.evaluate(() => window.__mediaClock.hold());
 }
 
@@ -710,9 +719,15 @@ async function emoteAfter(page, kind, marks) {
   await page.evaluate((f) => {
     window.__mediaFocus = f;
   }, focus);
-  await step(page, 1);
-  frame += 1;
-  const { emotes, faces } = await page.evaluate(scan, { ...scanArgs, near: focus });
+  // One frame draws the moved camera; a few more if the emote is between two showings (a sweat cycle restarting).
+  let look;
+  for (let extra = 0; ; extra++) {
+    await step(page, 1);
+    frame += 1;
+    look = await page.evaluate(scan, { ...scanArgs, near: focus });
+    if (look.emotes.some((e) => e.kind === kind) || extra >= EMOTE_POP) break;
+  }
+  const { emotes, faces } = look;
   const shown = emotes.filter((e) => e.kind === kind);
   const centre = { x: DESK.width / 2, y: DESK.height / 2 };
   const box = shown.map((e) => e.box).sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y))[0] ?? null;
@@ -753,7 +768,8 @@ async function emoteBoard(browser, cur, base, head) {
     // The cloud's ring takes in the sad face under it.
     const changed = kind === 'cloud' && after.face ? union(after.box, after.face.box) : after.box;
     const ringBox = grow(changed, 4);
-    const crop = cropRound(changed, 360, 300, DESK, 70);
+    // The cloud and the face under it are taller than a heart: a taller crop, not pushed down.
+    const crop = kind === 'cloud' ? cropRound(changed, 360, 380, DESK, 20) : cropRound(changed, 360, 300, DESK, 70);
     const sec = (after.frames / EMOTE_FPS).toFixed(2).replace('.', ',');
     const faces = kind === 'cloud' ? `; faces: ${after.face?.mood ?? '?'} (${BASE_COMMIT}: ${before.face?.mood ?? '?'})` : '';
     progress(`emote ${kind}: frame ${after.frames} (${sec} s) after the hold, HUD ${after.clock}, box ${Math.round(after.box.w)}×${Math.round(after.box.h)} px, ${after.count} on screen${faces}`);
@@ -768,7 +784,7 @@ async function emoteBoard(browser, cur, base, head) {
     notes.push(`${EMOTE_NAMES[kind]}: chụp ở khung thứ ${after.frames} (${sec} s đồng hồ trang) sau khi giữ đồng hồ, ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
   }
   if (rows.length === 0) return null;
-  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi cảnh hiện sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim chạy tốc độ x${FAST}, giọt mồ hôi và mây x1.`);
+  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi đồng hồ HUD đã chạy sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim chạy tốc độ x${FAST}, giọt mồ hôi và mây x1.`);
   return writeBoard(browser, 'emotes-before-after-p30.jpg', rows, notes, 1500);
 }
 
