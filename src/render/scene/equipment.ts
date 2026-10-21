@@ -252,8 +252,10 @@ export const COLD_BREW_TOWER_HEIGHT = 0.96;
 function coldBrewTowerGeometry(tier: number): BufferGeometry {
   const y = MACHINE_Y;
   const h = COLD_BREW_TOWER_HEIGHT;
+  // From tier 2 the base is 0.005 narrower and higher than the plinth (same width and top), so no face is shared.
+  const lift = tier >= 2 ? 0.005 : 0;
   const parts: BufferGeometry[] = [
-    part(box(0.26, 0.04, 0.3), PALETTE.woodDark, 0, y + 0.02, 0),
+    part(box(0.26 - 2 * lift, 0.04, 0.3), PALETTE.woodDark, 0, y + 0.02 + lift, 0),
     part(box(0.26, 0.03, 0.04), PALETTE.wood, 0, y + h - 0.015, -0.1),
     // Carafe: brewed coffee below, glass above.
     part(cyl(0.075, 0.08, 0.1, 8), PALETTE.coffee, 0, y + 0.09, 0),

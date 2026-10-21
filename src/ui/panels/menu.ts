@@ -11,7 +11,7 @@ import { MENU_REQUIRES, menuBlockedReason } from '../../sim/upgrades';
 import { h, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { fresh } from '../core/fresh';
-import { MENU_ICONS, UPGRADE_ICONS } from '../core/iconMap';
+import { MENU_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { openOtherPanel, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon } from './widgets';
@@ -160,7 +160,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       on: { click: () => openOtherPanel('inventory') },
     });
     const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
-    // "Cần Tháp cold brew": the item is open but its tool is not bought yet; the label is the way to Nâng cấp.
+    // "Cần Tháp cold brew": the item is open but its tool is not bought yet; the label opens Nâng cấp (the whole panel, not the tool's row).
     const tool = MENU_REQUIRES[item.id];
     const toolBadge = h('button', {
       class: 'badge badge-danger badge-btn',
@@ -215,7 +215,8 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
         toolBadge.hidden = !needs;
         if (needs && tool) {
-          setChildren(toolBadge, ...withIcon(UPGRADE_ICONS[tool.id], needs), icon('i-forward', { size: 16 }));
+          // The item's icon: the tool icons (a tall frame, a box) shrink to a blob at 16 px.
+          setChildren(toolBadge, ...withIcon(MENU_ICONS[item.id], needs), icon('i-forward', { size: 16 }));
           toolBadge.setAttribute('aria-label', `${needs}, mở Nâng cấp`);
         } else toolBadge.replaceChildren();
         missBadge.hidden = !locked;

@@ -54,6 +54,7 @@ Cold brew có cà phê nên máy xay hạt cũng tăng tốc; là đồ lạnh n
 | Trường hợp | Kết quả |
 | --- | --- |
 | Món chưa mở khóa theo cấp | Báo "… chưa mở khóa ở cấp quán này" trước, không xét dụng cụ |
+| Món đã mở, chưa có dụng cụ, ở bảng Menu | Công tắc khoá; nhãn "Cần Tháp cold brew" / "Cần Lò nướng" kèm icon của món; bấm nhãn mở bảng Nâng cấp chung, không cuộn tới hàng dụng cụ |
 | Tắt món | Luôn được, không cần dụng cụ |
 | Mua cấp 2 | Không bật lại món, không báo lại |
 | Mua dụng cụ khi món chưa mở khóa (chỉ qua `buyUpgrade` trực tiếp) | Món giữ tắt, không báo |
