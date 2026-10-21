@@ -47,8 +47,13 @@ export function nextSpeed(speed: number): number {
 
 /** Count-up length when money rises, if --duration-count cannot be read. */
 const COUNT_FALLBACK_MS = 400;
-/** Money bounce on a rise (scale 1 → 1.12 → 1), and the least gap between two bounces. */
-export const MONEY_BOUNCE_MS = 220;
+/**
+ * Money bounce on a rise (scale 1 → 1.12 → 1): length and easing come from
+ * --duration-base and --easing-out; these are used if those cannot be read.
+ * MONEY_BOUNCE_GAP_MS is the least gap between two bounces.
+ */
+export const MONEY_BOUNCE_MS = 200;
+export const MONEY_BOUNCE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 export const MONEY_BOUNCE_GAP_MS = 300;
 
 /** Widths where the HUD shows money compact (formatMoneyShort); the 480 px step of ui.css. */
@@ -178,10 +183,21 @@ function prefersReducedMotion(): boolean {
 /** --duration-count in ms; 0 under reduced motion (tokens.css also zeroes it there). */
 function countDuration(el: Element): number {
   if (prefersReducedMotion() || typeof requestAnimationFrame !== 'function') return 0;
-  const raw = getComputedStyle(el).getPropertyValue('--duration-count').trim();
-  if (!raw) return COUNT_FALLBACK_MS;
+  return tokenMs(el, '--duration-count', COUNT_FALLBACK_MS);
+}
+
+/** A --duration-* token in ms ("200ms" or "0.2s"), or `fallback` if it is unset or not a number. */
+function tokenMs(el: Element, name: string, fallback: number): number {
+  const raw = getComputedStyle(el).getPropertyValue(name).trim();
+  if (!raw) return fallback;
   const ms = raw.endsWith('ms') ? parseFloat(raw) : parseFloat(raw) * 1000;
-  return Number.isFinite(ms) ? ms : COUNT_FALLBACK_MS;
+  return Number.isFinite(ms) ? ms : fallback;
+}
+
+/** The money bounce timing from --duration-base and --easing-out, with MONEY_BOUNCE_* as fallback. */
+function bounceTiming(el: Element): { duration: number; easing: string } {
+  const easing = getComputedStyle(el).getPropertyValue('--easing-out').trim();
+  return { duration: tokenMs(el, '--duration-base', MONEY_BOUNCE_MS), easing: easing || MONEY_BOUNCE_EASING };
 }
 
 /**
@@ -415,7 +431,7 @@ export function createHud(actions: HudActions): Hud {
     const now = performance.now();
     if (now - lastBounce < MONEY_BOUNCE_GAP_MS) return;
     lastBounce = now;
-    money.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: MONEY_BOUNCE_MS, easing: 'ease-out' });
+    money.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], bounceTiming(money));
   }
   function showMoney(value: number): void {
     if (countFrame) cancelAnimationFrame(countFrame);

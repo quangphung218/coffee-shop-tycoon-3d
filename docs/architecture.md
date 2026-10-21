@@ -612,7 +612,7 @@ Thêm `--headed` để đo frame time trên cửa sổ có vsync; headless chỉ
 - Nhân vật dựng từ khối low-poly có khớp, animation viết bằng code, lấy từ pool (`src/render/actors/pool.ts`) thay vì tạo mới.
 - Âm thanh cùng loại lặp lại trong khoảng ngắn bị bỏ qua, nên tốc độ 4x không chồng hàng chục tiếng chuông.
 - Tiền bay khi bán (`CoinFx` trong `src/render/actors/fx.ts`): đồng xu nhảy theo cung, xoay quanh trục y rồi vỡ thành xu vụn ở `COIN_BURST`; chip "+X đ" giữ kiểu nổi lên rồi mờ. Tối đa `COIN_POOL` (8) xu cùng lúc, quá thì lấy lại xu cũ nhất. Mức Thấp và Giảm chuyển động giữ kiểu cũ: xu đứng yên, mờ dần, không vỡ.
-- HUD và Daily Report nảy bằng Web Animations (`element.animate`), không thêm CSS: tiền tăng thì số tiền phóng 1 → 1,12 → 1 trong `MONEY_BOUNCE_MS` (220 ms), cách nhau ít nhất `MONEY_BOUNCE_GAP_MS` (300 ms) (`src/ui/hud/hud.ts`); thẻ lên cấp rung huy hiệu cấp ±3 px trong `BADGE_SHAKE_MS` (300 ms) sau khi huy hiệu bật lên `BADGE_POP_MS` (400 ms) (`shakeBadge` trong `src/ui/report/report.ts`). Cả hai bỏ qua khi Giảm chuyển động bật (`prefers-reduced-motion` hay class `reduce-motion`).
+- HUD và Daily Report nảy bằng Web Animations (`element.animate`), không thêm CSS: tiền tăng thì số tiền phóng 1 → 1,12 → 1 trong `--duration-base` (200 ms) với easing `--easing-out` của `tokens.css` (đọc không được thì dùng `MONEY_BOUNCE_MS`, `MONEY_BOUNCE_EASING` cùng giá trị), cách nhau ít nhất `MONEY_BOUNCE_GAP_MS` (300 ms) (`src/ui/hud/hud.ts`); thẻ lên cấp rung huy hiệu cấp ±3 px trong `BADGE_SHAKE_MS` (300 ms) sau khi huy hiệu bật lên `BADGE_POP_MS` (400 ms) (`shakeBadge` trong `src/ui/report/report.ts`). Cả hai bỏ qua khi Giảm chuyển động bật (`prefers-reduced-motion` hay class `reduce-motion`).
 
 Chất lượng đồ họa:
 
