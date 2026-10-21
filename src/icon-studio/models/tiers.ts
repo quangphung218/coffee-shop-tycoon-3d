@@ -34,6 +34,8 @@ const TIERED: Readonly<Record<string, (tier: Tier) => Object3D>> = {
   'i-blender': E.blender,
   'i-ice-maker': E.iceMaker,
   'i-dishwasher': E.dishwasher,
+  'i-cold-brew-tower': E.coldBrewTower,
+  'i-oven': E.oven,
 };
 
 /** The model of upgrade icon `id` at `tier`; tier 1 is its MODELS model unchanged. */

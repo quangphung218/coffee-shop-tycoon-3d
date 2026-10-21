@@ -142,6 +142,11 @@ const ICON_MODELS: Readonly<Record<IconId, () => Object3D>> = {
   'i-frappe': E.frappe,
   'i-level': E.level,
   'i-mission': E.mission,
+  // P31: cold brew, oven and their menu items
+  'i-cold-brew': I.coldBrew,
+  'i-cookie': I.cookie,
+  'i-cold-brew-tower': E.coldBrewTower,
+  'i-oven': E.oven,
 };
 
 export const MODELS: Readonly<Record<string, () => Object3D>> = { ...ICON_MODELS, ...AVATAR_MODELS };
