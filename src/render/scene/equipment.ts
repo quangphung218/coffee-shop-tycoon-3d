@@ -241,6 +241,69 @@ function dishwasherGeometry(tier: number): BufferGeometry {
   return merge(parts);
 }
 
+/** Top of the cold brew tower's frame above the back counter, for the purchase sparkle. */
+export const COLD_BREW_TOWER_HEIGHT = 0.96;
+
+/**
+ * Cold brew drip tower: a wood frame with two shelves holding a water globe
+ * on top, a drip tube, a coffee chamber in the middle and a carafe on the base.
+ * Tier 2 adds a poured glass of cold brew on the base.
+ */
+function coldBrewTowerGeometry(tier: number): BufferGeometry {
+  const y = MACHINE_Y;
+  const h = COLD_BREW_TOWER_HEIGHT;
+  const parts: BufferGeometry[] = [
+    part(box(0.26, 0.04, 0.3), PALETTE.woodDark, 0, y + 0.02, 0),
+    part(box(0.26, 0.03, 0.04), PALETTE.wood, 0, y + h - 0.015, -0.1),
+    // Carafe: brewed coffee below, glass above.
+    part(cyl(0.075, 0.08, 0.1, 8), PALETTE.coffee, 0, y + 0.09, 0),
+    part(cyl(0.06, 0.075, 0.1, 8), PALETTE.glass, 0, y + 0.19, 0),
+    part(cyl(0.012, 0.012, 0.06, 4), PALETTE.steelDark, 0, y + 0.27, 0),
+    part(box(0.26, 0.025, 0.24), PALETTE.wood, 0, y + 0.3, 0),
+    // Coffee chamber: grounds below, glass above.
+    part(cyl(0.05, 0.05, 0.06, 8), PALETTE.coffee, 0, y + 0.3425, 0),
+    part(cyl(0.06, 0.05, 0.1, 8), PALETTE.glass, 0, y + 0.4225, 0),
+    part(cyl(0.012, 0.012, 0.16, 4), PALETTE.steel, 0, y + 0.55, 0),
+    part(box(0.05, 0.025, 0.025), PALETTE.coral, 0, y + 0.59, 0),
+    part(box(0.26, 0.025, 0.24), PALETTE.wood, 0, y + 0.64, 0),
+    part(cyl(0.09, 0.06, 0.22, 8), PALETTE.glass, 0, y + 0.7625, 0),
+    part(cyl(0.095, 0.095, 0.02, 8), PALETTE.steelDark, 0, y + 0.8825, 0),
+  ];
+  for (const x of [-0.115, 0.115]) parts.push(part(box(0.03, h - 0.04, 0.03), PALETTE.wood, x, y + 0.04 + (h - 0.04) / 2, -0.1));
+  if (tier >= 2) {
+    parts.push(plinth('cold_brew_tower', tier));
+    parts.push(part(cyl(0.035, 0.03, 0.08, 6), PALETTE.glass, 0.07, y + 0.08, 0.12));
+    parts.push(part(cyl(0.032, 0.032, 0.01, 6), PALETTE.coffee, 0.07, y + 0.125, 0.12));
+  }
+  if (tier >= 3) parts.push(star(0.035, -0.08, y + 0.3, 0.121));
+  return merge(parts);
+}
+
+/** Oven: a steel box with a glass door, a handle bar and a control panel with two knobs. Tier 2 adds a tray of cookies on top. */
+function ovenGeometry(tier: number): BufferGeometry {
+  const y = MACHINE_Y;
+  const d = 0.42;
+  const front = d / 2;
+  const parts: BufferGeometry[] = [
+    part(box(0.46, 0.38, d), PALETTE.steel, 0, y + 0.19, 0),
+    part(box(0.48, 0.03, d + 0.02), PALETTE.steelDark, 0, y + 0.395, 0),
+    part(box(0.32, 0.28, 0.02), PALETTE.steelDark, -0.06, y + 0.19, front + 0.01),
+    part(box(0.24, 0.18, 0.01), PALETTE.glass, -0.06, y + 0.2, front + 0.025),
+    part(box(0.24, 0.025, 0.02), PALETTE.cup, -0.06, y + 0.31, front + 0.03),
+    part(box(0.1, 0.3, 0.02), PALETTE.steelDark, 0.17, y + 0.19, front + 0.01),
+    part(cyl(0.03, 0.03, 0.02, 8), PALETTE.cup, 0.17, y + 0.27, front + 0.03, 0, Math.PI / 2),
+    part(cyl(0.03, 0.03, 0.02, 8), PALETTE.coral, 0.17, y + 0.17, front + 0.03, 0, Math.PI / 2),
+  ];
+  if (tier >= 2) {
+    parts.push(plinth('oven', tier));
+    parts.push(part(box(0.34, 0.015, 0.24), PALETTE.steel, 0, y + 0.4175, 0));
+    // Two five-sided cookies keep tier 3 within the triangle budget.
+    for (const x of [-0.08, 0.08]) parts.push(part(cyl(0.045, 0.045, 0.015, 5), PALETTE.woodLight, x, y + 0.4325, 0));
+  }
+  if (tier >= 3) parts.push(star(0.03, 0.17, y + 0.08, front + 0.021));
+  return merge(parts);
+}
+
 /** Merged geometry of one machine or piece of equipment, sitting on the back counter, in the look of its tier. */
 export function machineGeometry(m: LayoutMachine): BufferGeometry {
   const tier = lookTier(m.tier);
@@ -259,11 +322,10 @@ export function machineGeometry(m: LayoutMachine): BufferGeometry {
       return iceMakerGeometry(tier);
     case 'dishwasher':
       return dishwasherGeometry(tier);
-    // Placeholders until the P31 3D models: the tower borrows the blender, the oven the pastry case.
     case 'cold_brew_tower':
-      return blenderGeometry(tier);
+      return coldBrewTowerGeometry(tier);
     case 'oven':
-      return pastryCaseGeometry(tier);
+      return ovenGeometry(tier);
   }
 }
 

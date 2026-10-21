@@ -1,7 +1,7 @@
 import { type BufferGeometry, Color, type Mesh, MeshStandardMaterial, Scene, type Texture } from 'three';
 import { describe, expect, it } from 'vitest';
 import { environmentEnabled, ShopEnvironment } from '../../src/render/scene/environment';
-import { counterGeometry } from '../../src/render/scene/equipment';
+import { BACK_COUNTER_HEIGHT, counterGeometry } from '../../src/render/scene/equipment';
 import { GLASS_MATERIAL, PALETTE, SHARED_MATERIAL } from '../../src/render/scene/parts';
 import { machineGeometry, ShopView } from '../../src/render/scene/shop';
 import { MACHINE_SIZE } from '../../src/sim/nav/footprints';
@@ -9,7 +9,17 @@ import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, type MachineKind } from '../../src/sim/upgrades';
 import type { GameState, UpgradeId } from '../../src/sim/types';
 
-const KINDS: readonly MachineKind[] = ['espresso', 'fast', 'grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'];
+const KINDS: readonly MachineKind[] = [
+  'espresso',
+  'fast',
+  'grinder',
+  'pastry_case',
+  'blender',
+  'ice_maker',
+  'dishwasher',
+  'cold_brew_tower',
+  'oven',
+];
 
 function buy(s: GameState, id: UpgradeId, levels = 1): void {
   for (let i = 0; i < levels && nextUpgradeCost(s, id) !== null; i++) expect(buyUpgrade(s, id).ok).toBe(true);
@@ -69,6 +79,25 @@ describe('machineGeometry', () => {
         expect(bb.max.x - bb.min.x, `${kind} tier ${tier}`).toBeLessThanOrEqual(MACHINE_SIZE[kind].width + 1e-6);
         geo.dispose();
       }
+    }
+  });
+
+  it('keeps the cold brew tower and the oven inside their footprint at every tier, with more detail from tier 2', () => {
+    for (const kind of ['cold_brew_tower', 'oven'] as const) {
+      const size = MACHINE_SIZE[kind];
+      const geos = [1, 2, 3].map((t) => machine(kind, t));
+      for (const [i, geo] of geos.entries()) {
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox!;
+        const label = `${kind} tier ${i + 1}`;
+        expect(bb.min.x, label).toBeGreaterThanOrEqual(-size.width / 2 - 1e-6);
+        expect(bb.max.x, label).toBeLessThanOrEqual(size.width / 2 + 1e-6);
+        expect(bb.min.z, label).toBeGreaterThanOrEqual(-size.depth / 2 - 1e-6);
+        expect(bb.max.z, label).toBeLessThanOrEqual(size.depth / 2 + 1e-6);
+        expect(bb.min.y, label).toBeGreaterThanOrEqual(BACK_COUNTER_HEIGHT - 1e-6);
+      }
+      expect(geos[1]!.getAttribute('position').count, kind).not.toBe(geos[0]!.getAttribute('position').count);
+      for (const g of geos) g.dispose();
     }
   });
 
@@ -171,6 +200,24 @@ describe('ShopView equipment meshes', () => {
     buy(s, 'blender');
     shop.update(s, 0.016, 0.016, 0);
     expect(shop.counts().machines).toBe(before + 1);
+    shop.dispose();
+  });
+
+  it('puts the purchase sparkle at the top of the cold brew tower and over the oven', () => {
+    const s = createNewGame('Quán Mây', 'normal', 1);
+    s.upgrades.cold_brew_tower = 1;
+    s.upgrades.oven = 1;
+    const shop = new ShopView(new Scene(), 'medium');
+    shop.update(s, 0, 0, 0);
+    for (const kind of ['cold_brew_tower', 'oven'] as const) {
+      const anchor = shop.upgradeAnchor(kind)!;
+      const geo = (anchor.object as Mesh).geometry;
+      geo.computeBoundingBox();
+      const top = geo.boundingBox!.max.y;
+      // At the model's top or just above it, not floating far over it or sunk into it.
+      expect(anchor.y, kind).toBeGreaterThanOrEqual(top - 0.05);
+      expect(anchor.y, kind).toBeLessThanOrEqual(top + 0.15);
+    }
     shop.dispose();
   });
 
