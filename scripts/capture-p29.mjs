@@ -1,14 +1,19 @@
 // Captures the P29 shots of the working tree: the shop at 07:00, 12:00 and
 // 19:30, sunny and rainy, at graphics Cao and Thấp, at 390×844 and 1280×800,
-// plus a before/after board of the coin popping up from a sale and one shot
-// of the Lên cấp card of the Daily Report, each ringed in red. Run through
-// `npm run media:p29` (builds first). Needs Playwright and the git history
-// back to BASE_COMMIT; see docs/media.md.
+// plus a board of the three hours, before/after boards of the coin popping
+// up from a sale and of 19:30 sunny, and one shot of the Lên cấp card of the
+// Daily Report, each ringed in red. Run through `npm run media:p29` (builds
+// first). Needs Playwright and the git history back to BASE_COMMIT; see
+// docs/media.md.
 //
 // Files (JPEG, docs/media/p29):
 //   scene-<hhmm>-<weather>-<quality>-<w>-p29.jpg   e.g. scene-1930-rainy-high-390-p29.jpg
+//   hours-sunny-high-1280-p29.jpg                  the sunny Cao 1280 shots of SHOT_MINUTES side by side
 //   coin-before-after-p29.jpg                      one coin of the BASE_COMMIT build, then one
 //                                                  coin of the working tree at COIN_AGES
+//   dusk-sunny-high-before-after-p29.jpg           19:30 sunny on Cao, BASE_COMMIT then the working
+//                                                  tree: rings and notes on the light pools, the
+//                                                  darker scene and the shadow the sun casts
 //   levelup-390-p29.jpg                            the Lên cấp card of the first level-up
 //
 // The coin board stops the page clock (mediaClock) on the frame a coin pops
@@ -24,11 +29,11 @@
 // shot; each shot prints the HUD clock it shows.
 // measure-frames.mjs --scene loads the SCENES saves from sceneSaves().
 // P29_SAVES_ONLY=1 plays the saves and prints them, without a server or browser.
-// P29_ONLY=coin shoots the coin board alone.
-// Prints `!!` for a coin or card that never showed; any `!!` ends the run with
-// exit code 1.
+// P29_ONLY=coin shoots the coin board alone, P29_ONLY=dusk the 19:30 board.
+// Prints `!!` for a coin, card, light pool or shadow that never showed; any
+// `!!` ends the run with exit code 1.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -54,6 +59,8 @@ export const SCENES = {
 export const SCENE_IDS = Object.keys(SCENES);
 /** Shot minutes: 07:00, 12:00, 19:30. */
 export const SHOT_MINUTES = [7 * 60, 12 * 60, 19 * 60 + 30];
+/** Minute of the dusk board: the last of SHOT_MINUTES. */
+const DUSK_MINUTE = 19 * 60 + 30;
 export const SHOT_WEATHERS = ['sunny', 'rainy'];
 /** Settings quality of graphics Cao and Thấp. */
 export const SHOT_QUALITIES = ['high', 'low'];
@@ -90,6 +97,16 @@ const COIN_CROP_MIN = { w: 200, h: 210 };
 /** Widest coin board, px. */
 const COIN_BOARD_WIDTH = 1900;
 const COIN_BOARD = 'coin-before-after-p29.jpg';
+const HOURS_BOARD = 'hours-sunny-high-1280-p29.jpg';
+const DUSK_BOARD = 'dusk-sunny-high-before-after-p29.jpg';
+/** Widest hours and dusk boards, px. */
+const BOARD_WIDTH = 1900;
+/** Cells the dusk board compares brightness in, CSS px, between the HUD and the dock. */
+const LUMA_CELL = { w: 240, h: 160 };
+const LUMA_TOP = 90;
+const LUMA_BOTTOM = DESK.height - 110;
+/** Height of the street props (lamps, trees) whose shadow the dusk board rings, m. */
+const SHADOW_CASTER = { min: 1.5, max: 6 };
 /** The report drops in and the badge shakes before the level-up shot, ms. */
 const LEVELUP_SETTLE_MS = 1200;
 const START = Date.now();
@@ -284,13 +301,48 @@ async function writeShot(page, name) {
 
 const clockText = (page) => page.evaluate(() => document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '');
 
+/**
+ * Runs in the page. The lights of the last frame: hemisphere, sun and
+ * environment map, their total as totalLightOf in src/render/scene/renderer.ts
+ * (hemi + env × 6 + sun), PointLights on, light pools showing, and the sun's
+ * elevation (degrees) and side (west when it is toward -x).
+ */
+function lightInfo() {
+  const scene = window.__mediaScene;
+  const shown = (o) => {
+    for (let e = o; e; e = e.parent) if (!e.visible) return false;
+    return true;
+  };
+  const out = { hemi: 0, sun: 0, env: 0, total: 0, points: 0, pools: 0, elevation: 0, west: false };
+  scene?.traverse((o) => {
+    if (!shown(o)) return;
+    if (o.isHemisphereLight) out.hemi += o.intensity;
+    if (o.isPointLight && o.intensity > 0) out.points++;
+    if (o.name === 'light-pool' && (o.material?.opacity ?? 1) > 0.01) out.pools++;
+    if (o.isDirectionalLight) {
+      out.sun += o.intensity;
+      const d = o.position.clone().sub(o.target.position).normalize();
+      out.elevation = (Math.asin(d.y) * 180) / Math.PI;
+      out.west = d.x < 0;
+    }
+  });
+  out.env = scene?.environment ? scene.environmentIntensity : 0;
+  out.total = out.hemi + out.env * 6 + out.sun;
+  return out;
+}
+
+/** Decimal comma, 2 digits: 1,42. */
+const f2 = (n) => n.toFixed(2).replace('.', ',');
+const sunSide = (l) => (l.west ? 'tây' : 'đông');
+
 async function sceneShot(page, name) {
   await page.locator('nav.dock').waitFor();
   await sleep(SETTLE_MS);
   const clock = await clockText(page);
+  const light = await page.evaluate(lightInfo);
   const file = await writeShot(page, name);
-  progress(`${name}: HUD clock ${clock}`);
-  return file;
+  progress(`${name}: HUD clock ${clock}, total light ${f2(light.total)} (hemi ${f2(light.hemi)}, sun ${f2(light.sun)} from the ${light.west ? 'west' : 'east'} at ${Math.round(light.elevation)}°)`);
+  return { file, clock, light };
 }
 
 // --- Coin board. ---
@@ -474,12 +526,14 @@ async function coinFrames(page, ages) {
 }
 
 /**
- * Runs in the browser. Draws the `crop` (CSS px) of each panel's frame side
- * by side at `scale` of its `dpr` pixels, a title over each, a red ring round
- * its `box` and its caption in a red box under it, wrapped to the panel;
- * then `note` wrapped to the board. Returns the JPEG as base64.
+ * Runs in the browser. Draws the `crop` (CSS px) of each panel's frame
+ * (`img`, base64 of `mime`, PNG by default) side by side at `scale` of its
+ * `dpr` pixels, a title over each, a red ring round each of its `boxes` (with
+ * its `label` in a red badge when given) and its caption in a red box under
+ * it, wrapped to the panel; then each of `notes` wrapped to the board.
+ * Returns the JPEG as base64.
  */
-async function drawCoinBoard({ panels, crop, dpr, scale, note, red, quality }) {
+async function drawBoard({ panels, crop, dpr, scale, notes, red, quality }) {
   const INK = '#2b1d14';
   const PAD = 24;
   const GAP = 24;
@@ -500,8 +554,8 @@ async function drawCoinBoard({ panels, crop, dpr, scale, note, red, quality }) {
     if (line) out.push(line);
     return out;
   };
-  const load = async (b64) => createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
-  const imgs = await Promise.all(panels.map((p) => load(p.png)));
+  const load = async (p) => createImageBitmap(await (await fetch(`data:${p.mime ?? 'image/png'};base64,${p.img}`)).blob());
+  const imgs = await Promise.all(panels.map(load));
   const k = dpr * scale;
   const pw = Math.round(crop.w * k);
   const ph = Math.round(crop.h * k);
@@ -511,13 +565,13 @@ async function drawCoinBoard({ panels, crop, dpr, scale, note, red, quality }) {
   const caps = panels.map((p) => wrap(probe, p.caption, pw - 24));
   const capH = 16 + CAP_LINE * Math.max(...caps.map((c) => c.length));
   probe.font = font(600, 17);
-  const notes = wrap(probe, note, width - 2 * PAD);
+  const noteLines = notes.flatMap((n) => wrap(probe, n, width - 2 * PAD));
   const top = PAD + TITLE;
   const capTop = top + ph + 10;
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
-  canvas.height = capTop + capH + 12 + NOTE_LINE * notes.length + PAD;
+  canvas.height = capTop + capH + 12 + NOTE_LINE * noteLines.length + PAD;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff9f0';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -535,13 +589,32 @@ async function drawCoinBoard({ panels, crop, dpr, scale, note, red, quality }) {
     ctx.beginPath();
     ctx.rect(x, top, pw, ph);
     ctx.clip();
-    const b = p.box;
-    ctx.beginPath();
-    ctx.roundRect(x + (b.x - crop.x) * k - 8, top + (b.y - crop.y) * k - 8, b.w * k + 16, b.h * k + 16, 12);
-    for (const [w, color] of [[9, '#fff'], [5, red]]) {
-      ctx.lineWidth = w;
-      ctx.strokeStyle = color;
+    for (const b of p.boxes) {
+      const rx = x + (b.x - crop.x) * k - 8;
+      const ry = top + (b.y - crop.y) * k - 8;
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, b.w * k + 16, b.h * k + 16, 12);
+      for (const [w, color] of [[9, '#fff'], [5, red]]) {
+        ctx.lineWidth = w;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      }
+      if (!b.label) continue;
+      const R = 16;
+      const bx = Math.min(x + pw - R - 4, Math.max(x + R + 4, rx));
+      const by = Math.min(top + ph - R - 4, Math.max(top + R + 4, ry));
+      ctx.beginPath();
+      ctx.arc(bx, by, R, 0, 2 * Math.PI);
+      ctx.fillStyle = red;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fff';
       ctx.stroke();
+      ctx.font = font(800, 18);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(b.label, bx, by + 1);
+      ctx.textAlign = 'start';
     }
     ctx.restore();
     ctx.lineWidth = 2;
@@ -557,7 +630,7 @@ async function drawCoinBoard({ panels, crop, dpr, scale, note, red, quality }) {
   }
   ctx.font = font(600, 17);
   ctx.fillStyle = INK;
-  notes.forEach((t, j) => ctx.fillText(t, PAD, capTop + capH + 12 + NOTE_LINE * j + NOTE_LINE / 2));
+  noteLines.forEach((t, j) => ctx.fillText(t, PAD, capTop + capH + 12 + NOTE_LINE * j + NOTE_LINE / 2));
   return canvas.toDataURL('image/jpeg', quality).split(',')[1];
 }
 
@@ -570,27 +643,284 @@ function headCommit() {
   return r.status === 0 ? r.stdout.trim() : 'HEAD';
 }
 
+/** Writes a drawBoard JPEG to docs/media/p29/`name`; `panels` carry `png` (Buffer) or `jpeg` (Buffer). */
+async function writeBoard(browser, name, { panels, crop, dpr, scale, notes }) {
+  const page = await browser.newPage({ viewport: DESK, deviceScaleFactor: 1 });
+  try {
+    const jpeg = await page.evaluate(drawBoard, {
+      panels: panels.map((p) => ({
+        title: p.title,
+        caption: p.caption,
+        boxes: p.boxes,
+        img: (p.jpeg ?? p.png).toString('base64'),
+        mime: p.jpeg ? 'image/jpeg' : 'image/png',
+      })),
+      crop,
+      dpr,
+      scale,
+      notes,
+      red: RED,
+      quality: 0.86,
+    });
+    // An empty canvas (NaN or zero size) gives "data:," and no JPEG.
+    if (!jpeg) {
+      console.warn(`!! ${name}: the board drew nothing`);
+      return null;
+    }
+    const file = join(P29_OUT, name);
+    writeFileSync(file, Buffer.from(jpeg, 'base64'));
+    return relative(ROOT, file);
+  } finally {
+    await page.close();
+  }
+}
+
 /**
- * Writes COIN_BOARD: one coin of the BASE_COMMIT build at BASE_COIN_AGE,
- * then one coin of the working tree (served at `url`, `save` from its sim)
- * at each of COIN_AGES, all from the noon sunny save at 1280×800 on Cao.
- * The base build is made and served on PORT + 1 with a save from its own sim.
+ * Builds BASE_COMMIT, plays its `scenes` saves on its own sim, serves it on
+ * PORT + 1 and calls `fn({ url, saves })`; removes the build after.
  */
-async function coinBoard(browser, url, save) {
-  const scene = { id: `${hhmm(12 * 60)}-sunny`, weather: 'sunny', minute: 12 * 60 };
-  progress(`coin board: building ${BASE_COMMIT}`);
+async function withBase(scenes, fn) {
+  progress(`building ${BASE_COMMIT}`);
   const baseDir = buildRef(BASE_COMMIT);
   let server = null;
-  let before;
   try {
-    const baseSave = (await sceneSaves(baseDir, [scene]))[scene.id];
-    progress(`coin board: base save ${baseSave.info}`);
+    const saves = await sceneSaves(baseDir, scenes);
+    for (const [id, s] of Object.entries(saves)) progress(`${BASE_COMMIT} save ${id}: ${s.info}`);
     server = await startPreview(baseDir, PORT + 1);
-    before = await session(browser, urlFor(PORT + 1), baseSave, DESK, 'high', (p) => coinFrames(p, [BASE_COIN_AGE]), true);
+    return await fn({ url: urlFor(PORT + 1), saves });
   } finally {
     server?.kill();
     rmSync(baseDir, { recursive: true, force: true });
   }
+}
+
+/**
+ * Writes HOURS_BOARD from the sunny Cao 1280 shots `hours` (minute → the
+ * sceneShot result), one panel per SHOT_MINUTES, titled with its hour.
+ */
+async function hoursBoard(browser, hours) {
+  const head = headCommit();
+  const panels = SHOT_MINUTES.map((minute) => {
+    const h = hours.get(minute);
+    const l = h.light;
+    return {
+      jpeg: readFileSync(join(ROOT, h.file)),
+      boxes: [],
+      title: `${hhmm(minute).slice(0, 2)}:${hhmm(minute).slice(2)} · nắng · Cao`,
+      caption: `HUD ${h.clock || '?'}; nắng ${f2(l.sun)} từ phía ${sunSide(l)}, cao ${Math.round(l.elevation)}°; trời ${f2(l.hemi)}; tổng sáng ${f2(l.total)}`,
+    };
+  });
+  const crop = { x: 0, y: 0, w: DESK.width, h: DESK.height };
+  const scale = Math.min(1, (BOARD_WIDTH - 48 - 24 * (panels.length - 1)) / (panels.length * crop.w));
+  const notes = [`Cùng save ngày ${SCENE_DAY}, trời nắng, 1280×800, mức Cao, bản ${head}. Tổng sáng = trời + env × 6 + nắng, ngân sách 3,4.`];
+  return writeBoard(browser, HOURS_BOARD, { panels, crop, dpr: 1, scale, notes });
+}
+
+/**
+ * Runs in the page. Screen box (CSS px) of the light pools showing (opacity
+ * above 0: the pools are drawn by day too, at opacity 0), or null.
+ */
+function poolBox() {
+  const scene = window.__mediaScene;
+  const cam = window.__mediaCamera;
+  const r = document.getElementById('scene').getBoundingClientRect();
+  const shown = (o) => {
+    for (let e = o; e; e = e.parent) if (!e.visible) return false;
+    return true;
+  };
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  scene?.traverse((o) => {
+    if (o.name !== 'light-pool' || !shown(o) || (o.material?.opacity ?? 1) <= 0.01) return;
+    const g = o.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const b = g.boundingBox;
+    for (const x of [b.min.x, b.max.x]) {
+      for (const y of [b.min.y, b.max.y]) {
+        for (const z of [b.min.z, b.max.z]) {
+          const q = new o.position.constructor(x, y, z).applyMatrix4(o.matrixWorld).project(cam);
+          const sx = r.left + ((q.x + 1) / 2) * r.width;
+          const sy = r.top + ((1 - q.y) / 2) * r.height;
+          [x0, y0, x1, y1] = [Math.min(x0, sx), Math.min(y0, sy), Math.max(x1, sx), Math.max(y1, sy)];
+        }
+      }
+    }
+  });
+  return Number.isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+}
+
+/**
+ * Runs in the page. The shadow the sun casts from one still street prop
+ * (instanced lamps, trees: castShadow, not the traffic) `min`..`max` m tall,
+ * the one nearest the middle of the view with its foot, top and shadow tip
+ * in view: the screen box round them (CSS px), its height and shadow length
+ * (m). Null when none is in view.
+ */
+function shadowOf({ min, max }) {
+  const scene = window.__mediaScene;
+  const cam = window.__mediaCamera;
+  const street = scene?.getObjectByName('street');
+  let sun = null;
+  scene?.traverse((o) => {
+    if (!sun && o.isDirectionalLight) sun = o;
+  });
+  if (!street || !sun || !cam) return null;
+  const dir = sun.position.clone().sub(sun.target.position).normalize();
+  const V = dir.constructor;
+  const r = document.getElementById('scene').getBoundingClientRect();
+  const screen = (p) => {
+    const q = p.clone().project(cam);
+    return { x: r.left + ((q.x + 1) / 2) * r.width, y: r.top + ((1 - q.y) / 2) * r.height, inside: Math.abs(q.x) < 0.9 && q.y > -0.7 && q.y < 0.8 };
+  };
+  const inst = street.matrixWorld.clone();
+  const world = street.matrixWorld.clone();
+  let best = null;
+  for (const o of street.children) {
+    // Traffic is drawn without frustum culling; it moves, so its shadows do too.
+    if (!o.isInstancedMesh || !o.castShadow || !o.visible || !o.frustumCulled) continue;
+    const g = o.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const b = g.boundingBox;
+    const cx = (b.min.x + b.max.x) / 2;
+    const cz = (b.min.z + b.max.z) / 2;
+    for (let i = 0; i < o.count; i++) {
+      o.getMatrixAt(i, inst);
+      world.multiplyMatrices(o.matrixWorld, inst);
+      const foot = new V(cx, b.min.y, cz).applyMatrix4(world);
+      const top = new V(cx, b.max.y, cz).applyMatrix4(world);
+      const height = top.y - foot.y;
+      if (height < min || height > max) continue;
+      const tip = top.clone().addScaledVector(dir, -height / dir.y);
+      const pts = [foot, top, tip].map(screen);
+      if (!pts.every((p) => p.inside)) continue;
+      const d = Math.hypot(pts[0].x - (r.left + r.width / 2), pts[0].y - (r.top + r.height / 2));
+      if (best && d >= best.d) continue;
+      best = { d, pts, height, length: Math.hypot(tip.x - foot.x, tip.z - foot.z) };
+    }
+  }
+  if (!best) return null;
+  const xs = best.pts.map((p) => p.x);
+  const ys = best.pts.map((p) => p.y);
+  const pad = 18;
+  const x = Math.min(...xs) - pad;
+  const y = Math.min(...ys) - pad;
+  return { box: { x, y, w: Math.max(...xs) + pad - x, h: Math.max(...ys) + pad - y }, height: best.height, length: best.length };
+}
+
+/** The dusk board's frame: a PNG with the lights, light pools and a shadow of that frame. */
+async function duskFrame(page) {
+  await page.locator('nav.dock').waitFor();
+  await sleep(SETTLE_MS);
+  const clock = await clockText(page);
+  const light = await page.evaluate(lightInfo);
+  const pools = await page.evaluate(poolBox);
+  const shadow = await page.evaluate(shadowOf, SHADOW_CASTER);
+  const png = await page.screenshot({ style: HIDE_TOASTS });
+  return { png, clock, light, pools, shadow };
+}
+
+/**
+ * Runs in the browser. Mean brightness (0–100% of white, Rec. 709 luma) of
+ * each PNG (`imgs`, base64, CSS px at dpr 1): of the whole frame and of every
+ * `cell` between `top` and `bottom`, the cells half a cell apart.
+ */
+async function lumaCells({ imgs, cell, top, bottom }) {
+  return Promise.all(
+    imgs.map(async (b64) => {
+      const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+      const c = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d');
+      c.drawImage(bmp, 0, 0);
+      const d = c.getImageData(0, 0, bmp.width, bmp.height).data;
+      const luma = (x0, y0, w, h) => {
+        let s = 0;
+        let n = 0;
+        for (let y = y0; y < y0 + h; y += 4) {
+          for (let x = x0; x < x0 + w; x += 4) {
+            const i = (y * bmp.width + x) * 4;
+            s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+            n++;
+          }
+        }
+        return (s / n / 255) * 100;
+      };
+      const cells = [];
+      for (let y = top; y + cell.h <= bottom; y += cell.h / 2) {
+        for (let x = 0; x + cell.w <= bmp.width; x += cell.w / 2) cells.push({ x, y, w: cell.w, h: cell.h, luma: luma(x, y, cell.w, cell.h) });
+      }
+      return { mean: luma(0, 0, bmp.width, bmp.height), cells };
+    }),
+  );
+}
+
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Writes DUSK_BOARD: 19:30 sunny on Cao at 1280×800, the BASE_COMMIT build
+ * (`base`: { url, saves } of withBase) then the working tree (`url`, `save`
+ * from its sim). Rings 1 the light pools, 2 the cell that darkened most
+ * (away from rings 1 and 3), 3 a street prop and its shadow; the notes give
+ * the numbers of each.
+ */
+async function duskBoard(browser, url, save, base) {
+  const id = `${hhmm(DUSK_MINUTE)}-sunny`;
+  const before = await session(browser, base.url, base.saves[id], DESK, 'high', duskFrame);
+  const after = await session(browser, url, save, DESK, 'high', duskFrame);
+  if (!after.pools) console.warn(`!! ${DUSK_BOARD}: no light pool showing on the working tree`);
+  for (const [who, r] of [[BASE_COMMIT, before], ['working tree', after]]) {
+    if (!r.shadow) console.warn(`!! ${DUSK_BOARD}: no street prop with its shadow in view on ${who}`);
+  }
+  const [lb, la] = await (async () => {
+    const page = await browser.newPage({ viewport: DESK, deviceScaleFactor: 1 });
+    try {
+      return await page.evaluate(lumaCells, { imgs: [before.png, after.png].map((b) => b.toString('base64')), cell: LUMA_CELL, top: LUMA_TOP, bottom: LUMA_BOTTOM });
+    } finally {
+      await page.close();
+    }
+  })();
+  const taken = [before.pools, after.pools, before.shadow?.box, after.shadow?.box].filter(Boolean);
+  let dark = null;
+  lb.cells.forEach((c, i) => {
+    const drop = c.luma - la.cells[i].luma;
+    if (taken.some((t) => overlaps(c, t)) || (dark && drop <= dark.drop)) return;
+    dark = { ...c, drop, before: c.luma, after: la.cells[i].luma };
+  });
+  const head = headCommit();
+  const pct = (n) => `${Math.round(n)}%`;
+  const deg = (l) => `${Math.round(l.elevation)}°`;
+  const boxesOf = (r) => [
+    ...(r.pools ? [{ ...r.pools, label: '1' }] : []),
+    ...(dark ? [{ ...dark, label: '2' }] : []),
+    ...(r.shadow ? [{ ...r.shadow.box, label: '3' }] : []),
+  ];
+  const caption = (r) => `Tổng sáng ${f2(r.light.total)}; ${r.light.points} đèn quán sáng, ${r.light.pools} vũng sáng; nắng từ phía ${sunSide(r.light)}, cao ${deg(r.light)}`;
+  const shadowLen = (r) => (r.shadow ? `${comma(r.shadow.length, 1)} m` : '?');
+  const caster = after.shadow ?? before.shadow;
+  const notes = [
+    `1 · Vũng sáng ấm trên sàn dưới đèn quán: ${before.light.pools} → ${after.light.pools} vũng, đèn quán sáng ${before.light.points} → ${after.light.points} PointLight.`,
+    `2 · Cảnh tối hơn lúc chạng vạng: tổng sáng ${f2(before.light.total)} → ${f2(after.light.total)} (trời ${f2(before.light.hemi)} → ${f2(after.light.hemi)}, nắng ${f2(before.light.sun)} → ${f2(after.light.sun)}); ` +
+      (dark ? `vùng khoanh sáng ${pct(dark.before)} → ${pct(dark.after)} màu trắng, ` : '') +
+      `cả khung ${pct(lb.mean)} → ${pct(la.mean)}.`,
+    `3 · Bóng dài hơn và đổi hướng theo nắng: trước, mặt trời đứng yên phía ${sunSide(before.light)}, cao ${deg(before.light)}; sau, mặt trời đi theo giờ, lúc này ở phía ${sunSide(after.light)}, cao ${deg(after.light)}. ` +
+      `Bóng của ${caster ? `vật cao ${comma(caster.height, 1)} m bên đường` : 'vật bên đường'} dài ${shadowLen(before)} → ${shadowLen(after)}.`,
+    `Cùng save ngày ${SCENE_DAY} của sim mỗi bản, 1280×800, mức Cao.`,
+  ];
+  progress(`${DUSK_BOARD}: ${notes.slice(0, 3).join(' ')}`);
+  const panels = [
+    { png: before.png, boxes: boxesOf(before), title: `Trước · ${BASE_COMMIT} · HUD ${before.clock || '?'} · nắng, Cao`, caption: caption(before) },
+    { png: after.png, boxes: boxesOf(after), title: `Sau · ${head} · HUD ${after.clock || '?'} · nắng, Cao`, caption: caption(after) },
+  ];
+  const crop = { x: 0, y: 0, w: DESK.width, h: DESK.height };
+  const scale = Math.min(1, (BOARD_WIDTH - 48 - 24) / (2 * crop.w));
+  return writeBoard(browser, DUSK_BOARD, { panels, crop, dpr: 1, scale, notes });
+}
+
+/**
+ * Writes COIN_BOARD: one coin of the BASE_COMMIT build (`base`: { url, saves }
+ * of withBase) at BASE_COIN_AGE, then one coin of the working tree (served at
+ * `url`, `save` from its sim) at each of COIN_AGES, all from the noon sunny
+ * save at 1280×800 on Cao.
+ */
+async function coinBoard(browser, url, save, base) {
+  const before = await session(browser, base.url, base.saves[`${hhmm(12 * 60)}-sunny`], DESK, 'high', (p) => coinFrames(p, [BASE_COIN_AGE]), true);
   const after = await session(browser, url, save, DESK, 'high', (p) => coinFrames(p, COIN_AGES), true);
   for (const [who, r] of [[BASE_COMMIT, before], ['working tree', after]]) {
     if (!r) console.warn(`!! ${COIN_BOARD}: no coin popped up on ${who} in ${COIN_WAIT_MS / 1000} s`);
@@ -624,23 +954,13 @@ async function coinBoard(browser, url, save) {
     `Mỗi bản một đồng xu, bán lúc HUD ${before.clock || '?'} (trước) và ${after.clock || '?'} (sau), 1280×800, mức Cao. ` +
     `Đồng hồ trang dừng ở khung xu hiện rồi chạy từng 1/${COIN_FPS} s tới đúng tuổi xu ghi trên khung; ` +
     `camera phóng quanh xu (${COIN_PX_PER_M} px mỗi mét) chỉ khi chụp.`;
-  const page = await browser.newPage({ viewport: DESK, deviceScaleFactor: 1 });
-  try {
-    const jpeg = await page.evaluate(drawCoinBoard, {
-      panels: panels.map((p) => ({ title: p.title, caption: p.caption, box: p.box, png: p.png.toString('base64') })),
-      crop,
-      dpr: COIN_DPR,
-      scale,
-      note,
-      red: RED,
-      quality: 0.86,
-    });
-    const file = join(P29_OUT, COIN_BOARD);
-    writeFileSync(file, Buffer.from(jpeg, 'base64'));
-    return relative(ROOT, file);
-  } finally {
-    await page.close();
-  }
+  return writeBoard(browser, COIN_BOARD, {
+    panels: panels.map((p) => ({ title: p.title, caption: p.caption, boxes: [p.box], png: p.png })),
+    crop,
+    dpr: COIN_DPR,
+    scale,
+    notes: [note],
+  });
 }
 
 const LEVELUP = '.rpt-layer:not([hidden]) .rpt-levelup';
@@ -666,11 +986,13 @@ async function levelUpShot(page, name) {
 }
 
 async function main() {
-  const coinOnly = process.env.P29_ONLY === 'coin';
-  if (process.env.P29_ONLY && !coinOnly) throw new Error(`P29_ONLY=${process.env.P29_ONLY}: only 'coin' is known`);
+  const only = process.env.P29_ONLY;
+  if (only && only !== 'coin' && only !== 'dusk') throw new Error(`P29_ONLY=${only}: only 'coin' and 'dusk' are known`);
   const noon = `${hhmm(12 * 60)}-sunny`;
+  const dusk = `${hhmm(DUSK_MINUTE)}-sunny`;
   const shots = SHOT_MINUTES.flatMap((minute) => SHOT_WEATHERS.map((weather) => ({ id: `${hhmm(minute)}-${weather}`, weather, minute })));
-  const saves = await sceneSaves(ROOT, coinOnly ? shots.filter((s) => s.id === noon) : shots, { withLevelUp: !coinOnly });
+  const boardScenes = shots.filter((s) => (only !== 'dusk' && s.id === noon) || (only !== 'coin' && s.id === dusk));
+  const saves = await sceneSaves(ROOT, only ? boardScenes : shots, { withLevelUp: !only });
   for (const [id, s] of Object.entries(saves)) progress(`save ${id}: ${s.info}`);
   if (process.env.P29_SAVES_ONLY === '1') return;
 
@@ -685,19 +1007,29 @@ async function main() {
     if (browser) await browser.close();
     browser = await chromium.launch({ headless: process.env.MEDIA_HEADED !== '1', args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
   };
+  // Sunny Cao 1280 shots for the hours board, by minute.
+  const hours = new Map();
   try {
-    for (const v of coinOnly ? [] : VIEWPORTS) {
+    for (const v of only ? [] : VIEWPORTS) {
       await launch();
       for (const sh of shots) {
         for (const quality of SHOT_QUALITIES) {
           const name = shotName({ ...sh, quality, width: v.width });
-          files.push(await session(browser, url, saves[sh.id], v, quality, (p) => sceneShot(p, name)));
+          const shot = await session(browser, url, saves[sh.id], v, quality, (p) => sceneShot(p, name));
+          files.push(shot.file);
+          if (v === DESK && sh.weather === 'sunny' && quality === 'high') hours.set(sh.minute, shot);
         }
       }
     }
+    if (!only) files.push(await hoursBoard(browser, hours));
     await launch();
-    files.push(await coinBoard(browser, url, saves[noon]));
-    if (!coinOnly) files.push(await session(browser, url, saves.levelUp, PHONE, 'high', (p) => levelUpShot(p, 'levelup-390-p29.jpg')));
+    files.push(
+      ...(await withBase(boardScenes, async (base) => [
+        only !== 'dusk' ? await coinBoard(browser, url, saves[noon], base) : null,
+        only !== 'coin' ? await duskBoard(browser, url, saves[dusk], base) : null,
+      ])),
+    );
+    if (!only) files.push(await session(browser, url, saves.levelUp, PHONE, 'high', (p) => levelUpShot(p, 'levelup-390-p29.jpg')));
   } finally {
     if (browser) await browser.close();
     server.kill();

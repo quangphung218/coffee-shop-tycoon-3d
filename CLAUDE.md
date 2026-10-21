@@ -11,12 +11,12 @@ Lõi mô phỏng (`src/sim`) tất định và tách khỏi phần vẽ; chữ t
 | `npm test` | Chỉ chạy test (`vitest run`, gom `tests/**/*.test.ts`). |
 | `npx vitest run tests/sim/day.test.ts` | Chạy một file test. |
 | `npm run layout` | Build rồi kiểm tràn ngang, HUD, các bảng ở 390–1440 px. Chạy khi sửa `src/ui`. |
-| `npm run perf:frames` | Build rồi đo frame time; `-- --base <commit>` để so bản cũ. |
+| `npm run perf:frames` | Build rồi đo frame time; `-- --base <commit>` để so bản cũ, `-- --scene dusk-rain` hoặc `noon-sunny` để đo cảnh P29. |
 | `npm run dev` | Dev server; `/?preview=actors` xem nhân vật riêng. |
 | `node scripts/release.mjs --dry-run` | Xem version kế tiếp, không sửa gì. |
 
 - `layout`, `perf:frames`, `media*` cần Chromium: `npx playwright install chromium`.
-- Các `media:pNN` (p20–p27) và `review:p22` là script chụp ảnh theo từng đợt cũ. Chỉ chạy khi task nhắc đúng tên. Ảnh hiện hành dùng `npm run media`.
+- Các `media:pNN` (p20–p29) và `review:p22` là script chụp ảnh theo từng đợt cũ. Chỉ chạy khi task nhắc đúng tên. Ảnh hiện hành dùng `npm run media`.
 
 ## Cấu trúc
 
