@@ -154,6 +154,16 @@ Bên trái build `fe1fe8e`, bên phải P31 (`48a9945`, quầy sau `1df0efb`), c
 
 Tháp cold brew và Lò nướng có `maxLevel` 2 và không có trong `maxLevelBonus` của cấp quán 7–10 (`src/sim/data/levels.ts`), nên cấp cao nhất là 2 và bậc hình cao nhất là bậc 2. Trong game không có bậc 3 của hai công cụ này; dòng kế hoạch ghi "bậc 3 (cấp thưởng)" là sai. Nhánh bậc 3 của hai máy trong `src/render/scene/equipment.ts` (sao vàng) không bao giờ được vẽ.
 
+### Sửa nhãn và icon sau khi đo
+
+| Commit | Đổi gì | Tệp |
+| --- | --- | --- |
+| `fae5c8d`, `af0f5a3` | Nhãn "Cần …" của Menu dùng icon cảnh báo như "Thiếu …"; dòng bậc của Nâng cấp ghi "Bậc n/2" cho tháp và lò (trước đó "Bậc n/3"); công cụ mới mở có nhãn "Mới" | `src/ui/panels/menu.ts`, `src/ui/panels/upgrades.ts`, `src/ui/core/fresh.ts` |
+| `bc9c0e7`, `1e88f01` | Dựng lại icon bánh quy (to hơn), tháp cold brew và lò nướng. Atlas chính 602×708: @1x 119.340 byte (trước 112.036), @2x 294.482 byte (trước 297.656) | `public/icons3d/atlas@1x.webp`, `public/icons3d/atlas@2x.webp` |
+| `92a4889` | Dựng lại atlas bậc: tháp bậc 2 có ly cold brew, lò bậc 2 bằng thép. Atlas 302×406: @1x 46.976 byte (trước 46.810), @2x 110.650 byte (trước 111.446) | `public/icons3d/tiers@1x.webp`, `public/icons3d/tiers@2x.webp` |
+
+Không đo lại khung hình và Main Menu sau các commit này: chúng chỉ đổi nhãn UI và ảnh atlas icon, không đổi code vẽ hay chunk tải trước Main Menu. So với `f24a267`, `src/render/` chỉ thêm comment; `vite build` của `npm run check` cho JS chính 39,78 kB (15,63 kB gzip) và CSS chính vẫn là `index-G0d7UaCo.css`.
+
 ## 7. Đối chiếu P30
 
 Số P30 đo trên `df31c9f` ([báo cáo P30](p30-characters.md)), số P31 đo trên `48a9945`, cùng máy và cùng lệnh.
