@@ -636,8 +636,10 @@ Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 
 Đèn ấm và chuyển động (`src/render/scene/ambient.ts`):
 
-- `warmGlow(minute, weather)` lấy hệ số `lamps` của `lightingAt`: 0 ban ngày, tăng từ 16:00, đủ 1 sau 19:30; trời mưa giữ tối thiểu 0,4.
+- `shopLightsOn(minute, weather)`: đèn quán bật từ chiều, khi `lamps` của `lightingAt` đạt `LIGHTS_ON_LAMPS` (0,44, khoảng 17:45 ngày nắng). Trời mưa bật sớm hơn `RAIN_LEAD` (45 phút game).
+- `warmGlow(minute, weather)`: 0 trước lúc bật, tăng mượt lên 1 trong `LIGHTS_ON_RAMP` (20 phút game) sau lúc bật. Trời mưa giữ tối thiểu 0,4 cả ngày.
 - Hệ số này làm kính cửa sổ, cửa và ống biển neon phát sáng (`GLASS_MATERIAL` emissive), bóng đèn sáng hơn và biển hiệu ấm lên.
-- Mức Cao thêm 2 `PointLight` ấm không đổ bóng, tạo theo mức đồ họa chứ không theo giờ.
+- Mức Vừa và Cao thêm 2 vùng sáng ấm trên sàn (quầy dưới đèn thả, khu ghế ngồi): mesh phẳng blending cộng, chỉ đổi opacity theo hệ số và ẩn ban ngày. Mức Thấp không có.
+- Mức Cao thêm 2 `PointLight` ấm không đổ bóng. Đèn và vùng sáng tạo theo mức đồ họa chứ không theo giờ.
 - Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn.
 - Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi Giảm chuyển động bật — do cài đặt `reducedMotion` là `reduce` (`world.setReducedMotion`) hay trình duyệt bật `prefers-reduced-motion`.
