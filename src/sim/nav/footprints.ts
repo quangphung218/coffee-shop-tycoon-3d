@@ -30,6 +30,8 @@ export const BACK_COUNTER_TOP_DEPTH = 0.76;
 /** The back counter runs this far past the leftmost and rightmost machine. */
 export const BACK_COUNTER_MARGIN_LEFT = 1;
 export const BACK_COUNTER_MARGIN_RIGHT = 1.2;
+/** The back counter never starts left of this, so it clears the back-left planter (the oven stands near its left end). */
+export const BACK_COUNTER_MIN_X = -3.45;
 
 /** Widest part of each machine (its top), by kind. */
 export const MACHINE_SIZE = {
@@ -40,6 +42,9 @@ export const MACHINE_SIZE = {
   blender: { width: 0.4, depth: 0.5 },
   ice_maker: { width: 0.5, depth: 0.5 },
   dishwasher: { width: 0.56, depth: 0.5 },
+  // Narrow drip tower in the gap between the espresso machine and the first fast machine.
+  cold_brew_tower: { width: 0.28, depth: 0.4 },
+  oven: { width: 0.5, depth: 0.5 },
 } as const;
 
 export const TABLE_RADIUS = 0.4;
@@ -119,7 +124,7 @@ export function wallSpans(layout: ShopLayout): (readonly [number, number, number
   ];
 }
 
-/** x range of the back counter under the machines and the record player, or null without machines. */
+/** x range of the back counter under the machines and the record player (from BACK_COUNTER_MIN_X at most), or null without machines. */
 export function backCounterSpan(layout: ShopLayout): { minX: number; maxX: number } | null {
   if (layout.machines.length === 0) return null;
   let minX = Infinity;
@@ -128,7 +133,7 @@ export function backCounterSpan(layout: ShopLayout): { minX: number; maxX: numbe
     minX = Math.min(minX, m.pos.x);
     maxX = Math.max(maxX, m.pos.x);
   }
-  minX -= BACK_COUNTER_MARGIN_LEFT;
+  minX = Math.max(BACK_COUNTER_MIN_X, minX - BACK_COUNTER_MARGIN_LEFT);
   maxX += BACK_COUNTER_MARGIN_RIGHT;
   for (const d of layout.decor) {
     if (d.kind !== 'record_player') continue;

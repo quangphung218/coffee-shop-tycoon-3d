@@ -8,7 +8,7 @@ import { isUnlocked } from './progression';
 import { recordExperiencesSince } from './reviews';
 import { assignRole, clearStaffTasks, fireStaff, hireStaff, placeStaff, setAutoAssign, startStaffDay, updateStaff } from './staff';
 import { buildNavGrid, nearestFree } from './nav';
-import { buyUpgrade, getShopLayout, removeDecor } from './upgrades';
+import { buyUpgrade, getShopLayout, menuBlockedReason, removeDecor } from './upgrades';
 import { setPolicy } from './policies';
 import { getMenuItem } from './data/menu';
 import { getUpgrade } from './data/upgrades';
@@ -130,6 +130,11 @@ export function dispatch(state: GameState, cmd: Command): boolean {
         state.events.push({ type: 'notify', level: 'error', text: `${getMenuItem(cmd.itemId).name} chưa mở khóa ở cấp quán này` });
         return false;
       }
+      const blocked = cmd.enabled ? menuBlockedReason(state, cmd.itemId) : null;
+      if (blocked) {
+        state.events.push({ type: 'notify', level: 'error', text: blocked });
+        return false;
+      }
       if (entry.enabled !== cmd.enabled) toggleMenuItem(state, cmd.itemId);
       return true;
     }
@@ -195,7 +200,7 @@ export { buildDailyReport, closeDay } from './report';
 export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
-export { buyUpgrade, getShopLayout, isRemovableDecor, nextUpgradeCost, removeDecor } from './upgrades';
+export { buyUpgrade, getShopLayout, isRemovableDecor, menuBlockedReason, nextUpgradeCost, removeDecor } from './upgrades';
 export { PRICE_POLICY, WAGE_POLICY, policyLevel, setPolicy } from './policies';
 export {
   isUnlocked,

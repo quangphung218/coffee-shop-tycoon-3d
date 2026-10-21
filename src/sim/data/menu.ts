@@ -185,6 +185,39 @@ const SPECS: MenuItemSpec[] = [
     temperature: 'cold',
     popularity: 0.6,
   },
+  {
+    // Steeped ahead in the cold brew tower (MENU_REQUIRES), so it is only poured: the shortest prep, like espresso.
+    id: 'cold_brew',
+    name: 'Cold brew',
+    icon: '🧊',
+    category: 'drink',
+    price: 40000,
+    prepMinutes: 2,
+    ingredients: [
+      { id: 'coffee_beans', qty: 22 },
+      { id: 'ice', qty: 150 },
+      { id: 'cup', qty: 1 },
+    ],
+    temperature: 'cold',
+    popularity: 0.6,
+  },
+  {
+    // Baked in the oven (MENU_REQUIRES).
+    id: 'cookie',
+    name: 'Bánh quy sô-cô-la',
+    icon: '🍪',
+    category: 'food',
+    price: 30000,
+    prepMinutes: 2,
+    ingredients: [
+      { id: 'flour', qty: 50 },
+      { id: 'butter', qty: 20 },
+      { id: 'sugar', qty: 15 },
+      { id: 'cacao', qty: 8 },
+    ],
+    temperature: 'hot',
+    popularity: 0.5,
+  },
 ];
 
 export const MENU: readonly MenuItemDef[] = SPECS.map((s) => ({ ...s, cost: ingredientCost(s.ingredients) }));
