@@ -7,7 +7,8 @@ import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { missionProgress } from '../../sim/progression';
 import { achievementProgress, giftPreview, parseDateKey, type AchievementProgress } from '../../sim/retention';
 import { isVipDay, SPECIAL_ORDER_FROM_DAY } from '../../sim/specialOrders';
-import type { GameState, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
+import { REGULARS } from '../../sim/data/regulars';
+import type { GameState, MenuItemId, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatClock, formatMoney, formatRating } from '../core/format';
@@ -261,6 +262,38 @@ function specialOrderCard(order: SpecialOrder): HTMLElement {
   );
 }
 
+export interface RegularRow {
+  id: string;
+  name: string;
+  visits: number;
+  /** Menu id of the drink they are known for. */
+  favorite: MenuItemId;
+  lastDay: number;
+}
+
+/**
+ * The "Khách quen" card: named regulars met so far (state.regulars), latest
+ * visit first; same day keeps the REGULARS order. Ids no longer in REGULARS
+ * are skipped. Empty before the first regular comes in and on older saves.
+ */
+export function regularRows(state: GameState): RegularRow[] {
+  const seen = state.regulars ?? {};
+  return REGULARS.flatMap((r) => {
+    const v = seen[r.id];
+    return v && v.visits > 0 ? [{ id: r.id, name: r.name, visits: v.visits, favorite: r.favorite, lastDay: v.lastDay }] : [];
+  }).sort((a, b) => b.lastDay - a.lastDay);
+}
+
+/** Regular row: favorite drink | name + "Ghé 3 lần · Hay gọi Latte". */
+function regularCard(r: RegularRow): HTMLElement {
+  return h(
+    'li',
+    { class: 'item item-row', attrs: { 'data-regular': r.id } },
+    h('span', { class: 'item-icon' }, icon(MENU_ICONS[r.favorite], { size: 32 })),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: r.name }), h('p', { class: 'item-meta', text: `Ghé ${r.visits} lần · Hay gọi ${getMenuItem(r.favorite).name}` })),
+  );
+}
+
 /** "1.200.000đ" for the revenue achievement, plain counts for the others. */
 function achievementAmount(a: AchievementProgress, n: number): string {
   return a.id === 'revenue' ? formatMoney(n) : String(n);
@@ -324,7 +357,7 @@ export function weekTodayLines(state: GameState): WeekTodayLine[] {
 /**
  * Task Board: the daily gift card, today's week lines, the checklist with
  * done/not-done state, today's daily missions, the special order and VIP,
- * the achievements (shown in place), yesterday's report suggestions, and "Mở cửa"
+ * the regulars met so far, the achievements (shown in place), yesterday's report suggestions, and "Mở cửa"
  * (start_day). Checklist, mission and suggestion rows share the Kho row
  * template (icon | title + meta | one status label | link). Unfinished tasks
  * only remind.
@@ -458,6 +491,19 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
 
+  const regularTitle = h('h3', { class: 'section-title' }, ...withIcon('i-face-happy', 'Khách quen', 24));
+  const regularList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Khách quen' } });
+  const regularEmpty = h('p', { class: 'intro intro-icon', attrs: { 'data-regular-empty': '' } }, icon('i-info', { size: 16 }), h('span', { text: 'Chưa có khách quen nào ghé' }));
+  w.watch(
+    (s) => JSON.stringify(regularRows(s)),
+    (key) => {
+      const rows = JSON.parse(key) as RegularRow[];
+      regularEmpty.hidden = rows.length > 0;
+      regularList.hidden = rows.length === 0;
+      setChildren(regularList, ...rows.map(regularCard));
+    },
+  );
+
   const achListId = uid('ach');
   const achLabel = h('span');
   const achBtn = h(
@@ -521,6 +567,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       orderHint,
       vipLine,
       orderList,
+      regularTitle,
+      regularEmpty,
+      regularList,
       achBtn,
       achList,
       sugTitle,

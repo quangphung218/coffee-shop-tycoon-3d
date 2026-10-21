@@ -1,6 +1,7 @@
 import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
+import { regularById } from '../../sim/data/regulars';
 import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { UNIFORMS } from '../../sim/data/uniforms';
 import { getUpgrade } from '../../sim/data/upgrades';
@@ -48,9 +49,38 @@ export function uniformUnlockToast(event: GameEvent): ToastInput | null {
   };
 }
 
-/** Toast for a sim event, or null for events that only make a sound or move actors. */
-export function toastForEvent(event: GameEvent, state: GameState): ToastInput | null {
+/** Real-time gap between two regular toasts; arrivals inside it get none (the Việc card lists them). */
+export const REGULAR_TOAST_GAP_MS = 20_000;
+
+let lastRegularToastAt: number | null = null;
+
+/** Forgets the last regular toast, so the next arrival toasts again (new game, tests). */
+export function resetRegularToasts(): void {
+  lastRegularToastAt = null;
+}
+
+/** "Khách quen mới: Cô Lan" or "Cô Lan ghé quán (lần 3)", at most one per REGULAR_TOAST_GAP_MS of real time. */
+function regularToast(event: Extract<GameEvent, { type: 'regular_arrived' }>, now: number): ToastInput | null {
+  const name = regularById(event.regularId)?.name;
+  if (!name) return null;
+  if (lastRegularToastAt !== null && now >= lastRegularToastAt && now - lastRegularToastAt < REGULAR_TOAST_GAP_MS) return null;
+  lastRegularToastAt = now;
+  return {
+    level: 'info',
+    icon: 'i-face-happy',
+    title: event.visits <= 1 ? `Khách quen mới: ${name}` : `${name} ghé quán (lần ${event.visits})`,
+    key: 'regular',
+  };
+}
+
+/**
+ * Toast for a sim event, or null for events that only make a sound or move
+ * actors. `now` is real time in ms, used only to space out regular toasts.
+ */
+export function toastForEvent(event: GameEvent, state: GameState, now = performance.now()): ToastInput | null {
   switch (event.type) {
+    case 'regular_arrived':
+      return regularToast(event, now);
     case 'notify':
       return { level: event.level, title: event.text };
     case 'angry':
