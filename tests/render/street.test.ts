@@ -79,7 +79,7 @@ describe('wrapX / travelX', () => {
 });
 
 describe('densityFor', () => {
-  it('gives low fewer vehicles and walkers than high, and no rain particles on low', () => {
+  it('gives low fewer vehicles, walkers and rain streaks than high, and no splashes on low', () => {
     const low = densityFor('low');
     const medium = densityFor('medium');
     const high = densityFor('high');
@@ -88,8 +88,11 @@ describe('densityFor', () => {
     expect(traffic(medium)).toBeLessThan(traffic(high));
     expect(low.pedestrians).toBeLessThan(medium.pedestrians);
     expect(medium.pedestrians).toBeLessThan(high.pedestrians);
-    expect(low.rainDrops).toBe(0);
+    expect(low.rainDrops).toBeGreaterThan(0);
+    expect(low.rainDrops).toBeLessThan(medium.rainDrops);
     expect(high.rainDrops).toBeGreaterThan(medium.rainDrops);
+    expect(low.rainSplashes).toBe(0);
+    expect(high.rainSplashes).toBeGreaterThan(medium.rainSplashes);
     expect(high.props).toBe(1);
     for (const q of QUALITIES) expect(traffic(densityFor(q))).toBeGreaterThan(0);
   });
@@ -334,18 +337,36 @@ describe('createStreet', () => {
     street.dispose();
   });
 
-  it('rains only when the sim says so and the quality allows particles', () => {
+  it('rains only when the sim says so, with splashes only on medium and high', () => {
     const { scene } = newScene();
     const street = createStreet(scene, { quality: 'high' });
     const state = newState();
     street.update(state, 0, 0.016);
     expect(street.stats().rainDrops).toBe(0);
+    expect(street.stats().rainSplashes).toBe(0);
     state.weather = 'rainy';
     street.update(state, 0, 0.016);
     expect(street.stats().rainDrops).toBe(densityFor('high').rainDrops);
+    expect(street.stats().rainSplashes).toBe(densityFor('high').rainSplashes);
     street.setQuality('low');
     street.update(state, 0, 0.016);
-    expect(street.stats().rainDrops).toBe(0);
+    expect(street.stats().rainDrops).toBe(densityFor('low').rainDrops);
+    expect(street.stats().rainSplashes).toBe(0);
+    street.dispose();
+  });
+
+  it('thins the rain and drops splashes while reduced motion is on', () => {
+    const { scene } = newScene();
+    let reduced = false;
+    const street = createStreet(scene, { quality: 'high', reducedMotion: () => reduced });
+    const state = newState();
+    state.weather = 'rainy';
+    street.update(state, 0, 0.016);
+    expect(street.stats().rainSplashes).toBeGreaterThan(0);
+    reduced = true;
+    street.update(state, 0, 0.016);
+    expect(street.stats().rainDrops).toBe(Math.round(densityFor('high').rainDrops * 0.4));
+    expect(street.stats().rainSplashes).toBe(0);
     street.dispose();
   });
 

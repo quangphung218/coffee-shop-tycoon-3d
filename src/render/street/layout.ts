@@ -94,16 +94,18 @@ export interface StreetDensity {
   bikes: number;
   buses: number;
   pedestrians: number;
-  /** Rain streaks drawn while it rains; 0 means no rain particles. */
+  /** Rain streaks drawn while it rains. */
   rainDrops: number;
+  /** Splashes on the ground and the awning at any one time while it rains; 0 means none. */
+  rainSplashes: number;
   /** Fraction of trees and lamps kept (1 = all). */
   props: number;
 }
 
 const DENSITY: Readonly<Record<Quality, Readonly<StreetDensity>>> = {
-  low: { cars: 3, bikes: 3, buses: 1, pedestrians: 4, rainDrops: 0, props: 0.5 },
-  medium: { cars: 6, bikes: 8, buses: 1, pedestrians: 10, rainDrops: 350, props: 1 },
-  high: { cars: 10, bikes: 14, buses: 2, pedestrians: 18, rainDrops: 900, props: 1 },
+  low: { cars: 3, bikes: 3, buses: 1, pedestrians: 4, rainDrops: 120, rainSplashes: 0, props: 0.5 },
+  medium: { cars: 6, bikes: 8, buses: 1, pedestrians: 10, rainDrops: 350, rainSplashes: 48, props: 1 },
+  high: { cars: 10, bikes: 14, buses: 2, pedestrians: 18, rainDrops: 900, rainSplashes: 120, props: 1 },
 };
 
 export function densityFor(quality: Quality): Readonly<StreetDensity> {
@@ -443,4 +445,99 @@ export function rainY(y0: number, t: number): number {
   const top = RAIN_BOX.top;
   const y = (((y0 - RAIN_SPEED * t) % top) + top) % top;
   return Number.isFinite(y) ? y : top;
+}
+
+/** A steady wind: a drop drifts this far in -x per unit it falls, so every streak leans the same way. */
+export const RAIN_WIND = 0.18;
+/** Streak length and opacity vary per drop between these. */
+export const RAIN_STREAK_RANGE = { min: 0.7, max: 1.3 } as const;
+export const RAIN_OPACITY_RANGE = { min: 0.35, max: 0.75 } as const;
+/** Share of rain streaks kept under reduced motion: enough to tell it rains. */
+export const RAIN_REDUCED_SHARE = 0.4;
+
+/** Rain streaks drawn for a quality's drop count. */
+export function rainStreaksFor(drops: number, reducedMotion: boolean): number {
+  return reducedMotion ? Math.round(drops * RAIN_REDUCED_SHARE) : drops;
+}
+
+/** Starting x, height, z, length and opacity of drop `i`; x leaves room for the wind so the whole streak stays in RAIN_BOX. */
+export function rainDrop(i: number, out: RainDrop): RainDrop {
+  const longest = RAIN_STREAK * RAIN_STREAK_RANGE.max;
+  const maxX = RAIN_BOX.maxX - RAIN_WIND * (RAIN_BOX.top + longest);
+  out.x = RAIN_BOX.minX + hash01(i * 3 + 1) * (maxX - RAIN_BOX.minX);
+  out.y = hash01(i * 3 + 2) * RAIN_BOX.top;
+  out.z = RAIN_BOX.minZ + hash01(i * 3 + 3) * (RAIN_BOX.maxZ - RAIN_BOX.minZ);
+  out.length = RAIN_STREAK * (RAIN_STREAK_RANGE.min + hash01(i * 7 + 4001) * (RAIN_STREAK_RANGE.max - RAIN_STREAK_RANGE.min));
+  out.opacity = RAIN_OPACITY_RANGE.min + hash01(i * 7 + 4002) * (RAIN_OPACITY_RANGE.max - RAIN_OPACITY_RANGE.min);
+  return out;
+}
+
+export interface RainDrop {
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  opacity: number;
+}
+
+/** Seconds a splash lives before it shows up somewhere else. */
+export const SPLASH_LIFE = 0.3;
+/** Scale of the splash ring; it opens to about 0.6 of this. */
+export const SPLASH_RADIUS = 0.32;
+
+/** Where splashes land: a flat band at height y; `share` is the fraction of splashes it gets. */
+export interface SplashZone {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  y: number;
+  share: number;
+}
+
+/** Shares add up to 1. The awning hangs over the door (x = 0) of the shop front (z = 6.2); its slope is about 2 m up. */
+export const SPLASH_ZONES: readonly SplashZone[] = [
+  { minX: -1.1, maxX: 1.1, minZ: 6.35, maxZ: 7, y: 2.06, share: 0.1 },
+  { minX: RAIN_BOX.minX, maxX: RAIN_BOX.maxX, minZ: NEAR_WALK.minZ, maxZ: NEAR_WALK.maxZ, y: CURB_HEIGHT + 0.01, share: 0.3 },
+  { minX: RAIN_BOX.minX, maxX: RAIN_BOX.maxX, minZ: ROAD.minZ, maxZ: ROAD.maxZ, y: 0.02, share: 0.35 },
+  { minX: RAIN_BOX.minX, maxX: RAIN_BOX.maxX, minZ: FAR_WALK.minZ, maxZ: FAR_WALK.maxZ, y: CURB_HEIGHT + 0.01, share: 0.25 },
+];
+
+export interface Splash {
+  x: number;
+  y: number;
+  z: number;
+  /** 0 when it lands, 1 when it is gone. */
+  age: number;
+}
+
+/**
+ * Splash slot `i` at time `t`: slots are staggered, each lands somewhere new
+ * every SPLASH_LIFE seconds, picked by hash01 of the slot and its round.
+ */
+export function splashAt(i: number, t: number, out: Splash): Splash {
+  const phase = (t + hash01(i * 5 + 7001) * SPLASH_LIFE) / SPLASH_LIFE;
+  const safe = Number.isFinite(phase) ? phase : 0;
+  const round = Math.floor(safe);
+  out.age = safe - round;
+  const seed = i * 7919 + round * 104729;
+  let pick = hash01(seed);
+  let zone = SPLASH_ZONES[SPLASH_ZONES.length - 1]!;
+  for (const z of SPLASH_ZONES) {
+    if (pick < z.share) {
+      zone = z;
+      break;
+    }
+    pick -= z.share;
+  }
+  out.x = zone.minX + hash01(seed + 1) * (zone.maxX - zone.minX);
+  out.y = zone.y;
+  out.z = zone.minZ + hash01(seed + 2) * (zone.maxZ - zone.minZ);
+  return out;
+}
+
+/** Ring radius of a splash at `age`: it opens out, peaks, then closes to nothing. */
+export function splashScale(age: number): number {
+  const a = Math.min(1, Math.max(0, age));
+  return SPLASH_RADIUS * (0.3 + 0.7 * a) * (1 - a * a);
 }
