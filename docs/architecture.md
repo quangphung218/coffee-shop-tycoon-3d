@@ -658,10 +658,10 @@ Mặt tiền và chi tiết quán (`src/render/scene/facade.ts`):
 - Mức Vừa và Cao thêm 2 vùng sáng ấm trên sàn (quầy dưới đèn thả, khu ghế ngồi): mesh phẳng blending cộng, chỉ đổi opacity theo hệ số và ẩn ban ngày. Mức Thấp không có.
 - Mức Cao thêm 2 `PointLight` ấm không đổ bóng. Đèn và vùng sáng tạo theo mức đồ họa chứ không theo giờ.
 - Chuyển động (quạt trần quay, chậu cây và cây cửa rung lệch pha, diềm mái hiên phấp phới, hơi nước trên máy pha khi có đơn `brewing`) chỉ xoay mesh có sẵn.
+- Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi Giảm chuyển động bật — do cài đặt `reducedMotion` là `reduce` (`world.setReducedMotion`) hay trình duyệt bật `prefers-reduced-motion`.
 - Hơi nước máy pha và cốc nóng dùng chung `Steam` của `src/render/actors/fx.ts`: mỗi cột dựng sẵn `STEAM_PUFFS` (5) sprite, `setSteamQuality` chọn số sprite hiện theo mức (Vừa 3, Cao 5).
 
 Mưa (`src/render/street/rain.ts`):
 
 - `createRain` vẽ vệt mưa xiên theo gió `RAIN_WIND` trong một `LineSegments`, dài và đậm khác nhau từng giọt (`rainDrop`). Mức Vừa và Cao thêm vòng giọt bắn trên vỉa hè, mặt đường và mái hiên trong một `InstancedMesh` (`splashAt`, sống `SPLASH_LIFE` 0,3 s).
 - Buffer cấp một lần theo mức Cao; mỗi khung chỉ ghi lại vị trí và số vẽ. Không mưa thì không vẽ gì. Mưa theo đồng hồ phố nên đứng yên khi tạm dừng.
-- Chuyển động dừng khi game tạm dừng, tắt ở mức Thấp và khi Giảm chuyển động bật — do cài đặt `reducedMotion` là `reduce` (`world.setReducedMotion`) hay trình duyệt bật `prefers-reduced-motion`.
