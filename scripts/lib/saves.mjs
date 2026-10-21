@@ -1,9 +1,10 @@
 // Saves played by the sim of the build that loads them: a new game with two
 // hires, days played with the basic strategy of tests/integration/helpers.ts,
-// a scene at a given weather and minute, the first level-up, and the text
-// written to the 'auto' slot. Scenarios (scripts/scenarios/*.mjs) build
-// their saves from these; measure-frames.mjs --scene loads SCENES through
-// sceneSaves().
+// a scene at a given weather and minute, the first level-up, the first day
+// as check-layout.mjs sets it up, and the text written to the 'auto' slot.
+// Scenarios (scripts/scenarios/*.mjs) build their saves from these;
+// measure-frames.mjs --scene loads SCENES through sceneSaves();
+// check-layout.mjs reaches its Daily Report through playFirstDay().
 
 /** Day the scene saves are taken on: day 1 is played first so the shop has customers and a rating. */
 export const SCENE_DAY = 2;
@@ -159,18 +160,60 @@ export function playToLevelUp(mods, seed = SEED) {
   throw new Error(`no level-up by day ${LEVELUP_LAST_DAY}`);
 }
 
+/**
+ * Day 1 the way check-layout.mjs used to play it in the browser, up to the
+ * last tick before its report: a new game (`shopName`, `difficulty`, `seed`
+ * as the New Game form sends them), the Kho suggestion bought (apply_restock,
+ * what Gợi ý + Nhập hàng buy), `hires` candidates taken from the top of the
+ * list in the role the Nhân viên panel picks (rolePlan of src/sim/staff.ts
+ * with no day stats: barista, then server), the day opened and run on the
+ * staff alone: no player action, as nobody plays while the layout check
+ * waits. The state returned is still open, one tick (step 1) before the day
+ * ends (often 19:59 with the shop already empty), so a browser that resumes
+ * it runs its own day end (dayEnded, the autosave and its line on the Daily
+ * Report) just as it did when the check waited for the whole day.
+ * `mods` adds `staff` (sim/staff) to the usual modules.
+ */
+export function playFirstDay({ stateMod, sim, staff }, { shopName, difficulty, seed, hires }) {
+  const s = stateMod.createNewGame(shopName, difficulty, seed);
+  sim.dispatch(s, { type: 'apply_restock' });
+  for (let i = 0; i < hires; i++) {
+    const c = s.candidates[0];
+    const role = staff.rolePlan(null, s.staff.length + 1)[s.staff.length] ?? 'none';
+    if (!c || !sim.dispatch(s, { type: 'hire_staff', candidateId: c.id, role })) throw new Error(`cannot hire a ${role}`);
+  }
+  s.events = [];
+  if (!sim.dispatch(s, { type: 'start_day' })) throw new Error('day 1: start_day refused');
+  // The day ends on the tick that finds the shop empty from 20:00 on (that can
+  // be the tick that reaches 20:00): keep the state before each tick and hand
+  // back the one before the report.
+  let before = null;
+  for (let guard = 0; s.phase !== 'report' && guard < DAY_GUARD; guard++) {
+    before = structuredClone(s);
+    sim.step(s, 1);
+    s.events = [];
+  }
+  if (s.phase !== 'report' || !before) throw new Error('day 1 did not reach the report');
+  before.events = [];
+  return before;
+}
+
 /** One line on a scene state for the logs. */
 export const sceneInfo = (s) => `day ${s.day} ${hhmm(s.minute)} ${s.weather}, ${s.customers.length} customers, ${s.staff.length} staff`;
 
-/** The modules of the build at `root`, loaded through vite: sim state, sim, orders, save, menu, and the character rig (face prints). */
-export async function loadSim(root) {
+/**
+ * The modules of the build at `root`, loaded through vite: sim state, sim,
+ * orders, save, menu, and the character rig (face prints); `extra` names
+ * more, `{ staff: '/src/sim/staff.ts' }` adds `staff`.
+ */
+export async function loadSim(root, extra = {}) {
   const { createServer } = await import('vite');
   const vite = await createServer({ root, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
   try {
-    const [stateMod, sim, orders, save, menu, rig] = await Promise.all(
-      ['/src/sim/state.ts', '/src/sim/index.ts', '/src/sim/orders.ts', '/src/save/save.ts', '/src/sim/data/menu.ts', '/src/render/actors/rig.ts'].map((p) => vite.ssrLoadModule(p)),
-    );
-    return { stateMod, sim, orders, save, menu, rig };
+    const names = ['stateMod', 'sim', 'orders', 'save', 'menu', 'rig', ...Object.keys(extra)];
+    const paths = ['/src/sim/state.ts', '/src/sim/index.ts', '/src/sim/orders.ts', '/src/save/save.ts', '/src/sim/data/menu.ts', '/src/render/actors/rig.ts', ...Object.values(extra)];
+    const mods = await Promise.all(paths.map((p) => vite.ssrLoadModule(p)));
+    return Object.fromEntries(names.map((n, i) => [n, mods[i]]));
   } finally {
     await vite.close();
   }

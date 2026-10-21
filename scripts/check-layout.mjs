@@ -2,8 +2,13 @@
 // panel for layout shift, on the production build in headless Chromium.
 // Run through `npm run layout` (builds first). Needs Playwright with Chromium.
 //
-// For each viewport: a new game, the six dock panels in order, a whole day at
-// 4x, then the Daily Report and its Đánh giá tab. On every screen the scroll
+// For each viewport: a new game, the six dock panels in order, the shop opened
+// at 4x, then the Daily Report of day 1 and its Đánh giá tab from a save this
+// tree's sim played the same way (playFirstDay of scripts/lib/saves.mjs: two
+// hires, the Kho suggestion bought, the staff alone through the day) up to
+// the tick before the report, which the browser plays itself after Tiếp tục
+// (day end, autosave, report), so no viewport waits for a day in the
+// browser. On every screen the scroll
 // boxes must not scroll sideways (scrollWidth <= clientWidth; a line cut with
 // text-overflow: ellipsis and its full text in a title is allowed) and no element
 // may stick out of the left or right edge of the panel or report card. In the
@@ -46,6 +51,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './lib/browser.mjs';
+import { clockOf, loadSim, playFirstDay, saveText } from './lib/saves.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.LAYOUT_PORT ?? 4173);
@@ -68,8 +74,8 @@ const PANELS = [
 ];
 /** Staff hired in the Nhân viên panel so the day serves customers and the report has content. */
 const HIRES = 2;
-/** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
-const DAY_TIMEOUT_MS = 8 * 60_000;
+/** The New Game form's shop name (src/ui/screens/newGame.ts) and the difficulty startDayOne picks. */
+const NEW_GAME = { shopName: 'Cà Phê Gió Mùa', difficulty: 'easy' };
 /** Sub-pixel slack for box edges and the foot height, CSS px. */
 const EPS = 0.5;
 /** Elements listed per failing check. */
@@ -372,35 +378,44 @@ const EVENT = 'supplier_hike';
  */
 const LATE_GAME = { money: 109_582_093, tickets: 2, shopLevel: 5, xp: 14_929 };
 
+/** This tree's sim, save code, retention (Tem) and staff (hire roles), loaded once through vite. */
+const loadTree = () => loadSim(ROOT, { retention: '/src/sim/retention.ts', staff: '/src/sim/staff.ts' });
+
 /**
  * Autosave of a new Easy game on the morning of day 1, its plan turned into
  * an EVENT day (day 1 is always the grand opening), with LATE_GAME values
- * when `late`, written by the sim and save code of this tree.
+ * when `late`, written by the sim and save code of this tree (`mods` of loadTree).
  */
-async function eventDaySave(late) {
-  const { createServer } = await import('vite');
-  const vite = await createServer({ root: ROOT, logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false } });
-  try {
-    const [stateMod, save, retention] = await Promise.all(['/src/sim/state.ts', '/src/save/save.ts', '/src/sim/retention.ts'].map((p) => vite.ssrLoadModule(p)));
-    const state = stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
-    const today = state.week?.plan.find((p) => p.day === 1);
-    if (!today) throw new Error('the new game has no week plan');
-    today.event = EVENT;
-    if (late) {
-      state.money = LATE_GAME.money;
-      state.shopLevel = LATE_GAME.shopLevel;
-      state.xp = LATE_GAME.xp;
-      retention.ensureRetention(state).tickets = LATE_GAME.tickets;
-    }
-    const data = new Map();
-    const storage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
-    const r = save.saveGame(state, 'auto', storage, FIXED_NOW);
-    if (!r.ok) throw new Error(`cannot write the event-day save: ${r.error.message}`);
-    const key = save.saveKey('auto');
-    return { key, text: data.get(key) };
-  } finally {
-    await vite.close();
+function eventDaySave(mods, late) {
+  const state = mods.stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+  const today = state.week?.plan.find((p) => p.day === 1);
+  if (!today) throw new Error('the new game has no week plan');
+  today.event = EVENT;
+  if (late) {
+    state.money = LATE_GAME.money;
+    state.shopLevel = LATE_GAME.shopLevel;
+    state.xp = LATE_GAME.xp;
+    mods.retention.ensureRetention(state).tickets = LATE_GAME.tickets;
   }
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * Autosave one tick before the Daily Report of day 1 of the game runViewport
+ * starts (same name, difficulty and seed), with HIRES hired and the Kho
+ * suggestion bought as the panels do it, the day run by the staff alone;
+ * played by this tree's sim (playFirstDay) instead of waiting for the
+ * browser's 4x day. The browser plays that last tick itself after Tiếp tục,
+ * so the report, its autosave line and toasts come up the usual way.
+ */
+function firstDaySave(mods) {
+  const state = playFirstDay(mods, { ...NEW_GAME, seed: FIXED_NOW >>> 0, hires: HIRES });
+  const peek = structuredClone(state);
+  mods.sim.step(peek, 1);
+  const r = peek.lastReport;
+  if (peek.phase !== 'report' || !r) throw new Error('day 1 does not end on the next tick');
+  console.log(`day-1 save at ${clockOf(state.minute)}, one tick before the report: ${r.customersServed}/${r.customersArrived} khách, doanh thu ${r.revenue}, ${state.staff.length} nhân viên`);
+  return saveText(mods.save, state, FIXED_NOW);
 }
 
 /** HUD of an EVENT day (from eventDaySave) before opening, with the menu and while open. */
@@ -574,8 +589,8 @@ async function checkKhoShift(page, results, viewport) {
   });
 }
 
-/** One viewport: new game on Easy, six panels, the day at 4x, the report and its reviews tab. */
-async function runViewport(browser, viewport, overflow, shift) {
+/** One viewport: new game on Easy, six panels, the shop opened at 4x, then the day-1 report (`report` save) and its reviews tab. */
+async function runViewport(browser, viewport, overflow, shift, report) {
   const size = `${viewport.width}×${viewport.height}`;
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   await context.addInitScript(
@@ -612,17 +627,20 @@ async function runViewport(browser, viewport, overflow, shift) {
     await page.locator('.hud [data-action="open"]').click();
     await setSpeed4(page);
     await checkHud(page, overflow, size, 'HUD: mở cửa', hudRows(viewport));
-    await page.waitForFunction(
-      () => document.querySelector('.rpt-layer:not([hidden]) [data-block="money"]') && !document.querySelector('.rpt-layer:not([hidden]) [data-block="busy"]'),
-      null,
-      { timeout: DAY_TIMEOUT_MS },
-    );
-    await checkScreen(page, overflow, size, 'Daily Report', REPORT_FRAME);
-    await page.locator('.rpt-layer:not([hidden]) [data-tab="reviews"]').click();
-    await page.locator('#rpt-reviews:not([hidden])').waitFor();
-    await checkScreen(page, overflow, size, 'Đánh giá', REPORT_FRAME);
   } finally {
     await context.close();
+  }
+  // That day one tick before its end, played by the sim: after Tiếp tục the
+  // browser ends it (dayEnded, autosave) and the Daily Report comes up with its numbers and the autosave line.
+  const { context: rc, page: rp } = await resumeSave(browser, viewport, report, '.rpt-layer:not([hidden]) [data-block="money"]');
+  try {
+    await rp.waitForFunction(() => !document.querySelector('.rpt-layer:not([hidden]) [data-block="busy"]') && document.querySelector('.rpt-layer:not([hidden]) .rpt-save[role]'));
+    await checkScreen(rp, overflow, size, 'Daily Report', REPORT_FRAME);
+    await rp.locator('.rpt-layer:not([hidden]) [data-tab="reviews"]').click();
+    await rp.locator('#rpt-reviews:not([hidden])').waitFor();
+    await checkScreen(rp, overflow, size, 'Đánh giá', REPORT_FRAME);
+  } finally {
+    await rc.close();
   }
 }
 
@@ -886,11 +904,13 @@ async function main() {
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
+    const mods = part('day') || part('event') ? await loadTree() : null;
+    const report = part('day') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
       const t0 = Date.now();
       try {
-        await runViewport(browser, viewport, overflow, shift);
+        await runViewport(browser, viewport, overflow, shift, report);
         console.log(`${size} done in ${Math.round((Date.now() - t0) / 1000)} s`);
       } catch (err) {
         // The screens measured so far keep their rows; the run still fails.
@@ -907,7 +927,7 @@ async function main() {
         overflow.push({ viewport: size, screen: 'HUD', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
-    const eventSaves = part('event') ? { start: await eventDaySave(false), late: await eventDaySave(true) } : null;
+    const eventSaves = part('event') ? { start: eventDaySave(mods, false), late: eventDaySave(mods, true) } : null;
     for (const viewport of part('event') ? EVENT_DAY : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
