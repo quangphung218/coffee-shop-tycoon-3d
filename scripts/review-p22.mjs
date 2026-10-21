@@ -32,8 +32,8 @@ import { createServer as createNetServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
 import { FIXED_NOW, freeze, newContext, observeThree, startPreview, thaw, urlFor } from './capture-media.mjs';
+import { launchBrowser } from './lib/browser.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 /** Raw shots and numbers of every run, kept out of git (.gitignore). */
@@ -913,7 +913,7 @@ async function publish() {
   for (const f of ['metrics.json', 'findings.json']) {
     if (existsSync(join(OUT, f))) writeFileSync(join(DOCS, f), readFileSync(join(OUT, f)));
   }
-  const browser = await chromium.launch();
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     for (const vp of VIEWPORTS) {
@@ -994,10 +994,7 @@ async function play() {
     // A free port of its own: startPreview() would take another run's preview on a busy port for its own.
     const port = process.env.REVIEW_PORT ? Number(process.env.REVIEW_PORT) : await freePort();
     server = await startPreview(ROOT, port);
-    browser = await chromium.launch({
-      headless: process.env.MEDIA_HEADED !== '1',
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-    });
+    browser = await launchBrowser({ headless: process.env.MEDIA_HEADED !== '1' });
     const url = urlFor(port);
     if (metrics.parallel) await Promise.all(playing.map((vp) => playViewport(browser, vp, url, week)));
     else for (const vp of playing) await playViewport(browser, vp, url, week);

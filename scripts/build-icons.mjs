@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 import { createServer } from 'vite';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -84,10 +84,7 @@ async function main() {
     server: { host: '127.0.0.1', port: PORT, strictPort: true, hmr: false },
   });
   await server.listen();
-  const browser = await chromium.launch({
-    // Lets WebGL fall back to software rendering when headless Chromium has no GPU.
-    args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-  });
+  const browser = await launchBrowser();
   try {
     // Device pixel ratio 2, so the report sheet shows the @2x atlas the way a phone does.
     const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 900, height: 600 } });

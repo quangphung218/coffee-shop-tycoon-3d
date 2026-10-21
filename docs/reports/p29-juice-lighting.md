@@ -12,7 +12,7 @@ Mọi số đo làm trên commit `1fb13be` (HEAD của nhánh tích hợp P29 l�
 | Khung hình quanh hiệu ứng | `MEDIA_PORT=<cổng> npm run perf:frames -- --base 774be34 --runs 5 --headed --fx` |
 | Khung hình cảnh P29 | như trên với `--scene dusk-rain` và `--scene noon-sunny` thay cho `--fx` |
 | Save | `npx vitest run tests/save`, cộng một lượt Playwright nạp save v0–v3 vào bản build ([mục 5](#5-save-cũ)) |
-| Ảnh P29 | `MEDIA_PORT=<cổng> npm run media:p29` (tên file và save: đầu [scripts/capture-p29.mjs](../../scripts/capture-p29.mjs)) |
+| Ảnh P29 | `MEDIA_PORT=<cổng> npm run media:p29` (tên file và save: đầu [scripts/scenarios/p29.mjs](../../scripts/scenarios/p29.mjs), kịch bản của `scripts/capture.mjs`) |
 
 ## 1. Tóm tắt
 

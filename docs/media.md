@@ -4,12 +4,13 @@ Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và 
 
 ## Yêu cầu
 
-- Playwright (có sẵn trong `devDependencies`) và Chromium của nó:
+- Playwright (có sẵn trong `devDependencies`) và **Google Chrome cài sẵn**:
 
   ```sh
   npm ci
-  npx playwright install chromium
   ```
+
+  Mọi script mở Chrome qua `scripts/lib/browser.mjs` (`CHROME_PATH`, rồi các chỗ cài quen thuộc, rồi kênh `chrome` của Playwright) ở chế độ headless mới, nên WebGL chạy trên GPU (trên Mac: `ANGLE Metal Renderer`). Mỗi lượt in một dòng `browser: Chrome … WebGL: …`; dòng đó phải là GPU. Thiếu Chrome thì script rơi về Chromium headless shell của Playwright (`npx playwright install chromium`), vẽ WebGL bằng CPU (SwiftShader, chậm 3 lần và ăn 4–6 lõi) và in `!! WebGL chạy bằng CPU`: ảnh có thể thiếu khung, số đo không dùng được. `MEDIA_GPU=require` để lệnh dừng thay vì cảnh báo.
 
 - [ffmpeg](https://ffmpeg.org/) trong `PATH` để xuất GIF và mp4: macOS `brew install ffmpeg`, Debian/Ubuntu `sudo apt install ffmpeg`. Thiếu ffmpeg thì lệnh vẫn chụp ảnh PNG, bỏ qua GIF/mp4 và trả mã lỗi 1.
 - Cổng `4173` và `4174` còn trống (đổi bằng `MEDIA_PORT`; bản P18 chạy ở cổng kế tiếp).
@@ -142,6 +143,8 @@ node scripts/measure-startup.mjs --base 96030ca --runs 3 --fps-only
 | p5 FPS | FPS của khung chậm thứ 5% trong mọi khung đã lấy. |
 
 Dòng cuối so bản hiện tại với bản gốc; `!!` khi tụt quá 10%. Chrome headless cấp khung theo bội số nhịp màn hình, nên FPS từng khung chỉ ra vài mức (20, 15, 7,5…); dùng cột Average FPS để so.
+
+Lệnh giữ lockfile `cst3d-perf.lock` trong thư mục tạm của máy (`scripts/lib/perf-lock.mjs`; một file cho mọi worktree, vì chung GPU) cùng với `perf:frames`: lượt đo thứ hai, ở bất kỳ worktree nào, chờ lượt đầu xong (in `waiting for the measurement of pid …`, tối đa `PERF_LOCK_WAIT_S`, mặc định 1800 s; `PERF_LOCK_WAIT_S=0` để từ chối ngay). Hai lượt đo chạy song song giành GPU và CPU nên số đo nhiễu; đo tuần tự. Lệnh dừng khi WebGL chạy bằng phần mềm (`MEDIA_GPU=any` để đo dù vậy).
 
 ## Ảnh màn tải
 
@@ -402,14 +405,14 @@ npm run perf:frames -- --scene dusk-rain
 npm run perf:frames -- --scene noon-sunny
 ```
 
-`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--scene` nạp save ngày 2 do sim mỗi bản chơi ra (`sceneSaves()` của `scripts/capture-p29.mjs`): `dusk-rain` là 19:00 trời mưa, `noon-sunny` là 12:00 trời nắng. Sau `cst:world` lệnh bấm **Tiếp tục**, chờ 1,5 s rồi đo 5 s ngày đang chạy; không dùng chung với `--fx`. `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
+`npm run perf:frames` đo 5 s sau mốc `cst:world` trên Main Menu, và liệt kê chunk confetti hay atlas `tiers` đã tải trong lúc đó (cột cuối, phải là `none`). `--scene` nạp save ngày 2 do sim mỗi bản chơi ra (`sceneSaves()` của `scripts/lib/saves.mjs`): `dusk-rain` là 19:00 trời mưa, `noon-sunny` là 12:00 trời nắng. Sau `cst:world` lệnh bấm **Tiếp tục**, chờ 1,5 s rồi đo 5 s ngày đang chạy; không dùng chung với `--fx`. `--fx` dựng save bằng sim của mỗi bản (như `media:p25`), rồi đo 3 s quanh từng hiệu ứng ở hồ sơ máy bàn và di động:
 
 | Hiệu ứng | Cửa sổ đo |
 | --- | --- |
 | `upgrade` | Save bậc 1, mở **Nâng cấp**; 0,5 s sau khi cửa sổ bắt đầu, bấm **Mua** và xác nhận Máy espresso cao cấp. |
 | `level-up` | Save báo cáo ngày lên cấp đầu tiên; cửa sổ bắt đầu khi bấm **Tiếp tục**, báo cáo mở cùng thẻ lên cấp và confetti. |
 
-Mỗi dòng in p50, p95, khung dài nhất, số khung > 50 ms và long task (trung vị `--runs` lượt, mặc định 3). Chrome headless cấp khung theo bội số nhịp màn hình (thường 83 ms), nên p95 headless chỉ để so khoảng; thêm `--headed` để có thời gian khung thật trong cửa sổ Chrome. `--base <ref>` đo cả bản đó, hai bản xen kẽ.
+Mỗi dòng in p50, p95, khung dài nhất, số khung > 50 ms và long task (trung vị `--runs` lượt, mặc định 3). Chrome headless cấp khung theo bội số nhịp màn hình (thường 83 ms), nên p95 headless chỉ để so khoảng; thêm `--headed` để có thời gian khung thật trong cửa sổ Chrome. `--base <ref>` đo cả bản đó, hai bản xen kẽ. Lệnh giữ cùng lockfile với `measure-startup.mjs` (mục [Đo FPS](#đo-fps)): lượt đo thứ hai chờ, không chạy song song.
 
 ## Ảnh P27
 
@@ -443,13 +446,62 @@ P27_SAVES_ONLY=1 node scripts/capture-p27.mjs
 
 Chỉ chụp một khổ (lệnh ngắn hơn): `P27_WIDTHS=390 npm run media:p27`.
 
+## Kịch bản chụp
+
+Từ P29, mỗi đợt chụp là một **kịch bản**: một file dữ liệu ngắn `scripts/scenarios/<id>.mjs` nói save nào, chụp gì, bảng nào. `scripts/capture.mjs` lo phần còn lại: build và mở bản gốc, chơi save bằng sim của từng bản, mở Chrome trên GPU, nạp save qua **Tiếp tục**, chờ cảnh, chụp, vẽ bảng có khoanh và chú thích, in `ok <file> <kB>`, kết thúc với mã 1 khi có `!!`.
+
+```sh
+npm run media -- --scenario p30            # build rồi chụp kịch bản p30 (= npm run media:p30)
+node scripts/capture.mjs p29 --only coin,dusk   # không build; chỉ các bước có tag coin hoặc dusk
+node scripts/capture.mjs p30 --saves-only  # chỉ chơi và in save, không mở server hay trình duyệt
+node scripts/capture.mjs p30 --out /tmp/p30 --base abc1234 --headed
+```
+
+| Cờ | Tác dụng |
+| --- | --- |
+| `--only a,b` | Chỉ chạy các bước có tag `a` hoặc `b` (bước không tag luôn chạy); kịch bản có thể đặt biến môi trường tương đương (`P29_ONLY`). |
+| `--saves-only` | Chơi save của bản hiện tại, in tóm tắt rồi dừng (`P29_SAVES_ONLY=1`, `P30_SAVES_ONLY=1`). |
+| `--out <dir>` | Ghi ảnh vào thư mục khác (so hai lần chạy). |
+| `--base <ref>` | Commit "trước" thay cho commit kịch bản ghi. |
+| `--headed` | Mở cửa sổ Chrome (`MEDIA_HEADED=1`). |
+
+Một kịch bản xuất `default { id, out, base, tags, saves(mods, { isBase, only }), steps }`:
+
+- `saves()` nhận module sim của bản (`stateMod`, `sim`, `orders`, `save`, `menu`, nạp qua vite) và trả `{ saves: { <tên>: { key, text } }, info }`. Các hàm chơi ván nằm ở `scripts/lib/saves.mjs` (`playToScene`, `playToLevelUp`, `playToReport`, `openNextMorning`, `saveText`, `loadSave`); kịch bản chỉ sửa state (đặt `speed`, `shopLevel`, kiên nhẫn khách…) rồi `saveText`.
+- `steps` chạy theo thứ tự. Bốn loại bước:
+
+| Bước | Trường | Kết quả |
+| --- | --- | --- |
+| `shot` | `shot` (kiểu), `build` (`cur`/`base`), `save`, `viewport`, `dpr`, `quality`, `speed`, `opts`, `errors: true` để gom lỗi console, `from: 'base'` để nạp save của bản kia | Một ảnh `png` (Buffer) hay `file` cùng số đo |
+| `pair` | như `shot`, chụp bản hiện tại (`after`) rồi bản gốc (`before`) cùng số giây sau Tiếp tục, cùng điểm camera; `need(after)` quyết định có chụp bản gốc không | `{ after, before }` |
+| `board` | `file`, `width`, `fit`, `rows` (mảng hay hàm của ctx), `notes`, `when` | JPEG ghép: mỗi hàng có `crop`, `dpr`, `clampRings`, `panels` (`png`/`jpeg`, `title`, `caption`, `boxes`); chuỗi `title`/`caption` thay `{head}`, `{after.clock}`… theo ctx |
+| `check` | `run(ctx)` | Tuỳ ý; `ctx.evaluate(fn, arg)` chạy một hàm trên trang trống (đo độ sáng khung…) |
+
+  Mỗi bước có thể thêm `id` (kết quả vào `ctx.results[id]`), `tags`, `relaunch: true` (mở trình duyệt mới trước bước), `log(r, ctx)` (dòng tiến độ) và `check(r, ctx)` (chuỗi `!!`).
+
+- Kiểu shot (`scripts/lib/shots.mjs`), mỗi kiểu kèm hook trang riêng (`scripts/lib/probes.mjs`):
+
+| Kiểu | Chụp gì | `opts` |
+| --- | --- | --- |
+| `scene` | Quán đang chạy sau `settleMs`; đọc đồng hồ HUD và ánh sáng | `settleMs`, `file` (JPEG) |
+| `emote` (cặp) | Chờ đồng hồ HUD chạy (cảnh báo nếu đứng 15 s), chờ biểu cảm `emote` hiện (với `mood` + `marks`: chỉ trên mặt đúng tâm trạng), giữ đồng hồ trang ở khung đó, camera phóng quanh nó; bản gốc chụp khi HUD tới cùng giờ | `emote`, `waitMs`, `ppm`, `scan` (màu biểu cảm, đồng phục, `faceInk`), `marks` (`faceMarks(rig)`), `mood`, `popFrames` |
+| `team` (cặp) | Đội mặc đồng phục, khoanh từng người; bản gốc lấy người gần nhất mỗi chỗ | `settleMs`, `ppm`, `scan` |
+| `panel` | Mở bảng dock, cuộn (`'end'`, `{ into }`, `{ top, text, fallback }`), đo khung (`box.union`, `box.section`), đọc DOM (`read`) | `panel`, `scroll`, `box`, `read` |
+| `toast` (cặp) | Chờ toast khớp `match` | `match`, `waitMs` |
+| `coin` | Dừng đồng hồ trang ở khung xu hiện, chạy từng khung tới các tuổi | `ages`, `fps`, `ppm`, `waitMs` |
+| `dusk` | Cảnh chạng vạng: ánh sáng, vũng sáng, bóng một vật bên đường | `settleMs`, `shadow` |
+| `levelup` | Thẻ Lên cấp của Daily Report, khoanh, ghi `file` | `file`, `settleMs` |
+| `clock` | Đồng hồ HUD lúc cảnh sẵn sàng và sau `waitMs` (save cũ còn chạy không) | `waitMs` |
+
+Đợt chụp mới: chép `scripts/scenarios/p30.mjs` làm mẫu, giữ lại các bước cần, đổi save và chú thích; thiếu kiểu shot thì thêm vào `scripts/lib/shots.mjs` (một hàm `(page, t0, opts)`), không viết `capture-pNN.mjs` mới. `tests/scripts/capture.test.ts` kiểm mọi kịch bản nạp được và chỉ dùng kiểu shot có thật.
+
 ## Ảnh P29
 
 ```sh
-MEDIA_PORT=4180 npm run media:p29
+MEDIA_PORT=4200 npm run media:p29
 ```
 
-Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc định `$PORT`, rồi `4173`), rồi `scripts/capture-p29.mjs` chụp bằng Chromium headless. Hai bảng trước/sau xuất bản gốc `774be34` ra thư mục tạm, build và mở ở cổng kế tiếp. Chỗ đổi khoanh đỏ, chú thích xuống dòng trong ảnh. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `774be34`.
+Kịch bản `scripts/scenarios/p29.mjs`. Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc định `$PORT`, rồi `4173`), rồi chụp bằng Chrome headless. Hai bảng trước/sau xuất bản gốc `774be34` ra thư mục tạm, build và mở ở cổng kế tiếp. Chỗ đổi khoanh đỏ, chú thích xuống dòng trong ảnh. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `774be34`.
 
 1. Sim của mỗi bản chơi ván Vừa (seed `MEDIA_SEED >>> 0`, tuyển 1 pha chế và 1 phục vụ ngày 1, tự phục vụ) hết ngày 1, rồi mở ngày 2 với thời tiết của ảnh và chơi tới giờ của ảnh. Save báo cáo lấy ngày lên cấp đầu tiên. Save nạp qua **Tiếp tục**, game chạy 1x nên HUD trong ảnh chạy trước giờ đặt vài phút.
 2. Mỗi khổ 390×844 và 1280×800, mỗi giờ 07:00, 12:00, 19:30, trời nắng và mưa, mức Cao và Thấp: chờ 2,5 s rồi chụp. Lệnh in giờ HUD và tổng sáng của từng ảnh.
@@ -472,21 +524,21 @@ Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc đ�
 
 | Lệnh | Việc |
 | --- | --- |
-| `P29_ONLY=coin npm run media:p29` | Chỉ chụp bảng đồng xu. |
+| `P29_ONLY=coin npm run media:p29` (hay `node scripts/capture.mjs p29 --only coin`) | Chỉ chụp bảng đồng xu; tag: `scenes`, `coin`, `dusk`, `levelup`. |
 | `P29_ONLY=dusk npm run media:p29` | Chỉ chụp bảng 19:30 trước/sau. |
-| `P29_SAVES_ONLY=1 node scripts/capture-p29.mjs` | Chỉ chơi và in các save, không mở server hay trình duyệt. |
+| `P29_SAVES_ONLY=1 node scripts/capture.mjs p29` | Chỉ chơi và in các save, không mở server hay trình duyệt. |
 
 ## Ảnh P30
 
 ```sh
-MEDIA_HEADED=1 MEDIA_PORT=4180 npm run media:p30
+MEDIA_PORT=4200 npm run media:p30
 ```
 
-Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1` cho toast khách quen và ảnh bản gốc của biểu cảm: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
+Kịch bản `scripts/scenarios/p30.mjs`. Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi chụp trước/sau bằng Chrome headless trên GPU (không cần `MEDIA_HEADED=1` nữa: Chromium của Playwright vẽ bằng CPU mới thiếu khung). Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
 
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi sửa giống nhau ở hai bản: mọi order đang mở thành sẵn sàng (tim), khách đang chờ còn 30% kiên nhẫn (giọt mồ hôi), nguyên liệu món của một khách đang xếp hàng về 0 (đám mây), cấp quán 5 với bộ latte (đội), lúc mở cửa ngày 3 (toast), sáng ngày 4 với cấp quán 3 và bộ bạc hà (hai bảng).
-2. Biểu cảm (tim ở tốc độ x4, giọt mồ hôi và mây ở x1): khi cảnh hiện sau **Tiếp tục** và đồng hồ HUD đã chạy, script giữ đồng hồ trang rồi đẩy từng khung 1/60 s tới khi biểu cảm hiện (tối đa 9000 khung; đám mây phải kèm mặt buồn), camera phóng quanh biểu cảm. Bản gốc chạy theo đồng hồ thật và chụp khi đồng hồ HUD tới giờ của ảnh bản hiện tại, camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt.
-3. Toast (x4): bản hiện tại chờ toast khách quen tối đa 40 s theo đồng hồ thật; bản gốc chụp cùng số giây sau **Tiếp tục**.
+2. Biểu cảm (tim và mây ở tốc độ x4, giọt mồ hôi x1): sau **Tiếp tục**, kịch bản chờ đồng hồ HUD chạy (đứng 15 s thì `!!`), chờ biểu cảm hiện tối đa 40 s theo giờ thật; đám mây chỉ nhận khi mặt khách dưới nó là mặt buồn (so với dấu mặt `faceMarks` của rig bản hiện tại). Thấy rồi thì giữ đồng hồ trang ở khung đó, đẩy vài khung 1/60 s cho tim hay mây nở, phóng camera, vẽ một khung rồi chụp. Bản gốc chạy theo giờ thật và chụp khi đồng hồ HUD tới giờ của ảnh bản hiện tại (30 s không tới thì `!!`), camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt buồn.
+3. Toast (x4): bản hiện tại chờ toast khách quen tối đa 40 s theo giờ thật; bản gốc chụp cùng số giây sau **Tiếp tục**.
 4. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
 
 Ảnh JPEG trong `docs/reports/p30-characters/`, ghi đè mỗi lần chạy:
@@ -498,13 +550,13 @@ Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạ
 | `uniform-picker-390-before-after-p30.jpg` | Mục Đồng phục của bảng Nhân viên ở 390×844: đang mặc, mở, khoá. |
 | `regulars-390-before-after-p30.jpg` | Thẻ Khách quen của bảng Việc và toast khách quen ghé, 390×844. |
 
-Trước khi mở trình duyệt, script nạp lại save đám mây và chạy nó trong Node ở x1 theo khung 60 fps; dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
+Trước khi mở trình duyệt, kịch bản nạp lại save đám mây và chạy nó trong Node ở x4 theo khung 60 fps (`cloudCheck`, có test trong `tests/scripts/p30-cloud.test.ts`; dấu mặt `faceMarks`/`matchMood` ở `scripts/lib/probes.mjs` cũng có test ở đó); dòng tóm tắt save ghi giờ khách bỏ đi (`sim: walk-out at 12:05`).
 
-Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, khi ảnh đám mây không có mặt buồn, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi số khung đã đẩy và đồng hồ HUD đầu, cuối lượt chờ.
+Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, khi sim không cho ai bỏ đi ở save đám mây, khi ảnh đám mây không có mặt buồn, khi đồng hồ HUD của bản gốc không tới giờ của ảnh, hoặc save cũ nạp lỗi. Có `!!` thì lệnh kết thúc với mã 1 và dòng cuối ghi các phần bị `!!`; chạy lại tới khi sạch rồi mới dùng ảnh. Biểu cảm không hiện thì dòng `!!` ghi đồng hồ HUD đầu và cuối lượt chờ, số khung trang đã vẽ, số lần biểu cảm hiện rồi mất trước lúc chụp và số lần mây hiện trên mặt không buồn. Khi scan thấy biểu cảm, shot `emote` **giữ đồng hồ trang** ở khung đó (`clockHooks` trong `scripts/lib/probes.mjs`: `performance.now` đứng, `requestAnimationFrame` xếp hàng), chạy thêm vài khung 1/60 s cho tim hay mây nở hết, phóng camera, vẽ đúng một khung rồi chụp, sau đó thả đồng hồ; nhờ vậy đám mây (khách bỏ đi ngay sau đó) cũng chụp được, không còn phụ thuộc tốc độ máy. Dòng tiến độ của mây ghi mặt dưới nó ở cả hai bản (`faces: sad (9f662fd: neutral)`).
 
 | Lệnh | Việc |
 | --- | --- |
-| `P30_SAVES_ONLY=1 node scripts/capture-p30.mjs` | Chỉ chơi và in tóm tắt save của bản hiện tại (gồm kiểm save đám mây), không mở server hay trình duyệt; có `!!` thì mã 1. |
+| `P30_SAVES_ONLY=1 node scripts/capture.mjs p30` | Chỉ chơi và in tóm tắt save của bản hiện tại (gồm kiểm save đám mây), không mở server hay trình duyệt; có `!!` thì mã 1. |
 
 ## Tùy chọn
 
@@ -512,7 +564,10 @@ Trước khi mở trình duyệt, script nạp lại save đám mây và chạy 
 | --- | --- | --- |
 | `MEDIA_SEED` | `1760400000000` | Giá trị `Date.now()` cố định trong trang, quyết định seed của ván mới. |
 | `MEDIA_PORT` | `4173` | Cổng của `vite preview` cho bản hiện tại; bản P18 dùng cổng kế tiếp. |
-| `MEDIA_HEADED` | (trống) | `1` để mở cửa sổ Chromium thật, dùng GPU nên hình mượt hơn. |
+| `MEDIA_HEADED` | (trống) | `1` để mở cửa sổ Chrome thật thay vì headless (headless cũng đã dùng GPU). |
+| `CHROME_PATH` | (trống) | Đường dẫn Chrome/Chromium cho mọi script; trống thì tìm ở các chỗ cài quen thuộc, rồi kênh `chrome` của Playwright. |
+| `MEDIA_GPU` | (trống) | `require`: lệnh dừng khi WebGL chạy bằng phần mềm; `any`: `perf:frames` và `measure-startup` vẫn đo dù vậy. |
+| `PERF_LOCK_WAIT_S` | `1800` | Số giây `perf:frames`/`measure-startup` chờ lượt đo khác xong; `0` để từ chối ngay. |
 | `P20_BASE` | `96030ca` | Commit "trước" mà `npm run media:p20` so với bản hiện tại. |
 | `P21_BASE` | `77c8387` | Commit "trước" mà `npm run media:p21` so với bản hiện tại. |
 | `P21_SEED` | `12345` | Seed của tuần mà `npm run media:p21` chơi để dựng ván. |
@@ -535,11 +590,11 @@ Trước khi mở trình duyệt, script nạp lại save đám mây và chạy 
 | `P29_BASE` | `774be34` | Commit "trước" của bảng đồng xu và bảng 19:30 trong `npm run media:p29`. |
 | `P29_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p29` chơi trên sim mỗi bản. |
 | `P29_ONLY` | (trống) | `coin` hoặc `dusk` để `npm run media:p29` chỉ chụp một bảng trước/sau. |
-| `P29_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p29.mjs` chỉ chơi ván, in các save rồi dừng. |
+| `P29_SAVES_ONLY` | (trống) | `1` để kịch bản p29 chỉ chơi ván, in các save rồi dừng (`--saves-only`). |
 | `P30_BASE` | `9f662fd` | Commit "trước" mà `npm run media:p30` so với bản hiện tại. |
 | `P30_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p30` chơi trên sim mỗi bản. |
-| `P30_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p30.mjs` chỉ chơi ván, in tóm tắt save rồi dừng. |
-| `MEDIA_CHROMIUM` | (trống) | `1` để `scripts/capture-p25.mjs` dùng Chromium của Playwright thay cho Chrome cài sẵn. |
+| `P30_SAVES_ONLY` | (trống) | `1` để kịch bản p30 chỉ chơi ván, in tóm tắt save rồi dừng (`--saves-only`). |
+| `MEDIA_CHROMIUM` | (trống) | `1` để mọi script dùng Chromium headless shell của Playwright (WebGL bằng CPU) thay cho Chrome cài sẵn, ví dụ để lặp lại một lượt chạy cũ. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
 
@@ -550,13 +605,16 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 | Triệu chứng | Cách xử lý |
 | --- | --- |
 | `Cannot find package 'playwright'` | Chạy `npm ci`. |
-| `Executable doesn't exist` | Chạy `npx playwright install chromium`. |
+| `Executable doesn't exist` | Không có Chrome cài sẵn và chưa có Chromium của Playwright: cài Google Chrome (hoặc đặt `CHROME_PATH`), hoặc `npx playwright install chromium` (vẽ bằng CPU). |
+| `!! WebGL chạy bằng CPU (SwiftShader)` | Script không tìm thấy Chrome nên dùng Chromium của Playwright: cài Google Chrome hoặc đặt `CHROME_PATH`; ảnh và số đo của lượt đó không dùng. Có Chrome mà vẫn `!!`: máy không có GPU dùng được. |
+| `another measurement is running: pid …` | Một lượt `perf:frames`/`measure-startup` khác đang chạy; chờ nó xong (lệnh tự chờ tới `PERF_LOCK_WAIT_S`). Lock của tiến trình đã chết được lấy lại tự động. |
+| `port 4190 is one fetch refuses` | Cổng nằm trong danh sách cổng cấm của `fetch` (4045, 4190, 5060, 6000…); đặt `MEDIA_PORT=4200`. |
 | `git archive d643d89 failed` hoặc `git show d643d89:docs/media/… failed` | Bản clone nông thiếu commit P18; chạy `git fetch --unshallow`. |
 | `vite build of d643d89 failed` | `node_modules` hiện tại không build được bản P18; chạy `npm ci` rồi thử lại. |
 | `!! kho-390-p18-p19.png: P19 still has content past the panel edge` | Bảng Kho lại tràn ngang; chạy `npm run layout` để biết phần tử nào. |
-| `no three.js camera seen on #scene` | Three.js không còn gọi `__THREE_DEVTOOLS__`; sửa `observeThree()` trong `scripts/capture-media.mjs`. |
-| `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng (cả cổng kế tiếp) hoặc đặt `MEDIA_PORT=4180`. |
-| Hết thời gian chờ báo cáo, hình giật | Chromium headless đang vẽ WebGL bằng phần mềm; chạy với `MEDIA_HEADED=1`. |
+| `no three.js camera seen on #scene` | Three.js không còn gọi `__THREE_DEVTOOLS__`; sửa `observeThree()` trong `scripts/lib/capture.mjs`. |
+| `vite preview exited (port 4173 busy?)` | Tắt server đang dùng cổng (cả cổng kế tiếp) hoặc đặt `MEDIA_PORT=4200`. |
+| Hết thời gian chờ báo cáo, hình giật, đồng hồ game đứng | Xem dòng `browser: … WebGL: …` đầu lượt: `SwiftShader` là đang vẽ bằng CPU; cài Chrome hoặc đặt `CHROME_PATH`. |
 | Hết thời gian chờ một nút hay `[data-…]` | Giao diện đã đổi nhãn hoặc thuộc tính; sửa selector trong `scripts/capture-media.mjs`. Script bấm nút theo nhãn (**Ván mới**, **Bắt đầu ngày 1**, `Thêm 1 gói <nguyên liệu>`), bảng theo `.dock [data-panel]`, và nút theo `data-action`, `data-speed`, `data-tab`. |
 | `npm run media:p20` cảnh báo `!!` hoặc thiếu khung | Giao diện P20 đã đổi; sửa selector đo trong `scripts/capture-p20.mjs` (`.hud-level`, `.dock-sep`, `.mission`, `.item.is-locked`, `[data-block="money"]`, `[data-block="level-up"]`, `.rpt-tab[data-tab="insights"]`, `.rpt-kpis`, `[data-setting="reducedMotion"]`, `details.keys-details`, các `.section-title` theo chữ). Cận cảnh 3D dựa vào nhóm `machine-steam` và thứ tự khối của nhân vật trong `src/render/actors/rig.ts` (xem `aimAt()`). |
 | `npm run media:p21` cảnh báo `!!` hoặc hết thời gian chờ | Giao diện tuần đã đổi; sửa selector trong `scripts/capture-p21.mjs` (`.hud-week`, `.week-today`, `[data-week="unlocks"]`, `[data-remove]`, `[data-policy="price"]`, `[data-action="week-end"]`, `[data-screen="weekEnd"] [data-block]`, `section.playlog`) hoặc nhãn nút **Về Main Menu**. |
@@ -575,7 +633,7 @@ Seed cố định nhưng sim chạy theo khung hình thật, nên đám đông v
 npm run layout
 ```
 
-Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. HUD được đo lúc Chuẩn bị, lúc mở menu camera và lúc mở cửa (thêm khổ 1280×800 chỉ đo HUD): đủ 3 cụm, nằm trong màn, không chồng nhau, nội dung không lòi khỏi khung, 1 hàng từ 1280 px trở lên (3 cụm cùng mép trên và chiều cao), tối đa 2 hàng ở khổ hẹp hơn, cụm Điều khiển luôn bắt đầu ở hàng đầu. Phép đo HUD chạy lại trên ngày có sự kiện "Tăng giá nhập" với số liệu ván mới ở 390×844, và với số liệu cuối game (109.582.093đ, 2 Tem, Cấp 5) ở 390×844, 1100×800, 1280×800, 1440×900. Ở 390×844, 768×1024, 1280×720 và 1440×900, lệnh còn nạp save của `scripts/capture-p25.mjs`: Menu sáng ngày 3 sau khi bấm công tắc Nước cam (thiếu Cam) và Daily Report của ngày lên cấp đầu tiên; cả hai không được tràn, mọi nút ≥ 44 px (tính cả vùng chạm `::before`); ở 390 px dòng Menu bán được ≤ 72 px, dòng thiếu hàng ≤ 96 px; ở 1280×720 báo cáo có thẻ lên cấp vừa một màn. Ở cùng bốn khổ, lệnh nạp save của `scripts/capture-p27.mjs`: bảng Việc lúc 09:00 ngày 3 với thành tựu đã sổ ra, bảng Nhân viên với xác nhận Đào tạo đang mở, bảng Nâng cấp ở cấp quán 10; mỗi bảng không được tràn, phải hiện thẻ quà, đơn đặc biệt, thành tựu (Việc), chip đặc điểm, thanh KN, xác nhận (Nhân viên), ít nhất 2 dòng giá có Tem (Nâng cấp), và mọi nút ≥ 44 px. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chromium thật. Kết quả gần nhất: [reports/p27-retention.md](reports/p27-retention.md#2-kết-quả-kiểm).
+Lệnh build, mở `vite preview` ở cổng `4173` (đổi bằng `LAYOUT_PORT`), rồi `scripts/check-layout.mjs` chơi ván mới ở 390×844, 768×1024, 1440×900: mở 6 bảng trên dock, một ngày ở 4x, Daily Report và tab Đánh giá. Mỗi màn đạt khi không khung cuộn nào có `scrollWidth > clientWidth` và không phần tử nào lệch khỏi mép bảng. Ở bảng Kho, lệnh đổi số gói 4 lần và đòi CLS = 0, khung tổng và danh sách hàng không xê dịch. HUD được đo lúc Chuẩn bị, lúc mở menu camera và lúc mở cửa (thêm khổ 1280×800 chỉ đo HUD): đủ 3 cụm, nằm trong màn, không chồng nhau, nội dung không lòi khỏi khung, 1 hàng từ 1280 px trở lên (3 cụm cùng mép trên và chiều cao), tối đa 2 hàng ở khổ hẹp hơn, cụm Điều khiển luôn bắt đầu ở hàng đầu. Phép đo HUD chạy lại trên ngày có sự kiện "Tăng giá nhập" với số liệu ván mới ở 390×844, và với số liệu cuối game (109.582.093đ, 2 Tem, Cấp 5) ở 390×844, 1100×800, 1280×800, 1440×900. Ở 390×844, 768×1024, 1280×720 và 1440×900, lệnh còn nạp save của `scripts/capture-p25.mjs`: Menu sáng ngày 3 sau khi bấm công tắc Nước cam (thiếu Cam) và Daily Report của ngày lên cấp đầu tiên; cả hai không được tràn, mọi nút ≥ 44 px (tính cả vùng chạm `::before`); ở 390 px dòng Menu bán được ≤ 72 px, dòng thiếu hàng ≤ 96 px; ở 1280×720 báo cáo có thẻ lên cấp vừa một màn. Ở cùng bốn khổ, lệnh nạp save của `scripts/capture-p27.mjs`: bảng Việc lúc 09:00 ngày 3 với thành tựu đã sổ ra, bảng Nhân viên với xác nhận Đào tạo đang mở, bảng Nâng cấp ở cấp quán 10; mỗi bảng không được tràn, phải hiện thẻ quà, đơn đặc biệt, thành tựu (Việc), chip đặc điểm, thanh KN, xác nhận (Nhân viên), ít nhất 2 dòng giá có Tem (Nâng cấp), và mọi nút ≥ 44 px. Lệnh in bảng PASS/FAIL và trả mã lỗi 1 khi có FAIL; `LAYOUT_HEADED=1` mở cửa sổ Chrome thật. Lệnh chạy Chrome headless trên GPU (dòng `browser:` đầu lượt), hết khoảng 4 phút; với Chromium của Playwright (WebGL bằng CPU) mất gấp đôi và ăn 4–6 lõi. Kết quả gần nhất: [reports/p27-retention.md](reports/p27-retention.md#2-kết-quả-kiểm).
 
 Chạy từng phần khi cả lượt dài quá giới hạn lệnh (`npm run build` một lần trước):
 

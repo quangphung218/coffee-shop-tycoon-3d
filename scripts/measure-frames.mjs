@@ -17,7 +17,10 @@
 // long tasks inside the window. Profiles match scripts/measure-startup.mjs:
 // desktop, and mobile (150 ms RTT, 1.6 Mbps, CPU 4x). Runs take turns
 // between builds so drift spreads over both. Runs the installed Chrome
-// ($CHROME_PATH, else the usual install locations) so WebGL uses the GPU.
+// (scripts/lib/browser.mjs: $CHROME_PATH, else the usual install locations)
+// so WebGL uses the GPU, and refuses software WebGL unless MEDIA_GPU=any.
+// Holds the machine's perf lock (scripts/lib/perf-lock.mjs): a second
+// measurement, in any worktree, waits for this one, so they never share the GPU.
 // Each run also lists the confetti chunk and `tiers` atlas files requested
 // before the window ends: the Main Menu must not load them.
 //
@@ -33,16 +36,17 @@
 //
 // --scene <id> measures a P29 scene instead: 'dusk-rain' (rainy day, 19:00,
 // customers in the shop) or 'noon-sunny' (12:00, sunny), from a save each
-// build's sim writes (scripts/capture-p29.mjs sceneSaves). After cst:world it
+// build's sim writes (scripts/lib/saves.mjs sceneSaves). After cst:world it
 // presses Tiếp tục, waits SCENE_SETTLE_MS for the camera and the weather to
 // set in and records SCENE_WINDOW_MS of the running day.
-import { existsSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
 import { buildRef, startPreview, urlFor } from './capture-media.mjs';
-import { SCENES, SCENE_IDS } from './capture-p29.mjs';
+import { SCENES, SCENE_IDS, sceneSaves } from './lib/saves.mjs';
+import { launchBrowser } from './lib/browser.mjs';
+import { acquirePerfLock } from './lib/perf-lock.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.MEDIA_PORT ?? process.env.PORT ?? 4173);
@@ -158,40 +162,6 @@ export function parseArgs(argv) {
   }
   if (args.fx && args.scene) throw new Error('--fx and --scene measure different windows; pick one');
   return args;
-}
-
-/**
- * Installed Chrome, as in measure-startup.mjs: Playwright's own headless
- * Chromium draws WebGL in software (SwiftShader), which makes every frame
- * slow and hides the hitches this script looks for.
- */
-function findChrome() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ];
-  const found = candidates.find((p) => p && existsSync(p));
-  if (!found) throw new Error('Chrome not found; set CHROME_PATH');
-  return found;
-}
-
-/** WebGL renderer string of a blank page, e.g. "ANGLE (Apple, ANGLE Metal Renderer: Apple M2…)". */
-async function gpuName(browser) {
-  const page = await browser.newPage();
-  try {
-    return await page.evaluate(() => {
-      const gl = document.createElement('canvas').getContext('webgl2');
-      if (!gl) return 'no WebGL2';
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      return gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
-    });
-  } finally {
-    await page.close();
-  }
 }
 
 /** Frame intervals of rAF timestamps (the first one counted from the mark). */
@@ -413,6 +383,8 @@ async function main() {
   const temps = [];
   const servers = [];
   let browser = null;
+  // Playing the saves and building take CPU too, so the lock comes first.
+  const lock = await acquirePerfLock(ROOT, { label: `measure-frames ${process.argv.slice(2).join(' ')}` });
   try {
     if (args.base) {
       console.error(`Building ${args.base}…`);
@@ -431,7 +403,6 @@ async function main() {
       }
     }
     if (args.scene) {
-      const { sceneSaves } = await import('./capture-p29.mjs');
       for (const b of builds) {
         console.error(`Playing the ${args.scene} save of ${b.label}…`);
         const s = await sceneSaves(b.root, [{ id: args.scene, ...SCENES[args.scene] }]);
@@ -443,19 +414,15 @@ async function main() {
       servers.push(await startPreview(b.root, PORT + i));
       b.url = urlFor(PORT + i);
     }
-    browser = await chromium.launch({
-      executablePath: findChrome(),
-      headless: !args.headed,
-      args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'],
-    });
-    const gpu = await gpuName(browser);
+    browser = await launchBrowser({ headless: !args.headed, requireGpu: process.env.MEDIA_GPU !== 'any', log: (line) => console.error(line) });
+    const gpu = browser.gpu;
     const windowText = args.fx
       ? `${FX_WINDOW_MS / 1000} s around each effect`
       : args.scene
         ? `${SCENE_WINDOW_MS / 1000} s of ${args.scene}, ${SCENE_SETTLE_MS / 1000} s after Tiếp tục`
         : `${WINDOW_MS / 1000} s after cst:world`;
     console.log(`Chrome ${browser.version()}${args.headed ? ' (headed)' : ' (headless)'}, WebGL: ${gpu}, ${VIEW.width}×${VIEW.height}, ${windowText}, ${args.runs} runs per cell (median)\n`);
-    if (/swiftshader|llvmpipe|software/i.test(gpu)) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
+    if (browser.softwareGl) console.log('!! WebGL runs in software: every frame is CPU-bound, frame times say nothing about hitches.\n');
     if (args.fx) {
       await runFx(browser, builds, args.runs);
       return;
@@ -488,6 +455,7 @@ async function main() {
     await browser?.close();
     for (const s of servers) s.kill();
     for (const t of temps) rmSync(t, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    lock.release();
   }
 }
 

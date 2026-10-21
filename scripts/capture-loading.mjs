@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser } from './lib/browser.mjs';
 import { newContext, OUT, PHONE, startPreview, urlFor } from './capture-media.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -112,7 +112,7 @@ function entryScript() {
 
 async function main() {
   const server = await startPreview(ROOT, PORT);
-  const browser = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+  const browser = await launchBrowser();
   try {
     const entry = entryScript();
     // 1–3: boot, menu and New Game while three.js is held back.
