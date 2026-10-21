@@ -16,8 +16,9 @@
 // ready for the heart, low patience for the sweat drop, the ingredients of a
 // queued customer's drink at 0 for the cloud (out of stock at the order),
 // shop level 5 and 'latte' for the team, the opening of day 3 for the toast,
-// shop level 3 and 'mint' with the day-4 morning for the panels. The heart,
-// cloud and toast run at game speed FAST. The working tree is shot first and
+// shop level 3 and 'mint' with the day-4 morning for the panels. The heart
+// and toast run at game speed FAST; the cloud at 1x, as at FAST the customer
+// reaches the door a moment after it pops up. The working tree is shot first and
 // the base gets the same rings. The emotes run on a held page clock (as the
 // coin board of capture-p29.mjs): held once the scene shows after Tiếp tục,
 // then stepped 1/60 s a frame until the emote is up (the cloud over a sad
@@ -29,7 +30,7 @@
 // into the working-tree build and checks the clock runs with no error that
 // the working tree's own save does not have.
 // Before the browser, the cloud save is loaded back and played in Node at
-// FAST in 60 fps frames; the summary gives the minute of the walk-out.
+// its own speed in 60 fps frames; the summary gives the minute of the walk-out.
 // P30_SAVES_ONLY=1 plays the working tree's saves and stops.
 // Prints `!!` for an emote, team, section, card or toast that never showed,
 // a cloud save nobody walks out of, a cloud shot without a sad face, or a
@@ -62,10 +63,10 @@ const SETTLE_MS = 2500;
 const WAIT_MS = 40_000;
 /** Frame rate of the stepped page clock of the emote shots. */
 const EMOTE_FPS = 60;
-/** Most stepped frames to wait for an emote (20 s of page time). */
-const EMOTE_MAX_FRAMES = 20 * EMOTE_FPS;
-/** Stepped frames between two looks for an emote. */
-const EMOTE_STEP = 2;
+/** Most stepped frames to wait for an emote (150 s of page time, 5 game minutes at 1x). */
+const EMOTE_MAX_FRAMES = 150 * EMOTE_FPS;
+/** Stepped frames between two looks for an emote, well under the 1,2 s a heart shows. */
+const EMOTE_STEP = 10;
 /** Stepped frames from first sight to the shot: hearts and clouds pop in first (0,25 s). */
 const EMOTE_POP = 15;
 /** Camera zoom round an emote and round the team, CSS px per metre. */
@@ -75,7 +76,9 @@ const TEAM_PPM = 95;
 const FAST = 4;
 /** Game minutes per real second (GAME_MINUTES_PER_SECOND in src/main.ts). */
 const GAME_MINUTES_PER_SECOND = 2;
-/** Game minutes the Node check of the cloud save plays, at FAST in 60 fps frames. */
+/** Game speed of the cloud save: at FAST the customer walks out of view a moment after the cloud pops up. */
+const CLOUD_SPEED = 1;
+/** Game minutes the Node check of the cloud save plays, at CLOUD_SPEED in 60 fps frames. */
 const CLOUD_CHECK_MINUTES = 30;
 /** Patience left in the sweat save, a share of the most (impatient below 0.4). */
 const SWEAT_PATIENCE = 0.3;
@@ -145,7 +148,7 @@ const noonOf = (mods) => playToScene(mods, { weather: 'sunny', minute: 12 * 60 }
 
 /**
  * Loads the cloud save back as Tiếp tục does and plays it as the browser
- * would, at FAST in 60 fps frames, for CLOUD_CHECK_MINUTES. Returns the game
+ * would, at CLOUD_SPEED in 60 fps frames, for CLOUD_CHECK_MINUTES. Returns the game
  * minute of the first walk-out over an empty stock (a cloud) and the clock at
  * the end; `at` is null when nobody walked out.
  */
@@ -155,7 +158,7 @@ export function cloudCheck(mods, save, { key, text }) {
   const r = save.loadGame('auto', storage);
   if (!r.ok) throw new Error(`cloud save: does not load back: ${r.error.message}`);
   const s = r.value;
-  const dt = (1 / 60) * GAME_MINUTES_PER_SECOND * FAST;
+  const dt = (1 / 60) * GAME_MINUTES_PER_SECOND * CLOUD_SPEED;
   for (let f = 0; f < CLOUD_CHECK_MINUTES / dt; f++) {
     s.events = [];
     mods.sim.step(s, dt);
@@ -200,7 +203,7 @@ export function buildSaves(mods, save, p30) {
     const line = cloud.inventory.find((i) => i.id === need.id);
     if (line) line.qty = 0;
   }
-  cloud.speed = FAST;
+  cloud.speed = CLOUD_SPEED;
   put('cloud', cloud);
   const check = cloudCheck(mods, save, out.cloud);
   const cloudAt = check.at === null ? `no walk-out by ${clockOf(check.end)}` : `walk-out at ${clockOf(check.at)}`;
@@ -736,7 +739,7 @@ async function emoteBoard(browser, cur, base, head) {
   const rows = [];
   const notes = [];
   for (const kind of ['heart', 'sweat', 'cloud']) {
-    const speed = kind === 'sweat' ? 1 : FAST;
+    const speed = { heart: FAST, sweat: 1, cloud: CLOUD_SPEED }[kind];
     const errors = [];
     const after = await session(browser, cur.url, cur.saves[kind], DESK, (p) => emoteAfter(p, kind, cur.marks), { speed, errors, stepped: true });
     if (!after?.box) {
@@ -765,7 +768,7 @@ async function emoteBoard(browser, cur, base, head) {
     notes.push(`${EMOTE_NAMES[kind]}: chụp ở khung thứ ${after.frames} (${sec} s đồng hồ trang) sau khi giữ đồng hồ, ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
   }
   if (rows.length === 0) return null;
-  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi cảnh hiện sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim và mây chạy tốc độ x${FAST}.`);
+  notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi cảnh hiện sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim chạy tốc độ x${FAST}, giọt mồ hôi và mây x1.`);
   return writeBoard(browser, 'emotes-before-after-p30.jpg', rows, notes, 1500);
 }
 
