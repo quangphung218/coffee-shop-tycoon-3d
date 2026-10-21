@@ -3,9 +3,9 @@
   "cell": 48,
   "gap": 2,
   "columns": 6,
-  "rows": 5,
+  "rows": 6,
   "width": 302,
-  "height": 330,
+  "height": 406,
   "scales": [
     1,
     2
@@ -190,192 +190,240 @@
       "y": 202,
       "w": 48,
       "h": 48
+    },
+    "i-cold-brew-tower-t2": {
+      "x": 2,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-cold-brew-tower-t3": {
+      "x": 52,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-oven-t2": {
+      "x": 102,
+      "y": 252,
+      "w": 48,
+      "h": 48
+    },
+    "i-oven-t3": {
+      "x": 152,
+      "y": 252,
+      "w": 48,
+      "h": 48
     }
   },
   "small": {
     "cell": 24,
     "columns": 11,
-    "rows": 3,
-    "top": 252
+    "rows": 4,
+    "top": 302
   },
   "smallIcons": {
     "i-tables-t2": {
       "x": 2,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-tables-t3": {
       "x": 28,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-machine-t2": {
       "x": 54,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-machine-t3": {
       "x": 80,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-fast-machine-t2": {
       "x": 106,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-fast-machine-t3": {
       "x": 132,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-counter-t2": {
       "x": 158,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-counter-t3": {
       "x": 184,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-outdoor-t2": {
       "x": 210,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-outdoor-t3": {
       "x": 236,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-expand-t2": {
       "x": 262,
-      "y": 252,
+      "y": 302,
       "w": 24,
       "h": 24
     },
     "i-expand-t3": {
       "x": 2,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-plants-t2": {
       "x": 28,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-plants-t3": {
       "x": 54,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-paintings-t2": {
       "x": 80,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-paintings-t3": {
       "x": 106,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-lights-t2": {
       "x": 132,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-lights-t3": {
       "x": 158,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-window-bar-t2": {
       "x": 184,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-window-bar-t3": {
       "x": 210,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-grinder-t2": {
       "x": 236,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-grinder-t3": {
       "x": 262,
-      "y": 278,
+      "y": 328,
       "w": 24,
       "h": 24
     },
     "i-pastry-case-t2": {
       "x": 2,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-pastry-case-t3": {
       "x": 28,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-blender-t2": {
       "x": 54,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-blender-t3": {
       "x": 80,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-ice-maker-t2": {
       "x": 106,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-ice-maker-t3": {
       "x": 132,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-dishwasher-t2": {
       "x": 158,
-      "y": 304,
+      "y": 354,
       "w": 24,
       "h": 24
     },
     "i-dishwasher-t3": {
       "x": 184,
-      "y": 304,
+      "y": 354,
+      "w": 24,
+      "h": 24
+    },
+    "i-cold-brew-tower-t2": {
+      "x": 210,
+      "y": 354,
+      "w": 24,
+      "h": 24
+    },
+    "i-cold-brew-tower-t3": {
+      "x": 236,
+      "y": 354,
+      "w": 24,
+      "h": 24
+    },
+    "i-oven-t2": {
+      "x": 262,
+      "y": 354,
+      "w": 24,
+      "h": 24
+    },
+    "i-oven-t3": {
+      "x": 2,
+      "y": 380,
       "w": 24,
       "h": 24
     }
@@ -383,153 +431,173 @@
   "smallQuality": {
     "i-tables-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.682,
-      "creamShare": 0.11
+      "edgeContrast": 10.642,
+      "creamShare": 0.096
     },
     "i-tables-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.434,
+      "edgeContrast": 8.949,
       "creamShare": 0.023
     },
     "i-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.457,
-      "creamShare": 0
+      "edgeContrast": 9.974,
+      "creamShare": 0.003
     },
     "i-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.966,
-      "creamShare": 0
+      "edgeContrast": 9.904,
+      "creamShare": 0.003
     },
     "i-fast-machine-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.689,
+      "edgeContrast": 9.356,
       "creamShare": 0
     },
     "i-fast-machine-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.06,
+      "edgeContrast": 9.61,
       "creamShare": 0
     },
     "i-counter-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.218,
-      "creamShare": 0.082
+      "edgeContrast": 10.918,
+      "creamShare": 0.076
     },
     "i-counter-t3": {
       "edgeInk": 1,
-      "edgeContrast": 11.243,
+      "edgeContrast": 10.932,
       "creamShare": 0.074
     },
     "i-outdoor-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.689,
+      "edgeContrast": 9.27,
       "creamShare": 0.118
     },
     "i-outdoor-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.868,
-      "creamShare": 0.122
+      "edgeContrast": 10.482,
+      "creamShare": 0.133
     },
     "i-expand-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.516,
+      "edgeContrast": 8.923,
       "creamShare": 0.058
     },
     "i-expand-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.515,
+      "edgeContrast": 8.939,
       "creamShare": 0
     },
     "i-plants-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.536,
-      "creamShare": 0.009
+      "edgeContrast": 8.988,
+      "creamShare": 0.006
     },
     "i-plants-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.79,
+      "edgeContrast": 10.537,
       "creamShare": 0
     },
     "i-paintings-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.861,
-      "creamShare": 0.022
+      "edgeContrast": 11.532,
+      "creamShare": 0.025
     },
     "i-paintings-t3": {
       "edgeInk": 1,
-      "edgeContrast": 11.937,
+      "edgeContrast": 11.779,
       "creamShare": 0
     },
     "i-lights-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.591,
-      "creamShare": 0.196
+      "edgeContrast": 9.341,
+      "creamShare": 0.192
     },
     "i-lights-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.466,
+      "edgeContrast": 9.276,
       "creamShare": 0
     },
     "i-window-bar-t2": {
       "edgeInk": 1,
-      "edgeContrast": 7.908,
-      "creamShare": 0.003
+      "edgeContrast": 7.923,
+      "creamShare": 0
     },
     "i-window-bar-t3": {
       "edgeInk": 1,
-      "edgeContrast": 7.893,
+      "edgeContrast": 7.932,
       "creamShare": 0.003
     },
     "i-grinder-t2": {
       "edgeInk": 1,
-      "edgeContrast": 11.319,
-      "creamShare": 0.056
+      "edgeContrast": 11.073,
+      "creamShare": 0.059
     },
     "i-grinder-t3": {
       "edgeInk": 1,
-      "edgeContrast": 10.87,
+      "edgeContrast": 10.699,
       "creamShare": 0.01
     },
     "i-pastry-case-t2": {
       "edgeInk": 1,
-      "edgeContrast": 10.984,
+      "edgeContrast": 10.762,
       "creamShare": 0
     },
     "i-pastry-case-t3": {
       "edgeInk": 1,
-      "edgeContrast": 11.137,
+      "edgeContrast": 10.836,
       "creamShare": 0
     },
     "i-blender-t2": {
       "edgeInk": 1,
-      "edgeContrast": 9.426,
+      "edgeContrast": 9.304,
       "creamShare": 0
     },
     "i-blender-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.107,
+      "edgeContrast": 9.042,
       "creamShare": 0
     },
     "i-ice-maker-t2": {
       "edgeInk": 1,
-      "edgeContrast": 8.935,
-      "creamShare": 0.09
+      "edgeContrast": 9.126,
+      "creamShare": 0.085
     },
     "i-ice-maker-t3": {
       "edgeInk": 1,
-      "edgeContrast": 9.807,
+      "edgeContrast": 9.411,
       "creamShare": 0.022
     },
     "i-dishwasher-t2": {
       "edgeInk": 1,
-      "edgeContrast": 7.474,
-      "creamShare": 0.033
+      "edgeContrast": 7.543,
+      "creamShare": 0.03
     },
     "i-dishwasher-t3": {
       "edgeInk": 1,
-      "edgeContrast": 7.516,
-      "creamShare": 0.03
+      "edgeContrast": 7.456,
+      "creamShare": 0.027
+    },
+    "i-cold-brew-tower-t2": {
+      "edgeInk": 1,
+      "edgeContrast": 10.353,
+      "creamShare": 0.011
+    },
+    "i-cold-brew-tower-t3": {
+      "edgeInk": 1,
+      "edgeContrast": 10.385,
+      "creamShare": 0.011
+    },
+    "i-oven-t2": {
+      "edgeInk": 1,
+      "edgeContrast": 10.865,
+      "creamShare": 0.019
+    },
+    "i-oven-t3": {
+      "edgeInk": 1,
+      "edgeContrast": 10.81,
+      "creamShare": 0
     }
   }
 }
