@@ -708,10 +708,9 @@ async function emoteAfter(page, kind, marks) {
     frame += EMOTE_STEP;
   }
   if (!hit) return { toasts: [...toasts], clock: `${from} → ${await clockText(page)}`, frames: frame };
-  if (kind !== 'sweat') {
-    await step(page, EMOTE_POP);
-    frame += EMOTE_POP;
-  }
+  // Also for the sweat drop: the base needs a few frames after the hold before it draws the moved camera.
+  await step(page, EMOTE_POP);
+  frame += EMOTE_POP;
   const again = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
   const near = again.sort((a, b) => Math.hypot(a.world.x - hit.world.x, a.world.z - hit.world.z) - Math.hypot(b.world.x - hit.world.x, b.world.z - hit.world.z))[0] ?? hit;
   const focus = { ...near.world, ppm: EMOTE_PPM };
