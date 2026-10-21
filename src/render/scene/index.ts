@@ -5,6 +5,7 @@ import { createActors } from '../actors';
 import { createStreet } from '../street';
 import { AmbientView } from './ambient';
 import { CameraController } from './camera';
+import { createDayCycle } from './dayCycle';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
 import { ShopView } from './shop';
@@ -58,7 +59,8 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const view = createRenderer(canvas, options.quality ?? 'medium');
   const shop = new ShopView(view.scene, options.quality ?? 'medium');
   const actors = createActors(view.scene, { quality: options.quality ?? 'medium', reducedMotion: options.reducedMotion ?? false });
-  const street = createStreet(view.scene, { quality: options.quality ?? 'medium', sun: view.sun });
+  const street = createStreet(view.scene, { quality: options.quality ?? 'medium' });
+  const dayCycle = createDayCycle(view.scene, view.sun, options.quality ?? 'medium');
   // Forced by the setting, or the OS media query when not forced. Ambient and
   // the camera read this each frame / on drag release, so toggling it at
   // runtime takes effect without rebuilding anything.
@@ -109,6 +111,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     ambient.update(state, alpha, dt);
     actors.update(state, alpha);
     street.update(state, alpha, dt);
+    dayCycle.update(state, alpha, shop.center.x, shop.center.z);
   }
 
   return {
@@ -135,6 +138,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     },
     setQuality: (q) => {
       view.setQuality(q);
+      dayCycle.setQuality(q);
       shop.setQuality(q);
       ambient.setQuality(q);
       upgradeFx.setQuality(q);

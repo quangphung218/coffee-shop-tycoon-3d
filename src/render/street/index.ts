@@ -2,16 +2,13 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  type DirectionalLight,
   Group,
-  HemisphereLight,
   InstancedMesh,
   LineBasicMaterial,
   LineSegments,
   Matrix4,
   Mesh,
   MeshLambertMaterial,
-  SRGBColorSpace,
   type Scene,
   Vector3,
 } from 'three';
@@ -59,12 +56,12 @@ import {
 /**
  * Decorative street in front of the shop: road, sidewalks, trees, lamps and
  * buildings (static InstancedMesh), traffic both ways, people walking the
- * sidewalks, rain and time-of-day light. Reads the state, never changes it;
+ * sidewalks, rain and lamps that glow by the clock. Reads the state, never changes it;
  * how many vehicles, walkers and rain drops show depends on the quality.
  * Customers walking into the shop are the sim's; these people only pass by.
  */
 export interface Street {
-  /** Moves traffic and walkers by `dt` real seconds (frozen while paused) and sets the light for the game clock. */
+  /** Moves traffic and walkers by `dt` real seconds (frozen while paused) and sets the lamp glow for the game clock. */
   update(state: GameState, alpha: number, dt: number): void;
   setQuality(quality: Quality): void;
   /** Visible counts (tests, debugging). */
@@ -84,8 +81,6 @@ export interface StreetStats {
 
 export interface StreetOptions {
   quality: Quality;
-  /** Sun to tint by time of day; the scene's hemisphere light and background are found on the scene. */
-  sun?: DirectionalLight;
 }
 
 /** World units walked per walk loop, as for the shop's people. */
@@ -212,8 +207,6 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
   rain.visible = false;
   root.add(rain);
 
-  const hemi = scene.children.find((o): o is HemisphereLight => o instanceof HemisphereLight) ?? null;
-  const sun = options.sun ?? null;
   const light = createLighting();
 
   let density: Readonly<StreetDensity> = densityFor(options.quality);
@@ -297,15 +290,10 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
     rainAttr.needsUpdate = true;
   }
 
-  function applyLight(state: GameState, alpha: number): void {
+  /** Street lamp bulbs only; the sun, fill and sky follow the clock in scene/dayCycle.ts. */
+  function applyLamps(state: GameState, alpha: number): void {
     const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 0;
     lightingAt(state.minute + a, state.weather, light);
-    if (sun) {
-      sun.intensity = light.sunIntensity;
-      sun.color.setRGB(light.sun[0], light.sun[1], light.sun[2], SRGBColorSpace);
-    }
-    if (hemi) hemi.intensity = light.hemiIntensity;
-    if (scene.background instanceof Color) scene.background.setRGB(light.sky[0], light.sky[1], light.sky[2], SRGBColorSpace);
     bulbMaterial.emissiveIntensity = light.lamps * 1.6;
   }
 
@@ -322,7 +310,7 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
       placeWalkers();
       rain.visible = state.weather === 'rainy' && density.rainDrops > 0;
       if (rain.visible) placeRain();
-      applyLight(state, alpha);
+      applyLamps(state, alpha);
     },
 
     setQuality(quality: Quality): void {

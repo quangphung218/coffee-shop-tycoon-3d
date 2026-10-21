@@ -1,4 +1,4 @@
-import { Color, DirectionalLight, HemisphereLight, Scene } from 'three';
+import { Color, DirectionalLight, HemisphereLight, Mesh, MeshLambertMaterial, Scene } from 'three';
 import { describe, expect, it } from 'vitest';
 import type { Quality } from '../../src/save/settings';
 import { createStreet } from '../../src/render/street';
@@ -214,8 +214,10 @@ describe('lightingAt', () => {
     const morning = lightingAt(7 * 60, 'sunny');
     const noon = lightingAt(12 * 60, 'sunny');
     const evening = lightingAt(20 * 60, 'sunny');
-    expect(noon.sunIntensity).toBeGreaterThan(morning.sunIntensity);
-    expect(noon.sunIntensity).toBeGreaterThan(evening.sunIntensity);
+    expect(noon.sunScale).toBe(1);
+    expect(noon.fillScale).toBe(1);
+    expect(noon.sunScale).toBeGreaterThan(morning.sunScale);
+    expect(noon.sunScale).toBeGreaterThan(evening.sunScale);
     expect(evening.sky[2]).toBeLessThan(noon.sky[2]);
     expect(noon.lamps).toBe(0);
     expect(evening.lamps).toBeGreaterThan(0.5);
@@ -224,8 +226,33 @@ describe('lightingAt', () => {
   it('dims and greys the sky in the rain and lights the lamps', () => {
     const sunny = lightingAt(12 * 60, 'sunny');
     const rainy = lightingAt(12 * 60, 'rainy');
-    expect(rainy.sunIntensity).toBeLessThan(sunny.sunIntensity);
+    expect(rainy.sunScale).toBeLessThan(sunny.sunScale);
+    expect(rainy.fillScale).toBeLessThan(sunny.fillScale);
     expect(rainy.lamps).toBeGreaterThan(0);
+  });
+
+  it('makes hot days harsher and warmer than sunny ones', () => {
+    const sunny = lightingAt(12 * 60, 'sunny');
+    const hot = lightingAt(12 * 60, 'hot');
+    expect(hot.sunScale).toBeGreaterThan(sunny.sunScale);
+    expect(hot.sunScale / hot.fillScale).toBeGreaterThan(sunny.sunScale / sunny.fillScale);
+    expect(hot.sun[2]).toBeLessThan(sunny.sun[2]);
+    expect(hot.sun[0]).toBeGreaterThanOrEqual(hot.sun[2]);
+  });
+
+  it('moves the sun from the east in the morning, high at noon, to the west in the evening', () => {
+    const morning = lightingAt(8 * 60, 'sunny').sunDir.slice();
+    const noon = lightingAt(12 * 60, 'sunny').sunDir.slice();
+    const evening = lightingAt(19 * 60, 'sunny').sunDir.slice();
+    expect(morning[0]).toBeGreaterThan(0.3);
+    expect(evening[0]).toBeLessThan(-0.3);
+    expect(Math.abs(noon[0]!)).toBeLessThan(1e-9);
+    expect(noon[1]).toBeGreaterThan(morning[1]!);
+    expect(noon[1]).toBeGreaterThan(evening[1]!);
+    for (const d of [morning, noon, evening]) {
+      expect(Math.hypot(d[0]!, d[1]!, d[2]!)).toBeCloseTo(1, 9);
+      expect(d[2]).toBeGreaterThan(0);
+    }
   });
 
   it('writes into the given object and handles odd minutes', () => {
@@ -233,7 +260,9 @@ describe('lightingAt', () => {
     expect(lightingAt(12 * 60, 'sunny', out)).toBe(out);
     for (const m of [-100, 0, 3 * 60, 23 * 60, Number.NaN]) {
       const l = lightingAt(m, 'hot');
-      expect(Number.isFinite(l.sunIntensity)).toBe(true);
+      expect(Number.isFinite(l.sunScale)).toBe(true);
+      expect(Number.isFinite(l.fillScale)).toBe(true);
+      expect(Math.hypot(...l.sunDir)).toBeCloseTo(1, 9);
       for (const c of [...l.sun, ...l.sky]) {
         expect(c).toBeGreaterThanOrEqual(0);
         expect(c).toBeLessThanOrEqual(1);
@@ -256,8 +285,8 @@ describe('rainY', () => {
 
 describe('createStreet', () => {
   it('shows traffic and walkers by quality and moves them over time', () => {
-    const { scene, sun } = newScene();
-    const street = createStreet(scene, { quality: 'high', sun });
+    const { scene } = newScene();
+    const street = createStreet(scene, { quality: 'high' });
     const state = newState();
     const high = densityFor('high');
     let stats = street.stats();
@@ -287,8 +316,8 @@ describe('createStreet', () => {
   });
 
   it('builds no new walkers while frames run', () => {
-    const { scene, sun } = newScene();
-    const street = createStreet(scene, { quality: 'medium', sun });
+    const { scene } = newScene();
+    const street = createStreet(scene, { quality: 'medium' });
     const state = newState();
     for (let i = 0; i < 200; i++) street.update(state, 0.5, 1 / 60);
     expect(street.stats().charactersCreated).toBe(densityFor('medium').pedestrians);
@@ -320,20 +349,41 @@ describe('createStreet', () => {
     street.dispose();
   });
 
-  it('tints the sun, sky and hemisphere light by the game clock', () => {
+  it('leaves the sun, sky and hemisphere light to the day cycle', () => {
     const { scene, sun, hemi } = newScene();
-    const street = createStreet(scene, { quality: 'medium', sun });
+    const street = createStreet(scene, { quality: 'medium' });
+    const sky = (scene.background as Color).clone();
+    const sunColor = sun.color.clone();
+    const sunPos = sun.position.clone();
+    const state = newState();
+    for (const minute of [7 * 60, 12 * 60, 20 * 60]) {
+      state.minute = minute;
+      street.update(state, 0, 0.016);
+      expect(sun.intensity).toBe(1.8);
+      expect(hemi.intensity).toBe(1.6);
+      expect(sun.color.equals(sunColor)).toBe(true);
+      expect(sun.position.equals(sunPos)).toBe(true);
+      expect((scene.background as Color).equals(sky)).toBe(true);
+    }
+    street.dispose();
+  });
+
+  it('lights the street lamps after dark', () => {
+    const { scene } = newScene();
+    const street = createStreet(scene, { quality: 'medium' });
+    const found: MeshLambertMaterial[] = [];
+    scene.getObjectByName('street')!.traverse((o) => {
+      if (o instanceof Mesh && o.material instanceof MeshLambertMaterial && o.material.emissive.getHex() === 0xffd27a) found.push(o.material);
+    });
+    expect(found).toHaveLength(1);
+    const bulb = found[0];
     const state = newState();
     state.minute = 12 * 60;
     street.update(state, 0, 0.016);
-    const noonSun = sun.intensity;
-    const noonSky = (scene.background as Color).clone();
-    const noonHemi = hemi.intensity;
+    expect(bulb!.emissiveIntensity).toBe(0);
     state.minute = 20 * 60;
     street.update(state, 0, 0.016);
-    expect(sun.intensity).toBeLessThan(noonSun);
-    expect(hemi.intensity).toBeLessThan(noonHemi);
-    expect((scene.background as Color).equals(noonSky)).toBe(false);
+    expect(bulb!.emissiveIntensity).toBeGreaterThan(1);
     street.dispose();
   });
 });
