@@ -22,10 +22,11 @@
 // the base gets the same rings. The emotes run on a held page clock (as the
 // coin board of capture-p29.mjs): held once the HUD clock runs after Tiếp tục,
 // then stepped 1/60 s a frame until the emote is up (the cloud over a sad
-// face, told by the face prints of the working tree's rig); the base is shot
-// at the same frame with the camera on the same point. The toast waits on the
-// real clock, the base shot the same real time after Tiếp tục: run headed
-// (MEDIA_HEADED=1), headless software WebGL draws too few frames for it.
+// face, told by the face prints of the working tree's rig); the base runs on
+// the real clock and is shot when its HUD clock reaches the same time, with
+// the camera on the same point. The toast waits on the real clock, the base
+// shot the same real time after Tiếp tục. Both real-clock parts need a headed
+// run (MEDIA_HEADED=1): headless software WebGL draws too few frames.
 // Also loads the base's untouched noon save (a v3 save of the P29 release)
 // into the working-tree build and checks the clock runs with no error that
 // the working tree's own save does not have.
@@ -688,8 +689,7 @@ function union(a, b) {
 /**
  * Working tree, on the held clock: steps it until an emote of `kind` is in
  * view (a cloud only over a sad face), lets it pop in, centres the camera on
- * it and shoots. `frames` is the frame of the shot and `focusAt` the frame the
- * camera moved, both counted from the hold.
+ * it and shoots. `frames` is the frame of the shot, counted from the hold.
  */
 async function emoteAfter(page, kind, marks) {
   await holdClock(page);
@@ -708,13 +708,13 @@ async function emoteAfter(page, kind, marks) {
     frame += EMOTE_STEP;
   }
   if (!hit) return { toasts: [...toasts], clock: `${from} → ${await clockText(page)}`, frames: frame };
-  // Also for the sweat drop: the base needs a few frames after the hold before it draws the moved camera.
-  await step(page, EMOTE_POP);
-  frame += EMOTE_POP;
+  if (kind !== 'sweat') {
+    await step(page, EMOTE_POP);
+    frame += EMOTE_POP;
+  }
   const again = (await page.evaluate(scan, scanArgs)).emotes.filter((e) => e.kind === kind);
   const near = again.sort((a, b) => Math.hypot(a.world.x - hit.world.x, a.world.z - hit.world.z) - Math.hypot(b.world.x - hit.world.x, b.world.z - hit.world.z))[0] ?? hit;
   const focus = { ...near.world, ppm: EMOTE_PPM };
-  const focusAt = frame;
   await page.evaluate((f) => {
     window.__mediaFocus = f;
   }, focus);
@@ -732,17 +732,26 @@ async function emoteAfter(page, kind, marks) {
   const box = shown.map((e) => e.box).sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y))[0] ?? null;
   const clock = await clockText(page);
   const png = await page.screenshot({ style: HIDE_TOASTS });
-  return { frames: frame, focusAt, focus, box, face: faceOf(faces, marks), clock, png, count: shown.length };
+  return { frames: frame, focus, box, face: faceOf(faces, marks), clock, png, count: shown.length };
 }
 
-/** Base: the same frames on the held clock and the same camera point as `after`. */
+/**
+ * Base, on the real clock (stepping its held clock did not always draw): the
+ * HUD clock of `after`, then the same camera point. Null when the clock never got there.
+ */
 async function emoteBefore(page, after, marks) {
-  await holdClock(page);
-  await step(page, after.focusAt);
+  await page.locator('nav.dock').waitFor();
+  await page.locator('#scene.is-ready').waitFor();
+  const reached = await page
+    .waitForFunction((t) => (document.querySelector('.hud [data-stat="clock"]')?.textContent?.trim() ?? '') >= t, after.clock, { timeout: 30_000, polling: 16 })
+    .then(() => true)
+    .catch(() => false);
+  if (!reached) return null;
   await page.evaluate((f) => {
     window.__mediaFocus = f;
   }, after.focus);
-  await step(page, after.frames - after.focusAt);
+  // Long enough for a few frames drawn round the focus.
+  await sleep(300);
   const { emotes, faces } = await page.evaluate(scan, { ...scanArgs, near: after.focus });
   const clock = await clockText(page);
   const png = await page.screenshot({ style: HIDE_TOASTS });
@@ -762,7 +771,11 @@ async function emoteBoard(browser, cur, base, head) {
       continue;
     }
     if (kind === 'cloud' && after.face?.mood !== 'sad') warn(`emotes: the cloud shot shows a ${after.face?.mood ?? 'unknown'} face, not sad`);
-    const before = await session(browser, base.url, base.saves[kind], DESK, (p) => emoteBefore(p, after, cur.marks), { speed, stepped: true });
+    const before = await session(browser, base.url, base.saves[kind], DESK, (p) => emoteBefore(p, after, cur.marks), { speed });
+    if (!before) {
+      warn(`emotes: the HUD clock of ${BASE_COMMIT} never reached ${after.clock} for the ${kind}`);
+      continue;
+    }
     if (before.count > 0) warn(`emotes: ${before.count} emote mesh(es) on ${BASE_COMMIT}`);
     // The cloud's ring takes in the sad face under it.
     const changed = kind === 'cloud' && after.face ? union(after.box, after.face.box) : after.box;
@@ -780,7 +793,7 @@ async function emoteBoard(browser, cur, base, head) {
         { png: after.png, boxes: [ringBox], title: `Sau · ${head} · HUD ${after.clock || '?'}`, caption: `${EMOTE_NAMES[kind]} ${EMOTE_WHEN[kind]}${face(after.face)}; ${after.count} khách đang có ${EMOTE_NAMES[kind].toLowerCase()} trên màn` },
       ],
     });
-    notes.push(`${EMOTE_NAMES[kind]}: chụp ở khung thứ ${after.frames} (${sec} s đồng hồ trang) sau khi giữ đồng hồ, ở cả hai bản, camera phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
+    notes.push(`${EMOTE_NAMES[kind]}: chụp ở khung thứ ${after.frames} (${sec} s đồng hồ trang) sau khi giữ đồng hồ; bản gốc chạy theo giờ thật, chụp khi HUD tới ${after.clock}; camera hai bản phóng quanh cùng một điểm (${EMOTE_PPM} px mỗi mét).`);
   }
   if (rows.length === 0) return null;
   notes.push(`Save trưa ngày 2 do sim mỗi bản chơi ra, cùng seed, 1280×800, mức Cao. Đồng hồ trang giữ lại khi đồng hồ HUD đã chạy sau Tiếp tục rồi đẩy từng khung 1/${EMOTE_FPS} s. Giọt mồ hôi: khách đang chờ còn ${Math.round(SWEAT_PATIENCE * 100)}% kiên nhẫn; đám mây: nguyên liệu món của một khách đang xếp hàng về 0 nên khách bỏ đi lúc gọi món. Tim chạy tốc độ x${FAST}, giọt mồ hôi và mây x1.`);

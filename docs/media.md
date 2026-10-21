@@ -482,10 +482,10 @@ Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc đ�
 MEDIA_HEADED=1 MEDIA_PORT=4180 npm run media:p30
 ```
 
-Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1` cho toast khách quen: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
+Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1` cho toast khách quen và ảnh bản gốc của biểu cảm: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
 
 1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi sửa giống nhau ở hai bản: mọi order đang mở thành sẵn sàng (tim), khách đang chờ còn 30% kiên nhẫn (giọt mồ hôi), nguyên liệu món của một khách đang xếp hàng về 0 (đám mây), cấp quán 5 với bộ latte (đội), lúc mở cửa ngày 3 (toast), sáng ngày 4 với cấp quán 3 và bộ bạc hà (hai bảng).
-2. Biểu cảm (tim ở tốc độ x4, giọt mồ hôi và mây ở x1): khi cảnh hiện sau **Tiếp tục** và đồng hồ HUD đã chạy, script giữ đồng hồ trang rồi đẩy từng khung 1/60 s tới khi biểu cảm hiện (tối đa 9000 khung; đám mây phải kèm mặt buồn), camera phóng quanh biểu cảm. Bản gốc chụp ở cùng khung, camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt.
+2. Biểu cảm (tim ở tốc độ x4, giọt mồ hôi và mây ở x1): khi cảnh hiện sau **Tiếp tục** và đồng hồ HUD đã chạy, script giữ đồng hồ trang rồi đẩy từng khung 1/60 s tới khi biểu cảm hiện (tối đa 9000 khung; đám mây phải kèm mặt buồn), camera phóng quanh biểu cảm. Bản gốc chạy theo đồng hồ thật và chụp khi đồng hồ HUD tới giờ của ảnh bản hiện tại, camera ở cùng điểm, cùng vòng khoanh; vòng của đám mây khoanh cả mặt.
 3. Toast (x4): bản hiện tại chờ toast khách quen tối đa 40 s theo đồng hồ thật; bản gốc chụp cùng số giây sau **Tiếp tục**.
 4. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
 
