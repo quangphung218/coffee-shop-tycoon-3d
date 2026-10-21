@@ -1,11 +1,8 @@
 import {
-  BufferAttribute,
   BufferGeometry,
   Color,
   Group,
   InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
   Matrix4,
   Mesh,
   MeshLambertMaterial,
@@ -32,8 +29,6 @@ import {
   CURB_HEIGHT,
   LANES,
   MAX_DENSITY,
-  RAIN_BOX,
-  RAIN_STREAK,
   VEHICLE_KINDS,
   WALK_LINES,
   buildingLots,
@@ -42,7 +37,6 @@ import {
   hash01,
   lightingAt,
   propSpots,
-  rainY,
   travelX,
   vehicleCount,
   vehicleSlots,
@@ -52,6 +46,7 @@ import {
   type VehicleSlot,
   type WalkerSlot,
 } from './layout';
+import { createRain } from './rain';
 
 /**
  * Decorative street in front of the shop: road, sidewalks, trees, lamps and
@@ -75,12 +70,15 @@ export interface StreetStats {
   /** Walker characters ever built; stays put after the first frames. */
   charactersCreated: number;
   rainDrops: number;
+  rainSplashes: number;
   /** Seconds of street time elapsed. */
   time: number;
 }
 
 export interface StreetOptions {
   quality: Quality;
+  /** Read each frame: fewer rain streaks and no splashes while true. Defaults to never. */
+  reducedMotion?: () => boolean;
 }
 
 /** World units walked per walk loop, as for the shop's people. */
@@ -189,23 +187,9 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
   walkerRoot.name = 'street-walkers';
   root.add(walkerRoot);
 
-  // Rain streaks: one LineSegments whose positions are rewritten in place.
-  const maxDrops = MAX_DENSITY.rainDrops;
-  const rainPositions = new Float32Array(maxDrops * 6);
-  const rainSeed = new Float32Array(maxDrops * 3);
-  for (let i = 0; i < maxDrops; i++) {
-    rainSeed[i * 3] = RAIN_BOX.minX + hash01(i * 3 + 1) * (RAIN_BOX.maxX - RAIN_BOX.minX);
-    rainSeed[i * 3 + 1] = hash01(i * 3 + 2) * RAIN_BOX.top;
-    rainSeed[i * 3 + 2] = RAIN_BOX.minZ + hash01(i * 3 + 3) * (RAIN_BOX.maxZ - RAIN_BOX.minZ);
-  }
-  const rainGeometry = keep(new BufferGeometry());
-  const rainAttr = new BufferAttribute(rainPositions, 3);
-  rainGeometry.setAttribute('position', rainAttr);
-  const rainMaterial = new LineBasicMaterial({ color: 0xd6e9f5, transparent: true, opacity: 0.55, depthWrite: false });
-  const rain = new LineSegments(rainGeometry, rainMaterial);
-  rain.frustumCulled = false;
-  rain.visible = false;
-  root.add(rain);
+  const rain = createRain(options.quality);
+  root.add(rain.object);
+  const reducedMotion = options.reducedMotion ?? (() => false);
 
   const light = createLighting();
 
@@ -239,7 +223,6 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
     trees.count = Math.ceil(treeSpots.length * density.props);
     lamps.count = Math.ceil(lampSpots.length * density.props);
     bulbs.count = lamps.count;
-    rainGeometry.setDrawRange(0, density.rainDrops * 2);
   }
 
   function placeVehicles(): void {
@@ -273,23 +256,6 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
     }
   }
 
-  function placeRain(): void {
-    const n = density.rainDrops;
-    for (let i = 0; i < n; i++) {
-      const x = rainSeed[i * 3]!;
-      const y = rainY(rainSeed[i * 3 + 1]!, time);
-      const z = rainSeed[i * 3 + 2]!;
-      const o = i * 6;
-      rainPositions[o] = x;
-      rainPositions[o + 1] = y + RAIN_STREAK;
-      rainPositions[o + 2] = z;
-      rainPositions[o + 3] = x - 0.06;
-      rainPositions[o + 4] = y;
-      rainPositions[o + 5] = z;
-    }
-    rainAttr.needsUpdate = true;
-  }
-
   /** Street lamp bulbs only; the sun, fill and sky follow the clock in scene/dayCycle.ts. */
   function applyLamps(state: GameState, alpha: number): void {
     const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 0;
@@ -308,8 +274,7 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
       if (time > 36000) time -= 36000;
       placeVehicles();
       placeWalkers();
-      rain.visible = state.weather === 'rainy' && density.rainDrops > 0;
-      if (rain.visible) placeRain();
+      rain.update(time, state.weather, reducedMotion());
       applyLamps(state, alpha);
     },
 
@@ -317,6 +282,7 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
       const next = densityFor(quality);
       if (next === density) return;
       density = next;
+      rain.setQuality(quality);
       applyDensity();
       placeVehicles();
       placeWalkers();
@@ -327,7 +293,8 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
         vehicles: { car: vehicles.car.body.count, bike: vehicles.bike.body.count, bus: vehicles.bus.body.count },
         pedestrians: walkers.filter((w) => w.char.root.visible).length,
         charactersCreated: walkers.length,
-        rainDrops: rain.visible ? density.rainDrops : 0,
+        rainDrops: rain.stats().streaks,
+        rainSplashes: rain.stats().splashes,
         time,
       };
     },
@@ -344,7 +311,7 @@ export function createStreet(scene: Scene, options: StreetOptions): Street {
       }
       for (const mesh of [buildingBody, buildingDetail, trees, lamps, bulbs]) mesh.dispose();
       bulbMaterial.dispose();
-      rainMaterial.dispose();
+      rain.dispose();
       // SHARED_MATERIAL belongs to the shop, and the character rig is shared with the actors.
     },
   };
