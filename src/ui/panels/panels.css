@@ -720,10 +720,140 @@
   border-radius: var(--radius-lg);
 }
 
+/* Staff: Đồng phục. Two columns at every width (the panel is at most 360 px).
+   One channel per state: worn adds a bold inner border, locked only swaps the
+   name for "Cấp N"; hover and press keep the button lift. */
+.uniform-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.uniform-opt {
+  --bw: var(--size-frame-outline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+  min-height: var(--size-target);
+  padding: var(--space-2);
+  font: inherit;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-heavy);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  text-align: center;
+  background: var(--surface-panel-solid);
+  border: var(--bw) solid var(--border-outline);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-shadow-rest);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--easing-bounce),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+.uniform-opt[aria-pressed='true'] {
+  box-shadow:
+    inset 0 0 0 var(--bw) var(--border-outline),
+    var(--btn-shadow-rest);
+}
+@media (hover: hover) {
+  .uniform-opt:not(:disabled, :active):hover {
+    transform: translateY(-2px);
+  }
+}
+.uniform-opt:not(:disabled):active {
+  transform: translateY(2px);
+  transition-duration: var(--duration-instant);
+}
+.uniform-opt:disabled {
+  cursor: not-allowed;
+}
+.uniform-name {
+  max-width: 100%;
+}
+/* The figure: hat, head and shirt blocks, each with a light top-left and a
+   dark bottom-right inner edge; the apron keeps one coffee tone for all. */
+.uniform-swatch {
+  --uni-edge-light: color-mix(in srgb, var(--color-cream-50) 55%, transparent);
+  --uni-edge-dark: color-mix(in srgb, var(--color-neutral-900) 22%, transparent);
+  --uni-bevel: inset 2px 2px 0 var(--uni-edge-light), inset -2px -2px 0 var(--uni-edge-dark);
+  position: relative;
+  display: block;
+  flex: none;
+  width: 44px;
+  height: 48px;
+}
+.uniform-swatch > span {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  border: var(--size-outline-sm) solid var(--border-outline);
+  box-shadow: var(--uni-bevel);
+}
+.uni-head {
+  top: 6px;
+  width: 18px;
+  height: 16px;
+  background: var(--color-cream-200);
+  border-radius: var(--radius-sm);
+}
+.uni-shirt {
+  bottom: 0;
+  width: 40px;
+  height: 24px;
+  background: var(--uni-shirt);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
+}
+.uni-shirt > .uni-apron {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  width: 18px;
+  height: 16px;
+  background: var(--color-coffee-700);
+  border-top: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  box-shadow: var(--uni-bevel);
+}
+.uni-hat {
+  z-index: 1;
+  background: var(--uni-hat);
+}
+.uniform-swatch[data-hat='none'] > .uni-hat {
+  display: none;
+}
+.uniform-swatch[data-hat='cap'] > .uni-hat {
+  top: 2px;
+  width: 22px;
+  height: 9px;
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
+}
+.uniform-swatch[data-hat='beret'] > .uni-hat {
+  top: 1px;
+  width: 26px;
+  height: 9px;
+  border-radius: 50%;
+}
+.uniform-swatch[data-hat='bandana'] > .uni-hat {
+  top: 5px;
+  width: 22px;
+  height: 7px;
+  border-radius: var(--radius-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  .uniform-opt {
+    transform: none !important;
+  }
+}
+
 /* Focus (design/p17-states): border turns --focus-ring and a ring is drawn
    just inside it. After the disabled rules so a dashed border recolours too. */
 .step-btn:focus-visible,
 .step-input:focus-visible,
+.uniform-opt:focus-visible,
 .dd-btn:focus-visible {
   border-color: var(--focus-ring);
   outline: var(--size-focus-width) solid var(--focus-ring);

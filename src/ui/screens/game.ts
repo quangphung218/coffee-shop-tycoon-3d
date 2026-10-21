@@ -7,7 +7,7 @@ import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { Toasts } from '../core/toast';
-import { toastForEvent } from '../hud/events';
+import { toastForEvent, uniformUnlockToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
@@ -332,6 +332,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       for (const event of events) {
         const toast = toastForEvent(event, state);
         if (toast) toasts.show(toast);
+        const uniform = uniformUnlockToast(event);
+        if (uniform) toasts.show(uniform);
         if (event.type === 'phase') logPlay('phase', event.phase);
         else if (event.type === 'week_ended') logPlay('week_end');
         if (event.type === 'dayEnded') {

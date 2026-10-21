@@ -2,6 +2,7 @@ import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
 import { ACHIEVEMENTS } from '../../sim/data/retention';
+import { UNIFORMS } from '../../sim/data/uniforms';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { stockOutlook } from '../../sim/inventory';
 import { weekIndex } from '../../sim/progression';
@@ -31,6 +32,20 @@ function unlockSummary(u: Unlocks): string {
 /** "Cappuccino, Máy xay hạt" — names of what a calendar day opens: menu items, then upgrades and tools. */
 export function unlockNames(u: Unlocks): string {
   return [...u.menu.map((id) => getMenuItem(id).name), ...[...u.upgrades, ...u.tools].map((id) => getUpgrade(id).name)].join(', ');
+}
+
+/** Second toast of a level-up that opens a uniform ("Mở khoá đồng phục Áo latte, mũ nồi"), or null. */
+export function uniformUnlockToast(event: GameEvent): ToastInput | null {
+  if (event.type !== 'level_up') return null;
+  const opened = UNIFORMS.filter((u) => u.unlockLevel === event.level);
+  if (opened.length === 0) return null;
+  return {
+    level: 'success',
+    icon: 'i-sparkle',
+    title: `Mở khoá đồng phục ${opened.map((u) => u.name).join(', ')}`,
+    text: 'Chọn trong bảng Nhân viên.',
+    key: 'uniform_unlocked',
+  };
 }
 
 /** Toast for a sim event, or null for events that only make a sound or move actors. */

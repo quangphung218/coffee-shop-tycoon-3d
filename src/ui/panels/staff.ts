@@ -1,6 +1,7 @@
 import { totalWages } from '../../sim/economy';
 import { canChangePolicy, policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
 import { STAFF_TRAITS } from '../../sim/data/staffTraits';
+import { UNIFORMS, uniformOf, type Uniform } from '../../sim/data/uniforms';
 import { ROLE_NAMES, rolePlan } from '../../sim/staff';
 import { canTrain, LEVEL_SPEED_STEP, MAX_STAFF_LEVEL, maxStaff, PROMOTION_WAGE_MULT, STAFF_LEVEL_EXP, staffExp, staffLevel, staffTraitOf, trainCost } from '../../sim/staffGrowth';
 import type { GameState, PolicyLevel, Staff, StaffRole, StaffTaskKind } from '../../sim/types';
@@ -84,6 +85,22 @@ function trainLabel(member: Staff): string {
 const WAGE_STEP_PCT = Math.round((PROMOTION_WAGE_MULT - 1) * 100);
 const SPEED_STEP_PCT = Math.round(LEVEL_SPEED_STEP * 100);
 
+const hex = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;
+
+/** CSS block figure of a uniform: hat, then the shirt with the apron on it. */
+function uniformSwatch(u: Uniform): HTMLElement {
+  const el = h(
+    'span',
+    { class: 'uniform-swatch', attrs: { 'aria-hidden': 'true', 'data-hat': u.hat } },
+    h('span', { class: 'uni-hat' }),
+    h('span', { class: 'uni-head' }),
+    h('span', { class: 'uni-shirt' }, h('span', { class: 'uni-apron' })),
+  );
+  el.style.setProperty('--uni-shirt', hex(u.shirt));
+  el.style.setProperty('--uni-hat', hex(u.hatColor));
+  return el;
+}
+
 /** Role a new hire starts in: the next free slot of the default plan. */
 export function roleForHire(state: GameState): StaffRole {
   return rolePlan(null, state.staff.length + 1)[state.staff.length] ?? 'none';
@@ -93,7 +110,7 @@ export function roleForHire(state: GameState): StaffRole {
  * Nhân viên: staff with trait, level, experience bar, wage, speed, busy/free
  * badge, a role dropdown and in-place "Đào tạo" and "Cho nghỉ" confirms;
  * today's candidates with their trait and "Tuyển"; the
- * Auto-assign switch and the Mức lương choice. Wages are shown at the chosen
+ * Auto-assign switch, the Mức lương choice and the Đồng phục grid. Wages are shown at the chosen
  * Mức lương. Usable in every phase; Mức lương changes only while preparing.
  */
 export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
@@ -293,6 +310,34 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     return li;
   }
 
+  // Đồng phục: one in-place button per uniform. Worn = bold border + aria-pressed,
+  // locked = disabled with "Cấp N" in place of the name; the cells are never rebuilt.
+  const uniformTitleId = uid('uniform-title');
+  const uniformGrid = h(
+    'div',
+    { class: 'uniform-grid', attrs: { role: 'group', 'aria-labelledby': uniformTitleId } },
+    ...UNIFORMS.map((u) => {
+      const label = h('span', { class: 'uniform-name' });
+      const btn = h('button', { class: 'uniform-opt', attrs: { type: 'button', 'data-uniform': u.id, 'aria-pressed': 'false' } }, uniformSwatch(u), label);
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        send({ type: 'set_uniform', uniformId: u.id });
+      });
+      w.watch(
+        (s) => `${uniformOf(s).id === u.id ? 1 : 0}|${s.shopLevel >= u.unlockLevel ? 1 : 0}`,
+        (_, s) => {
+          const open = s.shopLevel >= u.unlockLevel;
+          btn.setAttribute('aria-pressed', String(open && uniformOf(s).id === u.id));
+          btn.disabled = !open;
+          label.textContent = open ? u.name : `Cấp ${u.unlockLevel}`;
+          if (open) btn.removeAttribute('aria-label');
+          else btn.setAttribute('aria-label', `Cấp ${u.unlockLevel}: ${u.name}, chưa mở`);
+        },
+      );
+      return btn;
+    }),
+  );
+
   // Rows are rebuilt only when someone joins or leaves, so an open dropdown survives frame updates.
   w.watch(
     (s) => `${s.staff.map((m) => m.id).join()}|${s.candidates.map((c) => c.id).join()}`,
@@ -336,6 +381,9 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       staffList,
       h('h3', { class: 'section-title', text: 'Ứng viên hôm nay' }),
       candList,
+      h('h3', { class: 'section-title', id: uniformTitleId, text: 'Đồng phục' }),
+      h('p', { class: 'intro', text: 'Cả đội đổi áo và mũ, tạp dề giữ màu theo vai.' }),
+      uniformGrid,
       h('div', { class: 'panel-foot' }, h('div', { class: 'foot-sum' }, h('span', { text: 'Tổng lương/ngày' }), wages)),
     ),
   );
