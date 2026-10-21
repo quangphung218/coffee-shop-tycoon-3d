@@ -21,10 +21,11 @@ import {
   type AnimName,
   type Mood,
 } from './animations';
+import { Emote, disposeEmoteGeometry } from './emotes';
 import { CoinFx, Steam, puffTexture, setSteamQuality, steamFor } from './fx';
 import { LABEL_BUBBLES, Label, LabelAssets, commandForCustomer, faceFor, labelFor } from './labels';
 import { Pool } from './pool';
-import { createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
+import { MOODS, createCharacter, disposeSharedRig, type Character, type CharacterRole } from './rig';
 import {
   ANGRY_SPEED,
   SEPARATION_RATE,
@@ -35,9 +36,13 @@ import {
   customerAnim,
   customerGoal,
   customerMood,
+  EMOTE_KINDS,
   easedStep,
+  emoteFor,
+  emoteForEvent,
   headingOf,
   lookAhead,
+  moodWithEmote,
   playerHome,
   playerSpot,
   separate,
@@ -48,6 +53,8 @@ import {
   turnToward,
   workerAnim,
   workerGoal,
+  type EmoteCue,
+  type EmoteKind,
   type Goal,
   type Motion,
 } from './sync';
@@ -102,6 +109,8 @@ export interface ActorInfo {
   steam: boolean;
   /** Vertical squash of the body (1 = none). */
   squash: number;
+  /** 3D emote over the head (heart, sweat, cloud), or null. */
+  emote: EmoteKind | null;
 }
 
 /** A jump in the game clock bigger than this (new day, loaded save) snaps everyone into place. */
@@ -117,7 +126,8 @@ const BLEND_SECONDS = 0.18;
 export const WARM_BODIES = PERSONA_IDS.length + 1;
 /** Coin popups built before the scene shows. */
 export const WARM_COINS = 3;
-const WARM_MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry'];
+/** Every face, sad included, so none uploads mid-game. */
+const WARM_MOODS: readonly Mood[] = MOODS;
 /** Seconds past every coin's life, so CoinFx.update puts the warm-up coins back. */
 const COIN_FORGET_S = 1e6;
 
@@ -125,6 +135,7 @@ interface Body {
   char: Character;
   label: Label;
   steam: Steam;
+  emote: Emote;
 }
 
 interface Actor {
@@ -154,6 +165,10 @@ interface Actor {
   bobOffset: number;
   /** Customer personality, which styles the walk and the wait; absent for staff and the player. */
   persona: PersonaId | undefined;
+  /** Heart or cloud a sim event started (start -Infinity = none). */
+  cue: EmoteCue;
+  /** When the emote now shown came up (sweat counts its drip cycles from here). */
+  emoteSince: number;
 }
 
 export function createActors(scene: Scene, options: ActorsOptions = {}): Actors {
@@ -175,12 +190,15 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       char.labelAnchor.add(label.group);
       const steam = new Steam(puff);
       char.steamAnchor.add(steam.group);
+      const emote = new Emote();
+      char.labelAnchor.add(emote.group);
       root.add(char.root);
-      return { char, label, steam };
+      return { char, label, steam, emote };
     },
     (body) => {
       body.char.root.visible = false;
       body.steam.update(false, 0);
+      body.emote.hide();
     },
   );
   const actors = new Map<string, Actor>();
@@ -232,6 +250,8 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       // Golden-ratio spread keeps neighbouring ids far apart in the cycle.
       bobOffset: ((id * 0.618034) % 1) * IDLE_BOUNCE_PERIOD,
       persona,
+      cue: { kind: 'heart', start: -Infinity },
+      emoteSince: 0,
     };
     actors.set(key, actor);
     byHitbox.set(body.char.hitbox, actor);
@@ -333,6 +353,14 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
     return moving;
   }
 
+  /** Shows `kind` over a customer on the coin clock (frozen while paused); calm keeps it still. */
+  function showEmote(actor: Actor, kind: EmoteKind | null): void {
+    const emote = actor.body.emote;
+    if (kind !== emote.kindShown) actor.emoteSince = coinTime;
+    const start = kind === 'sweat' ? actor.emoteSince : actor.cue.start;
+    emote.update(kind, coinTime - start, calm(), actor.heading);
+  }
+
   function customerSpeed(actor: Actor): number {
     return actor.angry ? ANGRY_SPEED : WALK_SPEED;
   }
@@ -382,11 +410,24 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         }
         actor.ghost = true;
         animate(actor, () => (actor.angry ? 'angry_leave' : 'walk'), customerSpeed(actor), dtGame, dtReal, false, now);
-        actor.body.char.setMood(actor.angry ? 'angry' : 'neutral');
+        const ghostEmote = emoteFor(actor.angry ? 'angry_leave' : 'leaving', 1, actor.cue, coinTime);
+        actor.body.char.setMood(moodWithEmote(actor.angry ? 'angry' : 'neutral', ghostEmote));
+        showEmote(actor, ghostEmote);
         if (reachedExit(actor)) {
           // Out of the separation list again: the body goes back to the pool.
           if (walkingCount > 0 && walking[walkingCount - 1] === actor.motion) walkingCount -= 1;
           release(actor);
+        }
+      }
+
+      // A served drink starts a heart; storming out over an empty stock starts a cloud.
+      for (const e of state.events) {
+        if (e.type !== 'served' && e.type !== 'angry') continue;
+        const actor = actors.get(`c${e.customerId}`);
+        const kind = actor ? emoteForEvent(e, state.customers.find((c) => c.id === e.customerId)) : null;
+        if (actor && kind) {
+          actor.cue.kind = kind;
+          actor.cue.start = coinTime;
         }
       }
 
@@ -400,7 +441,9 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         const frac = c.maxPatience > 0 ? c.patience / c.maxPatience : 1;
         // New arrivals walk in from the door; after a clock jump everyone snaps into place.
         animate(actor, (moving, seated) => customerAnim(c.state, moving, seated, frac), customerSpeed(actor), dtGame, dtReal, jump, now);
-        actor.body.char.setMood(customerMood(c.state, frac));
+        const emote = emoteFor(c.state, frac, actor.cue, coinTime);
+        actor.body.char.setMood(moodWithEmote(customerMood(c.state, frac), emote));
+        showEmote(actor, emote);
         actor.body.label.set(labelFor(state, c), now);
         if (leaving && reachedExit(actor)) {
           actor.gone = true;
@@ -506,6 +549,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         body.char.root.visible = true;
         body.label.set({ icon: LABEL_BUBBLES[i % LABEL_BUBBLES.length]!, patience: 0.5, ready: false, face: faceFor(0.5) }, now);
         body.steam.update(true, now);
+        body.emote.update(EMOTE_KINDS[i % EMOTE_KINDS.length]!, 0.5, true);
       });
       coins.spawn(1, home, coinTime);
       try {
@@ -530,6 +574,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         label: actor.body.label.iconShown,
         steam: actor.body.steam.active,
         squash: actor.body.char.bounce.scale.y,
+        emote: actor.body.emote.kindShown,
       };
     },
 
@@ -542,6 +587,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       root.clear();
       assets.dispose();
       disposeSharedRig();
+      disposeEmoteGeometry();
     },
   };
 }

@@ -53,8 +53,8 @@ const RAG_COLOR = 0x5bc0de;
 const SHOE_COLOR = 0x2a211c;
 const FACE_INK = 0x2a211c;
 
-/** The four expressions a face can take. */
-const MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry'];
+/** The five expressions a face can take. */
+export const MOODS: readonly Mood[] = ['neutral', 'happy', 'impatient', 'angry', 'sad'];
 
 /** A persona accessory: which merged geometry, its colour, and where it sits on the torso or the head. */
 interface Accessory {
@@ -120,6 +120,14 @@ function faceGeometry(mood: Mood): BufferGeometry {
       brow(-EYE_X, -0.01, 0.42);
       brow(EYE_X, -0.01, -0.42);
       mouth(-1);
+      break;
+    case 'sad':
+      // Brows raised at the inner ends and drooping outward; a small mouth sagging at both corners.
+      brow(-EYE_X, 0.008, 0.3);
+      brow(EYE_X, 0.008, -0.3);
+      parts.push(new BoxGeometry(0.04, 0.018, 0.02).translate(0, MOUTH_Y + 0.004, Z));
+      parts.push(new BoxGeometry(0.035, 0.018, 0.02).rotateZ(-0.8).translate(0.032, MOUTH_Y - 0.008, Z));
+      parts.push(new BoxGeometry(0.035, 0.018, 0.02).rotateZ(0.8).translate(-0.032, MOUTH_Y - 0.008, Z));
       break;
     default:
       brow(-EYE_X, 0, 0);
