@@ -34,13 +34,14 @@ Quy ước dữ liệu: `GameState` là JSON thuần; tiền là số nguyên đ
 
 ### Đọc mục nào khi sửa gì
 
-`docs/architecture.md` dài khoảng 640 dòng. Chỉ đọc mục cần:
+`docs/architecture.md` dài khoảng 680 dòng. Chỉ đọc mục cần:
 
 | Sửa | Đọc |
 | --- | --- |
 | Lệnh, sự kiện giữa các lớp | `## Hợp đồng Command và GameEvent` |
 | Vòng ngày, tuần, cấp, nâng cấp, nhân viên, kho | `## Vòng ngày` và mục con tương ứng; luật tuần ở `docs/spec/week-7-days.md`, P27 ở `docs/spec/p27-retention.md` |
 | Khách, đường đi | `## FSM khách`, `## Điều hướng và va chạm` |
+| Khách quen, đồng phục, biểu cảm | `## FSM khách`; luật và số ở `docs/spec/p30-characters.md` |
 | Save | `## Save schema` |
 | Tốc độ mở trang, giật khung | `## Mẹo hiệu năng` |
 | Ảnh demo, icon | `docs/media.md` |
