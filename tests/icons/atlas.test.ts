@@ -234,7 +234,7 @@ describe('report sheet', () => {
 
 describe('icon models', () => {
   it('cover every icon id and one avatar per AVATAR_LOOKS entry, nothing else', () => {
-    expect(ICON_IDS).toHaveLength(113);
+    expect(ICON_IDS).toHaveLength(117);
     expect(AVATAR_IDS).toHaveLength(AVATAR_LOOKS.length);
     expect(Object.keys(MODELS).sort()).toEqual([...ATLAS_IDS].sort());
   });
