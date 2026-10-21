@@ -1,7 +1,7 @@
 import { claimSpot } from '../../sim/customers';
 import { CHAIR_OFFSET } from '../../sim/nav/footprints';
 import { buildNavGrid, cellAt, cellCenter, findPath, isWalkable, nearestFree, type NavGrid } from '../../sim/nav';
-import type { Customer, CustomerState, GameState, StaffTask, StaffTaskKind, Vec2 } from '../../sim/types';
+import type { Customer, CustomerState, GameEvent, GameState, StaffTask, StaffTaskKind, Vec2 } from '../../sim/types';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { AnimName, Mood } from './animations';
 
@@ -72,6 +72,43 @@ export function customerMood(state: CustomerState, patienceFrac: number): Mood {
   if (state === 'drinking' || state === 'leaving') return 'happy';
   if (patienceFrac < IMPATIENT_FRAC && RESTLESS.has(state)) return 'impatient';
   return 'neutral';
+}
+
+/** A little 3D prop over a customer's head: a heart when served, sweat when impatient, a cloud when out of stock. */
+export type EmoteKind = 'heart' | 'sweat' | 'cloud';
+export const EMOTE_KINDS: readonly EmoteKind[] = ['heart', 'sweat', 'cloud'];
+/** Emotes an event starts; they run for EMOTE_SECONDS and then go. */
+export type TimedEmote = Exclude<EmoteKind, 'sweat'>;
+/** Real seconds each emote is on screen; sweat loops this cycle for as long as the customer is impatient. */
+export const EMOTE_SECONDS: Readonly<Record<EmoteKind, number>> = { heart: 1.2, sweat: 1.4, cloud: 2.2 };
+
+/** The timed emote a customer is showing; `start` is in the renderer's seconds (-Infinity = none). */
+export interface EmoteCue {
+  kind: TimedEmote;
+  start: number;
+}
+
+/**
+ * The timed emote `event` starts for `customer`, or null. Served drinks get a
+ * heart; storming out with patience left means the order ran out of stock
+ * (the same rule as experienceOf in sim/reviews.ts), which gets a cloud.
+ */
+export function emoteForEvent(event: GameEvent, customer: Customer | undefined): TimedEmote | null {
+  if (event.type === 'served') return 'heart';
+  if (event.type === 'angry' && customer && customer.patience > 0) return 'cloud';
+  return null;
+}
+
+/** Emote shown at `now`: a running timed cue first, then sweat while impatient, else none. */
+export function emoteFor(state: CustomerState, patienceFrac: number, cue: EmoteCue | null, now: number): EmoteKind | null {
+  if (cue && now >= cue.start && now - cue.start < EMOTE_SECONDS[cue.kind]) return cue.kind;
+  if (customerMood(state, patienceFrac) === 'impatient') return 'sweat';
+  return null;
+}
+
+/** Face to wear under `emote`: sad under the out-of-stock cloud (angry once it clears), else `mood`. */
+export function moodWithEmote(mood: Mood, emote: EmoteKind | null): Mood {
+  return emote === 'cloud' ? 'sad' : mood;
 }
 
 /** Staff and player animation while at the task spot. */

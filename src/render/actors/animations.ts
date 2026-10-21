@@ -27,7 +27,7 @@ export type AnimName =
   | 'impatient';
 
 /** Face expression; the rig swaps the brows and mouth to match. */
-export type Mood = 'happy' | 'neutral' | 'impatient' | 'angry';
+export type Mood = 'happy' | 'neutral' | 'impatient' | 'angry' | 'sad';
 
 export const SPEC_ANIMS: readonly AnimName[] = ['idle', 'walk', 'carry_tray', 'serve', 'clean', 'angry_leave'];
 export const ALL_ANIMS: readonly AnimName[] = [...SPEC_ANIMS, 'queue', 'drink', 'sit', 'work', 'wave', 'brew', 'handoff', 'impatient'];
