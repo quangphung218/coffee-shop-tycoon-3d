@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGame } from '../../src/sim/state';
 import type { DailyReport, GameState } from '../../src/sim/types';
 import { createDailyReport } from '../../src/ui/report';
-import { BADGE_POP_MS, BADGE_SHAKE_MS } from '../../src/ui/report/report';
+import { BADGE_POP_MS, BADGE_SHAKE_EASING, BADGE_SHAKE_MS, BADGE_SHAKE_PX } from '../../src/ui/report/report';
 
 // Confetti is loaded with import(); a no-op burst keeps jsdom off the canvas.
 vi.mock('../../src/ui/fx/confetti', () => ({ burst: () => () => {} }));
@@ -71,6 +71,7 @@ describe('level-up badge shake', () => {
     expect(animate.mock.contexts[0]).toBe(badge);
     const [frames, opts] = animate.mock.calls[0] as [Keyframe[], KeyframeAnimationOptions];
     expect(frames.every((f) => Object.keys(f).join() === 'transform')).toBe(true);
+    expect(BADGE_SHAKE_PX).toBe(3);
     expect(new Set(frames.map((f) => f.transform))).toEqual(new Set(['translateX(0)', 'translateX(-3px)', 'translateX(3px)']));
     expect(opts).toMatchObject({ duration: BADGE_SHAKE_MS, delay: BADGE_POP_MS });
 
@@ -79,6 +80,31 @@ describe('level-up badge shake', () => {
     view.update(state, false);
     view.update(state, true);
     expect(animate).toHaveBeenCalledTimes(1);
+  });
+
+  it('eases the shake by the --easing-standard token', () => {
+    const real = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el) => {
+      const style = real(el);
+      return new Proxy(style, {
+        get(target, key) {
+          if (key === 'getPropertyValue') return (name: string) => (name === '--easing-standard' ? ' cubic-bezier(0.1, 0.2, 0.3, 1) ' : target.getPropertyValue(name));
+          const v = Reflect.get(target, key);
+          return typeof v === 'function' ? v.bind(target) : v;
+        },
+      });
+    });
+    open(report({ levelUp: LEVEL_UP }));
+    const [, opts] = animate.mock.calls[0] as [Keyframe[], KeyframeAnimationOptions];
+    expect(opts.easing).toBe('cubic-bezier(0.1, 0.2, 0.3, 1)');
+  });
+
+  it('falls back to BADGE_SHAKE_EASING when the token cannot be read', () => {
+    open(report({ levelUp: LEVEL_UP }));
+    const [, opts] = animate.mock.calls[0] as [Keyframe[], KeyframeAnimationOptions];
+    // No stylesheet in jsdom, so the token is empty.
+    expect(opts.easing).toBe(BADGE_SHAKE_EASING);
+    expect(BADGE_SHAKE_EASING).toBe('cubic-bezier(0.2, 0, 0, 1)');
   });
 
   it('does not shake without a level-up', () => {

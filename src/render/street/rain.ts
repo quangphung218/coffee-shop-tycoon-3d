@@ -72,7 +72,10 @@ export function createRain(quality: Quality): Rain {
   const streaks = new LineSegments(streakGeometry, streakMaterial);
   streaks.name = 'rain-streaks';
   streaks.frustumCulled = false;
-  streaks.visible = false;
+  // Hidden by an empty draw range and instance count, never through `visible`:
+  // compileAsync skips hidden objects, and both shaders must be warmed in
+  // prepare() even on a dry day.
+  streakGeometry.setDrawRange(0, 0);
   object.add(streaks);
 
   // A flat ring, opened and closed by scale only.
@@ -82,7 +85,6 @@ export function createRain(quality: Quality): Rain {
   splashes.name = 'rain-splashes';
   splashes.frustumCulled = false;
   splashes.count = 0;
-  splashes.visible = false;
   object.add(splashes);
 
   const m4 = new Matrix4();
@@ -125,8 +127,6 @@ export function createRain(quality: Quality): Rain {
       const raining = weather === 'rainy';
       streakCount = raining ? rainStreaksFor(density.rainDrops, reducedMotion) : 0;
       splashCount = raining && !reducedMotion ? density.rainSplashes : 0;
-      streaks.visible = streakCount > 0;
-      splashes.visible = splashCount > 0;
       streakGeometry.setDrawRange(0, streakCount * 2);
       splashes.count = splashCount;
       if (streakCount > 0) placeStreaks(streakCount, time);

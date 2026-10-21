@@ -272,10 +272,14 @@ interface Key {
   lamps: number;
 }
 
-/** Keyframes over the opening day: pale warm morning, white noon, orange late afternoon, blue dusk. */
+/**
+ * Keyframes over the opening day: bright pale-yellow morning (07:00 clearly
+ * brighter than dusk), white noon, orange late afternoon, blue dusk.
+ */
 const KEYS: readonly Key[] = [
-  { minute: 6 * 60, sun: 0.45, fill: 0.62, sunColor: 0xffd49a, sky: 0xf3d6bc, lamps: 0.6 },
-  { minute: 8 * 60, sun: 0.78, fill: 0.84, sunColor: 0xffe6b0, sky: 0xd6e8ea, lamps: 0 },
+  { minute: 6 * 60, sun: 0.6, fill: 0.76, sunColor: 0xffe0a8, sky: 0xf6dcc0, lamps: 0.6 },
+  { minute: 7 * 60, sun: 0.82, fill: 0.88, sunColor: 0xffecbc, sky: 0xf6ead0, lamps: 0 },
+  { minute: 8 * 60, sun: 0.88, fill: 0.92, sunColor: 0xfff0c8, sky: 0xdcece8, lamps: 0 },
   { minute: 12 * 60, sun: 1, fill: 1, sunColor: 0xffffff, sky: 0xbfe6f5, lamps: 0 },
   { minute: 16 * 60, sun: 0.92, fill: 0.95, sunColor: 0xfff0d8, sky: 0xc4e3f0, lamps: 0 },
   { minute: 18 * 60, sun: 0.7, fill: 0.8, sunColor: 0xffa860, sky: 0xf7b98f, lamps: 0.5 },

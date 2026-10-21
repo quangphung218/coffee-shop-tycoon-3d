@@ -204,7 +204,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
   let lastState: GameState | null = null;
   let lastClock = -1;
   let lastTime = -1;
-  /** Seconds the coin popups have run: real time, frozen while the game is paused. */
+  /** Seconds the coin popups and cup steam have run: real time, frozen while the game is paused. */
   let coinTime = 0;
   let frame = 0;
 
@@ -416,7 +416,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
         const moving = animate(actor, (m) => workerAnim(s.task, m), STAFF_SPEED, dtGame, dtReal, jump || actor.motion.goal === null, now);
         actor.body.char.setMood('neutral');
         actor.body.label.set(NO_LABEL, now);
-        actor.body.steam.update(!still && steamFor(state, s.task, moving), now + actor.bobOffset);
+        actor.body.steam.update(!still && steamFor(state, s.task, moving), coinTime + actor.bobOffset);
       }
 
       const head = state.playerTasks[0] ?? null;
@@ -435,7 +435,7 @@ export function createActors(scene: Scene, options: ActorsOptions = {}): Actors 
       const playerMoving = animate(player, (m) => workerAnim(head, m), STAFF_SPEED * 1.1, dtGame, dtReal, jump || player.motion.goal === null, now);
       player.body.char.setMood('neutral');
       player.body.label.set(NO_LABEL, now);
-      player.body.steam.update(!still && steamFor(state, head, playerMoving), now);
+      player.body.steam.update(!still && steamFor(state, head, playerMoving), coinTime);
 
       // Walkers drift apart a little where they cross; only what is drawn moves.
       if (grid) {

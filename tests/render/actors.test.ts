@@ -1,5 +1,5 @@
-import { Raycaster, Scene, Vector3, type Mesh } from 'three';
-import { describe, expect, it } from 'vitest';
+import { Raycaster, Scene, Sprite, Vector3, type Mesh, type SpriteMaterial } from 'three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ALL_ANIMS,
   ANIM_PERIOD,
@@ -1215,6 +1215,48 @@ describe('createActors', () => {
     expect(actors.pick(ray)).toEqual({ type: 'take_order', customerId: c.id });
     const miss = new Raycaster(new Vector3(-3, 10, 4), new Vector3(0, -1, 0));
     expect(actors.pick(miss)).toBeNull();
+    actors.dispose();
+  });
+});
+
+describe('cup steam and pause', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('holds the steam over a staff cup still while paused and lets it rise again after', () => {
+    let ms = 500_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => ms);
+    const scene = new Scene();
+    const actors = createActors(scene, { quality: 'high', reducedMotion: false });
+    const state = newState();
+    const layout = getShopLayout(state);
+    // No customer on screen, so the only sprites drawn are the steam puffs.
+    state.orders.push({ id: 900, customerId: 1, itemId: 'latte', status: 'brewing', remaining: 5, staffId: 500 });
+    const spot = { x: layout.pickup.x - 1, z: layout.pickup.z - 1 };
+    state.staff.push({ id: 500, name: 'A', role: 'barista', wagePerDay: 1, speed: 1, busy: true, task: { kind: 'brew', targetId: 900, remaining: 5 }, pos: spot, look: 0 });
+    actors.update(state, 0);
+    expect(actors.inspect('s500')!.steam).toBe(true);
+    const puffs = (): number[] => {
+      const out: number[] = [];
+      scene.traverseVisible((o) => {
+        if (o instanceof Sprite) out.push(...o.position.toArray(), ...o.scale.toArray(), (o.material as SpriteMaterial).opacity);
+      });
+      return out;
+    };
+    ms += 300;
+    actors.update(state, 0);
+    state.paused = true;
+    const before = puffs();
+    expect(before.length).toBeGreaterThan(0);
+    ms += 700;
+    actors.update(state, 0);
+    expect(actors.inspect('s500')!.steam).toBe(true);
+    expect(puffs()).toEqual(before);
+    state.paused = false;
+    ms += 400;
+    actors.update(state, 0);
+    expect(puffs()).not.toEqual(before);
     actors.dispose();
   });
 });
