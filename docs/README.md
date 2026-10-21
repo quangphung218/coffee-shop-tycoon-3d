@@ -12,6 +12,7 @@
 - [reports/hud-top-row.md](reports/hud-top-row.md): HUD trên, nguyên nhân cụm Điều khiển rớt hàng ở ngày sự kiện cuối game, cách giữ ba cụm một hàng, ảnh trước/sau ở 1440 và 1100 px.
 - [reports/loading-experience.md](reports/loading-experience.md): màn tải có tiến độ thật: file nặng nhất khi mở game, thời gian tới Main Menu và cảnh 3D trước/sau so với `d35f4d9`.
 - [reports/startup-under-1s-plan.md](reports/startup-under-1s-plan.md): Main Menu trên di động ở 390×844: dòng thời gian tải, chunk chính chứa gì, kế hoạch đưa xuống dưới 1 s.
+- [reports/p30-characters.md](reports/p30-characters.md): P30, kiểm chứng biểu cảm khách, khách quen có tên, đồng phục mở theo cấp quán: check, khởi động và khung hình so với `9f662fd`, layout, save v0–v3, ảnh trước/sau có khoanh.
 - [reports/p29-juice-lighting.md](reports/p29-juice-lighting.md): P29, kiểm chứng ánh sáng theo giờ, đèn quán, mưa, đồng xu và rung thẻ Lên cấp: check, khởi động và khung hình so với `774be34`, CSS chính, save v0–v3, ảnh trước/sau có khoanh.
 - [reports/p27-retention.md](reports/p27-retention.md): P27, kiểm chứng nhân viên lên cấp, quà ngày và Tem, đơn đặc biệt, khách VIP, quán mở rộng 4 cấp: check, khởi động và khung hình so với `d58350b`, layout 92 mục, ảnh có khoanh.
 - [reports/p27-merge-state.md](reports/p27-merge-state.md): P27, từng nhánh hạng mục, tích hợp và verify so với `origin/main` bằng ancestry và patch-id; nhánh lượt cũ chưa merge và bản thay thế đã có trong main.

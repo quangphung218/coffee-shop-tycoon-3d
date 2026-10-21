@@ -1,6 +1,6 @@
 # Chụp ảnh, GIF demo và icon 3D
 
-Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng và khách VIP bằng `npm run media:p27` (mục [Ảnh P27](#ảnh-p27)), ảnh cảnh quán theo giờ và thời tiết, đồng xu và thẻ Lên cấp bằng `npm run media:p29` (mục [Ảnh P29](#ảnh-p29)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
+Trang này hướng dẫn tạo lại ảnh chụp màn hình, đoạn demo và các bảng ảnh trước/sau P18–P19 bằng `npm run media`, các bảng trước/sau P20 bằng `npm run media:p20` (mục [Ảnh trước/sau P20](#ảnh-trướcsau-p20)), các bảng trước/sau tuần 7 ngày bằng `npm run media:p21` (mục [Ảnh trước/sau P21](#ảnh-trướcsau-p21)), ảnh và số đo chơi tuần 7 ngày bằng `npm run review:p22` (mục [Review tuần P22](#review-tuần-p22)), các bảng trước/sau so với v0.4.0 bằng `npm run media:p22` (mục [Ảnh trước/sau P22](#ảnh-trướcsau-p22)), các bảng trước/sau HUD, Daily Report, tổng kết tuần và màn tải so với P22 bằng `npm run media:p23` (mục [Ảnh trước/sau P23](#ảnh-trướcsau-p23)), các bảng trước/sau HUD, dock, các bảng quản lý, toast nhập hàng, Daily Report và tổng kết tuần so với P23 bằng `npm run media:p24` (mục [Ảnh trước/sau P24](#ảnh-trướcsau-p24)), các bảng trước/sau Menu gọn, icon và hình 3D theo bậc nâng cấp, hiệu ứng mua, thẻ lên cấp và chấm "Mới" so với P24 bằng `npm run media:p25` cùng số đo khung hình lúc có hiệu ứng (mục [Ảnh trước/sau P25](#ảnh-trướcsau-p25)), ảnh quà ngày, Tem, nhân viên lên cấp, đơn đặc biệt, quán mở rộng và khách VIP bằng `npm run media:p27` (mục [Ảnh P27](#ảnh-p27)), ảnh cảnh quán theo giờ và thời tiết, đồng xu và thẻ Lên cấp bằng `npm run media:p29` (mục [Ảnh P29](#ảnh-p29)), các bảng trước/sau biểu cảm khách, đồng phục, mục Đồng phục, thẻ Khách quen và toast bằng `npm run media:p30` (mục [Ảnh P30](#ảnh-p30)), ảnh màn tải qua mạng chậm và lúc lỗi bằng `npm run media:loading` (mục [Ảnh màn tải](#ảnh-màn-tải)), kiểm tràn ngang và CLS bằng `npm run layout` (mục [Kiểm lề và CLS](#kiểm-lề-và-cls)), và atlas icon 3D bằng `npm run icons` (mục [Icon 3D](#icon-3d)).
 
 ## Yêu cầu
 
@@ -476,6 +476,33 @@ Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc đ�
 | `P29_ONLY=dusk npm run media:p29` | Chỉ chụp bảng 19:30 trước/sau. |
 | `P29_SAVES_ONLY=1 node scripts/capture-p29.mjs` | Chỉ chơi và in các save, không mở server hay trình duyệt. |
 
+## Ảnh P30
+
+```sh
+MEDIA_HEADED=1 MEDIA_PORT=4180 npm run media:p30
+```
+
+Lệnh build bản hiện tại, xuất bản gốc `9f662fd` ra thư mục tạm và build, mở hai bản bằng `vite preview` ở `MEDIA_PORT` và cổng kế tiếp, rồi `scripts/capture-p30.mjs` chụp trước/sau. Cần `MEDIA_HEADED=1`: Chromium headless vẽ quá ít khung nên đồng hồ game gần như đứng. Yêu cầu giống `npm run media` (không cần ffmpeg), thêm lịch sử git tới `9f662fd`.
+
+1. Sim của mỗi bản chơi save trưa ngày 2 như `media:p29` (cùng seed), rồi sửa giống nhau ở hai bản: mọi order đang mở thành sẵn sàng (tim), khách đang chờ còn 30% kiên nhẫn (giọt mồ hôi), nguyên liệu món của một khách đang xếp hàng về 0 (đám mây), cấp quán 5 với bộ latte (đội), lúc mở cửa ngày 3 (toast), sáng ngày 4 với cấp quán 3 và bộ bạc hà (hai bảng).
+2. Bản hiện tại chụp trước: chờ biểu cảm hay toast hiện (tối đa 40 s, tim, mây và toast ở tốc độ x4), camera phóng quanh biểu cảm. Bản gốc chụp cùng số giây sau **Tiếp tục**, camera ở cùng điểm, cùng vòng khoanh.
+3. Nạp save trưa ngày 2 của bản gốc (save v3 của P29) vào bản hiện tại, chờ 4 s: đồng hồ phải chạy, không có lỗi console hay request lỗi nào mà save của chính bản hiện tại không có.
+
+Ảnh JPEG trong `docs/reports/p30-characters/`, ghi đè mỗi lần chạy:
+
+| File | Nội dung |
+| --- | --- |
+| `emotes-before-after-p30.jpg` | Tim, giọt mồ hôi, đám mây trên khách, 1280×800, mức Cao. |
+| `uniform-latte-before-after-p30.jpg` | Đội mặc bộ latte (cấp quán 5), khoanh từng người. |
+| `uniform-picker-390-before-after-p30.jpg` | Mục Đồng phục của bảng Nhân viên ở 390×844: đang mặc, mở, khoá. |
+| `regulars-390-before-after-p30.jpg` | Thẻ Khách quen của bảng Việc và toast khách quen ghé, 390×844. |
+
+Ảnh dùng trong [báo cáo P30](reports/p30-characters.md). Lệnh in `!!` khi biểu cảm, đội, mục Đồng phục, thẻ hay toast không hiện, hoặc save cũ nạp lỗi; có `!!` thì lệnh kết thúc với mã 1.
+
+| Lệnh | Việc |
+| --- | --- |
+| `P30_SAVES_ONLY=1 node scripts/capture-p30.mjs` | Chỉ chơi và in tóm tắt save của bản hiện tại, không mở server hay trình duyệt. |
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
@@ -506,6 +533,9 @@ Lệnh build bản hiện tại, mở `vite preview` ở `MEDIA_PORT` (mặc đ�
 | `P29_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p29` chơi trên sim mỗi bản. |
 | `P29_ONLY` | (trống) | `coin` hoặc `dusk` để `npm run media:p29` chỉ chụp một bảng trước/sau. |
 | `P29_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p29.mjs` chỉ chơi ván, in các save rồi dừng. |
+| `P30_BASE` | `9f662fd` | Commit "trước" mà `npm run media:p30` so với bản hiện tại. |
+| `P30_SEED` | `MEDIA_SEED >>> 0` | Seed của ván mà `npm run media:p30` chơi trên sim mỗi bản. |
+| `P30_SAVES_ONLY` | (trống) | `1` để `scripts/capture-p30.mjs` chỉ chơi ván, in tóm tắt save rồi dừng. |
 | `MEDIA_CHROMIUM` | (trống) | `1` để `scripts/capture-p25.mjs` dùng Chromium của Playwright thay cho Chrome cài sẵn. |
 
 Ví dụ: `MEDIA_HEADED=1 npm run media`.
