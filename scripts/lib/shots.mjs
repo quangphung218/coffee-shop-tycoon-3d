@@ -371,6 +371,59 @@ async function levelUpShot(page, t0, { file, settleMs = 1200, timeoutMs = 5000 }
   return { card: true, text, file: await writeShot(page, file) };
 }
 
+/**
+ * Runs in the page. Screen box (CSS px, in the view drawn) of the machine
+ * mesh standing at each x of `spots` ({ name: x }) on the back counter: the
+ * meshes ShopView marks `userData.pick = 'machine'`, placed at the layout x.
+ * Null for a spot with no machine.
+ */
+function machineBoxes(spots) {
+  const scene = window.__mediaScene;
+  const cam = window.__mediaFocus ? window.__mediaView : window.__mediaCamera;
+  const out = Object.fromEntries(Object.keys(spots).map((k) => [k, null]));
+  if (!scene || !cam) return out;
+  const r = document.getElementById('scene').getBoundingClientRect();
+  scene.traverse((o) => {
+    if (!o.isMesh || o.userData?.pick !== 'machine' || !o.geometry) return;
+    const name = Object.keys(spots).find((k) => Math.abs(o.position.x - spots[k]) < 0.01);
+    if (!name) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox;
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const x of [b.min.x, b.max.x]) {
+      for (const y of [b.min.y, b.max.y]) {
+        for (const z of [b.min.z, b.max.z]) {
+          const q = new o.position.constructor(x, y, z).applyMatrix4(o.matrixWorld).project(cam);
+          const sx = r.left + ((q.x + 1) / 2) * r.width;
+          const sy = r.top + ((1 - q.y) / 2) * r.height;
+          [x0, y0, x1, y1] = [Math.min(x0, sx), Math.min(y0, sy), Math.max(x1, sx), Math.max(y1, sy)];
+        }
+      }
+    }
+    out[name] = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  });
+  return out;
+}
+
+/**
+ * The back counter close up: once the scene is ready and `settleMs` later,
+ * centres the camera on `focus` ({ x, y, z }) at `ppm` px/m and shoots, with
+ * the screen box of the machine at each x of `spots` (machineBoxes). The base
+ * of a pair shoots the same point, ringed where the working tree's machines stand.
+ */
+async function machinesShot(page, t0, { settleMs = 2500, focus, ppm = 200, spots }) {
+  await dock(page);
+  await page.locator('#scene.is-ready').waitFor();
+  await sleep(settleMs);
+  await setFocus(page, { ...focus, ppm });
+  // Long enough for a few frames drawn round the focus.
+  await sleep(300);
+  const boxes = await page.evaluate(machineBoxes, spots);
+  const clock = await hudClock(page);
+  const png = await page.screenshot({ style: HIDE_TOASTS });
+  return { boxes, clock, png };
+}
+
 /** The HUD clock when the scene is ready and `waitMs` later (does the game run on this save?). */
 async function clockRun(page, t0, { waitMs = 4000 }) {
   await dock(page);
@@ -391,4 +444,5 @@ export const SHOTS = {
   dusk: { run: duskFrame, hooks: [observeThree] },
   levelup: { run: levelUpShot, hooks: [observeThree] },
   clock: { run: clockRun, hooks: [observeThree] },
+  machines: { after: machinesShot, before: (page, t0, opts) => machinesShot(page, t0, opts), hooks: [probes.focusHooks] },
 };
