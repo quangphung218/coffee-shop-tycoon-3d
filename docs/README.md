@@ -9,6 +9,7 @@
 
 ## Báo cáo
 
+- [reports/layout-saves.md](reports/layout-saves.md): `npm run layout` nạp save ngày 1 do sim chơi (tick cuối trước báo cáo) thay vì chờ một ngày 4x mỗi khổ: thời gian trước/sau, 98 kiểm tra giữ nguyên, cùng FAIL khi cố làm hỏng CSS báo cáo.
 - [reports/verify-infra-capture-gpu.md](reports/verify-infra-capture-gpu.md): hạ tầng verify: mọi script chụp/kiểm mở Chrome trên GPU thay vì headless shell SwiftShader (`media:p30` 348 s → dưới 1 phút, CPU 1486 s → dưới 60 s), lockfile cho `perf:frames`/`measure-startup`, chụp theo kịch bản `scripts/capture.mjs` với P29/P30 đã chuyển và so ảnh.
 - [reports/hud-390-overlap.md](reports/hud-390-overlap.md): HUD 390 px, cụm Tiến độ đè Điều khiển lúc chuẩn bị với số liệu cuối game; ba phương án sửa có ảnh mô phỏng và số đo; kết quả sửa theo phương án A (tiền gọn ở ≤ 480 px) với ảnh trước/sau.
 - [reports/hud-top-row.md](reports/hud-top-row.md): HUD trên, nguyên nhân cụm Điều khiển rớt hàng ở ngày sự kiện cuối game, cách giữ ba cụm một hàng, ảnh trước/sau ở 1440 và 1100 px.

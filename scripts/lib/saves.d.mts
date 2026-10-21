@@ -52,8 +52,13 @@ export function newGame(mods: SimModules, seed?: number): GameState;
 export function playToScene(mods: SimModules, scene: SceneSpec, seed?: number): GameState;
 export function sceneState(mods: SimModules, scene: SceneSpec, seed?: number): GameState;
 export function playToLevelUp(mods: SimModules, seed?: number): GameState;
+export function playFirstDay(
+  mods: SimModules & { staff: { rolePlan(stats: null, count: number): string[] } },
+  setup: { shopName: string; difficulty: string; seed: number; hires: number },
+): GameState;
 export function sceneInfo(state: GameState): string;
 export function sceneSavesOf(mods: SimModules & { save: SaveModule }, scenes: readonly (SceneSpec & { id: string })[], options?: { withLevelUp?: boolean; seed?: number }): Record<string, SaveText & { info: string }>;
+export function loadSim(root: string, extra?: Record<string, string>): Promise<SimModules & { save: LoadModule } & Record<string, unknown>>;
 export function sceneSaves(
   root: string,
   scenes: readonly (SceneSpec & { id: string })[],
