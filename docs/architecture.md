@@ -134,6 +134,7 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `hire_staff`, `fire_staff`, `assign_role`, `set_auto_assign` | Nhân viên. `hire_staff` trả `false` khi đội đã đủ `maxStaff(state)`. `fire_staff` sau khi mở cửa (pha `opening`, `peak`, `closing`) vẫn ghi lương ngày đó (đã nhân mức lương) vào `today.firedWages`; `settleDay` trả cùng lương cả đội. |
 | `train_staff` | Đào tạo một nhân viên lên cấp kế tiếp (`trainStaff`). Chỉ trong pha `preparation`, cần đủ kinh nghiệm, tiền và Tem; không được thì trả `false` kèm `notify` lý do từ `canTrain` ([Nhân viên: đặc điểm và cấp](#nhân-viên-đặc-điểm-và-cấp)). |
 | `claim_daily_gift` | Nhận quà ngày (`claimDailyGift`), mọi pha. `dateKey` là ngày trên máy `'YYYY-MM-DD'` do UI gửi; đã nhận hôm nay, ngày sai hay lùi lại thì trả `false` kèm `notify` ([Quà ngày, Tem và thành tựu](#quà-ngày-tem-và-thành-tựu)). |
+| `set_uniform` | Đổi đồng phục của cả đội (`state.uniform`), mọi pha. Id lạ hay bộ chưa mở ở cấp quán hiện tại trả `false` kèm `notify`; chọn lại bộ đang mặc trả `true`, không phát sự kiện ([Đồng phục](spec/p30-characters.md#đồng-phục)). |
 | `buy_upgrade`, `start_campaign` | Nâng cấp, marketing. Mua nâng cấp chưa mở khóa (theo cấp quán hay lịch tuần) trả `false`. |
 | `remove_decor` | Gỡ 1 cấp trang trí không có chỗ ngồi (cây, tranh, đèn, biển neon, kệ sách, máy hát đĩa, góc sofa), hoàn 50% tiền cấp đó; cấp 0 hay món không gỡ được trả `false`. |
 | `set_policy` | Đặt quyết định giá hay lương (`low` / `standard` / `high`). Chỉ trong pha `preparation`; pha khác trả `false` kèm `notify`. |
@@ -156,6 +157,8 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `achievement_unlocked` | Lúc `closeDay`, mỗi mốc thành tựu mới đạt; kèm `id` và `tier` (1–3). Toast. |
 | `special_order` | Đơn đặc biệt xong (`status: 'completed'`, lúc giao đủ) hoặc hụt (`failed`, quá hạn hay hết ngày); kèm `itemId`. Toast. |
 | `vip_arrived` | Khách VIP vào cửa, ngay sau `doorbell`; kèm `customerId`. Toast. |
+| `regular_arrived` | Khách quen có tên vào cửa, ngay sau `doorbell`; kèm `customerId`, `regularId` và `visits` (tính cả lần này). Toast, cách nhau ít nhất 20 giây thật (`REGULAR_TOAST_GAP_MS`). |
+| `uniform_changed` | `set_uniform` đổi sang bộ khác; kèm `uniformId`. Không có toast; cảnh 3D đọc `uniformOf(state)` mỗi khung hình để mặc đồ cho nhân viên và người chơi. |
 
 Thêm tính năng mới: thêm biến thể vào `Command`, xử lý trong `dispatch` (`src/sim/index.ts`), viết test ở `tests/sim/`, rồi mới nối UI. UI cần biết chuyện gì vừa xảy ra thì thêm biến thể `GameEvent` thay vì so sánh state giữa hai khung hình.
 
@@ -424,6 +427,16 @@ stateDiagram-v2
   | Gia đình | Túi vải vàng tay trái | Thong thả | Nhìn quanh |
 
   Mỗi nhân vật dùng chung một ô mesh phụ kiện, không đổ bóng. Chất lượng Thấp hoặc Giảm chuyển động giữ tư thế, bỏ gật, nhìn quanh và nảy. Khách sốt ruột (`impatient`) khoanh tay, gõ chân, mỗi vòng gỡ tay ra xem đồng hồ.
+- Biểu cảm (`src/render/actors/sync.ts` chọn, `emotes.ts` vẽ; chỉ phần vẽ): mỗi khách hiện tối đa một khối 3D nhỏ trên đầu, tim hay mây đang chạy ưu tiên hơn giọt mồ hôi. Mặt (`setMood`) đi theo:
+
+  | Biểu cảm | Bật khi | Thời lượng (`EMOTE_SECONDS`) | Mặt |
+  | --- | --- | --- | --- |
+  | `heart` | `served` | 1,2 giây | Theo trạng thái (`customerMood`) |
+  | `sweat` | `customerMood` ra `impatient`: dưới 40% kiên nhẫn (`IMPATIENT_FRAC`) khi `entering`, `queueing`, `waiting` | Lặp mỗi 1,4 giây | `impatient` |
+  | `cloud` | `angry` khi khách còn kiên nhẫn (món hết hàng, cùng luật `experienceOf`) | 2,2 giây | `sad` (`moodWithEmote`), rồi `angry` |
+
+  Mỗi loại là một geometry gộp dùng chung, mỗi khách giữ sẵn một mesh ẩn cho mỗi loại nên hiện biểu cảm không cấp phát. Đồng hồ biểu cảm dừng khi tạm dừng game. Chất lượng Thấp hoặc Giảm chuyển động giữ biểu cảm đứng yên, đủ cỡ. Luật và số ở [spec/p30-characters.md](spec/p30-characters.md#biểu-cảm).
+- Khách quen có tên (`src/sim/data/regulars.ts`, `admitRegular` trong `src/sim/customers.ts`): từ ngày 2 (`REGULARS_FROM_DAY`), khách cá tính Khách quen được gán một trong 8 tên `REGULARS` bằng hash của seed và id khách, không rút RNG. Mỗi tên ghé tối đa 1 lần mỗi ngày; lần trùng giữ vô danh. Lượt ghé đếm trong `state.regulars`, khách mang `regularId`, sim phát `regular_arrived`. Review của khách quen lấy tên đó làm tác giả nhưng vẫn rút `pick(state, STAFF_NAMES)` để chuỗi RNG không đổi. Không đổi món, kiên nhẫn hay sao ([spec/p30-characters.md](spec/p30-characters.md#khách-quen)).
 - Kiên nhẫn (`patience`) chỉ giảm khi xếp hàng và chờ đồ.
 - `served` và `angry` sinh trải nghiệm: khách để lại review (1–5 sao, lý do `ReviewReason`) với xác suất 30% khi được phục vụ, 60% khi bỏ đi.
 - Game giữ tối đa 30 review (`MAX_REVIEWS`).
@@ -482,7 +495,7 @@ Mỗi slot là JSON:
 - Tiếp đó `settleActors()` (`src/sim/index.ts`) dời khách và nhân viên đang đứng trong vật cản (save cũ có hàng chờ chạy qua ghế) ra ô trống gần nhất. Người đứng trên sàn trống giữ nguyên vị trí.
 - `week` và `policies` là trường tùy chọn: save không có `week` chơi không lịch tuần, không màn kết tuần ([Tuần 7 ngày](#tuần-7-ngày)); thiếu `policies` thì cả giá và lương là `standard`.
 - Bậc hình nâng cấp (`upgradeTier`) tính lại từ `state.upgrades` mỗi lần dựng bố cục, mục "Mới" (`fresh`) chỉ sống trong phiên: không trường nào được lưu, save vẫn là phiên bản 3 và save cũ hiện đúng bậc theo cấp đã mua.
-- Nhân viên, quà ngày, đơn đặc biệt và VIP chỉ thêm trường tùy chọn, save vẫn là phiên bản 3 và không có migration mới:
+- Nhân viên, quà ngày, đơn đặc biệt, VIP, khách quen và đồng phục chỉ thêm trường tùy chọn, save vẫn là phiên bản 3 và không có migration mới:
 
   | Trường | Thiếu thì |
   | --- | --- |
@@ -490,6 +503,10 @@ Mỗi slot là JSON:
   | `GameState.specialOrder` | Không có đơn hôm nay; ngày mở cửa tiếp theo rút đơn mới. |
   | `Staff.trait`, `Staff.level`, `Staff.exp` | Đặc điểm tính từ hash của seed và id (không ghi vào save), cấp 1, kinh nghiệm 0. |
   | `Customer.vip` | Không phải VIP. |
+
+  | `GameState.regulars` | Chưa gặp khách quen nào; đếm từ lần ghé tiếp theo. |
+  | `GameState.uniform` | Đồng phục `classic` (`uniformOf`); id lạ cũng mặc `classic`. |
+  | `Customer.regularId` | Khách vô danh. |
 
   `retention.lifetime` của save cũ được điền khi tạo (`backfillLifetime`): `served` và `revenue` cộng từ các tuần đã xong trong `week.archive`, rồi các ngày trong `history` không thuộc tuần đó, cộng hôm nay nếu đang ở pha `report`. `fiveStar`, `perfectDays`, `threeCupWeeks` bắt đầu từ 0. Mốc thành tựu đã đủ nhờ phần điền này được trả Tem ở `closeDay` đầu tiên.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.
