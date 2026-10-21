@@ -10,7 +10,7 @@ Lõi mô phỏng (`src/sim`) tất định và tách khỏi phần vẽ; chữ t
 | `npm run check` | **Cổng kiểm bắt buộc trước khi commit**: `tsc --noEmit` → `vitest run` → `vite build`. |
 | `npm test` | Chỉ chạy test (`vitest run`, gom `tests/**/*.test.ts`). |
 | `npx vitest run tests/sim/day.test.ts` | Chạy một file test. |
-| `npm run layout` | Build rồi kiểm tràn ngang, HUD, các bảng ở 390–1440 px. Chạy khi sửa `src/ui`. |
+| `npm run layout` | Build rồi kiểm tràn ngang, HUD, các bảng ở 390–1440 px (khoảng 1 phút). Chạy khi sửa `src/ui`. Giữ chung lockfile đo hiệu năng với `perf:frames`, `measure-startup`: chờ lượt đo đang chạy xong. |
 | `npm run perf:frames` | Build rồi đo frame time; `-- --base <commit>` để so bản cũ, `-- --scene dusk-rain` hoặc `noon-sunny` để đo cảnh P29. Giữ lockfile chung cả máy: hai lượt đo (kể cả ở hai worktree) không chạy song song. |
 | `npm run media -- --scenario <id>` | Build rồi chụp theo kịch bản `scripts/scenarios/<id>.mjs` (`p29`, `p30`…); `media:p29`, `media:p30` là tên tắt. Xem `docs/media.md` mục Kịch bản chụp. |
 | `npm run dev` | Dev server; `/?preview=actors` xem nhân vật riêng. |
@@ -22,7 +22,7 @@ Lõi mô phỏng (`src/sim`) tất định và tách khỏi phần vẽ; chữ t
 ## Hạng mục verify (chụp ảnh, đo hiệu năng)
 
 - **Chụp ảnh đợt mới: viết kịch bản, không chép script.** Thêm `scripts/scenarios/<id>.mjs` (save nào, chụp gì, bảng nào; mẫu: `p30.mjs`, `p29.mjs`) rồi chạy `npm run media -- --scenario <id>`. Phần dựng preview, nạp save, chờ `cst:world`, chụp, so với bản gốc, vẽ bảng đã có trong `scripts/lib/`; thiếu kiểu shot thì thêm vào `scripts/lib/shots.mjs`, không tạo `capture-pNN.mjs` mới.
-- **Đo hiệu năng tuần tự.** `perf:frames` và `measure-startup` giữ một lockfile chung cả máy (`scripts/lib/perf-lock.mjs`, mọi worktree dùng chung vì chung GPU); không chạy hai lượt đo (hay một lượt đo cạnh một lượt chụp) cùng lúc, số đo sẽ nhiễu vì giành GPU.
+- **Đo hiệu năng tuần tự.** `perf:frames`, `measure-startup` và `layout` giữ một lockfile chung cả máy (`scripts/lib/perf-lock.mjs`, mọi worktree dùng chung vì chung GPU; test trỏ lock sang thư mục tạm qua `PERF_LOCK_DIR`); không chạy hai lượt đo (hay một lượt đo cạnh một lượt chụp) cùng lúc, số đo sẽ nhiễu vì giành GPU. Trước khi chạy `media*` (chưa lấy lock) thì xem `$TMPDIR/cst3d-perf.lock` còn ai giữ không.
 - **Luôn kiểm renderer là GPU.** Dòng `WebGL:` phải là GPU (vd `ANGLE Metal Renderer: Apple M2`), không phải `SwiftShader`; thấy `!! WebGL chạy bằng CPU` thì sửa môi trường (cài Chrome, `CHROME_PATH`) rồi chạy lại, không ghi số đo đó vào báo cáo.
 
 ## Cấu trúc
