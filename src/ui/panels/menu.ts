@@ -7,10 +7,11 @@ import { stockOf } from '../../sim/inventory';
 import { canChangePolicy, policyLevel, PRICE_POLICY } from '../../sim/policies';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
+import { MENU_REQUIRES, menuBlockedReason } from '../../sim/upgrades';
 import { h, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { fresh } from '../core/fresh';
-import { MENU_ICONS } from '../core/iconMap';
+import { MENU_ICONS, UPGRADE_ICONS } from '../core/iconMap';
 import { icon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { openOtherPanel, reasonLine, segmented, sender, setIconText, setReason, toggle, withIcon } from './widgets';
@@ -106,8 +107,9 @@ export function missingLabel(state: GameState, item: MenuItemDef): string | null
  * popularity) is the switch's description and the row's title. An item the
  * stock cannot make shows a "Thiếu Cam" button that opens Kho (the amounts
  * only in its description); an item not open yet shows "Mở ngày N" or "Mở ở
- * cấp N" (unlockHint) and stays off. An item short of stock can still be
- * switched on or off.
+ * cấp N" (unlockHint) and stays off; an open item whose tool is not bought
+ * (menuBlockedReason) shows a "Cần Tháp cold brew" button that opens Nâng cấp
+ * and stays off. An item short of stock can still be switched on or off.
  */
 export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
@@ -149,7 +151,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
     const why = reasonLine();
     why.classList.add('sr-only');
     const sw = toggle(`Bán ${item.name}`, 'Bán', 'Không', (next) => send({ type: 'set_menu_item', itemId: item.id, enabled: next }), { compact: true });
-    // One flat label slot (design/p20 §5): "Thiếu Cam" or "Mở ngày N" / "Mở ở cấp N", never both; empty while sellable.
+    // One flat label slot (design/p20 §5): "Mở ngày N" / "Mở ở cấp N", "Cần <công cụ>" or "Thiếu Cam", never two; empty while sellable.
     // "Thiếu Cam" is itself the way to Kho, so the row needs no link line.
     const missBadge = h('button', {
       class: 'badge badge-danger badge-btn',
@@ -158,6 +160,14 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       on: { click: () => openOtherPanel('inventory') },
     });
     const levelBadge = h('span', { class: 'badge badge-neutral', hidden: true, attrs: { 'data-lock': 'level' } });
+    // "Cần Tháp cold brew": the item is open but its tool is not bought yet; the label is the way to Nâng cấp.
+    const tool = MENU_REQUIRES[item.id];
+    const toolBadge = h('button', {
+      class: 'badge badge-danger badge-btn',
+      hidden: true,
+      attrs: { type: 'button', 'data-lock': 'tool', 'data-goto': 'upgrades', 'aria-describedby': why.id },
+      on: { click: () => openOtherPanel('upgrades') },
+    });
     const newBadge = freshBadge();
     const meta = h('p', { class: 'item-meta' });
     // The full line for screen readers (the switch's description while nothing blocks it) and as the row's title.
@@ -169,13 +179,13 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
       { class: 'item item-row menu-row', attrs: { 'data-item': item.id } },
       h('span', { class: 'item-icon' }, icon(MENU_ICONS[item.id], { size: 32 })),
       h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: item.name }), meta, detail, why),
-      h('span', { class: 'item-status' }, missBadge, levelBadge, newBadge),
+      h('span', { class: 'item-status' }, missBadge, levelBadge, toolBadge, newBadge),
       sw.el,
     );
     w.watch(
       (s) => {
         const entry = s.menu.find((m) => m.id === item.id);
-        return `${entry?.enabled ? 1 : 0}|${sellPrice(s, item.id)}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}|${weekDay(s)}`;
+        return `${entry?.enabled ? 1 : 0}|${sellPrice(s, item.id)}|${lockReason(s, item) ?? ''}|${isUnlocked(s, 'menu', item.id)}|${weekDay(s)}|${menuBlockedReason(s, item.id) ?? ''}`;
       },
       (_, s) => {
         const entry = s.menu.find((m) => m.id === item.id);
@@ -184,7 +194,9 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const price = sellPrice(s, item.id);
         // An item already on sale (an old save's right) can still be switched off.
         const levelLocked = !isUnlocked(s, 'menu', item.id) && !enabled;
-        const locked = levelLocked ? null : lockReason(s, item);
+        // Label order: Mở ngày / Mở ở cấp, then Cần <công cụ>, then Thiếu <nguyên liệu>.
+        const needs = levelLocked || enabled ? null : menuBlockedReason(s, item.id);
+        const locked = levelLocked || needs ? null : lockReason(s, item);
         const margin = price > 0 ? Math.round(((price - item.cost) / price) * 100) : 0;
         // Each part keeps its number whole; the line may wrap between them.
         setChildren(
@@ -201,6 +213,11 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         const opens = levelLocked ? unlockHint(s, 'menu', item.id) : null;
         levelBadge.hidden = !opens;
         if (opens) setIconText(levelBadge, 'i-lock', opens.badge);
+        toolBadge.hidden = !needs;
+        if (needs && tool) {
+          setChildren(toolBadge, ...withIcon(UPGRADE_ICONS[tool.id], needs), icon('i-forward', { size: 16 }));
+          toolBadge.setAttribute('aria-label', `${needs}, mở Nâng cấp`);
+        } else toolBadge.replaceChildren();
         missBadge.hidden = !locked;
         if (locked) {
           const label = missingLabel(s, item)!;
@@ -209,13 +226,14 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
         }
         // Short stock never locks the switch: on, it puts the item's ingredients in Gợi ý nhập.
         // The switch's description, off screen: the full line, then the reason (amounts, unlock day or level) when one applies.
-        sw.set(enabled, levelLocked, detail.id);
-        setReason(why, sw.el, opens ? opens.reason : locked, opens ? 'i-lock' : null);
+        sw.set(enabled, levelLocked || !!needs, detail.id);
+        const reason = opens ? opens.reason : needs ? `${needs} để bán món này; mua ở Nâng cấp.` : locked;
+        setReason(why, sw.el, reason, opens || needs ? 'i-lock' : null);
       },
     );
     // "Mới" only in an empty label slot; runs after the labels above are set.
     w.watch(
-      () => fresh.has('menu', item.id) && missBadge.hidden && levelBadge.hidden,
+      () => fresh.has('menu', item.id) && missBadge.hidden && levelBadge.hidden && toolBadge.hidden,
       (on) => setFresh(newBadge, on),
     );
     return li;
