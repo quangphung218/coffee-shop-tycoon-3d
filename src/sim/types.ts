@@ -368,6 +368,8 @@ export interface DayStats {
    */
   firedWages?: number;
   marketingCost: number;
+  /** Shop rent paid at the end of the day (dailyRent). Absent in days closed before rent existed. */
+  rent?: number;
   upgradeCost: number;
   customersArrived: number;
   customersServed: number;
@@ -493,7 +495,11 @@ export interface DailyReport {
   ingredientCost: number;
   wages: number;
   marketingCost: number;
-  /** revenue − ingredientCost − wages − marketingCost. */
+  /** Rent paid tonight; absent in reports saved before rent existed. */
+  rent?: number;
+  /** Rent the next day will pay at its close, shown ahead of time; absent in old reports. */
+  rentNext?: number;
+  /** revenue − ingredientCost − wages − marketingCost − rent. */
   profit: number;
   money: number;
   customersArrived: number;

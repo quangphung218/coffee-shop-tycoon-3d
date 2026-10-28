@@ -142,7 +142,8 @@ describe('migrate v2 → v3', { timeout: 300_000 }, () => {
   });
 
   it('pays nothing for a week v2 scored and shows no reward line', () => {
-    const s = playedGame(77, WEEK_LENGTH);
+    // A seed whose week still earns 2 cups with the daily rent.
+    const s = playedGame(7, WEEK_LENGTH);
     // The sim would pay this week, so the reward line would show if it were recounted.
     expect(s.week!.result!.reward).toBeGreaterThan(0);
     const file = asV2(s);

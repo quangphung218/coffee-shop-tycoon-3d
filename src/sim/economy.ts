@@ -1,4 +1,5 @@
 import { DIFFICULTIES } from './data/difficulty';
+import { RENT } from './data/rent';
 import { wageMult } from './policies';
 import type { DayStats, Difficulty, GameState } from './types';
 
@@ -59,8 +60,18 @@ export function totalWages(state: GameState): number {
   return Math.round(state.staff.reduce((s, member) => s + member.wagePerDay, 0) * wageMult(state));
 }
 
+/**
+ * Tonight's rent: the difficulty's base plus a step per shop level above 1.
+ * Depends only on the state, so the same seed and play pay the same rent.
+ */
+export function dailyRent(state: GameState): number {
+  const r = RENT[state.difficulty];
+  return r.base + r.perLevel * Math.max(0, (state.shopLevel ?? 1) - 1);
+}
+
+/** Days closed before rent existed carry no `rent` and count it as 0. */
 export function profit(stats: DayStats): number {
-  return stats.revenue - stats.ingredientCost - stats.wages - stats.marketingCost;
+  return stats.revenue - stats.ingredientCost - stats.wages - stats.marketingCost - (stats.rent ?? 0);
 }
 
 /** Hour of day (0..23) for a game minute since midnight. */
@@ -85,14 +96,17 @@ export function payMarketing(state: GameState, amount: number): boolean {
 }
 
 /**
- * Closes the books for today: records the ingredient cost of what was used and
- * pays the staff, including those fired after opening. Wages are paid even
- * into debt; the debt check warns.
+ * Closes the books for today: records the ingredient cost of what was used,
+ * pays the staff, including those fired after opening, and pays the rent.
+ * Wages and rent are paid even into debt; the debt check warns.
  */
 export function settleDay(state: GameState): void {
   state.today.ingredientCost = ingredientCostUsed(state);
   const wages = totalWages(state) + (state.today.firedWages ?? 0);
   state.today.wages = wages;
   state.money -= wages;
+  const rent = dailyRent(state);
+  state.today.rent = rent;
+  state.money -= rent;
   checkDebt(state);
 }

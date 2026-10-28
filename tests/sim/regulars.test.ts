@@ -94,7 +94,8 @@ describe('named regulars', () => {
   });
 
   it('leaves day 2 money, customers and the RNG exactly as before regulars existed', () => {
-    // Captured from the build before named regulars (commit 9f662fd).
+    // Captured from the build before named regulars (commit 9f662fd); the
+    // money is less the rent of days 1 and 2, which came later (E-04).
     const before = {
       2024: { revenue: 2945000, served: 104, lost: 3, arrived: 107, rng: 3424022847, money: 5475000 },
       777: { revenue: 2785000, served: 102, lost: 6, arrived: 108, rng: 328784447, money: 5150000 },
@@ -109,7 +110,7 @@ describe('named regulars', () => {
         lost: t.customersLost,
         arrived: t.customersArrived,
         rng: state.rngState,
-        money: state.money,
+        money: state.money + [...state.history, t].reduce((sum, d) => sum + (d.rent ?? 0), 0),
       }).toEqual(before[seed]);
     }
   });
