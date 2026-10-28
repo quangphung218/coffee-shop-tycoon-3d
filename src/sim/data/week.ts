@@ -5,15 +5,34 @@ import { levelDef } from './levels';
 export const WEEK_LENGTH = 7;
 
 /**
- * Week targets by difficulty. Revenue is set so the basic strategy (restock
- * as suggested, serve alone) reaches about 80% of it (75–86% per seed); how it
- * was measured is in docs/spec/week-7-days.md.
+ * Week targets by difficulty. Revenue sits above what the best week-1
+ * strategy makes, so only strong play nears a full score; Hard asks at least
+ * as much as Normal from a shop whose prices are higher. Measured with
+ * tests/integration/p22-strategies.test.ts.
  */
 export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
-  easy: { revenue: 28_000_000, stars: 3.8 },
-  normal: { revenue: 26_500_000, stars: 4 },
-  hard: { revenue: 23_200_000, stars: 4.2 },
+  easy: { revenue: 35_000_000, stars: 3.8 },
+  normal: { revenue: 32_000_000, stars: 4 },
+  hard: { revenue: 33_000_000, stars: 4.2 },
 };
+
+/**
+ * Week profit target as a share of the week's revenue target, by difficulty
+ * (weekProfitTarget). Hard costs more to run, so its share is lower.
+ */
+export const WEEK_PROFIT_SHARE: Readonly<Record<Difficulty, number>> = {
+  easy: 0.65,
+  normal: 0.6,
+  hard: 0.45,
+};
+
+/**
+ * Profit target of a week with revenue target `revenueTarget`, rounded to
+ * 100.000. Derived instead of stored, so goals in saves keep their shape.
+ */
+export function weekProfitTarget(difficulty: Difficulty, revenueTarget: number): number {
+  return Math.round((revenueTarget * WEEK_PROFIT_SHARE[difficulty]) / 100_000) * 100_000;
+}
 
 /**
  * Revenue target growth per week after week 1, and its cap as a multiple of
