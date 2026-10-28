@@ -109,6 +109,14 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     }
     return { version: 3, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // Adds the bankruptcy rule. Days already in debt are not counted back: an
+  // old save starts with a clean count and is never bankrupt.
+  3: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    if (typeof state.debtDays !== 'number') state.debtDays = 0;
+    if (typeof state.bankrupt !== 'boolean') state.bankrupt = false;
+    return { version: 4, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
+  },
 };
 
 function num(v: unknown): number {
