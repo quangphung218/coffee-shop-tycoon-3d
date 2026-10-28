@@ -139,7 +139,7 @@ Chạy lại `p22-strategies` sau khi sửa, 6 seed mỗi ô:
 
 | Vấn đề | Trước | Sau |
 | --- | --- | --- |
-| E1 · điểm chạm trần | b/c/d/e: điểm 95–100 ở 72/72 ván, 3 cúp 72/72 | Điểm ≥ 95 ở 16/72 ván, 3 cúp 31/72 |
+| E1 · điểm chạm trần | b/c/d/e: điểm 95–100 ở 72/72 ván, 3 cúp 72/72 | Điểm ≥ 95 ở 16/72 ván, 3 cúp 32/72 |
 | E9 · tiêu tiền không bị phạt | Điểm c ≥ b ở cả 3 độ khó | Thường: c 87,0 < b 90,3. Khó: c 73,0 < b 81,0. Dễ: c 91,8 = b 91,8 |
 | E2 · Khó dễ như Thường | Khó b: 3 cúp 6/6 seed | Khó b: 3 cúp 1/6. Cả Khó: 3 cúp 3/30 ván |
 | Tiền thấp nhất toàn bộ | 161k | 302k (Khó e), không ván nào âm |
