@@ -2,6 +2,7 @@ import { CLOSING_MINUTE, PEAK_WINDOWS } from '../../sim/clock';
 import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { DAY_START_MINUTE } from '../../sim/state';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
+import { debtDaysLeft, isOverDebtLimit } from '../../sim/economy';
 import { DAY_EVENTS } from '../../sim/data/week';
 import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
@@ -174,6 +175,20 @@ function noteFor(state: GameState): Note | null {
     default:
       return null;
   }
+}
+
+/** Ways out of debt the warning suggests. */
+export const DEBT_HINTS = ['Giảm bớt nhân viên', 'Bán bớt hàng tồn hoặc thiết bị', 'Giảm nhập hàng'] as const;
+
+/**
+ * Days left before bankruptcy while the shop is past the debt limit, or has
+ * closed a day past it (sim/economy.ts); null when it is not in debt or the
+ * run is already over.
+ */
+export function debtWarning(state: GameState): { daysLeft: number; text: string } | null {
+  if (state.bankrupt || (!isOverDebtLimit(state) && !(state.debtDays > 0))) return null;
+  const daysLeft = debtDaysLeft(state);
+  return { daysLeft, text: `Nợ quá hạn mức: còn ${daysLeft} ngày trước khi phá sản` };
 }
 
 function prefersReducedMotion(): boolean {
@@ -669,6 +684,17 @@ export function createHud(actions: HudActions): Hud {
     },
   );
 
+  // Debt warning beside the note: days left before bankruptcy and the ways out.
+  const debt = h('p', { class: 'hud-note hud-debt', hidden: true, attrs: { role: 'alert', 'data-stat': 'debt' } });
+  w.watch(
+    (s) => debtWarning(s)?.text ?? '',
+    (text) => {
+      if (text) setChildren(debt, icon('i-warning'), h('b', { text }), h('span', { class: 'hud-debt-hints', text: `Gợi ý: ${DEBT_HINTS.join(' · ')}` }));
+      else debt.replaceChildren();
+      debt.hidden = !text;
+    },
+  );
+
   // Panels registered by other modules, as dock buttons.
   const dock = h('nav', { class: 'dock', attrs: { 'aria-label': 'Bảng quản lý' } });
   const panelIcon = h('span', { class: 'panel-head-icon' });
@@ -832,6 +858,7 @@ export function createHud(actions: HudActions): Hud {
     cluster('progress', 'Tiến độ', value('i-coin', 'Tiền', money), value('i-sparkle', 'Tem', tickets), value('i-star', 'Đánh giá', ratingValue), levelChip),
     cluster('controls', 'Điều khiển', openBtn, nextDayBtn, speedGroup, speedCycle, pauseBtn, menuWrap),
     note,
+    debt,
     resetLive,
   );
   const el = h('div', { class: 'hud-layer', hidden: true }, bar, dock);

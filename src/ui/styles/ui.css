@@ -1554,6 +1554,15 @@ legend {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
 }
+.hud-debt {
+  flex-wrap: wrap;
+  border-radius: var(--radius-md);
+  background: var(--surface-danger);
+  color: var(--text-danger);
+}
+.hud-debt-hints {
+  font-weight: var(--font-weight-regular);
+}
 
 /* Below 1440 px the XP count, the event's name and the pause word live in
    the titles and aria-labels, so the three clusters keep one row at 1280 px
@@ -2375,4 +2384,22 @@ html.reduce-motion .range::-webkit-slider-thumb {
 }
 html.reduce-motion .range::-moz-range-thumb {
   transform: none !important;
+}
+
+/* Bankruptcy screen (screens/bankrupt.ts): days, revenue and cups of the run. */
+.bk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-2);
+}
+.bk-stat {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  text-align: center;
+  background: var(--surface-sunken);
+  border: var(--size-frame-outline) solid var(--border-outline);
+  border-radius: var(--radius-md);
 }

@@ -11,6 +11,7 @@ import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/ev
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
+import { createBankrupt, latestPlayableSave } from './bankrupt';
 import { createLoadGame, slotLabel } from './loadGame';
 import type { GameMount, MenuShell, ShellOptions, ShellScreen } from './menuShell';
 import { createNewGame } from './newGame';
@@ -147,6 +148,11 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   for (const el of [hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
   function syncReport(): void {
+    // A bankrupt run is over: its screen covers everything and nothing goes on.
+    if (state?.bankrupt && screens.current !== 'bankrupt') {
+      hud.closePanel();
+      screens.show('bankrupt');
+    }
     report.update(state, state?.phase === 'report' && screens.current === null);
   }
 
@@ -171,7 +177,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     weekEnd.setSaveStatus(null);
     syncReport();
     options.onGameStart?.(state);
-    if (!report.visible) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
+    if (!report.visible && screens.current === null) hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
   }
 
   function showMenu(): void {
@@ -230,6 +236,14 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       subtitle: () => (state ? `${state.shopName} · Ngày ${state.day} · ${formatClock(state.minute)} · ${phaseLabel(state.phase)}` : ''),
     }),
   );
+  // A new game for the same shop name and difficulty, on a fresh seed.
+  function replay(): void {
+    if (!state) return;
+    const finished = state;
+    logPlay('replay');
+    options.onReplay?.(finished);
+    startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
+  }
   const weekEnd = createWeekEnd({
     getState: () => state,
     // Leaves the scored week's report into day 1 of the next week, in preparation.
@@ -240,14 +254,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       syncReport();
       hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
     },
-    // A new game for the same shop name and difficulty, on a fresh seed.
-    onReplay: () => {
-      if (!state) return;
-      const finished = state;
-      logPlay('replay');
-      options.onReplay?.(finished);
-      startGame(createGameState(finished.shopName, finished.difficulty, options.seed?.() ?? (Date.now() >>> 0)));
-    },
+    onReplay: replay,
     onMenu: showMenu,
     onRetrySave: () => {
       const r = retryAutosave();
@@ -256,6 +263,19 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     },
   });
   screens.add('weekEnd', weekEnd);
+  screens.add(
+    'bankrupt',
+    createBankrupt({
+      getState: () => state,
+      latestSave: () => latestPlayableSave(storage),
+      onRestart: replay,
+      onLoadLatest: (slot) => {
+        const r = loadGame(slot, storage);
+        if (r.ok) startGame(r.value, slot);
+        else toasts.show({ level: 'error', icon: 'i-load', title: 'Không tải được bản lưu', text: 'Bản lưu bị hỏng hoặc trình duyệt chặn bộ nhớ.' });
+      },
+    }),
+  );
 
   // Esc reaches here only when no screen took it (menuShell.ts).
   function onKeyDown(e: KeyboardEvent): void {
@@ -339,6 +359,11 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
         else if (event.type === 'week_ended') logPlay('week_end');
         if (event.type === 'dayEnded') {
           logPlay('day_end');
+          // The bankrupt day is not autosaved: the slot keeps the last day the run could still be saved.
+          if (state.bankrupt) {
+            syncReport();
+            continue;
+          }
           const r = runAutosave(state, event.day);
           report.setSaveStatus(r);
           weekEnd.setSaveStatus(r);

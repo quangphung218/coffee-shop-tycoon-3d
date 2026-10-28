@@ -8,7 +8,7 @@ import { trackScrollActivity } from '../core/scrollActivity';
 import { createMainMenu } from './mainMenu';
 import { createSettings } from './settings';
 
-export type ShellScreen = 'menu' | 'newGame' | 'load' | 'settings' | 'pause' | 'weekEnd';
+export type ShellScreen = 'menu' | 'newGame' | 'load' | 'settings' | 'pause' | 'weekEnd' | 'bankrupt';
 
 export interface ShellOptions {
   /** The #ui overlay element. */
