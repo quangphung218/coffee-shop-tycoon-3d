@@ -144,13 +144,39 @@ Chạy lại `p22-strategies` sau khi sửa, 6 seed mỗi ô:
 | E2 · Khó dễ như Thường | Khó b: 3 cúp 6/6 seed | Khó b: 3 cúp 1/6. Cả Khó: 3 cúp 3/30 ván |
 | Tiền thấp nhất toàn bộ | 161k | 302k (Khó e), không ván nào âm |
 
-Còn lại: giá Cao (d) vẫn 3 cúp 6/6 ván ở Dễ và Thường (E6).
+Còn lại: giá Cao (d) vẫn 3 cúp 6/6 ván ở Dễ và Thường (E6), sửa ở E-03 bên dưới.
+
+### Đã sửa ở E-03
+
+Sửa E6: giá Cao giờ làm mất khách thật.
+- Khách đến giảm 14% (trước 8%).
+- 11% khách đã tới quầy bỏ về vì giá; tính là khách bỏ về và làm giảm sao.
+- Cả hai mức phạt giảm dần khi sao quán trên 4 và theo điểm thưởng của dụng cụ. Ở 5 sao hoặc có máy espresso cấp 3 thì giá Cao không bị phạt.
+
+Đổi ở `src/sim/policies.ts`, `src/sim/orders.ts`, `src/sim/customers.ts`. Không cần migrate save. Bảo toàn: phá sản, `scoreWeek`, `WEEK_GOALS`, lương.
+
+Test mới: `tests/integration/high-price-demand.test.ts`, `tests/save/high-price-compat.test.ts`, thêm assert vào `tests/integration/p22-strategies.test.ts`.
+
+Chạy lại `p22-strategies`, d so với c, 6 seed mỗi độ khó:
+
+| Chỉ số | Độ khó | Trước | Sau |
+| --- | --- | --- | --- |
+| Seed d thắng c về điểm | Dễ / Thường / Khó | 6/6 / 6/6 / 6/6 | 2/6 / 3/6 / 2/6 |
+| Điểm trung bình d | Dễ / Thường / Khó | 97,8 / 95,3 / 83,8 | 91,7 / 86,3 / 73,5 |
+| Điểm trung bình c | Dễ / Thường / Khó | 91,8 / 87,0 / 73,0 | 91,8 / 87,0 / 73,0 |
+| Lãi d − c | Dễ / Thường / Khó | +3.038k / +2.704k / +2.578k | +322k / +169k / +485k |
+| Ván d đủ 3 cúp | Dễ / Thường / Khó | 6 / 6 / 2 | 4 / 2 / 0 |
+
+Khách bỏ về của d: 12,8–14,2%, của c: 6–7,5%.
+
+Còn lại:
+- Giá Cao vẫn thắng khi ngày bị chặn bởi tồn kho hoặc tốc độ phục vụ.
+- Khó: điểm trung bình d (73,5) vẫn nhỉnh hơn c (73,0).
 
 ### Không sửa
 
 | Id | Lý do |
 | --- | --- |
-| E6 | Không đạt ngưỡng: giá Cao vẫn thắng sau đợt E-02 (Dễ và Thường 6/6 ván 3 cúp), cần đổi chấm điểm hoặc cầu theo giá. |
 | E3 | Thuê người luôn lãi, không phải luôn lỗ. |
 | E4 | Sau khi sửa E5, tủ bánh và máy xay sinh tố còn lỗ trong tuần nhưng có ván lãi khi bật món. |
 | E7 | Marketing lãi 3/18 ván, không phải mọi ván. |

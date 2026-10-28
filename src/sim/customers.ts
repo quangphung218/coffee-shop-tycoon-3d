@@ -436,7 +436,7 @@ function startLeaving(state: GameState, customer: Customer, next: 'leaving' | 'a
 }
 
 /** Customer storms out: drops their orders and the player's tasks for them. */
-export function angryLeave(state: GameState, customer: Customer, reason: 'patience' | 'out_of_stock'): void {
+export function angryLeave(state: GameState, customer: Customer, reason: 'patience' | 'out_of_stock' | 'price'): void {
   const theirOrders = state.orders.filter((o) => o.customerId === customer.id);
   // Drinks already brewed for a customer who leaves are wasted ingredients.
   if (state.today.wasteCost !== undefined) {

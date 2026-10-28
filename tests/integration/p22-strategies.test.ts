@@ -13,7 +13,8 @@ import { cupsSold, playDay, unlockedIds } from './helpers';
  * P22 economy audit: plays a 7-day week per difficulty × strategy × seed and
  * prints the averages. Asserted: money never below zero, same seed → same
  * numbers, and the week score telling play apart (profit counts, Hard is
- * harder than Normal); the rest of the balance is read from the printed table
+ * harder than Normal, high price beats tools-only on some seeds but not all);
+ * the rest of the balance is read from the printed table
  * (docs/reports/p22-economy.md).
  */
 
@@ -221,6 +222,18 @@ describe('P22 strategies: 3 difficulties × 5 strategies × 6 seeds', { timeout:
     }
     // The comparison must not be empty: Normal and Hard have such seeds.
     expect(compared).toBeGreaterThanOrEqual(SEEDS.length);
+  });
+
+  // A "win" for d is a seed where its week score beats c's on the same seed.
+  it('makes high price a trade-off: d beats c on some seeds but not on all, per difficulty', () => {
+    for (const d of DIFFICULTIES) {
+      const c = runs.get(`${d}/c_tools`)!;
+      const dRows = runs.get(`${d}/d_high_price`)!;
+      const wins = SEEDS.filter((_, i) => dRows[i]!.score > c[i]!.score).length;
+      console.log(`${d}: d beats c on score in ${wins}/${SEEDS.length} seeds`);
+      expect(wins, `${d} d wins at least once`).toBeGreaterThanOrEqual(1);
+      expect(wins, `${d} d does not win every seed`).toBeLessThan(SEEDS.length);
+    }
   });
 
   it('keeps 3 cups out of reach for some strategy on Hard', () => {
