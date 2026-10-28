@@ -128,11 +128,29 @@ Chạy lại `p22-strategies`, trung bình 6 seed:
 
 Chiến lược a và b không mua dụng cụ nên số không đổi. Test ở `tests/sim/week-tool-payback.test.ts` và `tests/sim/week-unlocks.test.ts`.
 
+### Đã sửa ở E-02 (v0.13.0, 28/10/2026)
+
+Tổ Kiến sửa E1, E2, E9 ở PR #42 (`e94cfe9`):
+- Điểm tuần tính thêm lãi tuần. Mục tiêu lãi lấy theo tỷ lệ mục tiêu doanh thu: Dễ 65%, Thường 60%, Khó 45%.
+- Mục tiêu doanh thu nâng lên: Dễ 28.000k → 35.000k, Thường 26.500k → 32.000k, Khó 23.200k → 33.000k.
+- Save cũ giữ nguyên điểm các tuần đã chơi (`tests/save/week-score-v4.test.ts`).
+
+Chạy lại `p22-strategies` sau khi sửa, 6 seed mỗi ô:
+
+| Vấn đề | Trước | Sau |
+| --- | --- | --- |
+| E1 · điểm chạm trần | b/c/d/e: điểm 95–100 ở 72/72 ván, 3 cúp 72/72 | Điểm ≥ 95 ở 16/72 ván, 3 cúp 31/72 |
+| E9 · tiêu tiền không bị phạt | Điểm c ≥ b ở cả 3 độ khó | Thường: c 87,0 < b 90,3. Khó: c 73,0 < b 81,0. Dễ: c 91,8 = b 91,8 |
+| E2 · Khó dễ như Thường | Khó b: 3 cúp 6/6 seed | Khó b: 3 cúp 1/6. Cả Khó: 3 cúp 3/30 ván |
+| Tiền thấp nhất toàn bộ | 161k | 302k (Khó e), không ván nào âm |
+
+Còn lại: giá Cao (d) vẫn 3 cúp 6/6 ván ở Dễ và Thường (E6).
+
 ### Không sửa
 
 | Id | Lý do |
 | --- | --- |
-| E1, E2, E6, E9 | Không đạt ngưỡng: chạm trần điểm và độ khó cúp là chuyện thiết kế chấm điểm, cần đổi `WEEK_GOALS` hoặc `scoreWeek`. |
+| E6 | Không đạt ngưỡng: giá Cao vẫn thắng sau đợt E-02 (Dễ và Thường 6/6 ván 3 cúp), cần đổi chấm điểm hoặc cầu theo giá. |
 | E3 | Thuê người luôn lãi, không phải luôn lỗ. |
 | E4 | Sau khi sửa E5, tủ bánh và máy xay sinh tố còn lỗ trong tuần nhưng có ván lãi khi bật món. |
 | E7 | Marketing lãi 3/18 ván, không phải mọi ván. |
