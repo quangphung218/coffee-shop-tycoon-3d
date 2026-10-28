@@ -4,6 +4,8 @@ import { recordRevenue } from './economy';
 import { getMenuItem, isCoffeeDrink } from './data/menu';
 import { totalUpgradeEffect } from './data/upgrades';
 import { canMake, consume } from './inventory';
+import { priceWalkoutChance } from './policies';
+import { chance } from './rng';
 import type { GameState, MenuItemId, Order, StaffTask, StaffTaskKind } from './types';
 
 /**
@@ -165,6 +167,11 @@ export function finishTask(state: GameState, task: StaffTask): void {
       if (!customer?.order) return;
       if (!canMake(state, customer.order)) {
         angryLeave(state, customer, 'out_of_stock');
+        return;
+      }
+      const walkout = priceWalkoutChance(state);
+      if (walkout > 0 && chance(state, walkout)) {
+        angryLeave(state, customer, 'price');
         return;
       }
       consume(state, customer.order);

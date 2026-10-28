@@ -4,7 +4,7 @@ import { MENU } from '../../sim/data/menu';
 import { dayUnlockDay } from '../../sim/data/week';
 import { sellPrice } from '../../sim/customers';
 import { stockOf } from '../../sim/inventory';
-import { canChangePolicy, policyLevel, PRICE_POLICY } from '../../sim/policies';
+import { canChangePolicy, HIGH_PRICE_WALKOUT, policyLevel, PREMIUM_FROM_RATING, PRICE_POLICY } from '../../sim/policies';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
 import { MENU_REQUIRES, menuBlockedReason } from '../../sim/upgrades';
@@ -25,14 +25,17 @@ const PRICE_OPTIONS: readonly { value: PolicyLevel; label: string }[] = [
 const signedPct = (v: number): string => `${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`;
 const signedDec = (v: number): string => `${v > 0 ? '+' : '−'}${String(Math.round(Math.abs(v) * 100) / 100).replace('.', ',')}`;
 
-/** "Cao: +15% tiền mỗi ly, khách khó tính hơn (−0,2 sao), ít khách hơn (−8%)." */
+/** "Cao: +15% tiền mỗi ly, khách khó tính hơn (−0,2 sao), ít khách hơn (−14%), 11% khách chê đắt bỏ về; …" */
 export function pricePolicyHint(level: PolicyLevel): string {
   const p = PRICE_POLICY[level];
   if (level === 'standard') return 'Chuẩn: bán đúng giá gốc từng món, không đổi sao hay lượng khách.';
   const name = PRICE_OPTIONS.find((o) => o.value === level)!.label;
   const mood = p.stars > 0 ? 'khách dễ chịu hơn' : 'khách khó tính hơn';
   const crowd = p.arrivals > 1 ? 'đông khách hơn' : 'ít khách hơn';
-  return `${name}: ${signedPct(p.priceMult - 1)} tiền mỗi ly, ${mood} (${signedDec(p.stars)} sao), ${crowd} (${signedPct(p.arrivals - 1)}).`;
+  const base = `${name}: ${signedPct(p.priceMult - 1)} tiền mỗi ly, ${mood} (${signedDec(p.stars)} sao), ${crowd} (${signedPct(p.arrivals - 1)})`;
+  if (level !== 'high') return `${base}.`;
+  const walkout = Math.round(HIGH_PRICE_WALKOUT * 100);
+  return `${base}, ${walkout}% khách chê đắt bỏ về; quán trên ${PREMIUM_FROM_RATING} sao hoặc có máy xịn thì đỡ hơn.`;
 }
 
 /** Reason under a Mức giá / Mức lương choice that is locked for the day. */

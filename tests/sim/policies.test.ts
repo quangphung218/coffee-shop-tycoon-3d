@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { arrivalRate, sellPrice, serveCustomer, spawnCustomer } from '../../src/sim/customers';
 import { settleDay, totalWages } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
-import { PRICE_POLICY, WAGE_POLICY, policyLevel } from '../../src/sim/policies';
+import {
+  HIGH_PRICE_WALKOUT,
+  PREMIUM_FROM_RATING,
+  PREMIUM_PER_RATING_STAR,
+  PRICE_POLICY,
+  WAGE_POLICY,
+  policyLevel,
+  pricePremium,
+  priceWalkoutChance,
+} from '../../src/sim/policies';
 import { dayScore } from '../../src/sim/rating';
 import { rateExperience } from '../../src/sim/reviews';
 import { hireStaff, updateStaff } from '../../src/sim/staff';
@@ -127,6 +136,28 @@ describe('price policy', () => {
     expect(arrivalRate(withPolicy('price', 'high'))).toBeCloseTo(standard.arrivals * PRICE_POLICY.high.arrivals);
     expect(dayScore(middlingDay(withPolicy('price', 'high')))).toBeCloseTo(standard.score + PRICE_POLICY.high.stars);
     expect(avgStars(withPolicy('price', 'high'))).toBeLessThan(standard.stars);
+  });
+
+  it('high: customers walk out at the counter unless stars or gear make the price acceptable', () => {
+    const plain = withPolicy('price', 'high');
+    expect(pricePremium(plain)).toBe(0);
+    expect(priceWalkoutChance(plain)).toBe(HIGH_PRICE_WALKOUT);
+    expect(priceWalkoutChance(game())).toBe(0);
+    expect(priceWalkoutChance(withPolicy('price', 'low'))).toBe(0);
+
+    const starred = withPolicy('price', 'high');
+    starred.rating = PREMIUM_FROM_RATING + 0.5;
+    expect(pricePremium(starred)).toBeCloseTo(0.5 * PREMIUM_PER_RATING_STAR);
+    expect(priceWalkoutChance(starred)).toBeLessThan(HIGH_PRICE_WALKOUT);
+    expect(arrivalRate(starred) / (arrivalRate(game()) * (starred.rating / game().rating))).toBeGreaterThan(PRICE_POLICY.high.arrivals);
+
+    const geared = withPolicy('price', 'high');
+    geared.upgrades.better_machine = 3;
+    expect(pricePremium(geared)).toBe(1);
+    expect(priceWalkoutChance(geared)).toBe(0);
+    const gearedStandard = game();
+    gearedStandard.upgrades.better_machine = 3;
+    expect(arrivalRate(geared)).toBeCloseTo(arrivalRate(gearedStandard));
   });
 
   it('low: less per cup, more stars and arrivals', () => {
