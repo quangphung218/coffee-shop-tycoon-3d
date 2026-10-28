@@ -108,7 +108,9 @@ describe('Mức giá in the menu panel', () => {
     const after = sellPrice(state, 'espresso');
     expect(after).toBeGreaterThan(before);
     expect(meta()).toContain(`Giá ${formatMoney(after)}`);
-    expect(q(body, '[data-hint="price"]').textContent).toBe('Cao: +15% tiền mỗi ly, khách khó tính hơn (−0,2 sao), ít khách hơn (−8%).');
+    expect(q(body, '[data-hint="price"]').textContent).toBe(
+      'Cao: +15% tiền mỗi ly, khách khó tính hơn (−0,2 sao), ít khách hơn (−14%), 11% khách chê đắt bỏ về; quán trên 4 sao hoặc có máy xịn thì đỡ hơn.',
+    );
 
     pick(body, 'price', 'low');
     expect(meta()).toContain(`Giá ${formatMoney(sellPrice(state, 'espresso'))}`);
