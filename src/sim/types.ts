@@ -665,6 +665,10 @@ export interface GameState {
   /** Game speed multiplier chosen by the player (1, 2 or 4). */
   speed: number;
   money: number;
+  /** Consecutive closed days that ended with the money past the debt limit; 0 once a day ends within it. */
+  debtDays: number;
+  /** Set when debtDays reached BANKRUPT_DAYS; the run is over and stays so. */
+  bankrupt: boolean;
   /** Shop rating, 0..5 stars. */
   rating: number;
   menu: MenuEntry[];

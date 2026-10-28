@@ -238,7 +238,7 @@ describe('a v3 save', { timeout: 300_000 }, () => {
     const storage = createMemoryStorage();
     const saved = saveGame(g, '2', storage, 1000);
     expect(saved.ok).toBe(true);
-    expect(JSON.parse(storage.getItem(saveKey('2'))!).version).toBe(3);
+    expect(JSON.parse(storage.getItem(saveKey('2'))!).version).toBe(SAVE_VERSION);
     const loaded = loadGame('2', storage);
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;

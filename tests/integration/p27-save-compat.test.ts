@@ -34,7 +34,7 @@ function loadText(text: string): GameState {
 function roundTrip(state: GameState): GameState {
   const storage = createMemoryStorage();
   expect(saveGame(state, '2', storage, SAVED_AT).ok).toBe(true);
-  expect(JSON.parse(storage.getItem(saveKey('2'))!).version).toBe(3);
+  expect(JSON.parse(storage.getItem(saveKey('2'))!).version).toBe(SAVE_VERSION);
   const r = loadGame('2', storage);
   expect(r.ok).toBe(true);
   if (!r.ok) throw new Error(r.error.message);
@@ -134,8 +134,8 @@ function playOnWithP27(g: GameState): PlayLog {
 }
 
 describe('P27 save compatibility', { timeout: 120_000 }, () => {
-  it('keeps SAVE_VERSION at 3', () => {
-    expect(SAVE_VERSION).toBe(3);
+  it('is at SAVE_VERSION 4 (bankruptcy fields)', () => {
+    expect(SAVE_VERSION).toBe(4);
   });
 
   const files = fixtures();

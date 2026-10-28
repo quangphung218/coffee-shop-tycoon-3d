@@ -1,7 +1,7 @@
 import type { GameState } from '../sim/types';
 import { defaultStorage, type StorageLike } from './storage';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY_PREFIX = 'cst3d:save:';
 export const SAVE_SLOTS = ['auto', '1', '2', '3'] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -68,6 +68,7 @@ const FILLED_BY_MIGRATION: Record<number, readonly string[]> = {
   0: ['events', 'today'],
   1: ['seed', 'shopLevel', 'xp', 'missions'],
   2: [],
+  3: [],
 };
 
 function hasKind(s: Raw, key: string, kind: FieldKind): boolean {

@@ -17,6 +17,25 @@ export function isOverDebtLimit(state: GameState): boolean {
   return state.money < -debtLimit(state);
 }
 
+/** Consecutive days ending past the debt limit that make the shop bankrupt. */
+export const BANKRUPT_DAYS = 3;
+
+/**
+ * End-of-day bankruptcy check: a day closing past the debt limit adds one to
+ * `debtDays`, one closing within it resets the count. Reaching BANKRUPT_DAYS
+ * sets `bankrupt`, which never clears.
+ */
+export function updateBankruptcy(state: GameState): void {
+  state.debtDays = isOverDebtLimit(state) ? (state.debtDays ?? 0) + 1 : 0;
+  if (state.debtDays >= BANKRUPT_DAYS) state.bankrupt = true;
+  else state.bankrupt ??= false;
+}
+
+/** Days past the debt limit left before bankruptcy (0 once bankrupt). */
+export function debtDaysLeft(state: GameState): number {
+  return state.bankrupt ? 0 : Math.max(0, BANKRUPT_DAYS - (state.debtDays ?? 0));
+}
+
 /** Warns when the money is negative, louder once past the debt limit. */
 export function checkDebt(state: GameState): void {
   if (state.money >= 0) return;

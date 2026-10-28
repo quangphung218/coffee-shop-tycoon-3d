@@ -95,9 +95,9 @@ describe('HUD clusters (P23)', () => {
     expect(clusters.map((c) => c.dataset.cluster)).toEqual(['today', 'progress', 'controls']);
     expect(clusters.map((c) => c.getAttribute('aria-label'))).toEqual(['Hôm nay', 'Tiến độ', 'Điều khiển']);
     for (const c of clusters) expect(c.getAttribute('role')).toBe('group');
-    // Nothing else in the bar draws a frame: only the note and the live region sit beside the clusters.
+    // Nothing else in the bar draws a frame: only the notes (phase, debt) and the live region sit beside the clusters.
     const others = [...bar.children].filter((c) => !c.classList.contains('hud-cluster'));
-    expect(others.map((c) => c.className)).toEqual(['hud-note', 'sr-only']);
+    expect(others.map((c) => c.className)).toEqual(['hud-note', 'hud-note hud-debt', 'sr-only']);
   });
 
   it('puts each value in its cluster', () => {
