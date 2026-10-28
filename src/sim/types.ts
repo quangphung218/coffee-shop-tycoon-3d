@@ -610,7 +610,13 @@ export interface WeekResult {
   /** Shop rating at the end of week day 7. */
   stars: number;
   starsTarget: number;
-  /** 0..100: 60 for the revenue share of the target, 40 for the stars share. */
+  /**
+   * Week profit (weekProfit) and its target. Absent on weeks scored before
+   * profit counted (v4 saves and older): their score and cups stay as stored.
+   */
+  profit?: number;
+  profitTarget?: number;
+  /** 0..100: 25 for the revenue share of the target, 55 for the profit share, 20 for the stars share (weekScore). */
   score: number;
   /** 0..3 cups from the score. */
   cups: number;

@@ -1,9 +1,9 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH } from './data/week';
+import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, weekProfitTarget } from './data/week';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
-import type { DayEventId, DayPlan, GameState, WeekResult, WeekSummary } from './types';
+import type { DayEventId, DayPlan, DayStats, GameState, WeekResult, WeekSummary } from './types';
 
 /** Draw weights of the events on the rolled days; the grand opening is day 1 of week 1 only. */
 const EVENT_WEIGHTS: Readonly<Record<Exclude<DayEventId, 'grand_opening'>, number>> = {
@@ -117,9 +117,10 @@ export function dayArrivalMult(state: GameState): number {
   return plan ? DAY_EVENTS[plan.event].arrivalMult : 1;
 }
 
-/** Score points for reaching the revenue target and the stars target. */
-export const SCORE_REVENUE = 60;
-export const SCORE_STARS = 40;
+/** Score points for reaching the revenue, profit and stars targets. */
+export const SCORE_REVENUE = 25;
+export const SCORE_PROFIT = 55;
+export const SCORE_STARS = 20;
 
 /** Lowest score for each cup count, most cups first. */
 const CUP_THRESHOLDS: readonly (readonly [number, number])[] = [
@@ -128,10 +129,36 @@ const CUP_THRESHOLDS: readonly (readonly [number, number])[] = [
   [40, 1],
 ];
 
-/** Score 0..100 of a week from its revenue and stars against the targets. */
-export function weekScore(revenue: number, revenueTarget: number, stars: number, starsTarget: number): number {
+export interface WeekScoreInput {
+  revenue: number;
+  revenueTarget: number;
+  /** Week profit: weekProfit of its days. */
+  profit: number;
+  profitTarget: number;
+  stars: number;
+  starsTarget: number;
+}
+
+/**
+ * Score 0..100 of a week from its revenue, profit and stars, each a share of
+ * its target capped at 1. A loss scores no profit points.
+ */
+export function weekScore(w: WeekScoreInput): number {
   const share = (value: number, target: number) => (target > 0 ? Math.min(1, Math.max(0, value) / target) : 1);
-  return Math.round(SCORE_REVENUE * share(revenue, revenueTarget) + SCORE_STARS * share(stars, starsTarget));
+  return Math.round(
+    SCORE_REVENUE * share(w.revenue, w.revenueTarget) +
+      SCORE_PROFIT * share(w.profit, w.profitTarget) +
+      SCORE_STARS * share(w.stars, w.starsTarget),
+  );
+}
+
+/**
+ * Profit of a run of days for the week score: the daily profit() (revenue
+ * less ingredients, wages and marketing) less the upgrades and tools bought,
+ * so money spent on the shop counts against the week it was spent in.
+ */
+export function weekProfit(days: readonly DayStats[]): number {
+  return days.reduce((s, d) => s + profit(d) - d.upgradeCost, 0);
 }
 
 /** Cups 0..3 for a week score. */
@@ -145,15 +172,19 @@ export function isLastWeekDay(state: GameState): boolean {
 }
 
 /**
- * Scores the week from today's and the earlier week days' stats: revenue is
- * the sum over the week, stars the current rating to one decimal. Call once today's day is
- * settled. Null when the game has no week.
+ * Scores the week from today's and the earlier week days' stats: revenue and
+ * profit (weekProfit) are sums over the week, stars the current rating to one
+ * decimal. The profit target comes from the goal's revenue (weekProfitTarget),
+ * so goals stored by older saves score the same way. Call once today's day is
+ * settled. Null when the game has no week. A result already stored is never
+ * scored again.
  */
 export function scoreWeek(state: GameState): WeekResult | null {
   const week = state.week;
   if (!week) return null;
   // Saves made before goals existed fall back to the difficulty's targets.
   const goal = week.goal ?? WEEK_GOALS[state.difficulty];
+  const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
   const lastDay = week.startedDay + week.length - 1;
   const stats = [...state.history, state.today].filter(
     (d) => d.day >= week.startedDay && d.day <= lastDay,
@@ -172,10 +203,20 @@ export function scoreWeek(state: GameState): WeekResult | null {
   const revenue = days.reduce((s, d) => s + d.revenue, 0);
   // Rounded to one decimal like the shown rating, so "4,0 / 4,0" always reaches the goal.
   const stars = Math.round(state.rating * 10) / 10;
-  const score = weekScore(revenue, goal.revenue, stars, goal.stars);
+  const weekProfitSum = weekProfit(stats);
+  const score = weekScore({
+    revenue,
+    revenueTarget: goal.revenue,
+    profit: weekProfitSum,
+    profitTarget,
+    stars,
+    starsTarget: goal.stars,
+  });
   return {
     revenue,
     revenueTarget: goal.revenue,
+    profit: weekProfitSum,
+    profitTarget,
     stars,
     starsTarget: goal.stars,
     score,

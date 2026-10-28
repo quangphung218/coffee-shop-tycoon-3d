@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MARKETING } from '../../src/sim/data/marketing';
-import { WEEK_LENGTH } from '../../src/sim/data/week';
+import { WEEK_GOALS, WEEK_LENGTH } from '../../src/sim/data/week';
 import { totalWages } from '../../src/sim/economy';
 import { dispatch, nextUpgradeCost } from '../../src/sim/index';
 import { isUnlocked } from '../../src/sim/progression';
@@ -11,8 +11,9 @@ import { cupsSold, playDay, unlockedIds } from './helpers';
 
 /**
  * P22 economy audit: plays a 7-day week per difficulty × strategy × seed and
- * prints the averages. Only hard invariants are asserted (money never below
- * zero, same seed → same numbers); balance is read from the printed table
+ * prints the averages. Asserted: money never below zero, same seed → same
+ * numbers, and the week score telling play apart (profit counts, Hard is
+ * harder than Normal); the rest of the balance is read from the printed table
  * (docs/reports/p22-economy.md).
  */
 
@@ -20,6 +21,8 @@ const SEEDS = [1, 42, 777, 2024, 31337, 9001];
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 const TOOLS: readonly ToolId[] = ['grinder', 'pastry_case', 'blender', 'ice_maker', 'dishwasher'];
 const CHEAPEST_CAMPAIGN = [...MARKETING].sort((a, b) => a.cost - b.cost)[0]!;
+/** Profit lead over the same seed that counts as clearly more profitable. */
+const CLEAR_PROFIT_LEAD = 1_500_000;
 
 interface Strategy {
   /** Hire one barista on the morning of day 1. */
@@ -203,6 +206,40 @@ describe('P22 strategies: 3 difficulties × 5 strategies × 6 seeds', { timeout:
 
   it('never lets the money drop below zero', () => {
     for (const [key, rows] of runs) rows.forEach((r, i) => expect(r.minMoney, `${key} seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(0));
+  });
+
+  it('scores hiring alone above hiring plus tools on a seed where it is clearly more profitable', () => {
+    let compared = 0;
+    for (const d of DIFFICULTIES) {
+      const b = runs.get(`${d}/b_hire`)!;
+      const c = runs.get(`${d}/c_tools`)!;
+      SEEDS.forEach((seed, i) => {
+        if (b[i]!.profit - c[i]!.profit < CLEAR_PROFIT_LEAD) return;
+        compared++;
+        expect(b[i]!.score, `${d} seed ${seed}`).toBeGreaterThan(c[i]!.score);
+      });
+    }
+    // The comparison must not be empty: Normal and Hard have such seeds.
+    expect(compared).toBeGreaterThanOrEqual(SEEDS.length);
+  });
+
+  it('keeps 3 cups out of reach for some strategy on Hard', () => {
+    const hard = [...runs].filter(([key]) => key.startsWith('hard/')).flatMap(([, rows]) => rows);
+    expect(hard.every((r) => r.trophies === 3)).toBe(false);
+    expect(Object.keys(STRATEGIES).some((name) => runs.get(`hard/${name}`)!.some((r) => r.trophies < 3))).toBe(true);
+  });
+
+  it('asks Hard for at least the revenue of Normal', () => {
+    expect(WEEK_GOALS.hard.revenue).toBeGreaterThanOrEqual(WEEK_GOALS.normal.revenue);
+  });
+
+  it('scores Hard below Normal and the basic strategy below the hiring ones', () => {
+    for (const name of Object.keys(STRATEGIES)) {
+      expect(mean(runs.get(`hard/${name}`)!, 'score'), name).toBeLessThan(mean(runs.get(`normal/${name}`)!, 'score'));
+    }
+    for (const d of DIFFICULTIES) {
+      expect(mean(runs.get(`${d}/a_basic`)!, 'score'), d).toBeLessThan(mean(runs.get(`${d}/b_hire`)!, 'score'));
+    }
   });
 
   it('gives the same numbers when a seed is played again', () => {
