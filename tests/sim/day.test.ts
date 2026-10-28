@@ -75,7 +75,7 @@ describe('day loop', () => {
     const missionReward = (state.lastReport?.missions ?? [])
       .filter((m) => m.status === 'completed')
       .reduce((sum, m) => sum + m.rewardMoney, 0);
-    expect(state.money).toBe(createNewGame('Quán Test', 'normal', 2024).money + t.revenue + missionReward);
+    expect(state.money).toBe(createNewGame('Quán Test', 'normal', 2024).money + t.revenue + missionReward - t.rent!);
     for (const type of ['doorbell', 'brew', 'cash', 'notify', 'served', 'cleaned'] as const) {
       expect(events.some((e) => e.type === type), type).toBe(true);
     }

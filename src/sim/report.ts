@@ -3,7 +3,7 @@ import { getIngredient } from './data/ingredients';
 import { upgradeUnlockLevel } from './data/levels';
 import { getMenuItem } from './data/menu';
 import { UPGRADES, upgradeCost } from './data/upgrades';
-import { profit, settleDay, totalWages, updateBankruptcy } from './economy';
+import { dailyRent, profit, settleDay, totalWages, updateBankruptcy } from './economy';
 import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { grantWeekReward, scoreProgression, type ProgressionResult } from './progression';
@@ -66,8 +66,8 @@ export function buildSuggestions(state: GameState, outOfStock: readonly MenuItem
     out.push({ kind: 'marketing', text: 'Quán vắng khách: chạy marketing để kéo thêm khách' });
   }
 
-  // Keep tomorrow's wages and restock in hand before spending on upgrades.
-  const reserve = totalWages(state) + restock.totalCost;
+  // Keep tomorrow's wages, rent and restock in hand before spending on upgrades.
+  const reserve = totalWages(state) + dailyRent(state) + restock.totalCost;
   const priceMult = DIFFICULTIES[state.difficulty].priceMult;
   const seatFillBad = insights?.metrics.find((m) => m.id === 'seat_fill')?.status === 'bad';
   if (seatFillBad) {
@@ -112,6 +112,8 @@ export function buildDailyReport(state: GameState, prog?: ProgressionResult): Da
     ingredientCost: t.ingredientCost,
     wages: t.wages,
     marketingCost: t.marketingCost,
+    rent: t.rent ?? 0,
+    rentNext: dailyRent(state),
     profit: profit(t),
     money: state.money,
     customersArrived: t.customersArrived,

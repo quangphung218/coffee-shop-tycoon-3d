@@ -90,11 +90,13 @@ describe('edge cases', () => {
     expect(report.customersArrived).toBe(0);
     expect(report.customersLost).toBe(0);
     expect(report.revenue).toBe(0);
-    expect(report.profit).toBe(0);
+    // Rent is due even on a day without sales.
+    expect(report.rent).toBeGreaterThan(0);
+    expect(report.profit).toBe(-report.rent!);
     expect(report.topSellers).toEqual([]);
     expect(report.outOfStock).toEqual([]);
     expect(report.ratingEnd).toBe(ratingBefore);
-    expect(report.money).toBe(moneyBefore);
+    expect(report.money).toBe(moneyBefore - report.rent!);
     for (const n of [report.revenue, report.ingredientCost, report.wages, report.marketingCost, report.profit, report.money]) {
       expect(Number.isFinite(n)).toBe(true);
     }
@@ -127,7 +129,7 @@ describe('edge cases', () => {
     expect(report.customersLost).toBe(0);
     expect(report.revenue).toBe(0);
     expect(report.topSellers).toEqual([]);
-    expect(report.money).toBe(moneyBefore - report.ingredientCost - report.wages - report.marketingCost);
+    expect(report.money).toBe(moneyBefore - report.ingredientCost - report.wages - report.marketingCost - report.rent!);
     for (const n of [
       report.revenue,
       report.ingredientCost,

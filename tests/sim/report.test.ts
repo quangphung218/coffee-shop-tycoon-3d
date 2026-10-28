@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { arrivalRate } from '../../src/sim/customers';
 import { getMenuItem } from '../../src/sim/data/menu';
+import { dailyRent } from '../../src/sim/economy';
 import { dispatch, step } from '../../src/sim/index';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { dayScore, updateRating } from '../../src/sim/rating';
@@ -78,9 +79,10 @@ describe('end of day', () => {
     expect(r.ingredientCost).toBeGreaterThanOrEqual(cogs);
     expect(r.ingredientCost).toBe(t.ingredientsUsed);
     expect(r.wages).toBe(150000);
-    expect(r.profit).toBe(r.revenue - r.ingredientCost - r.wages - r.marketingCost);
+    expect(r.rent).toBe(dailyRent(s));
+    expect(r.profit).toBe(r.revenue - r.ingredientCost - r.wages - r.marketingCost - r.rent!);
     const missionReward = (r.missions ?? []).filter((m) => m.status === 'completed').reduce((sum, m) => sum + m.rewardMoney, 0);
-    expect(s.money).toBe(startMoney + r.revenue - r.wages + missionReward);
+    expect(s.money).toBe(startMoney + r.revenue - r.wages - r.rent! + missionReward);
     expect(r.money).toBe(s.money);
     expect(r.customersServed + r.customersLost).toBe(r.customersArrived);
 
@@ -242,9 +244,10 @@ describe('report suggestions', () => {
 
   it('suggests an upgrade once the money covers it after tomorrow’s costs', () => {
     const s = quietGoodDay();
-    s.money = 299000;
+    // Tonight's rent is kept in hand too.
+    s.money = 299000 + dailyRent(s);
     expect(kinds(s)).toEqual([]);
-    s.money = 300000;
+    s.money = 300000 + dailyRent(s);
     const r = buildDailyReport(s);
     expect(r.suggestions.map((x) => x.kind)).toEqual(['upgrade']);
     expect(r.suggestions[0]!.text).toContain('Cây xanh');
@@ -255,9 +258,10 @@ describe('report suggestions', () => {
   it('only suggests upgrades the shop level has unlocked', () => {
     const s = quietGoodDay();
     // Enough for the ice maker (level 5), not for the plants (level 1).
-    s.money = 250000;
+    s.money = 250000 + dailyRent(s);
     expect(kinds(s)).toEqual([]);
     s.shopLevel = 5;
+    s.money = 250000 + dailyRent(s);
     const r = buildDailyReport(s);
     expect(r.suggestions.map((x) => x.kind)).toEqual(['upgrade']);
     expect(r.suggestions[0]!.text).toContain('Máy làm đá');

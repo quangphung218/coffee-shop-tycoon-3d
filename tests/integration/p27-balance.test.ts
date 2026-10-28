@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FULL_UNLOCK_LEVEL } from '../../src/sim/data/levels';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { totalWages } from '../../src/sim/economy';
+import { dailyRent, totalWages } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { isUnlocked } from '../../src/sim/progression';
@@ -52,7 +52,7 @@ function enableUnlocked(state: GameState): void {
 function reserve(state: GameState): number {
   const drained = structuredClone(state);
   for (const item of drained.inventory) item.qty = 0;
-  return totalWages(state) + autoRestockSuggestion(drained).totalCost;
+  return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
 function buyAffordable(state: GameState): void {

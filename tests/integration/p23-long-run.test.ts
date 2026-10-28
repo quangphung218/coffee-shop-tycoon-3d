@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MARKETING } from '../../src/sim/data/marketing';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { WEEK_LENGTH, weekReward } from '../../src/sim/data/week';
-import { totalWages } from '../../src/sim/economy';
+import { dailyRent, totalWages } from '../../src/sim/economy';
 import { MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
 import { dispatch, nextUpgradeCost } from '../../src/sim/index';
 import { nextUpgradeTicketCost, upgradeBlockedReason, upgradeLevel } from '../../src/sim/upgrades';
@@ -69,11 +69,11 @@ function enableUnlocked(state: GameState): void {
   }
 }
 
-/** Tonight's wages plus tomorrow's restock: what the suggestion would cost once today's stock is used up. */
+/** Tonight's wages and rent plus tomorrow's restock: what the suggestion would cost once today's stock is used up. */
 function reserve(state: GameState): number {
   const drained = structuredClone(state);
   for (const item of drained.inventory) item.qty = 0;
-  return totalWages(state) + autoRestockSuggestion(drained).totalCost;
+  return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
 function buyCheapest(state: GameState, track: () => void): void {
