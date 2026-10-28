@@ -3,7 +3,7 @@ import { getIngredient } from './data/ingredients';
 import { upgradeUnlockLevel } from './data/levels';
 import { getMenuItem } from './data/menu';
 import { UPGRADES, upgradeCost } from './data/upgrades';
-import { profit, settleDay, totalWages } from './economy';
+import { profit, settleDay, totalWages, updateBankruptcy } from './economy';
 import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { grantWeekReward, scoreProgression, type ProgressionResult } from './progression';
@@ -156,5 +156,7 @@ export function closeDay(state: GameState): DailyReport {
   endOfDayStaffGrowth(state);
   endOfDaySpecialOrder(state, report);
   endOfDayRetention(state, report);
+  // Last, after every payment and reward of the day has landed.
+  updateBankruptcy(state);
   return report;
 }

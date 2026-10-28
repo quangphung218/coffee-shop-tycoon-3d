@@ -83,8 +83,8 @@ function roundTrip(state: GameState): { version: number; state: GameState } {
 describe('P30 save compatibility', { timeout: 120_000 }, () => {
   const files = fixtures();
 
-  it('keeps SAVE_VERSION at 3', () => {
-    expect(SAVE_VERSION).toBe(3);
+  it('is at SAVE_VERSION 4 (bankruptcy fields)', () => {
+    expect(SAVE_VERSION).toBe(4);
   });
 
   for (const [name, text] of Object.entries(files)) {
@@ -92,7 +92,7 @@ describe('P30 save compatibility', { timeout: 120_000 }, () => {
       const r = migrate(JSON.parse(text));
       expect(r.ok).toBe(true);
       if (!r.ok) throw new Error(r.error.message);
-      expect(r.value.version).toBe(3);
+      expect(r.value.version).toBe(SAVE_VERSION);
       const g = r.value.state;
       expect(g.regulars).toBeUndefined();
       expect(g.uniform).toBeUndefined();
@@ -115,7 +115,7 @@ describe('P30 save compatibility', { timeout: 120_000 }, () => {
       expect(g.uniform).toBe('mint');
 
       const back = roundTrip(g);
-      expect(back.version).toBe(3);
+      expect(back.version).toBe(SAVE_VERSION);
       expect(back.state.uniform).toBe('mint');
       expect(uniformOf(back.state).id).toBe('mint');
       expect(back.state.regulars).toEqual(g.regulars);

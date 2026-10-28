@@ -85,8 +85,8 @@ function roundTrip(state: GameState): { version: number; state: GameState } {
 describe('P31 save compatibility', { timeout: 120_000 }, () => {
   const files = fixtures();
 
-  it('keeps SAVE_VERSION at 3', () => {
-    expect(SAVE_VERSION).toBe(3);
+  it('is at SAVE_VERSION 4 (bankruptcy fields)', () => {
+    expect(SAVE_VERSION).toBe(4);
   });
 
   it('builds fixtures without the P31 items and tools', () => {
@@ -104,7 +104,7 @@ describe('P31 save compatibility', { timeout: 120_000 }, () => {
       const r = migrate(JSON.parse(text));
       expect(r.ok).toBe(true);
       if (!r.ok) throw new Error(r.error.message);
-      expect(r.value.version).toBe(3);
+      expect(r.value.version).toBe(SAVE_VERSION);
       const g = r.value.state;
       for (const id of P31_ITEMS) {
         expect(g.menu.find((m) => m.id === id), id).toEqual({ id, enabled: false, price: getMenuItem(id).price });
@@ -127,7 +127,7 @@ describe('P31 save compatibility', { timeout: 120_000 }, () => {
       for (const id of P31_ITEMS) expect(g.today.sold[id] ?? 0, id).toBe(0);
 
       const back = roundTrip(g);
-      expect(back.version).toBe(3);
+      expect(back.version).toBe(SAVE_VERSION);
       expect(back.state).toEqual(JSON.parse(JSON.stringify(g)));
 
       // Even at the tower's level, Cold brew stays off until the tower is bought.

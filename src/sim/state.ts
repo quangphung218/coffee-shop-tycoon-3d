@@ -132,6 +132,8 @@ export function createNewGame(shopName: string, difficulty: Difficulty, seed: nu
     paused: false,
     speed: 1,
     money: diff.startMoney,
+    debtDays: 0,
+    bankrupt: false,
     rating: diff.startRating,
     menu: MENU.map((m) => ({ id: m.id, enabled: STARTER_MENU.includes(m.id), price: m.price })),
     inventory: INGREDIENTS.map((i) => ({ id: i.id, qty: STARTER_STOCK[i.id] ?? 0 })),

@@ -33,7 +33,7 @@ function openGame(): GameState {
 
 describe('P27 save compatibility', () => {
   it('loads a version 3 save without the new fields; ensureRetention fills defaults', () => {
-    expect(SAVE_VERSION).toBe(3);
+    expect(SAVE_VERSION).toBe(4);
     const state = openGame();
     const raw = JSON.parse(JSON.stringify(state)) as GameState;
     // A version 3 save from before P27: staff and candidates carry no trait.
