@@ -626,7 +626,7 @@ describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', 
 
     // E-05: plants at its base max on a level-1 shop waits for the extra level shop level 4 opens.
     const plants = q(body, '[data-upgrade="plants"]');
-    expect(q(plants, '.item-status').textContent).toBe('Mở ở cấp quán 4');
+    expect(q(plants, '.item-status').textContent).toBe('Cần cấp quán 4');
     expect(q(plants, '[data-action="buy"]').hidden).toBe(true);
 
     const top = rich();

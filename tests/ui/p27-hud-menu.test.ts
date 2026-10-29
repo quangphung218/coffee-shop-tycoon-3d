@@ -126,12 +126,12 @@ describe('Nâng cấp: Tem price and blocked reasons', () => {
     const { body, handle } = mountUpgrades(state);
     const badge = q(body, '[data-upgrade="expand_area"] .item-status .badge');
     expect(badge.hidden).toBe(false);
-    expect(badge.textContent).toBe('Mở ở cấp quán 7');
+    expect(badge.textContent).toBe('Cần cấp quán 7');
 
     state.shopLevel = 7;
     state.upgrades.expand_area += 1;
     handle.update?.(state);
-    expect(badge.textContent).toBe('Mở ở cấp quán 9');
+    expect(badge.textContent).toBe('Cần cấp quán 9');
 
     state.shopLevel = 9;
     state.upgrades.expand_area += 1;

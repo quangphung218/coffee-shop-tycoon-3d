@@ -484,17 +484,17 @@ describe('upgrade level locks', () => {
     expect(UPGRADE_GROUPS.find((g) => g.title === 'Không gian')!.ids).toContain('tables');
   });
 
-  it('shows "Mở ở cấp N" with a disabled Mua for a tool above the shop level', () => {
+  it('shows "Cần cấp quán N" with a disabled Mua for a tool above the shop level', () => {
     const state = game();
     delete state.week;
     state.money = 10_000_000;
     const { body, sent, handle } = mount(renderUpgradesPanel, state);
     const grinder = q(body, '[data-upgrade="grinder"]');
     expect(grinder.classList.contains('is-locked')).toBe(true);
-    expect(grinder.textContent).toContain('Mở ở cấp 2');
+    expect(grinder.textContent).toContain('Cần cấp quán 2');
     const buy = q<HTMLButtonElement>(grinder, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa ở Cấp 2');
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Cần cấp quán 2 để mở khóa');
     buy.click();
     expect(sent).toHaveLength(0);
     expect(grinder.querySelector('.confirm')).toBeNull();
