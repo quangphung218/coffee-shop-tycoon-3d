@@ -37,23 +37,39 @@ export function weekProfitTarget(difficulty: Difficulty, revenueTarget: number):
 }
 
 /**
- * Revenue target growth per week after week 1, and its cap as a multiple of
- * week 1: a shop that keeps investing makes more than 3× the week-1 target by
- * week 3, while one that never buys anything stays near 1.2–1.3× and drops to
- * 2 cups in weeks 2–3, 1 cup from week 4. Measured after the restock fix in
- * docs/reports/p24-ui.md.
+ * Weeks an upgrade bought from week 2 on is paid over in the week score
+ * (weekUpgradeCharge in src/sim/week.ts); week 1 pays its upgrades in full.
  */
-export const WEEK_GOAL_GROWTH = 0.6;
-export const WEEK_GOAL_MAX_MULT = 3;
+export const UPGRADE_AMORTIZE_WEEKS = 2;
 
 /**
- * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue grows by
- * WEEK_GOAL_GROWTH a week up to WEEK_GOAL_MAX_MULT times, rounded to 100.000;
- * the stars target stays.
+ * Revenue target of weeks 1, 2, 3, 4 as a multiple of week 1; later weeks
+ * keep the last one. Fitted with tests/integration/p23-long-run.test.ts so that
+ * the shop that buys nothing (a_basic, about 1.1× the week-1 target in revenue
+ * every week) keeps at least 1 cup through week 4 with cups never rising, while
+ * the spenders (c_spend, e_marketing: 2–4.4×) need a strong week to reach
+ * 3 cups in weeks 3–4 and only reach 100 points well past the revenue target.
+ */
+export const WEEK_GOAL_MULTS: Readonly<Record<Difficulty, readonly number[]>> = {
+  easy: [1, 1.9, 3.6, 3.6],
+  normal: [1, 1.9, 3.5, 3.5],
+  hard: [1, 1.9, 2.9, 3.55],
+};
+
+/** Highest revenue target multiple of a difficulty: the last entry of WEEK_GOAL_MULTS. */
+export function weekGoalMaxMult(difficulty: Difficulty): number {
+  return WEEK_GOAL_MULTS[difficulty].at(-1)!;
+}
+
+/**
+ * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue follows
+ * WEEK_GOAL_MULTS up to weekGoalMaxMult times, rounded to 100.000; the stars
+ * target stays.
  */
 export function weekGoal(difficulty: Difficulty, index: number): WeekGoal {
   const base = WEEK_GOALS[difficulty];
-  const mult = Math.min(WEEK_GOAL_MAX_MULT, 1 + WEEK_GOAL_GROWTH * Math.max(0, index - 1));
+  const mults = WEEK_GOAL_MULTS[difficulty];
+  const mult = mults[Math.min(mults.length, Math.max(1, Math.floor(index))) - 1]!;
   return { revenue: Math.round((base.revenue * mult) / 100_000) * 100_000, stars: base.stars };
 }
 

@@ -12,7 +12,7 @@ import { rollWeekPlan, scoreWeek, summarizeWeek } from '../../src/sim/week';
 import { formatMoney } from '../../src/ui/core/format';
 import { toastForEvent } from '../../src/ui/hud/events';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
-import { REPLAY_CONFIRM_MS } from '../../src/ui/screens/weekEnd';
+import { REPLAY_CONFIRM_MS, weekProfitRule } from '../../src/ui/screens/weekEnd';
 
 let shell: Shell | null = null;
 
@@ -218,6 +218,12 @@ describe('week summary', () => {
     expect(stars.textContent).toContain('mục tiêu 4,2 sao');
     expect(stars.textContent).toContain('Đạt mục tiêu');
 
+    // Week 1 profit counts every upgrade bought in the week.
+    const profitEl = block(el, 'profit');
+    expect(profitEl.closest('section')?.textContent).toContain('Lợi nhuận tuần');
+    expect(profitEl.textContent).toContain(`${formatMoney(r.profit!)} / mục tiêu ${formatMoney(r.profitTarget!)}`);
+    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ toàn bộ tiền nâng cấp mua trong tuần.');
+
     expect(block(el, 'score').textContent).toContain(`${r.score}/100`);
     const cups = block(el, 'cups');
     expect(cups.dataset.cups).toBe(String(r.cups));
@@ -255,6 +261,9 @@ describe('week summary', () => {
     expect(el.querySelector('h3')?.textContent).toBe('Tổng kết tuần 2');
     expect(el.querySelector('.rpt-sub')?.textContent).toContain('Ngày 8–14');
     expect(state.week!.result!.revenue).toBe(28_000_000);
+
+    // From week 2 upgrades are spread over two weeks.
+    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ tiền nâng cấp chia đều 2 tuần kể từ tuần mua; đồ mua ở tuần 1 đã trừ hết trong tuần 1.');
 
     const compare = block(el, 'compare');
     expect(compare.closest('section')?.textContent).toContain('So với tuần 1');
@@ -296,7 +305,7 @@ describe('week summary', () => {
 
     const next = block(el, 'next-week');
     expect(next.closest('section')?.textContent).toContain('Tuần 2');
-    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('52.800.000đ');
+    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('62.700.000đ');
     expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('4,2 sao');
     const levelEl = next.querySelector<HTMLElement>('[data-next="level"]')!;
     const level = levelEl.textContent ?? '';
@@ -358,6 +367,15 @@ describe('week summary', () => {
     // No bar has a height without sales.
     for (const bar of block(el, 'days').querySelectorAll<HTMLElement>('.wk-bar')) expect(bar.style.height).toBe('0%');
     expect(action(el, 'next-week').textContent).toBe('Sang tuần 2');
+  });
+
+  it('shows no profit block for a week scored before profit counted, and no emoji in the rule', () => {
+    const state = atReport(WEEK_LENGTH);
+    delete state.week!.result!.profit;
+    delete state.week!.result!.profitTarget;
+    const { root } = openWeekEnd(state);
+    expect(weekEndEl(root).querySelector('[data-block="profit"]')).toBeNull();
+    for (const i of [1, 2, 3]) expect(weekProfitRule(i)).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
   it('says the last day was not saved, offers "Thử lại", and keeps the results', () => {

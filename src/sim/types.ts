@@ -622,6 +622,12 @@ export interface WeekSummary {
   stars: number;
   score: number;
   cups: number;
+  /**
+   * Upgrade spending the week's score counted (weekUpgradeCharge), from week 2.
+   * Absent on week 1 and on weeks scored before upgrades were spread over weeks
+   * (E-07): those paid their own upgrades in full, so none of it carries on.
+   */
+  upgradeCharge?: number;
 }
 
 /** Targets of a week: total revenue over its 7 days and the rating at the end. */
