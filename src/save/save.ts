@@ -125,6 +125,17 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     const state: Raw = isObject(file.state) ? { ...file.state } : {};
     return { version: 5, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // E-05: extra upgrade levels from shop level 4, their own prices and effects
+  // (sell-price bonus) and four premium decor items. Nothing is rewritten:
+  // every old cap is at or below the new one at the same shop level, so saved
+  // levels stay valid; a level bought under the old ×3 bonus price keeps its
+  // level and takes the new effect from the next tick. Money, days, weeks and
+  // their archive rows are not recomputed. The version is bumped so an older
+  // build refuses a save that may hold upgrades it does not know.
+  5: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    return { version: 6, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
+  },
 };
 
 function num(v: unknown): number {

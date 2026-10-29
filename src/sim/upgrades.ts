@@ -1,8 +1,8 @@
 import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
-import { BONUS_LEVEL_PRICE_MULT, maxLevelBonus } from './data/levels';
+import { maxLevelBonus } from './data/levels';
 import { getMenuItem } from './data/menu';
-import { getUpgrade, upgradeCost, upgradeTier } from './data/upgrades';
+import { getUpgrade, levelEffect, upgradeCost, upgradeTier } from './data/upgrades';
 import { BOOKSHELF_SIZE, CHAIR_OFFSET, SOFA_SIZE } from './nav/footprints';
 import { isUnlocked } from './progression';
 import { ensureRetention } from './retention';
@@ -199,9 +199,9 @@ function zoneFor(id: UpgradeId): TableZone {
   return 'indoor';
 }
 
-/** Adds the tables that one level of a seating upgrade brings, at the next free spots of its zone. */
-function addTables(state: GameState, id: UpgradeId): void {
-  const seats = getUpgrade(id).effectPerLevel.capacity ?? 0;
+/** Adds the tables that the `level`-th level of a seating upgrade brings, at the next free spots of its zone. */
+function addTables(state: GameState, id: UpgradeId, level: number): void {
+  const seats = levelEffect(getUpgrade(id), level).capacity ?? 0;
   const zone = zoneFor(id);
   let index = state.tables.filter((t) => tableZone(t.pos) === zone).length;
   for (let added = 0; added < seats; added += SEATS_PER_TABLE) {
@@ -251,12 +251,15 @@ export function maxUpgradeLevel(state: GameState, id: UpgradeId): number {
 
 /**
  * Price the `level`-th level (from 1) of an upgrade costs at this difficulty,
- * cap aside; levels above the upgrade's maxLevel cost BONUS_LEVEL_PRICE_MULT times more.
+ * cap aside; levels above the upgrade's maxLevel take their own cost from
+ * extraLevels, times the difficulty's price multiplier.
  */
 export function upgradeLevelPrice(state: GameState, id: UpgradeId, level: number): number {
   const base = getUpgrade(id);
-  const price = upgradeCost({ ...base, maxLevel: Infinity }, level - 1, DIFFICULTIES[state.difficulty].priceMult)!;
-  return level > base.maxLevel ? price * BONUS_LEVEL_PRICE_MULT : price;
+  const mult = DIFFICULTIES[state.difficulty].priceMult;
+  const extra = level > base.maxLevel ? base.extraLevels?.[level - base.maxLevel - 1] : undefined;
+  if (extra) return Math.round((extra.cost * mult) / 1000) * 1000;
+  return upgradeCost({ ...base, maxLevel: Infinity }, level - 1, mult)!;
 }
 
 /** Price of the next level at this difficulty; null at max level (maxUpgradeLevel). */
@@ -269,7 +272,9 @@ export function nextUpgradeCost(state: GameState, id: UpgradeId): number | null 
 export function nextUpgradeTicketCost(state: GameState, id: UpgradeId): number | null {
   const level = upgradeLevel(state, id);
   if (level >= maxUpgradeLevel(state, id)) return null;
-  return getUpgrade(id).ticketCost?.[level] ?? 0;
+  const def = getUpgrade(id);
+  if (level >= def.maxLevel) return def.extraLevels?.[level - def.maxLevel]?.tickets ?? 0;
+  return def.ticketCost?.[level] ?? 0;
 }
 
 /** Why the upgrade cannot be bought whatever the money and tickets (an upgrade it needs is missing), or null. */
@@ -304,7 +309,7 @@ function enableMadePossible(state: GameState, id: UpgradeId, level: number): voi
 export function grantUpgradeLevel(state: GameState, id: UpgradeId): number {
   const level = upgradeLevel(state, id) + 1;
   state.upgrades[id] = level;
-  if (getUpgrade(id).effectPerLevel.capacity) addTables(state, id);
+  if (levelEffect(getUpgrade(id), level).capacity) addTables(state, id, level);
   return level;
 }
 

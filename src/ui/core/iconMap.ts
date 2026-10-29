@@ -67,6 +67,11 @@ export const UPGRADE_ICONS: Readonly<Record<UpgradeId, IconId>> = {
   bookshelf: 'i-window-bar',
   record_player: 'i-paintings',
   sofa_corner: 'i-tables',
+  // E-05 premium decor reuses the same atlas: no new icon art.
+  chandelier: 'i-lights',
+  marble_tables: 'i-tables',
+  art_gallery: 'i-paintings',
+  grand_piano: 'i-window-bar',
 };
 
 /** HUD chip of the shop level, and the daily-mission cards. */

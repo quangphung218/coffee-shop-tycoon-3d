@@ -51,14 +51,13 @@ function load(text: string): GameState {
 }
 
 describe('migrate v4 → v5 (daily rent)', { timeout: 120_000 }, () => {
-  it('loads at SAVE_VERSION 5 without touching money, days or the last report', () => {
+  it('loads at SAVE_VERSION without touching money, days or the last report', () => {
     const v4 = v4Save(played(11, 3));
     const raw = JSON.parse(v4) as { state: GameState };
     const r = migrate(JSON.parse(v4));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(SAVE_VERSION).toBe(5);
-    expect(r.value.version).toBe(5);
+    expect(r.value.version).toBe(SAVE_VERSION);
     const g = r.value.state;
     expect(g.money).toBe(raw.state.money);
     expect(g.history).toEqual(raw.state.history);
