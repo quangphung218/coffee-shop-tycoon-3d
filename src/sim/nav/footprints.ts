@@ -57,6 +57,10 @@ export const PLANT_RADIUS = 0.42;
 export const BOOKSHELF_SIZE = { depth: 0.36, length: 1.1 } as const;
 /** Sofa corner against the back wall of the side room: `width` along it (x), `depth` out from it (z). */
 export const SOFA_SIZE = { width: 1.6, depth: 0.8 } as const;
+/** Upright piano against the front wall: `width` along it (x), `depth` out from it (z). */
+export const PIANO_SIZE = { width: 1.3, depth: 0.55 } as const;
+/** Art gallery frames on the left wall: they span this much along it (z) and stand this far out from it; hung, so no footprint. */
+export const ART_GALLERY_SIZE = { length: 1.8, depth: 0.06 } as const;
 /** The back counter runs this far past the record player on its top. */
 export const RECORD_PLAYER_MARGIN = 0.3;
 /** Square planter with a small tree on each side of the door, outside; this is half its side. */
@@ -90,7 +94,8 @@ export type FootprintKind =
   | 'parasol'
   | 'plant'
   | 'bookshelf'
-  | 'sofa';
+  | 'sofa'
+  | 'piano';
 
 export interface Footprint {
   kind: FootprintKind;
@@ -232,6 +237,13 @@ export function layoutFootprints(layout: ShopLayout): Footprint[] {
       out.push({ kind: 'sofa', id, group: id, shape: rect(d.pos.x, d.pos.z, SOFA_SIZE.width, SOFA_SIZE.depth) });
     }
   });
+  // The chandelier hangs above head height and the art gallery on a wall: only the piano stands on the floor.
+  let pianos = 0;
+  for (const p of layout.premium) {
+    if (p.kind !== 'grand_piano') continue;
+    const id = `piano:${pianos++}`;
+    out.push({ kind: 'piano', id, group: id, shape: rect(p.pos.x, p.pos.z, PIANO_SIZE.width, PIANO_SIZE.depth) });
+  }
   return out;
 }
 

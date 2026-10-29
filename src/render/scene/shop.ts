@@ -15,6 +15,7 @@ import {
 import type { Quality } from '../../save/settings';
 import { UPGRADES } from '../../sim/data/upgrades';
 import {
+  ART_GALLERY_SIZE,
   BACK_COUNTER_DEPTH,
   BACK_COUNTER_TOP_DEPTH,
   BACK_COUNTER_TOP_EXTRA,
@@ -23,6 +24,7 @@ import {
   CHAIR_OFFSET,
   CHAIR_SIZE,
   PARASOL_POLE_RADIUS,
+  PIANO_SIZE,
   PLANT_RADIUS,
   RECORD_PLAYER_MARGIN,
   SOFA_SIZE,
@@ -396,6 +398,98 @@ function sofaGeometry(tier: LookTier): BufferGeometry {
   return merge(parts);
 }
 
+/** Lowest point of the chandelier's crystals: above the walls, so it hangs clear of everyone walking under it. */
+export const CHANDELIER_BOTTOM_Y = WALL_HEIGHT + 0.02;
+const CHANDELIER_RING_Y = CHANDELIER_BOTTOM_Y + 0.18;
+const CHANDELIER_RADIUS = 0.45;
+const CHANDELIER_CRYSTALS = 8;
+
+/** Chandelier frame: a gold crown of two rings and four arms on a cord up to the lamp cords' top. */
+function chandelierGeometry(): BufferGeometry {
+  const y = CHANDELIER_RING_Y;
+  const cord = NEON_CORD_TOP - (y + 0.3);
+  return merge([
+    part(tube(0.012, 0.012, cord, 4), PALETTE.gold, 0, y + 0.3 + cord / 2, 0),
+    part(tube(CHANDELIER_RADIUS, CHANDELIER_RADIUS, 0.04, 10), PALETTE.gold, 0, y, 0),
+    part(tube(CHANDELIER_RADIUS * 0.55, CHANDELIER_RADIUS * 0.55, 0.04, 8), PALETTE.gold, 0, y + 0.16, 0),
+    part(box(2 * CHANDELIER_RADIUS, 0.025, 0.025), PALETTE.gold, 0, y + 0.08, 0),
+    part(box(0.025, 0.025, 2 * CHANDELIER_RADIUS), PALETTE.gold, 0, y + 0.08, 0),
+    part(new ConeGeometry(0.1, 0.18, 6), PALETTE.gold, 0, y + 0.22, 0),
+  ]);
+}
+
+/** Glowing crystals hanging round the chandelier's ring and one drop in the middle, the lowest at CHANDELIER_BOTTOM_Y. */
+function crystalGeometry(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  for (let k = 0; k < CHANDELIER_CRYSTALS; k++) {
+    const a = (k / CHANDELIER_CRYSTALS) * Math.PI * 2;
+    parts.push(part(new OctahedronGeometry(0.06, 0), PALETTE.bulb, Math.cos(a) * CHANDELIER_RADIUS, CHANDELIER_RING_Y - 0.08, Math.sin(a) * CHANDELIER_RADIUS));
+  }
+  parts.push(part(new OctahedronGeometry(0.08, 0), PALETTE.bulb, 0, CHANDELIER_BOTTOM_Y + 0.08, 0));
+  return merge(parts);
+}
+
+/** Marble slab laid on a table top (any tier), cream with stone veins; the second level adds a gold rim. */
+function marbleTopGeometry(level: number): BufferGeometry {
+  const parts = [
+    part(cyl(TABLE_RADIUS, TABLE_RADIUS, 0.025, 10), PALETTE.cream, 0, TABLE_TOP_Y + 0.0125, 0),
+    part(box(0.5, 0.004, 0.02), PALETTE.stone, -0.04, TABLE_TOP_Y + 0.026, 0.08, 0.5),
+    part(box(0.36, 0.004, 0.015), PALETTE.stone, 0.06, TABLE_TOP_Y + 0.026, -0.12, -0.4),
+  ];
+  if (level >= 2) parts.push(part(tube(TABLE_RADIUS + 0.01, TABLE_RADIUS + 0.01, 0.03, 10), PALETTE.gold, 0, TABLE_TOP_Y + 0.0125, 0));
+  return merge(parts);
+}
+
+/** Bottom of the gallery frames: above the chair backs and the bookshelves' reach. */
+const GALLERY_Y = 1.1;
+
+/** Art gallery facing +z, `ART_GALLERY_SIZE.length` wide: a large framed canvas between two smaller ones under a gold picture rail. */
+function galleryGeometry(): BufferGeometry {
+  const half = ART_GALLERY_SIZE.length / 2;
+  const d = ART_GALLERY_SIZE.depth;
+  const frame = (w: number, h: number, x: number, canvas: number, accent: number): BufferGeometry[] => {
+    const y = GALLERY_Y + h / 2;
+    return [
+      part(box(w, h, d * 0.6), PALETTE.gold, x, y, -d * 0.2),
+      part(box(w - 0.08, h - 0.08, d * 0.8), canvas, x, y, -d * 0.1),
+      part(box((w - 0.08) * 0.5, (h - 0.08) * 0.35, d), accent, x - 0.04, y + 0.06, 0),
+    ];
+  };
+  const side = 0.5;
+  return merge([
+    ...frame(0.7, 0.9, 0, PALETTE.cream, PALETTE.coral),
+    ...frame(side, 0.62, -half + side / 2, PALETTE.mint, PALETTE.cream),
+    ...frame(side, 0.62, half - side / 2, PALETTE.coffee, PALETTE.gold),
+    part(box(ART_GALLERY_SIZE.length, 0.03, d * 0.6), PALETTE.gold, 0, GALLERY_Y + 1.02, -d * 0.2),
+  ]);
+}
+
+/** Top of the piano lid: below the neon board that hangs over it on the front wall. */
+export const PIANO_HEIGHT = 1.12;
+
+/**
+ * Upright piano `PIANO_SIZE.width` wide and `depth` deep, its back toward +z
+ * (the front wall) and the keys toward the room; black body with gold trim.
+ */
+function pianoGeometry(): BufferGeometry {
+  const w = PIANO_SIZE.width;
+  const d = PIANO_SIZE.depth;
+  const h = PIANO_HEIGHT;
+  const back = 0.3;
+  const bz = d / 2 - back / 2;
+  const kz = -d / 2 + (d - back) / 2;
+  return merge([
+    part(box(w, h - 0.03, back), PALETTE.chalkboard, 0, (h - 0.03) / 2, bz),
+    part(box(w, 0.03, back), PALETTE.gold, 0, h - 0.015, bz),
+    part(box(w, 0.08, d - back), PALETTE.chalkboard, 0, 0.72, kz),
+    part(box(w - 0.16, 0.03, (d - back) * 0.7), PALETTE.cream, 0, 0.775, kz - 0.02),
+    part(box(w - 0.2, 0.02, (d - back) * 0.3), PALETTE.chalkboard, 0, 0.795, kz + 0.05),
+    part(box(0.06, 0.68, 0.06), PALETTE.chalkboard, -w / 2 + 0.05, 0.34, -d / 2 + 0.04),
+    part(box(0.06, 0.68, 0.06), PALETTE.chalkboard, w / 2 - 0.05, 0.34, -d / 2 + 0.04),
+    part(box(0.5, 0.22, 0.02), PALETTE.woodDark, 0, 0.98, d / 2 - back - 0.01),
+  ]);
+}
+
 /** Pieces drawn per look tier; geometry for each (piece, tier) is built once on first use. */
 const TIERED_GEOMETRY = {
   table: tableGeometry,
@@ -478,6 +572,13 @@ const DECOR_SPARKLE_Y: Record<(typeof DECOR_FOR_UPGRADE)[keyof typeof DECOR_FOR_
   sofa: 0.7,
 };
 
+/** Sparkle height over the premium decor: the chandelier's ring, the middle of the gallery, the piano lid. */
+const PREMIUM_SPARKLE_Y: Record<'chandelier' | 'art_gallery' | 'grand_piano', number> = {
+  chandelier: CHANDELIER_RING_Y,
+  art_gallery: GALLERY_Y + 0.5,
+  grand_piano: PIANO_HEIGHT + 0.2,
+};
+
 interface Wall {
   mesh: Mesh;
   /** Outward normal on the ground plane. */
@@ -532,6 +633,12 @@ export class ShopView {
     cup: cupGeometry(),
     door: doorGeometry(),
     doorGlass: doorGlassGeometry(),
+    chandelier: chandelierGeometry(),
+    crystal: crystalGeometry(),
+    gallery: galleryGeometry(),
+    piano: pianoGeometry(),
+    marble1: marbleTopGeometry(1),
+    marble2: marbleTopGeometry(2),
   };
   /** Geometry per tiered piece and look tier, kept for the life of the view (tiers 2 and 3 built when first shown). */
   private readonly tierGeo = new Map<string, BufferGeometry>();
@@ -571,6 +678,13 @@ export class ShopView {
   private readonly bookshelves: InstancedMesh;
   private readonly recordPlayers: InstancedMesh;
   private readonly sofas: InstancedMesh;
+  /** E-05 premium decor: five meshes with the shared materials, drawn only while owned. */
+  private readonly chandeliers: InstancedMesh;
+  private readonly crystals: InstancedMesh;
+  private readonly galleries: InstancedMesh;
+  private readonly pianos: InstancedMesh;
+  /** Marble slab on every table while marble_tables is owned; sized with the tables in allocTables. */
+  private marbleTops!: InstancedMesh;
 
   /** Windows, awning, sign, planters and interior details. */
   readonly facade: FacadeView;
@@ -624,6 +738,12 @@ export class ShopView {
     this.recordPlayers = instanced(this.tiered('recordPlayer', 1), SHARED_MATERIAL, DECOR_CAPACITY, false);
     this.sofas = instanced(this.tiered('sofa', 1), SHARED_MATERIAL, DECOR_CAPACITY, true);
     this.root.add(this.plants, this.paintings, this.lamps, this.bulbs, this.neons, this.neonTubes, this.bookshelves, this.recordPlayers, this.sofas);
+    this.chandeliers = instanced(this.geo.chandelier, SHARED_MATERIAL, DECOR_CAPACITY, false);
+    // The crystals glow like the lamp bulbs, without a light of their own.
+    this.crystals = instanced(this.geo.crystal, GLOW_MATERIAL, DECOR_CAPACITY, false);
+    this.galleries = instanced(this.geo.gallery, SHARED_MATERIAL, DECOR_CAPACITY, false);
+    this.pianos = instanced(this.geo.piano, SHARED_MATERIAL, DECOR_CAPACITY, true);
+    this.root.add(this.chandeliers, this.crystals, this.galleries, this.pianos);
 
     this.facade = new FacadeView(quality);
     this.root.add(this.facade.root);
@@ -698,6 +818,18 @@ export class ShopView {
         const last = items[items.length - 1];
         return last ? { x: last.pos.x, y: DECOR_SPARKLE_Y[decor], z: last.pos.z, object: null, pivotY: 0 } : null;
       }
+      case 'chandelier':
+      case 'art_gallery':
+      case 'grand_piano': {
+        const items = layout.premium.filter((p) => p.kind === id).slice(0, DECOR_CAPACITY);
+        const last = items[items.length - 1];
+        return last ? { x: last.pos.x, y: PREMIUM_SPARKLE_Y[id], z: last.pos.z, object: null, pivotY: 0 } : null;
+      }
+      case 'marble_tables': {
+        // The middle of the room's tables; every top changed at once.
+        const t = layout.premiumLevel.marble_tables > 0 ? layout.tables[Math.floor(layout.tables.length / 2)] : undefined;
+        return t ? { x: t.pos.x, y: TABLE_TOP_Y + 0.3, z: t.pos.z, object: null, pivotY: 0 } : null;
+      }
       case 'expand_area': {
         const e = layout.expansion;
         return e ? { x: (e.minX + e.maxX) / 2, y: 1, z: (e.minZ + e.maxZ) / 2, object: null, pivotY: 0 } : null;
@@ -731,7 +863,7 @@ export class ShopView {
   }
 
   /** Number of visible pieces per kind (for tests and debugging). */
-  counts(): { tables: number; chairs: number; parasols: number; coins: number; cups: number; machines: number; decor: number } {
+  counts(): { tables: number; chairs: number; parasols: number; coins: number; cups: number; machines: number; decor: number; premium: number } {
     return {
       tables: this.tables.count,
       chairs: this.chairs.count,
@@ -747,6 +879,8 @@ export class ShopView {
         this.bookshelves.count +
         this.recordPlayers.count +
         this.sofas.count,
+      // Chandeliers, gallery walls and pianos (layout.premium), plus one marble top per table.
+      premium: this.chandeliers.count + this.galleries.count + this.pianos.count + this.marbleTops.count,
     };
   }
 
@@ -798,6 +932,7 @@ export class ShopView {
     this.buildMachines(layout);
     this.buildTables(layout);
     this.buildDecor(layout);
+    this.buildPremium(layout);
     this.pickupMat.position.set(layout.pickup.x, 0.01, layout.pickup.z);
     this.facade.build(layout);
     this.syncFacadeWalls();
@@ -901,7 +1036,7 @@ export class ShopView {
   }
 
   private allocTables(capacity: number): void {
-    const old = [this.tables, this.chairs, this.parasols, this.coins, this.cups];
+    const old = [this.tables, this.chairs, this.parasols, this.coins, this.cups, this.marbleTops];
     for (const mesh of old) {
       if (!mesh) continue;
       mesh.removeFromParent();
@@ -914,6 +1049,8 @@ export class ShopView {
     this.parasols = instanced(this.tiered('parasol', 1), SHARED_MATERIAL, capacity, true);
     this.coins = instanced(this.geo.coin, SHARED_MATERIAL, capacity, false);
     this.cups = instanced(this.geo.cup, SHARED_MATERIAL, capacity * MAX_CUPS_PER_TABLE, false);
+    // buildPremium sets the level geometry right after a reallocation.
+    this.marbleTops = instanced(this.geo.marble1, SHARED_MATERIAL, capacity, false);
     // Icons move every frame; skip culling instead of recomputing bounds.
     this.coins.frustumCulled = false;
     this.cups.frustumCulled = false;
@@ -922,7 +1059,7 @@ export class ShopView {
     this.parasolTableIds = new Array<number>(capacity).fill(-1);
     this.coinTableIds = new Array<number>(capacity).fill(-1);
     this.cupTableIds = new Array<number>(capacity * MAX_CUPS_PER_TABLE).fill(-1);
-    this.root.add(this.tables, this.chairs, this.parasols, this.coins, this.cups);
+    this.root.add(this.tables, this.chairs, this.parasols, this.coins, this.cups, this.marbleTops);
     this.pickables.length = 0;
     this.pickables.push(this.machines, this.coins, this.cups, this.tables, this.chairs, this.parasols);
   }
@@ -1033,6 +1170,47 @@ export class ShopView {
     finishInstances(this.bookshelves, shelves);
     finishInstances(this.recordPlayers, players);
     finishInstances(this.sofas, sofas);
+  }
+
+  private buildPremium(layout: ShopLayout): void {
+    const d = this.dummy;
+    let chandeliers = 0;
+    let galleries = 0;
+    let pianos = 0;
+    for (const item of layout.premium) {
+      d.rotation.set(0, 0, 0);
+      d.position.set(item.pos.x, 0, item.pos.z);
+      if (item.kind === 'chandelier' && chandeliers < DECOR_CAPACITY) {
+        d.updateMatrix();
+        this.chandeliers.setMatrixAt(chandeliers, d.matrix);
+        this.crystals.setMatrixAt(chandeliers++, d.matrix);
+      } else if (item.kind === 'art_gallery' && galleries < DECOR_CAPACITY) {
+        // On the left wall, facing the room like the side paintings.
+        d.rotation.set(0, Math.PI / 2, 0);
+        d.updateMatrix();
+        this.galleries.setMatrixAt(galleries++, d.matrix);
+      } else if (item.kind === 'grand_piano' && pianos < DECOR_CAPACITY) {
+        d.updateMatrix();
+        this.pianos.setMatrixAt(pianos++, d.matrix);
+      }
+    }
+    finishInstances(this.chandeliers, chandeliers);
+    finishInstances(this.crystals, chandeliers);
+    finishInstances(this.galleries, galleries);
+    finishInstances(this.pianos, pianos);
+
+    const marble = layout.premiumLevel.marble_tables;
+    const geo = marble >= 2 ? this.geo.marble2 : this.geo.marble1;
+    if (this.marbleTops.geometry !== geo) this.marbleTops.geometry = geo;
+    const tops = marble > 0 ? Math.min(layout.tables.length, this.tableCap) : 0;
+    for (let i = 0; i < tops; i++) {
+      const t = layout.tables[i]!;
+      d.position.set(t.pos.x, 0, t.pos.z);
+      d.rotation.set(0, 0, 0);
+      d.updateMatrix();
+      this.marbleTops.setMatrixAt(i, d.matrix);
+    }
+    finishInstances(this.marbleTops, tops);
   }
 
   // ---------- per frame (no allocation) ----------

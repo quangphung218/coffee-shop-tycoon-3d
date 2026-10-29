@@ -3,7 +3,7 @@ import { DIFFICULTIES } from './data/difficulty';
 import { maxLevelBonus } from './data/levels';
 import { getMenuItem } from './data/menu';
 import { getUpgrade, levelEffect, upgradeCost, upgradeTier } from './data/upgrades';
-import { BOOKSHELF_SIZE, CHAIR_OFFSET, SOFA_SIZE } from './nav/footprints';
+import { BOOKSHELF_SIZE, CHAIR_OFFSET, PIANO_SIZE, SOFA_SIZE } from './nav/footprints';
 import { isUnlocked } from './progression';
 import { ensureRetention } from './retention';
 import { SEATS_PER_TABLE, TABLE_PITCH, TABLE_ROW_PITCH, TABLE_ROW_Z, tablePosition } from './state';
@@ -55,6 +55,19 @@ export interface LayoutDecor {
   pos: Vec2;
 }
 
+/**
+ * E-05 premium decor, drawn from shop level 7: the chandelier hangs over the
+ * main aisle, the art gallery hangs on the left wall, the upright piano stands
+ * against the front wall right of the door (the only one with a footprint) and
+ * the marble tops lie on every table (no spot of their own, see `premiumLevel`).
+ */
+export type PremiumKind = 'chandelier' | 'marble_tables' | 'art_gallery' | 'grand_piano';
+
+export interface LayoutPremium {
+  kind: Exclude<PremiumKind, 'marble_tables'>;
+  pos: Vec2;
+}
+
 /** Everything the renderer needs to place the shop's furniture. */
 export interface ShopLayout {
   indoor: Area;
@@ -69,6 +82,10 @@ export interface ShopLayout {
   machines: LayoutMachine[];
   tables: LayoutTable[];
   decor: LayoutDecor[];
+  /** Premium decor items in slot order; empty until one is bought. */
+  premium: LayoutPremium[];
+  /** Owned level of each premium decor item (0 when not owned). */
+  premiumLevel: Record<PremiumKind, number>;
   totalSeats: number;
   /** Look tiers 0..3 (upgradeTier) of the tables, the outdoor seating, each decor kind and the window bar. */
   furnitureTier: number;
@@ -150,6 +167,28 @@ const DECOR_UPGRADE: Readonly<Record<DecorKind, UpgradeId>> = {
   record_player: 'record_player',
   sofa: 'sofa_corner',
 };
+
+/**
+ * Spots of the premium decor per level, clear of every table, chair, machine
+ * and walkway at any combination of upgrades (tests/sim/p27-decor-layout.test.ts).
+ */
+const PREMIUM_SLOTS: Readonly<Record<LayoutPremium['kind'], readonly Vec2[]>> = {
+  // Over the main aisle (x = 0) between the inner table columns, above head height: the middle row, then the front row
+  // (the ceiling fan hangs over the first row).
+  chandelier: [
+    { x: 0, z: TABLE_ROW_Z + TABLE_ROW_PITCH },
+    { x: 0, z: TABLE_ROW_Z + 2 * TABLE_ROW_PITCH },
+  ],
+  // On the left wall, between the side painting and the front plant, then between the bookshelves and that painting.
+  art_gallery: [
+    { x: INDOOR_AREA.minX + 0.03, z: TABLE_ROW_Z + 1.5 * TABLE_ROW_PITCH },
+    { x: INDOOR_AREA.minX + 0.03, z: TABLE_ROW_Z - 0.35 * TABLE_ROW_PITCH },
+  ],
+  // Against the front wall right of the door (DOOR_POS.x = 0; customers.ts imports this module, so not read here), clear of
+  // the door post and in front of the front row's chairs.
+  grand_piano: [{ x: 1.6, z: INDOOR_AREA.maxZ - 0.02 - PIANO_SIZE.depth / 2 }],
+};
+const PREMIUM_KINDS: readonly PremiumKind[] = ['chandelier', 'marble_tables', 'art_gallery', 'grand_piano'];
 
 /** Upgrades that need another one owned first: the sofa corner stands in the side room. */
 const UPGRADE_REQUIRES: Partial<Record<UpgradeId, { id: UpgradeId; level: number }>> = {
@@ -393,6 +432,14 @@ function decorFor(state: GameState): LayoutDecor[] {
   return out;
 }
 
+function premiumFor(state: GameState): LayoutPremium[] {
+  const out: LayoutPremium[] = [];
+  for (const kind of Object.keys(PREMIUM_SLOTS) as LayoutPremium['kind'][]) {
+    for (const pos of PREMIUM_SLOTS[kind].slice(0, upgradeLevel(state, kind))) out.push({ kind, pos: { ...pos } });
+  }
+  return out;
+}
+
 /** Positions of the shop's areas, counter, machines, tables and decor for the renderer. */
 export function getShopLayout(state: GameState): ShopLayout {
   const counterLevel = upgradeLevel(state, 'big_counter');
@@ -410,6 +457,8 @@ export function getShopLayout(state: GameState): ShopLayout {
   const expandLevel = upgradeLevel(state, 'expand_area');
   const decorTier = {} as Record<DecorKind, number>;
   for (const kind of Object.keys(DECOR_UPGRADE) as DecorKind[]) decorTier[kind] = tier(DECOR_UPGRADE[kind]);
+  const premiumLevel = {} as Record<PremiumKind, number>;
+  for (const kind of PREMIUM_KINDS) premiumLevel[kind] = upgradeLevel(state, kind);
   return {
     indoor: { ...INDOOR_AREA },
     expansion: expandLevel > 0 ? expansionArea(expandLevel) : null,
@@ -425,6 +474,8 @@ export function getShopLayout(state: GameState): ShopLayout {
     machines,
     tables: state.tables.map((t) => ({ id: t.id, pos: { ...t.pos }, seats: t.seats, zone: tableZone(t.pos) })),
     decor: decorFor(state),
+    premium: premiumFor(state),
+    premiumLevel,
     totalSeats: totalSeats(state),
     furnitureTier: tier('tables'),
     outdoorTier: tier('outdoor_seating'),
