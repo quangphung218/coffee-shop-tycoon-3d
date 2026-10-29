@@ -9,7 +9,7 @@ import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { formatMoney } from '../../src/ui/core/format';
-import { createHud, DEBT_HINTS, debtRule, debtWarning, type Hud } from '../../src/ui/hud/hud';
+import { createHud, debtHints, debtRule, debtWarning, type Hud } from '../../src/ui/hud/hud';
 import { bankruptSummary, latestPlayableSave } from '../../src/ui/screens/bankrupt';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 
@@ -89,7 +89,10 @@ describe('HUD debt warning', () => {
     expect(el.getAttribute('role')).toBe('alert');
     expect(el.textContent).toContain(`còn ${BANKRUPT_DAYS - 1} ngày trước khi phá sản`);
     expect(el.textContent).toContain(`Tiền dưới ${formatMoney(-debtLimit(state))}: còn`);
-    for (const hint of DEBT_HINTS) expect(el.textContent).toContain(hint);
+    const hints = debtHints(state);
+    expect(hints.length).toBeGreaterThan(0);
+    for (const hint of hints) expect(el.textContent).toContain(hint);
+    expect(el.textContent).not.toMatch(/Bán (bớt|hết)/);
 
     state.money = 0;
     state.debtDays = 0;
@@ -129,7 +132,8 @@ describe('HUD debt limit and money', () => {
 
 describe('Bankruptcy screen', () => {
   it('summarises days, revenue and cups', () => {
-    expect(bankruptSummary(bankruptGame())).toEqual({ days: 9, revenue: 12_345_000, trophies: 3 });
+    const state = bankruptGame();
+    expect(bankruptSummary(state)).toEqual({ days: 9, revenue: 12_345_000, trophies: 3, money: state.money, limit: debtLimit(state), debtDays: BANKRUPT_DAYS });
   });
 
   it('opens on a bankrupt game with the run figures; Esc does not close it', () => {
@@ -142,6 +146,10 @@ describe('Bankruptcy screen', () => {
     expect(el.querySelector('[data-block="days"]')!.textContent).toContain('9 ngày');
     expect(el.querySelector('[data-block="revenue"]')!.textContent).toContain(formatMoney(12_345_000));
     expect(el.querySelector('[data-block="trophies"]')!.textContent).toContain('3');
+    const debt = el.querySelector('[data-block="debt"]')!;
+    expect(debt.querySelector('[data-debt="money"]')!.textContent).toBe(formatMoney(-debtLimit(game()) - 1));
+    expect(debt.querySelector('[data-debt="limit"]')!.textContent).toBe(formatMoney(-debtLimit(game())));
+    expect(debt.querySelector('[data-debt="days"]')!.textContent).toBe(`${BANKRUPT_DAYS} ngày liền`);
     expect(document.activeElement).toBe(el.querySelector('[data-action="restart"]'));
     document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(shell.screen).toBe('bankrupt');

@@ -177,9 +177,6 @@ function noteFor(state: GameState): Note | null {
   }
 }
 
-/** Ways out of debt the warning suggests. */
-export const DEBT_HINTS = ['Giảm bớt nhân viên', 'Bán bớt hàng tồn hoặc thiết bị', 'Giảm nhập hàng'] as const;
-
 /**
  * Days left before bankruptcy while the shop is past the debt limit, or has
  * closed a day past it (sim/economy.ts); null when it is not in debt or the
@@ -189,6 +186,23 @@ export function debtWarning(state: GameState): { daysLeft: number; text: string 
   if (state.bankrupt || (!isOverDebtLimit(state) && !(state.debtDays > 0))) return null;
   const daysLeft = debtDaysLeft(state);
   return { daysLeft, text: `Tiền dưới ${formatMoney(-debtLimit(state))}: còn ${daysLeft} ngày trước khi phá sản` };
+}
+
+/**
+ * Up to three cuts the player can make now, read from the shop: staff wages,
+ * a wage or price policy that costs money, marketing spent today and stock
+ * still on the shelves. Empty when there is nothing left to cut.
+ */
+export function debtHints(state: GameState): string[] {
+  const hints: string[] = [];
+  const wages = state.staff.reduce((s, m) => s + m.wagePerDay, 0);
+  if (state.staff.length > 0) hints.push(`Cho nghỉ bớt nhân viên: ${state.staff.length} người, lương ${formatMoney(wages)}/ngày`);
+  if (state.policies?.wage === 'high') hints.push('Đưa chính sách lương về mức chuẩn');
+  if (state.policies?.price === 'low') hints.push('Đưa chính sách giá về mức chuẩn');
+  const marketing = state.lastReport?.marketingCost ?? 0;
+  if (marketing > 0) hints.push(`Chưa mở chiến dịch marketing mới (hôm nay tốn ${formatMoney(marketing)})`);
+  if (state.inventory.some((i) => i.qty > 0)) hints.push('Dùng hết nguyên liệu trong kho trước khi nhập thêm');
+  return hints.slice(0, 3);
 }
 
 /** The bankruptcy rule for a debt limit, in the money title while money is below zero. */
@@ -701,11 +715,16 @@ export function createHud(actions: HudActions): Hud {
   // Debt warning beside the note: days left before bankruptcy and the ways out.
   const debt = h('p', { class: 'hud-note hud-debt', hidden: true, attrs: { role: 'alert', 'data-stat': 'debt' } });
   w.watch(
-    (s) => debtWarning(s)?.text ?? '',
-    (text) => {
-      if (text) setChildren(debt, icon('i-warning'), h('b', { text }), h('span', { class: 'hud-debt-hints', text: `Gợi ý: ${DEBT_HINTS.join(' · ')}` }));
-      else debt.replaceChildren();
-      debt.hidden = !text;
+    (s) => {
+      const warning = debtWarning(s);
+      return warning ? [warning.text, ...debtHints(s)].join('\n') : '';
+    },
+    (key) => {
+      const [text, ...hints] = key.split('\n');
+      if (!key) debt.replaceChildren();
+      else if (hints.length === 0) setChildren(debt, icon('i-warning'), h('b', { text }));
+      else setChildren(debt, icon('i-warning'), h('b', { text }), h('span', { class: 'hud-debt-hints', text: `Gợi ý: ${hints.join(' · ')}` }));
+      debt.hidden = !key;
     },
   );
 

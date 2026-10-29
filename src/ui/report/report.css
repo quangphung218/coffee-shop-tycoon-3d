@@ -254,6 +254,28 @@
   background: var(--surface-sunken);
   color: var(--text-primary);
 }
+/* In debt (report.ts debtBlock): money, limit, days left and what to cut, above the figures. */
+.rpt-debt {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-danger);
+  color: var(--text-danger);
+  border: var(--size-frame-outline) solid var(--text-danger);
+  border-radius: var(--radius-md);
+}
+.rpt-debt-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rpt-debt-figs b {
+  font-variant-numeric: tabular-nums;
+}
+.rpt-debt-hints {
+  margin: 0;
+  padding-left: var(--space-6);
+}
 .rpt-fig-label {
   display: flex;
   align-items: center;
@@ -1054,6 +1076,34 @@
   /* A phone has room to scroll: every chip wraps into view instead of being cut at two lines. */
   .rpt-unlocks {
     max-height: none;
+  }
+}
+
+/* A narrow phone: footer buttons stack full width, the main one on top, each
+   with its icon and label (Xem đánh giá gets its words back). */
+@media (max-width: 480px) {
+  .rpt-foot-actions,
+  .wk-foot-actions {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .rpt-foot-actions > .btn,
+  .wk-foot-actions > .btn,
+  .rpt-foot-actions > [data-action='reviews'] {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+  .rpt-foot-actions > .btn-primary {
+    order: -1;
+  }
+  .rpt-foot-actions > [data-action='reviews'] {
+    padding: 0 var(--space-4);
+  }
+  .rpt-foot-actions > [data-action='reviews'] .rpt-btn-text {
+    display: inline;
   }
 }
 
