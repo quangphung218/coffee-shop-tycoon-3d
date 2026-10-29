@@ -18,12 +18,14 @@ export const WEEK_GOALS: Readonly<Record<Difficulty, WeekGoal>> = {
 
 /**
  * Week profit target as a share of the week's revenue target, by difficulty
- * (weekProfitTarget). Hard costs more to run, so its share is lower.
+ * (weekProfitTarget). Hard costs more to run, so its share is lower. Lowered
+ * with the daily rent (E-04) so the a–e strategies in
+ * tests/integration/p22-strategies.test.ts score 3 cups about as often as before.
  */
 export const WEEK_PROFIT_SHARE: Readonly<Record<Difficulty, number>> = {
-  easy: 0.65,
-  normal: 0.6,
-  hard: 0.45,
+  easy: 0.59,
+  normal: 0.5,
+  hard: 0.35,
 };
 
 /**
