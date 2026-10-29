@@ -458,11 +458,12 @@ function layoutAt(shopLevel: number, levels: Levels): ShopLayout {
 const maxedLayout = (shopLevel: number): ShopLayout => layoutAt(shopLevel, maxedLevels(shopLevel));
 
 describe('shop levels 7–10', () => {
-  it('raise the caps past the base max: tables 7, lights 3, better_machine 5', () => {
+  it('raise the caps past the base max: tables 7, lights 3, better_machine 6', () => {
     const top = maxedLevels(MAX_SHOP_LEVEL);
     expect(top.tables).toBe(7);
     expect(top.lights).toBe(3);
-    expect(top.better_machine).toBe(5);
+    // E-05 adds better_machine level 4 at shop level 4, so 7 and 10 bring it to 6.
+    expect(top.better_machine).toBe(6);
     const base = maxedLevels(FULL_UNLOCK_LEVEL);
     const raised = UPGRADES.filter((u) => top[u.id]! > base[u.id]!).map((u) => u.id);
     // P27 adds expand_area levels 3–4 (shop levels 7 and 9).

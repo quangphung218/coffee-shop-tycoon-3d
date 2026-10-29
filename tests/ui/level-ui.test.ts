@@ -441,11 +441,13 @@ describe('daily report: missions, XP and level-up', () => {
   });
 
   it('lists the P31 tool and its menu item on the level 7 and 8 bands', () => {
-    const expected: Record<number, string[]> = { 7: ['cold_brew', 'cold_brew_tower'], 8: ['cookie', 'sofa_corner', 'oven'] };
+    // E-05 adds the chandelier (7) and the marble tables (8); level 8 now has 4 unlocks, so the oven goes into "+1".
+    const expected: Record<number, string[]> = { 7: ['cold_brew', 'chandelier', 'cold_brew_tower'], 8: ['cookie', 'sofa_corner', 'marble_tables'] };
     for (const def of LEVELS.filter((l) => l.level === 7 || l.level === 8)) {
       const band = q(summary(report({ levelUp: { level: def.level, unlocks: def.unlocks } })), '[data-block="level-up"]');
       const chips = [...band.querySelectorAll<HTMLElement>('.rpt-unlock')].map((c) => c.dataset.unlock);
       expect(chips, `level ${def.level}`).toEqual(expected[def.level]);
+      expect(band.querySelector('[data-block="unlocks-more"]')?.textContent ?? null, `level ${def.level}`).toBe(def.level === 8 ? '+1' : null);
       expect(band.textContent).not.toContain('Cấp này chưa mở thêm');
     }
   });
@@ -482,17 +484,17 @@ describe('upgrade level locks', () => {
     expect(UPGRADE_GROUPS.find((g) => g.title === 'Không gian')!.ids).toContain('tables');
   });
 
-  it('shows "Mở ở cấp N" with a disabled Mua for a tool above the shop level', () => {
+  it('shows "Cần cấp quán N" with a disabled Mua for a tool above the shop level', () => {
     const state = game();
     delete state.week;
     state.money = 10_000_000;
     const { body, sent, handle } = mount(renderUpgradesPanel, state);
     const grinder = q(body, '[data-upgrade="grinder"]');
     expect(grinder.classList.contains('is-locked')).toBe(true);
-    expect(grinder.textContent).toContain('Mở ở cấp 2');
+    expect(grinder.textContent).toContain('Cần cấp quán 2');
     const buy = q<HTMLButtonElement>(grinder, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Mở khóa ở Cấp 2');
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Cần cấp quán 2 để mở khóa');
     buy.click();
     expect(sent).toHaveLength(0);
     expect(grinder.querySelector('.confirm')).toBeNull();

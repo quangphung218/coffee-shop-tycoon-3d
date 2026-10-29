@@ -1,4 +1,9 @@
-import type { UpgradeDef, UpgradeEffect, UpgradeId } from '../types';
+import type { ExtraUpgradeLevel, UpgradeDef, UpgradeEffect, UpgradeId } from '../types';
+
+/** A level above maxLevel: the item's own per-level effect plus a sell-price bonus, priced in money (and Tem when given). */
+function extra(shopLevel: number, cost: number, priceBonus: number, effect: UpgradeEffect = {}, tickets?: number): ExtraUpgradeLevel {
+  return { shopLevel, cost, effect: { ...effect, priceBonus }, ...(tickets ? { tickets } : {}) };
+}
 
 export const UPGRADES: readonly UpgradeDef[] = [
   {
@@ -11,6 +16,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 400000,
     costGrowth: 1.35,
     effectPerLevel: { capacity: 2 },
+    extraLevels: [extra(8, 11_000_000, 0.06, { capacity: 2 })],
   },
   {
     id: 'better_machine',
@@ -22,6 +28,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1500000,
     costGrowth: 1.8,
     effectPerLevel: { ratingBonus: 0.2 },
+    extraLevels: [extra(4, 30_000_000, 0.17, { ratingBonus: 0.2 }, 150), extra(7, 12_000_000, 0.07, { ratingBonus: 0.2 }), extra(10, 14_000_000, 0.08, { ratingBonus: 0.2 })],
   },
   {
     id: 'fast_machine',
@@ -66,6 +73,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 5000000,
     costGrowth: 2,
     effectPerLevel: { capacity: 6, appeal: 0.1 },
+    extraLevels: [extra(7, 13_000_000, 0.07, { capacity: 6, appeal: 0.1 }), extra(9, 14_000_000, 0.08, { capacity: 6, appeal: 0.1 })],
   },
   {
     id: 'plants',
@@ -77,6 +85,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 300000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.04, ratingBonus: 0.05 },
+    extraLevels: [extra(4, 3_000_000, 0.02, { appeal: 0.04, ratingBonus: 0.05 }), extra(6, 8_000_000, 0.045, { appeal: 0.04, ratingBonus: 0.05 })],
   },
   {
     id: 'paintings',
@@ -88,6 +97,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 400000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.05, ratingBonus: 0.05 },
+    extraLevels: [extra(4, 5_000_000, 0.03, { appeal: 0.05, ratingBonus: 0.05 })],
   },
   {
     id: 'lights',
@@ -99,6 +109,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 500000,
     costGrowth: 1.6,
     effectPerLevel: { appeal: 0.06, ratingBonus: 0.05 },
+    extraLevels: [extra(9, 12_500_000, 0.07, { appeal: 0.06, ratingBonus: 0.05 })],
   },
   {
     id: 'window_bar',
@@ -121,6 +132,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 600000,
     costGrowth: 1.6,
     effectPerLevel: { coffeeBrewSpeed: 0.15, ratingBonus: 0.05, appeal: 0.06 },
+    extraLevels: [extra(4, 5_000_000, 0.03, { coffeeBrewSpeed: 0.15, ratingBonus: 0.05, appeal: 0.06 }), extra(7, 9_000_000, 0.05, { coffeeBrewSpeed: 0.15, ratingBonus: 0.05, appeal: 0.06 })],
   },
   {
     id: 'pastry_case',
@@ -132,6 +144,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1100000,
     costGrowth: 1.6,
     effectPerLevel: { foodAppeal: 0.3, foodBrewSpeed: 0.2 },
+    extraLevels: [extra(5, 5_000_000, 0.03, { foodAppeal: 0.3, foodBrewSpeed: 0.2 }), extra(8, 12_500_000, 0.07, { foodAppeal: 0.3, foodBrewSpeed: 0.2 })],
   },
   {
     id: 'blender',
@@ -143,6 +156,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1300000,
     costGrowth: 1.6,
     effectPerLevel: { coldBrewSpeed: 0.25, appeal: 0.06 },
+    extraLevels: [extra(5, 6_000_000, 0.035, { coldBrewSpeed: 0.25, appeal: 0.06 }), extra(9, 12_500_000, 0.07, { coldBrewSpeed: 0.25, appeal: 0.06 })],
   },
   {
     id: 'ice_maker',
@@ -165,6 +179,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 400000,
     costGrowth: 1.6,
     effectPerLevel: { cleanSpeed: 0.2, appeal: 0.06 },
+    extraLevels: [extra(6, 10_000_000, 0.055, { cleanSpeed: 0.2, appeal: 0.06 }), extra(10, 14_000_000, 0.08, { cleanSpeed: 0.2, appeal: 0.06 })],
   },
   {
     id: 'cold_brew_tower',
@@ -198,6 +213,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 600000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.05, ratingBonus: 0.04 },
+    extraLevels: [extra(4, 5_000_000, 0.03, { appeal: 0.05, ratingBonus: 0.04 }), extra(6, 10_000_000, 0.055, { appeal: 0.05, ratingBonus: 0.04 })],
   },
   {
     id: 'bookshelf',
@@ -209,6 +225,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 800000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.04, ratingBonus: 0.06 },
+    extraLevels: [extra(5, 5_000_000, 0.03, { appeal: 0.04, ratingBonus: 0.06 })],
   },
   {
     id: 'record_player',
@@ -233,6 +250,51 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.08, ratingBonus: 0.05 },
     ticketCost: [5],
+  },
+  // E-05 premium decor, opened by shop levels 7..10: dear, but the sell-price bonus pays it back in one to two weeks on Normal.
+  {
+    id: 'chandelier',
+    name: 'Đèn chùm pha lê',
+    icon: '✨',
+    description: 'Đèn chùm pha lê giữa quán: giá bán mọi món +6,5% mỗi cấp, quán đẹp hơn.',
+    category: 'decor',
+    maxLevel: 2,
+    baseCost: 12_000_000,
+    costGrowth: 1.1,
+    effectPerLevel: { priceBonus: 0.065, appeal: 0.05, ratingBonus: 0.05 },
+  },
+  {
+    id: 'marble_tables',
+    name: 'Mặt bàn đá cẩm thạch',
+    icon: '🪨',
+    description: 'Thay mặt bàn bằng đá cẩm thạch: giá bán mọi món +7% mỗi cấp, đánh giá cao hơn.',
+    category: 'decor',
+    maxLevel: 2,
+    baseCost: 12_500_000,
+    costGrowth: 1.1,
+    effectPerLevel: { priceBonus: 0.07, ratingBonus: 0.06 },
+  },
+  {
+    id: 'art_gallery',
+    name: 'Góc tranh nghệ thuật',
+    icon: '🎨',
+    description: 'Tường tranh của họa sĩ địa phương: giá bán mọi món +8% mỗi cấp, đánh giá cao hơn.',
+    category: 'decor',
+    maxLevel: 2,
+    baseCost: 14_000_000,
+    costGrowth: 1.1,
+    effectPerLevel: { priceBonus: 0.08, ratingBonus: 0.04 },
+  },
+  {
+    id: 'grand_piano',
+    name: 'Đàn piano',
+    icon: '🎹',
+    description: 'Đàn piano đứng cho những tối nhạc sống: giá bán mọi món +10%, quán sang hơn hẳn.',
+    category: 'decor',
+    maxLevel: 1,
+    baseCost: 18_000_000,
+    costGrowth: 1.1,
+    effectPerLevel: { priceBonus: 0.1, appeal: 0.06, ratingBonus: 0.08 },
   },
 ];
 
@@ -264,34 +326,40 @@ export function upgradeCost(def: UpgradeDef, currentLevel: number, priceMult = 1
   return Math.round((def.baseCost * Math.pow(def.costGrowth, currentLevel) * priceMult) / 1000) * 1000;
 }
 
-/** Sum of effects over all owned upgrade levels. */
+/**
+ * What the `level`-th level (from 1) of an upgrade adds: effectPerLevel up to
+ * maxLevel, then the level's own effect from extraLevels.
+ */
+export function levelEffect(def: UpgradeDef, level: number): UpgradeEffect {
+  return level > def.maxLevel ? (def.extraLevels?.[level - def.maxLevel - 1]?.effect ?? def.effectPerLevel) : def.effectPerLevel;
+}
+
+const EFFECT_KEYS = [
+  'capacity',
+  'ratingBonus',
+  'appeal',
+  'brewSpeed',
+  'coffeeBrewSpeed',
+  'coldBrewSpeed',
+  'foodBrewSpeed',
+  'foodAppeal',
+  'cleanSpeed',
+  'iceCostReduction',
+  'priceBonus',
+] as const satisfies readonly (keyof UpgradeEffect)[];
+
+/** Sum of effects over all owned upgrade levels, extra levels with their own effect. */
 export function totalUpgradeEffect(levels: Partial<Record<UpgradeId, number>>): Required<UpgradeEffect> {
-  const total: Required<UpgradeEffect> = {
-    capacity: 0,
-    ratingBonus: 0,
-    appeal: 0,
-    brewSpeed: 0,
-    coffeeBrewSpeed: 0,
-    coldBrewSpeed: 0,
-    foodBrewSpeed: 0,
-    foodAppeal: 0,
-    cleanSpeed: 0,
-    iceCostReduction: 0,
-  };
+  const total = Object.fromEntries(EFFECT_KEYS.map((key) => [key, 0])) as Required<UpgradeEffect>;
   for (const def of UPGRADES) {
     const level = levels[def.id] ?? 0;
     if (level <= 0) continue;
-    const e = def.effectPerLevel;
-    total.capacity += (e.capacity ?? 0) * level;
-    total.ratingBonus += (e.ratingBonus ?? 0) * level;
-    total.appeal += (e.appeal ?? 0) * level;
-    total.brewSpeed += (e.brewSpeed ?? 0) * level;
-    total.coffeeBrewSpeed += (e.coffeeBrewSpeed ?? 0) * level;
-    total.coldBrewSpeed += (e.coldBrewSpeed ?? 0) * level;
-    total.foodBrewSpeed += (e.foodBrewSpeed ?? 0) * level;
-    total.foodAppeal += (e.foodAppeal ?? 0) * level;
-    total.cleanSpeed += (e.cleanSpeed ?? 0) * level;
-    total.iceCostReduction += (e.iceCostReduction ?? 0) * level;
+    const plain = Math.min(level, def.maxLevel);
+    for (const key of EFFECT_KEYS) total[key] += (def.effectPerLevel[key] ?? 0) * plain;
+    for (let l = def.maxLevel + 1; l <= level; l++) {
+      const e = levelEffect(def, l);
+      for (const key of EFFECT_KEYS) total[key] += e[key] ?? 0;
+    }
   }
   return total;
 }

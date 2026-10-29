@@ -71,6 +71,7 @@ Một vòng 7 ngày ở Thường cho 810.000đ và 14 Tem. Tiền làm tròn t�
 | Đào tạo nhân viên lên cấp 5 | 5 |
 | Máy hát đĩa | 3 |
 | Góc sofa | 5 |
+| Máy espresso cao cấp cấp 4 | 150 |
 
 Số dư Tem hiện trên HUD cạnh tiền. Gỡ nội thất không hoàn Tem.
 
@@ -147,14 +148,14 @@ Số nhân viên tối đa: 6 (`BASE_MAX_STAFF`), thêm 1 ở Mở rộng diện
 
 ## Mở rộng diện tích
 
-Nguồn: `expand_area` trong `src/sim/data/upgrades.ts` (`baseCost` 5.000.000, `costGrowth` 2, `maxLevel` 2), `maxLevelBonus` trong `src/sim/data/levels.ts`. Cấp trên `maxLevel` đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`).
+Nguồn: `expand_area` trong `src/sim/data/upgrades.ts` (`baseCost` 5.000.000, `costGrowth` 2, `maxLevel` 2). Cấp 3–4 nằm trong `extraLevels` của nó, mỗi cấp có giá, cấp quán cần và `priceBonus` riêng (+7% giá bán ở cấp 3, +8% ở cấp 4).
 
 | Cấp | Mở khi | Giá Thường | Dễ | Khó | Thêm |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Cấp quán 6, hoặc tặng sáng ngày 7 tuần 1 | 5.000.000đ | 4.500.000đ | 5.750.000đ | Phòng bên, 3 bàn (6 ghế) |
 | 2 | Cùng cấp 1 | 10.000.000đ | 9.000.000đ | 11.500.000đ | 3 bàn |
-| 3 | Cấp quán 7 | 60.000.000đ | 54.000.000đ | 69.000.000đ | 3 bàn, 1 chỗ nhân viên |
-| 4 | Cấp quán 9 | 120.000.000đ | 108.000.000đ | 138.000.000đ | 3 bàn, 1 chỗ nhân viên |
+| 3 | Cấp quán 7 | 13.000.000đ | 11.700.000đ | 14.950.000đ | 3 bàn, 1 chỗ nhân viên |
+| 4 | Cấp quán 9 | 14.000.000đ | 12.600.000đ | 16.100.000đ | 3 bàn, 1 chỗ nhân viên |
 
 Mỗi cấp còn +10% khách đến (`appeal` 0,1) và nới phòng bên thêm một cột bàn.
 
@@ -172,8 +173,55 @@ Nguồn: `src/sim/data/upgrades.ts` (giá, hiệu ứng), `src/sim/data/levels.t
 - Góc sofa đặt trong phòng bên: cần Mở rộng diện tích cấp 1 trở lên.
 - Cả bốn gỡ được bằng nút **Gỡ**: hoàn 50% tiền của cấp đó, không hoàn Tem.
 
+### Cấp thêm và đồ cao cấp (E-05)
+
+Nguồn: `extraLevels` trong `src/sim/data/upgrades.ts` (giá, hiệu ứng), `maxLevelBonus` trong `src/sim/data/levels.ts` (cấp quán mở). Cấp trên `maxLevel` có giá và hiệu ứng riêng, không còn nhân 3 giá cấp cuối. Giá ghi ở Thường, nhân `priceMult` của độ khó (Dễ 0,9 · Khó 1,15). Hiệu ứng mới `priceBonus` cộng vào giá bán mọi món (`src/sim/policies.ts`, nhân với chính sách giá); mọi cấp thêm đều có `priceBonus`, ghi ở cột cuối. Cột "Hiệu ứng riêng" là phần cộng thêm của cấp, giống mỗi cấp thường.
+
+21 cấp thêm của 12 nâng cấp, cấp quán 4–10:
+
+| Nâng cấp | Cấp | Mở ở cấp quán | Giá (Thường) | Tem | Hiệu ứng riêng | Giá bán |
+| --- | --- | --- | --- | --- | --- | --- |
+| Máy espresso cao cấp (`better_machine`) | 4 | 4 | 30.000.000đ | 150 | +0,2 sao | +17% |
+| Máy espresso cao cấp | 5 | 7 | 12.000.000đ | — | +0,2 sao | +7% |
+| Máy espresso cao cấp | 6 | 10 | 14.000.000đ | — | +0,2 sao | +8% |
+| Máy xay hạt (`grinder`) | 4 | 4 | 5.000.000đ | — | pha cà phê +15%, +0,05 sao, +6% khách | +3% |
+| Máy xay hạt | 5 | 7 | 9.000.000đ | — | như trên | +5% |
+| Cây xanh (`plants`) | 4 | 4 | 3.000.000đ | — | +4% khách, +0,05 sao | +2% |
+| Cây xanh | 5 | 6 | 8.000.000đ | — | như trên | +4,5% |
+| Tranh treo tường (`paintings`) | 4 | 4 | 5.000.000đ | — | +5% khách, +0,05 sao | +3% |
+| Biển neon (`neon_sign`) | 3 | 4 | 5.000.000đ | — | +5% khách, +0,04 sao | +3% |
+| Biển neon | 4 | 6 | 10.000.000đ | — | như trên | +5,5% |
+| Kệ sách (`bookshelf`) | 3 | 5 | 5.000.000đ | — | +4% khách, +0,06 sao | +3% |
+| Tủ bánh (`pastry_case`) | 3 | 5 | 5.000.000đ | — | khách gọi món ăn +30%, làm món ăn +20% | +3% |
+| Tủ bánh | 4 | 8 | 12.500.000đ | — | như trên | +7% |
+| Máy xay sinh tố (`blender`) | 3 | 5 | 6.000.000đ | — | pha đồ lạnh +25%, +6% khách | +3,5% |
+| Máy xay sinh tố | 4 | 9 | 12.500.000đ | — | như trên | +7% |
+| Máy rửa ly (`dishwasher`) | 3 | 6 | 10.000.000đ | — | dọn bàn +20%, +6% khách | +5,5% |
+| Máy rửa ly | 4 | 10 | 14.000.000đ | — | như trên | +8% |
+| Mở rộng diện tích (`expand_area`) | 3 | 7 | 13.000.000đ | — | +6 ghế, +10% khách | +7% |
+| Mở rộng diện tích | 4 | 9 | 14.000.000đ | — | như trên | +8% |
+| Đèn trang trí (`lights`) | 3 | 9 | 12.500.000đ | — | +6% khách, +0,05 sao | +7% |
+| Thêm bàn ghế (`tables`) | 7 | 8 | 11.000.000đ | — | +2 ghế | +6% |
+
+- Máy espresso cao cấp cấp 4 đắt nhất: 30.000.000đ và 150 Tem. Tem chỉ kiếm trong game ([Tem](#tem)).
+- Các cấp thêm ở cấp quán 4–6 là chủ ý thiết kế: giá nhỏ, thưởng `priceBonus` nhỏ, để người chơi có thứ mua sớm.
+- Cấp thêm nằm ở bảng Nâng cấp cùng nâng cấp gốc, không có mục riêng.
+
+4 đồ trang trí cao cấp mới (nhóm Trang trí, mở ở cấp quán 7–10):
+
+| Id | Tên | Mở ở cấp quán | Cấp tối đa | Giá cấp 1 / cấp 2 (Thường) | Mỗi cấp: giá bán / khách / sao |
+| --- | --- | --- | --- | --- | --- |
+| `chandelier` | Đèn chùm pha lê | 7 | 2 | 12.000.000đ / 13.200.000đ | +6,5% / +5% / +0,05 |
+| `marble_tables` | Mặt bàn đá cẩm thạch | 8 | 2 | 12.500.000đ / 13.750.000đ | +7% / — / +0,06 |
+| `art_gallery` | Góc tranh nghệ thuật | 9 | 2 | 14.000.000đ / 15.400.000đ | +8% / — / +0,04 |
+| `grand_piano` | Đàn piano | 10 | 1 | 18.000.000đ | +10% / +6% / +0,08 |
+
+- Giá cấp 2 = giá cấp 1 × 1,1 (`costGrowth`), làm tròn 1.000đ.
+- Chưa có model 3D cho bốn món này: mua có hiệu ứng nhưng chưa hiện trong cảnh.
+
 ## Save cũ
 
-- Save vẫn là phiên bản 3; mọi trường mới là tùy chọn, save cũ tải và chơi tiếp không cần nâng.
+- Save nâng lên phiên bản 6 (`SAVE_VERSION`). Bước 5 → 6 không ghi lại gì: mọi mức nâng cấp đã lưu vẫn hợp lệ, cấp mua theo giá ×3 cũ giữ nguyên cấp và nhận hiệu ứng mới từ tick sau. Bản cũ hơn từ chối save phiên bản 6.
+- Mọi trường mới là tùy chọn, save cũ tải và chơi tiếp không cần nâng tay.
 - Save cũ có Tem 0, chưa nhận quà ngày nào, nhân viên ở cấp 1 với kinh nghiệm 0 và đặc điểm tính lại từ seed.
 - Tổng khách đã phục vụ và tổng doanh thu cho thành tựu được tính lại từ các tuần và ngày đã lưu; các bộ đếm khác bắt đầu từ 0. Mốc đạt nhờ phần tính lại được trả Tem ở cuối ngày đầu tiên chơi tiếp.

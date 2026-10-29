@@ -79,10 +79,16 @@ describe('ingredients', () => {
 });
 
 describe('upgrades', () => {
-  it('has the 15 P23 upgrades, the 4 P27 furniture items and the 2 P31 tools with unique ids', () => {
+  it('has the 15 P23 upgrades, the 4 P27 furniture items, the 2 P31 tools and the 4 E-05 premium items with unique ids', () => {
     // P27 adds neon_sign, bookshelf, record_player and sofa_corner (decor) to the 15 earlier upgrades.
-    expect(UPGRADES).toHaveLength(21);
-    expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(21);
+    expect(UPGRADES).toHaveLength(25);
+    expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(25);
+    // E-05: premium decor that raises every sell price.
+    for (const id of ['chandelier', 'marble_tables', 'art_gallery', 'grand_piano']) {
+      const u = UPGRADES.find((x) => x.id === id);
+      expect(u?.category, id).toBe('decor');
+      expect(u?.effectPerLevel.priceBonus, id).toBeGreaterThan(0);
+    }
     for (const id of ['neon_sign', 'bookshelf', 'record_player', 'sofa_corner']) {
       expect(UPGRADES.find((u) => u.id === id)?.category, id).toBe('decor');
     }
@@ -95,7 +101,7 @@ describe('upgrades', () => {
   it('have levels with growing cost and a non-empty effect', () => {
     for (const u of UPGRADES) {
       // The record player and the sofa corner (P27) are single pieces: one level.
-      expect(u.maxLevel, u.id).toBeGreaterThanOrEqual(u.id === 'record_player' || u.id === 'sofa_corner' ? 1 : 2);
+      expect(u.maxLevel, u.id).toBeGreaterThanOrEqual(['record_player', 'sofa_corner', 'grand_piano'].includes(u.id) ? 1 : 2);
       const c0 = upgradeCost(u, 0)!;
       expect(c0).toBeGreaterThan(0);
       if (u.maxLevel >= 2) expect(upgradeCost(u, 1)!).toBeGreaterThan(c0);
@@ -122,7 +128,27 @@ describe('upgrades', () => {
       foodAppeal: 0,
       cleanSpeed: 0,
       iceCostReduction: 0,
+      priceBonus: 0,
     });
+  });
+
+  it('opens each extra level (E-05) from shop level 4 up, in order, with a price and a sell-price bonus', () => {
+    for (const u of UPGRADES) {
+      let prev = 0;
+      for (const x of u.extraLevels ?? []) {
+        expect(x.shopLevel, u.id).toBeGreaterThanOrEqual(4);
+        expect(x.shopLevel, u.id).toBeLessThanOrEqual(10);
+        expect(x.shopLevel, u.id).toBeGreaterThanOrEqual(prev);
+        prev = x.shopLevel;
+        expect(x.cost, u.id).toBeGreaterThan(0);
+        expect(x.effect.priceBonus, u.id).toBeGreaterThan(0);
+      }
+    }
+    // Levels above maxLevel take their own effect; levels up to it keep effectPerLevel.
+    const bm = UPGRADES.find((u) => u.id === 'better_machine')!;
+    const e = totalUpgradeEffect({ better_machine: bm.maxLevel + 1 });
+    expect(e.ratingBonus).toBeCloseTo(0.2 * bm.maxLevel + bm.extraLevels![0]!.effect.ratingBonus!);
+    expect(e.priceBonus).toBeCloseTo(bm.extraLevels![0]!.effect.priceBonus!);
   });
 });
 

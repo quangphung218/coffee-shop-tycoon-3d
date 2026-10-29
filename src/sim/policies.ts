@@ -24,8 +24,9 @@ export function policyLevel(state: GameState, policy: PolicyId): PolicyLevel {
   return state.policies?.[policy] ?? DEFAULT_POLICIES[policy];
 }
 
+/** Sell price multiplier: the price policy times the upgrades' price bonus (E-05 premium levels and decor). */
 export function sellPriceMult(state: GameState): number {
-  return PRICE_POLICY[policyLevel(state, 'price')].priceMult;
+  return PRICE_POLICY[policyLevel(state, 'price')].priceMult * (1 + totalUpgradeEffect(state.upgrades ?? {}).priceBonus);
 }
 
 export function priceStarBonus(state: GameState): number {

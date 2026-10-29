@@ -1,19 +1,17 @@
 import type { LevelDef, MenuItemId, ToolId, Unlocks, UpgradeId } from '../types';
+import { UPGRADES } from './upgrades';
 
 /** The highest shop level the game defines. */
 export const MAX_SHOP_LEVEL = 10;
 
 /**
  * The level at which every menu item and upgrade of the base game is unlocked;
- * levels above it mostly raise upgrade caps, and 7..8 also open the cold brew
- * tower, the oven, their two menu items and the sofa corner.
+ * levels above it mostly raise upgrade caps, and 7..10 also open the cold brew
+ * tower, the oven, their two menu items, the sofa corner and the E-05 premium decor.
  */
 export const FULL_UNLOCK_LEVEL = 6;
 
-/** Price multiplier on upgrade levels above the upgrade's own maxLevel (the ones shop levels 7..10 open). */
-export const BONUS_LEVEL_PRICE_MULT = 3;
-
-/** A shop level, plus the extra upgrade levels it allows on top of each upgrade's maxLevel. */
+/** A shop level, plus the extra upgrade levels it allows on top of each upgrade's maxLevel (from UpgradeDef.extraLevels). */
 export type ShopLevelDef = LevelDef & { maxLevelBonus?: Partial<Record<UpgradeId, number>> };
 
 /**
@@ -23,13 +21,14 @@ export type ShopLevelDef = LevelDef & { maxLevelBonus?: Partial<Record<UpgradeId
  * docs/spec/p31-equipment.md). `tools` are
  * equipment upgrades (a subset of UpgradeId): they gate buying the same way as
  * `upgrades` but stay a separate list so the UI can present them as
- * equipment. Each of levels 7..10 raises the cap of a few owned upgrades by
- * one (`maxLevelBonus`): upgrades whose extra level needs no new model or
- * floor spot, and expand_area at 7 and 9, whose third and fourth levels add a
- * column of tables to the side room. Thresholds and picks are explained in
- * docs/reports/p23-long-economy.md.
+ * equipment. Each of levels 4..10 raises the cap of a few owned upgrades by
+ * one (`maxLevelBonus`, read from each upgrade's extraLevels): upgrades whose
+ * extra level needs no new model or floor spot, and expand_area at 7 and 9,
+ * whose third and fourth levels add a column of tables to the side room.
+ * Levels 7..10 also open the E-05 premium decor. Thresholds and picks are
+ * explained in docs/reports/p23-long-economy.md.
  */
-export const LEVELS: readonly ShopLevelDef[] = [
+const LEVEL_DEFS: readonly LevelDef[] = [
   {
     level: 1,
     name: 'Quán nhỏ',
@@ -74,33 +73,38 @@ export const LEVELS: readonly ShopLevelDef[] = [
     level: 7,
     name: 'Điểm hẹn của quận',
     xpToReach: 27000,
-    unlocks: { menu: ['cold_brew'], upgrades: [], tools: ['cold_brew_tower'] },
-    maxLevelBonus: { better_machine: 1, grinder: 1, expand_area: 1 },
+    unlocks: { menu: ['cold_brew'], upgrades: ['chandelier'], tools: ['cold_brew_tower'] },
   },
   {
     level: 8,
     name: 'Thương hiệu được săn đón',
     xpToReach: 37000,
-    unlocks: { menu: ['cookie'], upgrades: ['sofa_corner'], tools: ['oven'] },
-    maxLevelBonus: { tables: 1, pastry_case: 1 },
+    unlocks: { menu: ['cookie'], upgrades: ['sofa_corner', 'marble_tables'], tools: ['oven'] },
   },
   {
     level: 9,
     name: 'Biểu tượng cà phê phố',
     xpToReach: 49000,
-    unlocks: { menu: [], upgrades: [], tools: [] },
-    maxLevelBonus: { lights: 1, blender: 1, expand_area: 1 },
+    unlocks: { menu: [], upgrades: ['art_gallery'], tools: [] },
   },
   {
     level: 10,
     name: 'Huyền thoại thành phố',
     xpToReach: 63000,
-    unlocks: { menu: [], upgrades: [], tools: [] },
-    maxLevelBonus: { better_machine: 1, dishwasher: 1 },
+    unlocks: { menu: [], upgrades: ['grand_piano'], tools: [] },
   },
 ];
 
-/** Extra levels above `maxLevel` that shop level `level` allows for an upgrade (sum of levels 1..level). */
+export const LEVELS: readonly ShopLevelDef[] = LEVEL_DEFS.map((def) => {
+  const bonus: Partial<Record<UpgradeId, number>> = {};
+  for (const u of UPGRADES) {
+    const n = u.extraLevels?.filter((x) => x.shopLevel === def.level).length ?? 0;
+    if (n > 0) bonus[u.id] = n;
+  }
+  return Object.keys(bonus).length > 0 ? { ...def, maxLevelBonus: bonus } : def;
+});
+
+/** Extra levels above `maxLevel` that shop level `level` allows for an upgrade (its extraLevels opened by levels 1..level). */
 export function maxLevelBonus(level: number, id: UpgradeId): number {
   let bonus = 0;
   for (const def of LEVELS) if (def.level <= level) bonus += def.maxLevelBonus?.[id] ?? 0;

@@ -61,6 +61,8 @@ interface WeekRow {
   stars: number;
   score: number;
   cups: number;
+  /** Loyalty tickets ('Tem') held at the end of the week. */
+  tickets: number;
 }
 
 function enableUnlocked(state: GameState): void {
@@ -150,6 +152,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
       stars: result.stars,
       score: result.score,
       cups: result.cups,
+      tickets: state.retention?.tickets ?? 0,
     });
     spent = 0;
   }
@@ -171,7 +174,7 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
   }
 
   it('prints a table per week (mean of the seeds) and per seed', () => {
-    const head = ['difficulty', 'strategy', 'week', 'revenue', 'profit', 'spent', 'reward', 'endMoney', 'level', 'xp', 'buyable', 'left', 'stars', 'score', 'cups'];
+    const head = ['difficulty', 'strategy', 'week', 'revenue', 'profit', 'spent', 'reward', 'endMoney', 'level', 'xp', 'buyable', 'left', 'stars', 'score', 'cups', 'tickets'];
     const meanBody: string[][] = [];
     const seedBody: string[][] = [];
     for (const [key, perSeed] of runs) {
@@ -193,6 +196,7 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
           m((r) => r.stars).toFixed(2),
           m((r) => r.score).toFixed(1),
           m((r) => r.cups).toFixed(2),
+          m((r) => r.tickets).toFixed(1),
         ]);
         perSeed.forEach((r, i) => {
           const row = r[w]!;
@@ -208,12 +212,13 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
             row.stars.toFixed(1),
             String(row.score),
             String(row.cups),
+            String(row.tickets),
           ]);
         });
       }
     }
     console.log(`Mean of seeds ${SEEDS.join(', ')}\n${markdownTable(head, meanBody)}`);
-    console.log(`Per seed\n${markdownTable(['difficulty', 'strategy', 'seed', 'week', 'revenue', 'endMoney', 'level', 'buyable', 'left', 'stars', 'score', 'cups'], seedBody)}`);
+    console.log(`Per seed\n${markdownTable(['difficulty', 'strategy', 'seed', 'week', 'revenue', 'endMoney', 'level', 'buyable', 'left', 'stars', 'score', 'cups', 'tickets'], seedBody)}`);
     for (const perSeed of runs.values()) for (const rows of perSeed) expect(rows.map((r) => r.week)).toEqual([1, 2, 3, 4]);
   });
 
@@ -234,6 +239,31 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
   it('leaves the spender at least one upgrade below its top level at the end of week 3', () => {
     for (const d of DIFFICULTIES) {
       runs.get(`${d}/c_spend`)!.forEach((rows, i) => expect(rows[2]!.left, `${d} seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(1));
+    }
+  });
+
+  it('leaves the spender something to buy at the end of every week up to week 3 (E-05)', () => {
+    for (const d of DIFFICULTIES) {
+      runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
+        for (const row of rows.slice(0, 3)) expect(row.buyable, `${d} seed ${SEEDS[i]} week ${row.week}`).toBeGreaterThan(0);
+      });
+    }
+  });
+
+  it('has the spender spend at least 20% of the week’s profit in weeks 3 and 4 (E-05)', () => {
+    for (const d of DIFFICULTIES) {
+      runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
+        for (const row of rows.slice(2, 4)) expect(row.spent, `${d} seed ${SEEDS[i]} week ${row.week}`).toBeGreaterThanOrEqual(0.2 * row.profit);
+      });
+    }
+  });
+
+  it('still leaves the spender richer than the basic strategy at the end of week 4 (E-05)', () => {
+    for (const d of DIFFICULTIES) {
+      const basic = runs.get(`${d}/a_basic`)!;
+      runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
+        expect(rows[3]!.endMoney, `${d} seed ${SEEDS[i]}`).toBeGreaterThan(basic[i]![3]!.endMoney);
+      });
     }
   });
 

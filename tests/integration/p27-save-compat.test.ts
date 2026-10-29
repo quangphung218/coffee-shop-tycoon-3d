@@ -134,8 +134,8 @@ function playOnWithP27(g: GameState): PlayLog {
 }
 
 describe('P27 save compatibility', { timeout: 120_000 }, () => {
-  it('is at SAVE_VERSION 5 (rent)', () => {
-    expect(SAVE_VERSION).toBe(5);
+  it('is at SAVE_VERSION 6 (E-05 extra upgrade levels)', () => {
+    expect(SAVE_VERSION).toBe(6);
   });
 
   const files = fixtures();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTIES } from '../../src/sim/data/difficulty';
-import { BONUS_LEVEL_PRICE_MULT, MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
+import { MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
 import { getUpgrade, upgradeCost } from '../../src/sim/data/upgrades';
 import { dispatch } from '../../src/sim/index';
 import {
@@ -103,13 +103,13 @@ describe('P27 side room levels 3–4', () => {
     expect(maxUpgradeLevel(rich(9), 'expand_area')).toBe(4);
   });
 
-  it('price levels 3–4 at BONUS_LEVEL_PRICE_MULT times the plain price', () => {
+  it('price levels 3–4 at their own extraLevels cost (E-05)', () => {
     const s = rich();
     const def = getUpgrade('expand_area');
     const mult = DIFFICULTIES.normal.priceMult;
     for (const level of [3, 4]) {
-      const plain = upgradeCost({ ...def, maxLevel: Infinity }, level - 1, mult)!;
-      expect(upgradeLevelPrice(s, 'expand_area', level), `level ${level}`).toBe(plain * BONUS_LEVEL_PRICE_MULT);
+      const own = def.extraLevels![level - def.maxLevel - 1]!.cost;
+      expect(upgradeLevelPrice(s, 'expand_area', level), `level ${level}`).toBe(Math.round((own * mult) / 1000) * 1000);
     }
     expect(upgradeLevelPrice(s, 'expand_area', 2)).toBe(upgradeCost(def, 1, mult));
     buy(s, 'expand_area', 2);

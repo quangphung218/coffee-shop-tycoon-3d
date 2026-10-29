@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dispatch as simDispatch } from '../../src/sim';
 import { getIngredient } from '../../src/sim/data/ingredients';
+import { MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
 import { getUpgrade } from '../../src/sim/data/upgrades';
 import { autoRestockSuggestion, ingredientPrice, restockPlan } from '../../src/sim/inventory';
 import { createDayStats, createNewGame } from '../../src/sim/state';
@@ -623,11 +624,19 @@ describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', 
     expect(q(tables, '.item-meta').textContent).toMatch(/^Giá [\d.]+đ · Cấp 0\/\d+ · mỗi cấp \+\d+ chỗ ngồi$/);
     expect(q(tables, '.item-status .badge').hidden).toBe(true);
 
+    // E-05: plants at its base max on a level-1 shop waits for the extra level shop level 4 opens.
     const plants = q(body, '[data-upgrade="plants"]');
-    expect(q(plants, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · Bậc 3\/3 · mỗi cấp /);
-    expect(q(plants, '.item-status').textContent).toBe('Tối đa');
+    expect(q(plants, '.item-status').textContent).toBe('Cần cấp quán 4');
     expect(q(plants, '[data-action="buy"]').hidden).toBe(true);
-    expect(q(plants, '[data-remove="plants"]').hidden).toBe(false);
+
+    const top = rich();
+    top.shopLevel = MAX_SHOP_LEVEL;
+    top.upgrades.plants = getUpgrade('plants').maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, 'plants');
+    const maxed = q(mount(renderUpgradesPanel, top).body, '[data-upgrade="plants"]');
+    expect(q(maxed, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · Bậc 3\/3 · mỗi cấp /);
+    expect(q(maxed, '.item-status').textContent).toBe('Tối đa');
+    expect(q(maxed, '[data-action="buy"]').hidden).toBe(true);
+    expect(q(maxed, '[data-remove="plants"]').hidden).toBe(false);
   });
 
   it('brings Mua and its reason back when the upgrade confirm is cancelled', () => {

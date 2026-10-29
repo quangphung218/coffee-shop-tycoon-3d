@@ -179,13 +179,13 @@ describe('P31 Nâng cấp: the cold brew tower row', () => {
   const meta = (row: HTMLElement): string => q(row, '.item-meta').textContent ?? '';
   const statusBadge = (row: HTMLElement): HTMLElement => q(row, '.item-status > .badge');
 
-  it('is locked with "Mở ở cấp 7" at level 6', () => {
+  it('is locked with "Cần cấp quán 7" at level 6', () => {
     const state = level7();
     state.shopLevel = 6;
     const { row } = openUpgrades(state);
     expect(row().classList.contains('is-locked')).toBe(true);
     expect(statusBadge(row()).hidden).toBe(false);
-    expect(statusBadge(row()).textContent).toBe('Mở ở cấp 7');
+    expect(statusBadge(row()).textContent).toBe('Cần cấp quán 7');
     expect(buyBtn(row()).getAttribute('aria-disabled')).toBe('true');
   });
 

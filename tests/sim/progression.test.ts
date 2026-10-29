@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTIES } from '../../src/sim/data/difficulty';
 import {
-  BONUS_LEVEL_PRICE_MULT,
   FULL_UNLOCK_LEVEL,
   LEVELS,
   MAX_SHOP_LEVEL,
@@ -24,6 +23,7 @@ import {
   getShopLayout,
   maxUpgradeLevel,
   nextUpgradeCost,
+  nextUpgradeTicketCost,
   removeDecor,
   upgradeLevel,
   upgradeLevelPrice,
@@ -77,39 +77,56 @@ describe('shop levels 7–10', () => {
     // P27: the sofa corner stands in the side room, so it opens after the side room's third level (shop level 7).
     // P31: the cold brew tower and Cold brew at 7, the oven and the cookie at 8.
     const expected: Record<number, Unlocks> = {
-      7: { menu: ['cold_brew'], upgrades: [], tools: ['cold_brew_tower'] },
-      8: { menu: ['cookie'], upgrades: ['sofa_corner'], tools: ['oven'] },
-      9: { menu: [], upgrades: [], tools: [] },
-      10: { menu: [], upgrades: [], tools: [] },
+      // E-05: one premium decor item per level 7..10.
+      7: { menu: ['cold_brew'], upgrades: ['chandelier'], tools: ['cold_brew_tower'] },
+      8: { menu: ['cookie'], upgrades: ['sofa_corner', 'marble_tables'], tools: ['oven'] },
+      9: { menu: [], upgrades: ['art_gallery'], tools: [] },
+      10: { menu: [], upgrades: ['grand_piano'], tools: [] },
     };
     for (const def of LEVELS.filter((l) => l.level > FULL_UNLOCK_LEVEL)) {
       expect(def.unlocks, `level ${def.level}`).toEqual(expected[def.level]);
       expect(Object.keys(def.maxLevelBonus ?? {}).length, `level ${def.level}`).toBeGreaterThan(0);
     }
-    for (const def of LEVELS.filter((l) => l.level <= FULL_UNLOCK_LEVEL)) expect(def.maxLevelBonus).toBeUndefined();
-    expect(maxLevelBonus(FULL_UNLOCK_LEVEL, 'better_machine')).toBe(0);
-    expect(maxLevelBonus(7, 'better_machine')).toBe(1);
-    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'better_machine')).toBe(2);
+    // E-05: levels 4..6 also open extra levels; 1..3 never do, so week 1 plays as before.
+    for (const def of LEVELS.filter((l) => l.level <= 3)) expect(def.maxLevelBonus).toBeUndefined();
+    for (const def of LEVELS.filter((l) => l.level >= 4)) expect(Object.keys(def.maxLevelBonus ?? {}).length, `level ${def.level}`).toBeGreaterThan(0);
+    expect(maxLevelBonus(3, 'better_machine')).toBe(0);
+    expect(maxLevelBonus(FULL_UNLOCK_LEVEL, 'better_machine')).toBe(1);
+    expect(maxLevelBonus(7, 'better_machine')).toBe(2);
+    expect(maxLevelBonus(MAX_SHOP_LEVEL, 'better_machine')).toBe(3);
     // P27: levels 7 and 9 each open one more side room level.
     expect(maxLevelBonus(MAX_SHOP_LEVEL, 'expand_area')).toBe(2);
   });
 
-  it('opens the extra level only from the shop level that grants it, at BONUS_LEVEL_PRICE_MULT times the price', () => {
-    const s6 = rich(FULL_UNLOCK_LEVEL);
-    maxOut(s6, 'better_machine');
-    expect(upgradeLevel(s6, 'better_machine')).toBe(getUpgrade('better_machine').maxLevel);
-    expect(nextUpgradeCost(s6, 'better_machine')).toBeNull();
-
-    const s7 = rich(7);
-    maxOut(s7, 'better_machine');
-    expect(maxUpgradeLevel(s7, 'better_machine')).toBe(getUpgrade('better_machine').maxLevel + 1);
-    expect(upgradeLevel(s7, 'better_machine')).toBe(maxUpgradeLevel(s7, 'better_machine'));
+  it('opens the extra level only from the shop level that grants it, at its own price and Tem (E-05)', () => {
     const def = getUpgrade('better_machine');
-    const plain = upgradeCost({ ...def, maxLevel: Infinity }, def.maxLevel, DIFFICULTIES.normal.priceMult)!;
-    expect(upgradeLevelPrice(s7, 'better_machine', def.maxLevel + 1)).toBe(plain * BONUS_LEVEL_PRICE_MULT);
-    expect(upgradeLevelPrice(s7, 'better_machine', def.maxLevel)).toBe(
+    const s3 = rich(3);
+    maxOut(s3, 'better_machine');
+    expect(upgradeLevel(s3, 'better_machine')).toBe(def.maxLevel);
+    expect(nextUpgradeCost(s3, 'better_machine')).toBeNull();
+
+    const s4 = rich(4);
+    maxOut(s4, 'better_machine');
+    expect(maxUpgradeLevel(s4, 'better_machine')).toBe(def.maxLevel + 1);
+    expect(upgradeLevel(s4, 'better_machine')).toBe(maxUpgradeLevel(s4, 'better_machine'));
+    const extra = def.extraLevels![0]!;
+    expect(extra.shopLevel).toBe(4);
+    expect(upgradeLevelPrice(s4, 'better_machine', def.maxLevel + 1)).toBe(extra.cost * DIFFICULTIES.normal.priceMult);
+    expect(upgradeLevelPrice(s4, 'better_machine', def.maxLevel)).toBe(
       upgradeCost(def, def.maxLevel - 1, DIFFICULTIES.normal.priceMult),
     );
+    // The Tem were paid on top of the money.
+    expect(s4.retention!.tickets).toBe(1000 - extra.tickets!);
+  });
+
+  it('refuses a Tem-priced extra level while the Tem are short', () => {
+    const s = rich(4);
+    ensureRetention(s).tickets = 0;
+    for (let l = 0; l < getUpgrade('better_machine').maxLevel; l++) expect(buyUpgrade(s, 'better_machine').ok).toBe(true);
+    expect(nextUpgradeTicketCost(s, 'better_machine')).toBe(getUpgrade('better_machine').extraLevels![0]!.tickets);
+    const money = s.money;
+    expect(buyUpgrade(s, 'better_machine').ok).toBe(false);
+    expect(s.money).toBe(money);
   });
 
   it('keeps the floor plan valid with every upgrade at its level-10 cap', () => {
