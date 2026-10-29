@@ -79,6 +79,10 @@ export type UpgradeId =
   | 'bookshelf'
   | 'record_player'
   | 'sofa_corner'
+  | 'chandelier'
+  | 'marble_tables'
+  | 'art_gallery'
+  | 'grand_piano'
   | ToolId;
 
 export type MarketingId = 'flyers' | 'social_media' | 'influencer' | 'happy_hour';
@@ -179,6 +183,21 @@ export interface UpgradeEffect {
   cleanSpeed?: number;
   /** Fraction knocked off the price of ice, buying and brewing (0.6 = −60%, ice maker). Clamped to 0.9. */
   iceCostReduction?: number;
+  /** Multiplier bonus on every sell price (0.04 = customers pay 4% more), on top of the price policy. */
+  priceBonus?: number;
+}
+
+/**
+ * A level above an upgrade's maxLevel: the shop level that opens it, its price
+ * at normal difficulty and what it adds. Shop levels 4..10 open them; see
+ * docs/spec/p27-retention.md.
+ */
+export interface ExtraUpgradeLevel {
+  shopLevel: number;
+  cost: number;
+  effect: UpgradeEffect;
+  /** Loyalty tickets ('Tem') the level costs on top of the money; absent = none. */
+  tickets?: number;
 }
 
 export interface UpgradeDef {
@@ -196,6 +215,8 @@ export interface UpgradeDef {
   effectPerLevel: UpgradeEffect;
   /** Loyalty tickets ('Tem') each level costs on top of the money, by level from 1 (index 0); absent = none. */
   ticketCost?: number[];
+  /** Levels maxLevel+1, maxLevel+2… in order, each opened by a shop level (ascending); absent = none. */
+  extraLevels?: ExtraUpgradeLevel[];
 }
 
 export interface MarketingDef {

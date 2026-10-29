@@ -85,8 +85,8 @@ function roundTrip(state: GameState): { version: number; state: GameState } {
 describe('P31 save compatibility', { timeout: 120_000 }, () => {
   const files = fixtures();
 
-  it('is at SAVE_VERSION 5 (rent)', () => {
-    expect(SAVE_VERSION).toBe(5);
+  it('is at SAVE_VERSION 6 (E-05)', () => {
+    expect(SAVE_VERSION).toBe(6);
   });
 
   it('builds fixtures without the P31 items and tools', () => {
