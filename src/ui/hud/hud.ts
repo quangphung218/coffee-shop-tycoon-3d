@@ -2,7 +2,7 @@ import { CLOSING_MINUTE, PEAK_WINDOWS } from '../../sim/clock';
 import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { DAY_START_MINUTE } from '../../sim/state';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
-import { debtDaysLeft, isOverDebtLimit } from '../../sim/economy';
+import { BANKRUPT_DAYS, debtDaysLeft, debtLimit, isOverDebtLimit } from '../../sim/economy';
 import { DAY_EVENTS } from '../../sim/data/week';
 import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
@@ -188,7 +188,12 @@ export const DEBT_HINTS = ['Giảm bớt nhân viên', 'Bán bớt hàng tồn h
 export function debtWarning(state: GameState): { daysLeft: number; text: string } | null {
   if (state.bankrupt || (!isOverDebtLimit(state) && !(state.debtDays > 0))) return null;
   const daysLeft = debtDaysLeft(state);
-  return { daysLeft, text: `Nợ quá hạn mức: còn ${daysLeft} ngày trước khi phá sản` };
+  return { daysLeft, text: `Tiền dưới ${formatMoney(-debtLimit(state))}: còn ${daysLeft} ngày trước khi phá sản` };
+}
+
+/** The bankruptcy rule for a debt limit, in the money title while money is below zero. */
+export function debtRule(limit: number): string {
+  return `Đóng cửa với tiền dưới ${formatMoney(-limit)} ${BANKRUPT_DAYS} ngày liền là phá sản`;
 }
 
 function prefersReducedMotion(): boolean {
@@ -420,22 +425,27 @@ export function createHud(actions: HudActions): Hud {
   // Money counts up when it rises; drops and the first value are shown at once.
   // At NARROW_MONEY widths large sums show compact ("109,6tr"), so Tiến độ
   // stays clear of Điều khiển; the full sum is in the title and aria-label.
+  // Below zero the sum is red and the title states the bankruptcy rule.
   const money = h('b', { attrs: { 'data-stat': 'money' } });
+  let moneyLimit = 0;
   const narrow = typeof matchMedia === 'function' ? matchMedia(NARROW_MONEY) : null;
   const moneyText = (value: number): string => (narrow?.matches ? formatMoneyShort(value) : formatMoney(value));
   let shownMoney: number | null = null;
   let countFrame = 0;
   function labelMoney(value: number): void {
-    const text = moneyText(value);
-    if (text === formatMoney(value)) {
+    const debt = value < 0;
+    money.classList.toggle('hud-money-danger', debt);
+    const compact = moneyText(value) !== formatMoney(value);
+    if (compact) {
+      money.setAttribute('role', 'img');
+      money.setAttribute('aria-label', formatMoney(value));
+    } else {
       money.removeAttribute('role');
       money.removeAttribute('aria-label');
-      money.removeAttribute('title');
-      return;
     }
-    money.setAttribute('role', 'img');
-    money.setAttribute('aria-label', formatMoney(value));
-    money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+    if (debt) money.setAttribute('title', `Tiền: ${formatMoney(value)}. ${debtRule(moneyLimit)}`);
+    else if (compact) money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+    else money.removeAttribute('title');
   }
   // A rise also bounces the sum (scale only), at most once per
   // MONEY_BOUNCE_GAP_MS so sales at 4x read as one beat. None under reduced motion.
@@ -470,6 +480,10 @@ export function createHud(actions: HudActions): Hud {
     };
     countFrame = requestAnimationFrame(tick);
   }
+  w.watch(debtLimit, (limit) => {
+    moneyLimit = limit;
+    if (shownMoney !== null) labelMoney(shownMoney);
+  });
   w.watch((s) => s.money, showMoney);
   // Crossing NARROW_MONEY redraws the current sum in the other format.
   const onNarrowMoney = (): void => {

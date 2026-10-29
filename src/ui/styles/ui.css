@@ -1560,6 +1560,9 @@ legend {
   background: var(--surface-danger);
   color: var(--text-danger);
 }
+.hud-money-danger {
+  color: var(--text-danger);
+}
 .hud-debt-hints {
   font-weight: var(--font-weight-regular);
 }
