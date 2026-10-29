@@ -12,7 +12,9 @@ Test in bảng trung bình theo tuần và bảng từng seed, rồi kiểm:
 
 - Tiền không bao giờ âm.
 - Chơi lại cùng seed ra cùng số.
-- Hết tuần 3, chiến lược c còn ≥ 1 nâng cấp chưa lên tới trần cuối (trần ở cấp 10).
+- `c_spend` còn món mua được (`buyable` > 0) tới hết tuần 3 ở mọi độ khó.
+- Tuần 3–4, `c_spend` tiêu ít nhất 20% lãi tuần.
+- Tuần 4, `c_spend` có tiền cuối nhiều hơn `a_basic` (từng seed).
 - Tuần 2, chiến lược a không được 3 cúp ở độ khó nào, seed nào.
 
 ## Chiến lược
@@ -27,7 +29,9 @@ Mỗi sáng mọi chiến lược bật món đã mở và nhập hàng theo g�
 
 Seed 1, 42, 777. c và e mua mọi nâng cấp chứ không chỉ dụng cụ như bản P22, để đo xem người chi tiêu mạnh có hết đồ để mua không.
 
-## Bảng 4 tuần (trung bình 3 seed)
+## Bảng 4 tuần (trung bình 3 seed, trước E-05)
+
+Bảng này và mục "Đọc bảng" là lần chạy cũ, trước E-05, một lần chạy riêng (ví dụ Thường c_spend tuần 4 tiền cuối 156,020k). Cột "Trước" ở mục "Đã sửa ở E-05" là số trung bình 3 seed từ lần đo gốc của epic nên không trùng bảng này. Số hiện tại ở mục "Đã sửa ở E-05".
 
 `profit` là tổng lãi ngày (doanh thu − nguyên liệu − lương − marketing), chưa trừ nâng cấp. `spent` là tiền mua nâng cấp trong tuần. `buyable`: nâng cấp đang mở và còn dưới trần ở cấp hiện tại. `left`: nâng cấp còn dưới trần ở cấp 10.
 
@@ -72,7 +76,7 @@ Seed 1, 42, 777. c và e mua mọi nâng cấp chứ không chỉ dụng cụ nh
 
 Bảng từng seed in ra cùng lệnh trên.
 
-## Đọc bảng
+## Đọc bảng (trước E-05)
 
 - Từ tuần 2, mọi món và nâng cấp của lịch tuần 1 đều mở. Người chi tiêu mạnh (c, e) mua hết 15 nâng cấp trong tuần 2 và có lãi 45–60 triệu mỗi tuần sau đó.
 - Không có cấp 7–10 thì từ tuần 3 người chơi này không còn gì để mua. Với cấp 7–10 còn 7 nâng cấp chờ nâng trần (`left` = 7, 6 sau khi cấp 7 tới ở Dễ tuần 4).
@@ -86,8 +90,8 @@ Bảng từng seed in ra cùng lệnh trên.
 | `WEEK_GOAL_MAX_MULT` | 3 | Từ tuần 5 mục tiêu là Dễ 84 triệu, Thường 79,5 triệu, Khó 69 triệu, ngay dưới doanh thu tuần của c (80–92 triệu). Người đầu tư đủ vẫn giữ 3 cúp; người đầu tư nửa vời phải cố mới được 3 cúp; a xuống 1 cúp từ tuần 4. |
 | `WEEK_REWARDS` | Dễ 1/1,5 · Thường 1,5/2,25 · Khó 2/3 triệu cho 2/3 cúp | Khoảng 5–15% lãi tuần của a: đủ thấy, không đổi nhịp mua sắm. Khó trả nhiều hơn vì giá cao hơn và khó đạt cúp hơn. 3 cúp trả gấp rưỡi 2 cúp. |
 | Ngưỡng XP cấp 7–10 | 27.000 · 37.000 · 49.000 · 63.000 | Bước tăng 8k, 10k, 12k, 14k nối tiếp bước của cấp 2–6 (1,1k … 7k). c đạt khoảng 7.800 XP/tuần ở Dễ, 6.000 ở Thường, 4.500 ở Khó: Dễ lên cấp 7 trong tuần 4, Thường khoảng tuần 5, cấp 10 rơi vào khoảng tuần 8–11. |
-| `maxLevelBonus` | 7: máy cao cấp, máy xay hạt · 8: bàn ghế, tủ bánh · 9: đèn, máy sinh tố · 10: máy cao cấp, máy rửa ly | Chỉ chọn nâng cấp mà cấp thêm không cần model mới hay chỗ đặt mới: máy và dụng cụ chỉ đổi hiệu ứng, model máy đã chặn ở bậc cao nhất; bàn thứ 7 lấy chỗ trống cuối cùng trong phòng; đèn thứ 3 treo trên bàn trong cùng hàng đầu. Không chọn: máy 2 group (máy thứ 4 đè máy rửa ly), cây và tranh (hết chỗ), quầy bar cửa sổ (hết chỗ bàn), mở rộng và ngoài trời (thêm khu mới), máy làm đá (đã giảm 90%). |
-| `BONUS_LEVEL_PRICE_MULT` | 3 | Ở giá thường, 8 cấp thêm tốn khoảng 38 triệu ở Thường, dưới một tuần lãi của c. Nhân 3 thành khoảng 113 triệu: c ở Dễ chi 30 triệu ngay khi lên cấp 7 và vẫn phải dành tiền cho các cấp sau. |
+| `maxLevelBonus` (bản trước E-05; nay thay bằng 21 cấp thêm ở cấp quán 4–10, xem [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05)) | 7: máy cao cấp, máy xay hạt · 8: bàn ghế, tủ bánh · 9: đèn, máy sinh tố · 10: máy cao cấp, máy rửa ly | Lý do của bản trước E-05, nay không còn đúng với cây, tranh và mở rộng (đã có cấp thêm). Chỉ chọn nâng cấp mà cấp thêm không cần model mới hay chỗ đặt mới: máy và dụng cụ chỉ đổi hiệu ứng, model máy đã chặn ở bậc cao nhất; bàn thứ 7 lấy chỗ trống cuối cùng trong phòng; đèn thứ 3 treo trên bàn trong cùng hàng đầu. Không chọn: máy 2 group (máy thứ 4 đè máy rửa ly), cây và tranh (hết chỗ), quầy bar cửa sổ (hết chỗ bàn), mở rộng và ngoài trời (thêm khu mới), máy làm đá (đã giảm 90%). |
+| ~~`BONUS_LEVEL_PRICE_MULT`~~ (bản trước E-05; hằng số đã bỏ, giá nay ghi từng cấp trong `extraLevels`) | 3 | Ở giá thường, 8 cấp thêm tốn khoảng 38 triệu ở Thường, dưới một tuần lãi của c. Nhân 3 thành khoảng 113 triệu: c ở Dễ chi 30 triệu ngay khi lên cấp 7 và vẫn phải dành tiền cho các cấp sau. |
 
 ## Đã sửa ở E-05
 
@@ -116,7 +120,7 @@ Vấn đề ở bảng trên: c hết đồ để mua từ tuần 3 (`buyable` =
 - Các cấp thêm ở cấp quán 4–6 là chủ ý thiết kế, không phải thiếu sót.
 - `BONUS_LEVEL_PRICE_MULT` (×3) ở bảng "Lý do chọn số" là số của bản trước E-05; giá cấp thêm nay ghi thẳng từng cấp trong `extraLevels`.
 
-Các số trước/sau do chủ epic cung cấp từ lần chạy test; chưa chạy lại trong worktree này.
+Các số "Sau" đã kiểm bằng cách chạy `p23-long-run`. Các số "Trước" lấy từ lần đo gốc của epic ở commit a2a5206 và chưa chạy lại.
 
 ## Ngưỡng test cũ
 
