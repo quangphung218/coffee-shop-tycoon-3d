@@ -1,6 +1,7 @@
 import { listSlots, loadGame, type SaveSlot } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
 import { DIFFICULTIES } from '../../sim/data/difficulty';
+import { BANKRUPT_DAYS, debtLimit } from '../../sim/economy';
 import type { GameState } from '../../sim/types';
 import { h, setAriaDisabled, setChildren, uid, isAriaDisabled } from '../core/dom';
 import { formatMoney, formatSavedAt } from '../core/format';
@@ -27,13 +28,19 @@ export interface BankruptSummary {
   revenue: number;
   /** Cups earned over all scored weeks. */
   trophies: number;
+  /** Money when the shop went bankrupt. */
+  money: number;
+  /** The difficulty's debt limit (positive; money below its negative counts). */
+  limit: number;
+  /** Days in a row closed past the limit. */
+  debtDays: number;
 }
 
 export function bankruptSummary(state: GameState): BankruptSummary {
   // The history keeps only recent days; the lifetime counter has the whole run (today included).
   const revenue = state.retention?.lifetime.revenue ?? state.history.reduce((s, d) => s + d.revenue, 0) + state.today.revenue;
   const trophies = (state.week?.archive ?? []).reduce((s, w) => s + w.cups, 0);
-  return { days: state.day, revenue, trophies };
+  return { days: state.day, revenue, trophies, money: state.money, limit: debtLimit(state), debtDays: Math.max(state.debtDays ?? 0, BANKRUPT_DAYS) };
 }
 
 /**
@@ -123,6 +130,21 @@ export function createBankrupt(actions: BankruptActions): Screen {
             stat('i-clock', 'Số ngày trụ được', `${s.days} ngày`, 'days'),
             stat('i-coin', 'Tổng doanh thu', formatMoney(s.revenue), 'revenue'),
             stat('i-trophy', 'Cúp đã giành', String(s.trophies), 'trophies'),
+          ),
+          h(
+            'p',
+            { class: 'bk-debt', attrs: { 'data-block': 'debt' } },
+            icon('i-warning'),
+            h(
+              'span',
+              {},
+              'Tiền lúc phá sản: ',
+              h('b', { attrs: { 'data-debt': 'money' }, text: formatMoney(s.money) }),
+              ' · Hạn mức nợ: ',
+              h('b', { attrs: { 'data-debt': 'limit' }, text: formatMoney(-s.limit) }),
+              ' · Vượt hạn mức: ',
+              h('b', { attrs: { 'data-debt': 'days' }, text: `${s.debtDays} ngày liền` }),
+            ),
           ),
         );
       }

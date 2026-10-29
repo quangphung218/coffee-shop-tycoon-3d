@@ -3,12 +3,14 @@ import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { WEEK_LENGTH } from '../../sim/data/week';
+import { debtLimit } from '../../sim/economy';
 import { dayCompare, weekToDate, type StatDelta, type WeekToDate } from '../../sim/stats';
 import type { Command, DailyReport, GameState, InsightPanel, Mission, SuggestionKind } from '../../sim/types';
 import { h, setChildren, trapFocus, Watcher, type Child } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
 import { LEVEL_ICON, MENU_ICONS, MISSION_ICON, UPGRADE_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { debtHints, debtWarning } from '../hud/hud';
 import { MISSION_META } from '../panels/tasks';
 import { renderInsights } from './insights';
 import { fillReviews } from './reviews';
@@ -56,9 +58,25 @@ export interface DailyReportView {
 export interface SummaryStats {
   deltas: readonly StatDelta[] | null;
   week: WeekToDate | null;
+  /** The shop is counting down to bankruptcy (debtWarning); absent or null otherwise. */
+  debt?: ReportDebt | null;
+}
+
+/** What the debt block at the top of Tổng kết states. */
+export interface ReportDebt {
+  money: number;
+  limit: number;
+  daysLeft: number;
+  hints: readonly string[];
 }
 
 const NO_STATS: SummaryStats = { deltas: null, week: null };
+
+/** The debt block's figures for a state, or null while debtWarning(state) is null. */
+export function reportDebt(state: GameState): ReportDebt | null {
+  const warning = debtWarning(state);
+  return warning ? { money: state.money, limit: debtLimit(state), daysLeft: warning.daysLeft, hints: debtHints(state) } : null;
+}
 
 export type ResultKind = 'profit' | 'loss' | 'even' | 'none';
 
@@ -171,14 +189,35 @@ function figure(
 
 function figures(r: DailyReport, stats: SummaryStats): HTMLElement {
   const result = reportResult(r);
+  // A day's profit is no good news while the till is below zero: no green cell then.
+  const tone = result.kind === 'profit' && r.money < 0 ? RESULT_CLASS.even : RESULT_CLASS[result.kind];
   const lost = r.customersLost > 0 ? ` · ${r.customersLost} bỏ đi` : '';
   return h(
     'div',
     { class: 'rpt-figs', attrs: { 'data-block': 'figures' } },
-    figure('profit', [icon(RESULT_ICON[result.kind], { size: 16 }), result.label], result.value, null, stats, { 'data-result': result.kind }, ` is-result${RESULT_CLASS[result.kind]}`),
+    figure('profit', [icon(RESULT_ICON[result.kind], { size: 16 }), result.label], result.value, null, stats, { 'data-result': result.kind }, ` is-result${tone}`),
     figure('revenue', [icon('i-coin', { size: 16 }), 'Doanh thu'], formatMoney(r.revenue), null, stats),
     figure('customersServed', [icon('i-people', { size: 16 }), 'Khách'], `${r.customersServed}/${r.customersArrived}`, `phục vụ/đến${lost}`, stats, { 'data-block': 'customers' }),
     figure('stars', [icon('i-star', { size: 16 }), 'Sao'], formatRating(r.ratingEnd), `đầu ngày ${formatRating(r.ratingStart)}`, stats, { 'data-block': 'rating' }),
+  );
+}
+
+// ── Debt: money past the limit, days left, what to cut ──────────────────────
+
+function debtBlock(d: ReportDebt): HTMLElement {
+  return h(
+    'section',
+    { class: 'rpt-debt', attrs: { 'data-block': 'debt', role: 'alert' } },
+    h('p', { class: 'rpt-debt-head' }, icon('i-warning'), h('b', { text: `Còn ${d.daysLeft} ngày trước khi phá sản` })),
+    h(
+      'p',
+      { class: 'rpt-debt-figs' },
+      'Tiền hiện có: ',
+      h('b', { attrs: { 'data-debt': 'money' }, text: formatMoney(d.money) }),
+      ' · Hạn mức nợ: ',
+      h('b', { attrs: { 'data-debt': 'limit' }, text: formatMoney(-d.limit) }),
+    ),
+    d.hints.length ? h('ul', { class: 'rpt-debt-hints' }, ...d.hints.map((t) => h('li', { text: t }))) : null,
   );
 }
 
@@ -402,6 +441,7 @@ function reducedMotion(doc: Document): boolean {
 export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryStats = NO_STATS): HTMLElement[] {
   const band = levelUpBand(r);
   return [
+    ...(stats.debt ? [debtBlock(stats.debt)] : []),
     ...(band ? [band] : []),
     figures(r, stats),
     ...(stats.week ? [weekStrip(stats.week)] : []),
@@ -539,7 +579,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function renderBodies(s: GameState): void {
     const r = s.lastReport ?? null;
     const ended = s.week?.result !== undefined;
-    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s) }) : [renderBusy(day)]));
+    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s), debt: reportDebt(s) }) : [renderBusy(day)]));
     setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
   }
 

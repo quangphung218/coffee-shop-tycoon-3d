@@ -2,7 +2,7 @@ import { CLOSING_MINUTE, PEAK_WINDOWS } from '../../sim/clock';
 import { WEATHER_ARRIVALS } from '../../sim/customers';
 import { DAY_START_MINUTE } from '../../sim/state';
 import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
-import { debtDaysLeft, isOverDebtLimit } from '../../sim/economy';
+import { BANKRUPT_DAYS, debtDaysLeft, debtLimit, isOverDebtLimit } from '../../sim/economy';
 import { DAY_EVENTS } from '../../sim/data/week';
 import { weekDay, weekIndex } from '../../sim/progression';
 import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
@@ -177,9 +177,6 @@ function noteFor(state: GameState): Note | null {
   }
 }
 
-/** Ways out of debt the warning suggests. */
-export const DEBT_HINTS = ['Giảm bớt nhân viên', 'Bán bớt hàng tồn hoặc thiết bị', 'Giảm nhập hàng'] as const;
-
 /**
  * Days left before bankruptcy while the shop is past the debt limit, or has
  * closed a day past it (sim/economy.ts); null when it is not in debt or the
@@ -188,7 +185,29 @@ export const DEBT_HINTS = ['Giảm bớt nhân viên', 'Bán bớt hàng tồn h
 export function debtWarning(state: GameState): { daysLeft: number; text: string } | null {
   if (state.bankrupt || (!isOverDebtLimit(state) && !(state.debtDays > 0))) return null;
   const daysLeft = debtDaysLeft(state);
-  return { daysLeft, text: `Nợ quá hạn mức: còn ${daysLeft} ngày trước khi phá sản` };
+  return { daysLeft, text: `Tiền dưới ${formatMoney(-debtLimit(state))}: còn ${daysLeft} ngày trước khi phá sản` };
+}
+
+/**
+ * Up to three cuts the player can make now, read from the shop: staff wages,
+ * a wage or price policy that costs money, marketing spent today and stock
+ * still on the shelves. Empty when there is nothing left to cut.
+ */
+export function debtHints(state: GameState): string[] {
+  const hints: string[] = [];
+  const wages = state.staff.reduce((s, m) => s + m.wagePerDay, 0);
+  if (state.staff.length > 0) hints.push(`Cho nghỉ bớt nhân viên: ${state.staff.length} người, lương ${formatMoney(wages)}/ngày`);
+  if (state.policies?.wage === 'high') hints.push('Đưa chính sách lương về mức chuẩn');
+  if (state.policies?.price === 'low') hints.push('Đưa chính sách giá về mức chuẩn');
+  const marketing = state.lastReport?.marketingCost ?? 0;
+  if (marketing > 0) hints.push(`Chưa mở chiến dịch marketing mới (hôm nay tốn ${formatMoney(marketing)})`);
+  if (state.inventory.some((i) => i.qty > 0)) hints.push('Dùng hết nguyên liệu trong kho trước khi nhập thêm');
+  return hints.slice(0, 3);
+}
+
+/** The bankruptcy rule for a debt limit, in the money title while money is below zero. */
+export function debtRule(limit: number): string {
+  return `Đóng cửa với tiền dưới ${formatMoney(-limit)} ${BANKRUPT_DAYS} ngày liền là phá sản`;
 }
 
 function prefersReducedMotion(): boolean {
@@ -420,22 +439,27 @@ export function createHud(actions: HudActions): Hud {
   // Money counts up when it rises; drops and the first value are shown at once.
   // At NARROW_MONEY widths large sums show compact ("109,6tr"), so Tiến độ
   // stays clear of Điều khiển; the full sum is in the title and aria-label.
+  // Below zero the sum is red and the title states the bankruptcy rule.
   const money = h('b', { attrs: { 'data-stat': 'money' } });
+  let moneyLimit = 0;
   const narrow = typeof matchMedia === 'function' ? matchMedia(NARROW_MONEY) : null;
   const moneyText = (value: number): string => (narrow?.matches ? formatMoneyShort(value) : formatMoney(value));
   let shownMoney: number | null = null;
   let countFrame = 0;
   function labelMoney(value: number): void {
-    const text = moneyText(value);
-    if (text === formatMoney(value)) {
+    const debt = value < 0;
+    money.classList.toggle('hud-money-danger', debt);
+    const compact = moneyText(value) !== formatMoney(value);
+    if (compact) {
+      money.setAttribute('role', 'img');
+      money.setAttribute('aria-label', formatMoney(value));
+    } else {
       money.removeAttribute('role');
       money.removeAttribute('aria-label');
-      money.removeAttribute('title');
-      return;
     }
-    money.setAttribute('role', 'img');
-    money.setAttribute('aria-label', formatMoney(value));
-    money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+    if (debt) money.setAttribute('title', `Tiền: ${formatMoney(value)}. ${debtRule(moneyLimit)}`);
+    else if (compact) money.setAttribute('title', `Tiền: ${formatMoney(value)}`);
+    else money.removeAttribute('title');
   }
   // A rise also bounces the sum (scale only), at most once per
   // MONEY_BOUNCE_GAP_MS so sales at 4x read as one beat. None under reduced motion.
@@ -470,6 +494,10 @@ export function createHud(actions: HudActions): Hud {
     };
     countFrame = requestAnimationFrame(tick);
   }
+  w.watch(debtLimit, (limit) => {
+    moneyLimit = limit;
+    if (shownMoney !== null) labelMoney(shownMoney);
+  });
   w.watch((s) => s.money, showMoney);
   // Crossing NARROW_MONEY redraws the current sum in the other format.
   const onNarrowMoney = (): void => {
@@ -687,11 +715,16 @@ export function createHud(actions: HudActions): Hud {
   // Debt warning beside the note: days left before bankruptcy and the ways out.
   const debt = h('p', { class: 'hud-note hud-debt', hidden: true, attrs: { role: 'alert', 'data-stat': 'debt' } });
   w.watch(
-    (s) => debtWarning(s)?.text ?? '',
-    (text) => {
-      if (text) setChildren(debt, icon('i-warning'), h('b', { text }), h('span', { class: 'hud-debt-hints', text: `Gợi ý: ${DEBT_HINTS.join(' · ')}` }));
-      else debt.replaceChildren();
-      debt.hidden = !text;
+    (s) => {
+      const warning = debtWarning(s);
+      return warning ? [warning.text, ...debtHints(s)].join('\n') : '';
+    },
+    (key) => {
+      const [text, ...hints] = key.split('\n');
+      if (!key) debt.replaceChildren();
+      else if (hints.length === 0) setChildren(debt, icon('i-warning'), h('b', { text }));
+      else setChildren(debt, icon('i-warning'), h('b', { text }), h('span', { class: 'hud-debt-hints', text: `Gợi ý: ${hints.join(' · ')}` }));
+      debt.hidden = !key;
     },
   );
 

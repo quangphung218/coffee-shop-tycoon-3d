@@ -1560,6 +1560,9 @@ legend {
   background: var(--surface-danger);
   color: var(--text-danger);
 }
+.hud-money-danger {
+  color: var(--text-danger);
+}
 .hud-debt-hints {
   font-weight: var(--font-weight-regular);
 }
@@ -2391,6 +2394,19 @@ html.reduce-motion .range::-moz-range-thumb {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--space-2);
+}
+.bk-debt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-danger);
+  color: var(--text-danger);
+  border-radius: var(--radius-md);
+}
+.bk-debt .ic {
+  flex: none;
 }
 .bk-stat {
   display: grid;
