@@ -708,3 +708,20 @@ describe('a save from a build with a menu item this build lacks', () => {
     expect(el.querySelector('[data-block="top"]')).not.toBeNull();
   });
 });
+
+describe('Daily Report: rent', () => {
+  it('lists the rent paid tonight as an expense and shows tomorrow’s rent ahead of time', () => {
+    const r = report({ rent: 400_000, rentNext: 430_000, profit: 200_000 });
+    const { el } = mountReport(atReport(r));
+    const rent = [...el.querySelectorAll('[data-block="money"] .rpt-stat')].find((row) => row.textContent?.startsWith('Tiền thuê mặt bằng'));
+    expect(rent?.querySelector('dd')?.textContent).toBe('−400.000đ');
+    expect(rent?.querySelector('dd')?.className).toBe('neg');
+    expect(text(el, '[data-block="rent-next"]')).toBe('Tiền thuê ngày mai (trừ lúc đóng cửa): 430.000đ');
+  });
+
+  it('shows no rent line on a report saved before rent existed', () => {
+    const { el } = mountReport(atReport(report()));
+    expect(el.textContent).not.toContain('Tiền thuê');
+    expect(el.querySelector('[data-block="rent-next"]')).toBeNull();
+  });
+});

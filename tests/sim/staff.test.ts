@@ -360,7 +360,7 @@ describe('wages', () => {
     const missionReward = (s.lastReport?.missions ?? [])
       .filter((m) => m.status === 'completed')
       .reduce((sum, m) => sum + m.rewardMoney, 0);
-    expect(s.money).toBe(start + s.today.revenue - s.today.wages + missionReward);
+    expect(s.money).toBe(start + s.today.revenue - s.today.wages - s.today.rent! + missionReward);
   });
 
   /** Opens the day and plays until `minute`, then fires everyone and plays to the report. */

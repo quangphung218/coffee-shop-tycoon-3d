@@ -3,6 +3,7 @@ import { DIFFICULTIES } from '../../src/sim/data/difficulty';
 import { getMenuItem } from '../../src/sim/data/menu';
 import {
   DEBT_LIMIT,
+  dailyRent,
   ingredientCostUsed,
   isOverDebtLimit,
   payMarketing,
@@ -59,7 +60,7 @@ describe('costs', () => {
 
     settleDay(s);
     expect(s.today.ingredientCost).toBe(getMenuItem('latte').cost);
-    expect(profit(s.today)).toBe(s.today.revenue - getMenuItem('latte').cost);
+    expect(profit(s.today)).toBe(s.today.revenue - getMenuItem('latte').cost - dailyRent(s));
   });
 
   it('adds up staff wages and handles no staff', () => {
@@ -82,7 +83,7 @@ describe('costs', () => {
 });
 
 describe('settleDay', () => {
-  it('records costs, pays wages and the profit adds up', () => {
+  it('records costs, pays wages and rent, and the profit adds up', () => {
     const s = createNewGame('A', 'normal', 1);
     hire(s, 150000, 130000);
     s.today.revenue = 900000;
@@ -94,15 +95,16 @@ describe('settleDay', () => {
     const t = s.today;
     expect(t.ingredientCost).toBe(10 * getMenuItem('latte').cost + 8 * getMenuItem('americano').cost);
     expect(t.wages).toBe(280000);
-    expect(s.money).toBe(money - 280000);
-    expect(profit(t)).toBe(900000 - t.ingredientCost - 280000 - 150000);
+    expect(t.rent).toBe(dailyRent(s));
+    expect(s.money).toBe(money - 280000 - t.rent!);
+    expect(profit(t)).toBe(900000 - t.ingredientCost - 280000 - 150000 - t.rent!);
     expect(notices(s)).toEqual([]);
   });
 
   it('lets money go negative with a warning inside the debt limit', () => {
     const s = createNewGame('A', 'normal', 1);
     hire(s, 200000);
-    s.money = 100000;
+    s.money = 100000 + dailyRent(s);
     settleDay(s);
     expect(s.money).toBe(-100000);
     expect(isOverDebtLimit(s)).toBe(false);

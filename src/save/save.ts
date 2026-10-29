@@ -117,6 +117,14 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     if (typeof state.bankrupt !== 'boolean') state.bankrupt = false;
     return { version: 4, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // Adds the daily rent. Days already closed carry no `rent` and keep their
+  // profit (profit() counts it as 0), so played weeks, their archive rows and
+  // any week result are not recomputed. Rent is charged from the next close
+  // on, including today's if the save was written before closing.
+  4: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    return { version: 5, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
+  },
 };
 
 function num(v: unknown): number {
@@ -138,7 +146,7 @@ function archivedWeek(state: Raw, week: Raw, result: Raw): WeekSummary {
     index: week.index as number,
     startedDay,
     revenue: num(result.revenue),
-    profit: days.reduce((s, d) => s + num(d.revenue) - num(d.ingredientCost) - num(d.wages) - num(d.marketingCost), 0),
+    profit: days.reduce((s, d) => s + num(d.revenue) - num(d.ingredientCost) - num(d.wages) - num(d.marketingCost) - num(d.rent), 0),
     customersServed: days.reduce((s, d) => s + num(d.customersServed), 0),
     stars: num(result.stars),
     score: num(result.score),

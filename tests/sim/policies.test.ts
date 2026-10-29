@@ -189,6 +189,6 @@ describe('wage policy', () => {
     const money = s.money;
     settleDay(s);
     expect(s.today.wages).toBe(totalWages(s));
-    expect(s.money).toBe(money - totalWages(s));
+    expect(s.money).toBe(money - totalWages(s) - s.today.rent!);
   });
 });

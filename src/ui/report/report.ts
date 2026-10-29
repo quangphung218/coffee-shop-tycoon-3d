@@ -219,9 +219,14 @@ function money(r: DailyReport): HTMLElement {
       statRow('Nguyên liệu đã dùng', cost(r.ingredientCost), r.ingredientCost > 0 ? 'neg' : ''),
       statRow('Lương nhân viên', cost(r.wages), r.wages > 0 ? 'neg' : ''),
       statRow('Marketing', cost(r.marketingCost), r.marketingCost > 0 ? 'neg' : ''),
+      // Reports saved before rent existed have no rent line.
+      typeof r.rent === 'number' ? statRow('Tiền thuê mặt bằng', cost(r.rent), r.rent > 0 ? 'neg' : '') : null,
       statRow('Lợi nhuận', signedMoney(r.profit), r.profit > 0 ? 'pos' : r.profit < 0 ? 'neg' : '', true),
     ),
     h('p', { class: 'rpt-muted rpt-cash' }, 'Tiền hiện có: ', h('b', { text: formatMoney(r.money) })),
+    typeof r.rentNext === 'number'
+      ? h('p', { class: 'rpt-muted rpt-rent', attrs: { 'data-block': 'rent-next' } }, 'Tiền thuê ngày mai (trừ lúc đóng cửa): ', h('b', { text: formatMoney(r.rentNext) }))
+      : null,
   );
 }
 

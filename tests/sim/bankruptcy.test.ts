@@ -106,7 +106,7 @@ describe('bankruptcy save migration', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.value.version).toBe(SAVE_VERSION);
-    expect(SAVE_VERSION).toBe(4);
+    expect(SAVE_VERSION).toBe(5);
     expect([r.value.state.debtDays, r.value.state.bankrupt]).toEqual([0, false]);
   });
 

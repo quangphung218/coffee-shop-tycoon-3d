@@ -67,17 +67,17 @@ describe('full day, headless', () => {
     expect(report.customersServed).toBe(t.customersServed);
     expect(report.revenue).toBe(t.revenue);
     expect(report.revenue).toBeGreaterThan(0);
-    expect(report.profit).toBe(report.revenue - report.ingredientCost - report.wages - report.marketingCost);
+    expect(report.profit).toBe(report.revenue - report.ingredientCost - report.wages - report.marketingCost - report.rent!);
     expect(report.money).toBe(state.money);
     expect(report.ratingEnd).toBe(state.rating);
     expect(report.topSellers.length).toBeGreaterThan(0);
 
-    // Ingredients are paid when bought; wages and marketing at the end of the day;
+    // Ingredients are paid when bought; wages, rent and marketing at the end of the day;
     // completed daily missions add a small cash reward.
     const missionReward = (report.missions ?? [])
       .filter((m) => m.status === 'completed')
       .reduce((s, m) => s + m.rewardMoney, 0);
-    expect(state.money).toBe(startMoney - spent + report.revenue - report.wages - report.marketingCost - t.upgradeCost + missionReward);
+    expect(state.money).toBe(startMoney - spent + report.revenue - report.wages - report.rent! - report.marketingCost - t.upgradeCost + missionReward);
 
     const ended = events.filter((e) => e.type === 'dayEnded');
     expect(ended).toEqual([{ type: 'dayEnded', day: 1 }]);

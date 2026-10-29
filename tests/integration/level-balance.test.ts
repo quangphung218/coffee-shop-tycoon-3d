@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FULL_UNLOCK_LEVEL } from '../../src/sim/data/levels';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { debtLimit, isOverDebtLimit, totalWages } from '../../src/sim/economy';
+import { dailyRent, debtLimit, isOverDebtLimit, totalWages } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { MISSIONS_PER_DAY, isUnlocked } from '../../src/sim/progression';
@@ -63,11 +63,11 @@ function enableUnlocked(state: GameState): void {
   }
 }
 
-/** Cash to keep back for tomorrow: wages plus the suggested restock once today's stock is used up. */
+/** Cash to keep back for tomorrow: wages and rent plus the suggested restock once today's stock is used up. */
 function reserve(state: GameState): number {
   const drained = structuredClone(state);
   for (const item of drained.inventory) item.qty = 0;
-  return totalWages(state) + autoRestockSuggestion(drained).totalCost;
+  return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
 /** Buys the cheapest affordable unlocked upgrades/tools, keeping the reserve. */

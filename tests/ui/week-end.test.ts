@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage, type StorageLike } from '../../src/save/storage';
 import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
-import { totalWages } from '../../src/sim/economy';
+import { dailyRent, totalWages } from '../../src/sim/economy';
 import { grantWeekReward } from '../../src/sim/progression';
 import { buildDailyReport, closeDay } from '../../src/sim/report';
 import { createDayStats, createNewGame } from '../../src/sim/state';
@@ -319,7 +319,7 @@ describe('week summary', () => {
     state.today.revenue = 5_000_000;
     state.rating = 4.5;
     const before = state.money;
-    const wages = totalWages(state);
+    const wages = totalWages(state) + dailyRent(state);
     state.lastReport = closeDay(state);
     state.phase = 'report';
     const result = state.week!.result!;

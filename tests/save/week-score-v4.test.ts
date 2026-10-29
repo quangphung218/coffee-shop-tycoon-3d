@@ -47,7 +47,7 @@ describe('v4 saves and the profit-weighted week score', { timeout: 120_000 }, ()
     g.week!.archive![0] = { ...g.week!.archive![0]!, score: 97, cups: 3 };
 
     const loaded = load(v4Save(g));
-    expect(SAVE_VERSION).toBe(4);
+    expect(SAVE_VERSION).toBe(5);
     expect(loaded.week!.result!.score).toBe(97);
     expect(loaded.week!.result!.cups).toBe(3);
     expect(loaded.week!.result!.profit).toBeUndefined();
