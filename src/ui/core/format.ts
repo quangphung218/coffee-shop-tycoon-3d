@@ -12,13 +12,20 @@ export function formatMoney(dong: number): string {
 /** Sums from this many đồng show compact in formatMoneyShort. */
 export const SHORT_MONEY_FROM = 10_000_000;
 
+/** Debts from this many đồng show compact in formatMoneyShort (debts are rarely past SHORT_MONEY_FROM). */
+export const SHORT_DEBT_FROM = 1_000_000;
+
 /**
  * Compact money for the narrow HUD: 109582093 → "109,6tr", 1234567890 →
- * "1,2 tỷ", one decimal; below SHORT_MONEY_FROM the same as formatMoney.
+ * "1,2 tỷ", one decimal; below SHORT_MONEY_FROM the same as formatMoney,
+ * except debts from SHORT_DEBT_FROM: −2150000 → "−2,15tr", two decimals.
  */
 export function formatMoneyShort(dong: number): string {
   const abs = Math.abs(Math.round(dong));
-  if (abs < SHORT_MONEY_FROM) return formatMoney(dong);
+  if (dong < 0 && abs >= SHORT_DEBT_FROM && abs < SHORT_MONEY_FROM) {
+    const tr = Math.round(abs / 10_000) / 100;
+    if (tr < 10) return `−${tr.toFixed(2).replace('.', ',')}tr`;
+  } else if (abs < SHORT_MONEY_FROM) return formatMoney(dong);
   const sign = dong < 0 ? '−' : '';
   const tr = Math.round(abs / 100_000) / 10;
   if (tr < 1000) return `${sign}${tr.toFixed(1).replace('.', ',')}tr`;

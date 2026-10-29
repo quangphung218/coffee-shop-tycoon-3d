@@ -89,6 +89,11 @@ describe('format', () => {
     expect(formatMoneyShort(10_000_000)).toBe('10,0tr');
     expect(formatMoneyShort(109_582_093)).toBe('109,6tr');
     expect(formatMoneyShort(-12_540_000)).toBe('−12,5tr');
+    // Debts shorten from 1 triệu, two decimals; positive sums below 10 triệu stay full.
+    expect(formatMoneyShort(-2_150_000)).toBe('−2,15tr');
+    expect(formatMoneyShort(-999_999)).toBe('−999.999đ');
+    expect(formatMoneyShort(-9_999_999)).toBe('−10,0tr');
+    expect(formatMoneyShort(2_150_000)).toBe('2.150.000đ');
     expect(formatMoneyShort(999_949_999)).toBe('999,9tr');
     // Rounds up to 1000,0tr: shown in tỷ instead.
     expect(formatMoneyShort(999_960_000)).toBe('1,0 tỷ');
@@ -518,6 +523,14 @@ describe('HUD', () => {
       hud.update(state);
       expect(money.textContent).toBe('3.000.000đ');
       expect(money.hasAttribute('aria-label')).toBe(false);
+      // A debt shortens the same way, with the full sum in the label.
+      state.money = -2_150_000;
+      hud.update(state);
+      expect(money.textContent).toBe('−2,15tr');
+      expect(money.getAttribute('aria-label')).toBe('−2.150.000đ');
+      expect(money.title).toContain('Tiền: −2.150.000đ.');
+      expect(money.classList.contains('hud-money-danger')).toBe(true);
+      expect(UI_CSS).toMatch(/\.hud-money-danger\s*\{[^}]*color:\s*var\(--text-danger\)/);
       hud.dispose();
     } finally {
       vi.unstubAllGlobals();

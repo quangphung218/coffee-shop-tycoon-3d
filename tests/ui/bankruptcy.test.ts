@@ -9,7 +9,7 @@ import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { formatMoney } from '../../src/ui/core/format';
-import { createHud, DEBT_HINTS, debtWarning, type Hud } from '../../src/ui/hud/hud';
+import { createHud, DEBT_HINTS, debtRule, debtWarning, type Hud } from '../../src/ui/hud/hud';
 import { bankruptSummary, latestPlayableSave } from '../../src/ui/screens/bankrupt';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 
@@ -88,6 +88,7 @@ describe('HUD debt warning', () => {
     expect(el.hidden).toBe(false);
     expect(el.getAttribute('role')).toBe('alert');
     expect(el.textContent).toContain(`còn ${BANKRUPT_DAYS - 1} ngày trước khi phá sản`);
+    expect(el.textContent).toContain(`Tiền dưới ${formatMoney(-debtLimit(state))}: còn`);
     for (const hint of DEBT_HINTS) expect(el.textContent).toContain(hint);
 
     state.money = 0;
@@ -95,6 +96,34 @@ describe('HUD debt warning', () => {
     hud.update(state);
     expect(el.hidden).toBe(true);
     expect(el.textContent).toBe('');
+  });
+});
+
+describe('HUD debt limit and money', () => {
+  it('states the debt limit in the warning text', () => {
+    expect(debtWarning(inDebt(BANKRUPT_DAYS - 1))?.text).toBe('Tiền dưới −500.000đ: còn 1 ngày trước khi phá sản');
+    const hard = inDebt(0);
+    hard.difficulty = 'hard';
+    hard.money = -debtLimit(hard) - 1;
+    expect(debtWarning(hard)?.text).toContain(`Tiền dưới ${formatMoney(-debtLimit(hard))}:`);
+  });
+
+  it('turns the money red below zero, with the bankruptcy rule in its title', () => {
+    const state = game();
+    state.money = -2_150_000;
+    hud = createHud({ dispatch: () => true, getState: () => state, onPause() {}, onSettings: vi.fn(), onResetCamera: vi.fn() });
+    document.body.append(hud.el);
+    hud.el.hidden = false;
+    hud.update(state);
+    const money = hud.el.querySelector<HTMLElement>('[data-stat="money"]')!;
+    expect(money.classList.contains('hud-money-danger')).toBe(true);
+    expect(money.title).toBe(`Tiền: −2.150.000đ. ${debtRule(debtLimit(state))}`);
+    expect(debtRule(500_000)).toBe(`Đóng cửa với tiền dưới −500.000đ ${BANKRUPT_DAYS} ngày liền là phá sản`);
+
+    state.money = 0;
+    hud.update(state);
+    expect(money.classList.contains('hud-money-danger')).toBe(false);
+    expect(money.hasAttribute('title')).toBe(false);
   });
 });
 
