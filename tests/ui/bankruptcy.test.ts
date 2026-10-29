@@ -9,7 +9,7 @@ import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
 import { formatMoney } from '../../src/ui/core/format';
-import { createHud, DEBT_HINTS, debtRule, debtWarning, type Hud } from '../../src/ui/hud/hud';
+import { createHud, debtHints, debtRule, debtWarning, type Hud } from '../../src/ui/hud/hud';
 import { bankruptSummary, latestPlayableSave } from '../../src/ui/screens/bankrupt';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 
@@ -89,7 +89,10 @@ describe('HUD debt warning', () => {
     expect(el.getAttribute('role')).toBe('alert');
     expect(el.textContent).toContain(`còn ${BANKRUPT_DAYS - 1} ngày trước khi phá sản`);
     expect(el.textContent).toContain(`Tiền dưới ${formatMoney(-debtLimit(state))}: còn`);
-    for (const hint of DEBT_HINTS) expect(el.textContent).toContain(hint);
+    const hints = debtHints(state);
+    expect(hints.length).toBeGreaterThan(0);
+    for (const hint of hints) expect(el.textContent).toContain(hint);
+    expect(el.textContent).not.toMatch(/Bán (bớt|hết)/);
 
     state.money = 0;
     state.debtDays = 0;

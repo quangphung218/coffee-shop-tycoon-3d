@@ -100,6 +100,13 @@ describe('debtHints', () => {
     expect(hints).toHaveLength(3);
     if (state.staff.length) expect(hints[0]).toContain(`${state.staff.length} người`);
     for (const h of hints) expect(h).not.toMatch(/\p{Extended_Pictographic}/u);
+    // The player cannot sell stock or equipment, so no hint may say so.
+    const stocked = atReport(-2_150_000, 1);
+    stocked.staff = [];
+    stocked.inventory = [{ ...state.inventory[0]!, qty: 5 }];
+    const stockHints = debtHints(stocked);
+    expect(stockHints).toEqual(['Dùng hết nguyên liệu trong kho trước khi nhập thêm']);
+    for (const h of [...hints, ...stockHints]) expect(h).not.toMatch(/^Bán /);
 
     const bare = atReport(-2_150_000, 1);
     bare.staff = [];
