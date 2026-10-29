@@ -18,7 +18,7 @@ import { localDateKey } from '../core/today';
 import { unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDayLabel } from '../hud/hud';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
+import { inlineConfirm, linkBtn, openOtherPanel, reasonLine, sender, setReason, withIcon } from './widgets';
 
 export interface DayTask {
   id: 'menu' | 'restock' | 'staff' | 'marketing';
@@ -29,6 +29,12 @@ export interface DayTask {
   detail: string;
   panel: string;
   link: string;
+}
+
+/** True when the menu has dishes on but the stock cannot make even one serving of any. */
+export function stockMakesNoDish(state: GameState): boolean {
+  const enabled = state.menu.filter((m) => m.enabled);
+  return enabled.length > 0 && !enabled.some((m) => canMake(state, m.id));
 }
 
 /** Today's checklist, read from the state. Unfinished tasks never block opening. */
@@ -430,8 +436,29 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const sugList = h('ul', { class: 'stack' });
   const openBtn = h('button', { class: 'btn btn-accent btn-lg btn-block', attrs: { type: 'button', 'data-action': 'open' } }, icon('i-open'), 'Mở cửa');
   const why = reasonLine(false);
+  // Stock that makes no dish only asks first (UX-004); it never blocks opening.
+  const foot = h('div', { class: 'panel-foot' }, openBtn, why);
   openBtn.addEventListener('click', () => {
-    if (!isAriaDisabled(openBtn)) send({ type: 'start_day' });
+    if (isAriaDisabled(openBtn) || foot.querySelector('.confirm')) return;
+    const s = ctx.getState();
+    if (!s || !stockMakesNoDish(s)) {
+      send({ type: 'start_day' });
+      return;
+    }
+    const ask = inlineConfirm(
+      'Kho trống: không bán được món nào',
+      'Vẫn mở cửa',
+      'btn-accent',
+      () => send({ type: 'start_day' }),
+      () => openBtn.focus(),
+    );
+    const stock = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-goto': 'inventory' }, text: 'Mở Kho' });
+    stock.addEventListener('click', () => {
+      ask.remove();
+      openOtherPanel('inventory');
+    });
+    ask.querySelector('[data-action="confirm"]')!.before(stock);
+    foot.insertBefore(ask, why);
   });
 
   w.watch(
@@ -574,7 +601,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       achList,
       sugTitle,
       sugList,
-      h('div', { class: 'panel-foot' }, openBtn, why),
+      foot,
     ),
   );
   const state = ctx.getState();
