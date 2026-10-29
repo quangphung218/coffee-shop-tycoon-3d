@@ -89,6 +89,35 @@ Bảng từng seed in ra cùng lệnh trên.
 | `maxLevelBonus` | 7: máy cao cấp, máy xay hạt · 8: bàn ghế, tủ bánh · 9: đèn, máy sinh tố · 10: máy cao cấp, máy rửa ly | Chỉ chọn nâng cấp mà cấp thêm không cần model mới hay chỗ đặt mới: máy và dụng cụ chỉ đổi hiệu ứng, model máy đã chặn ở bậc cao nhất; bàn thứ 7 lấy chỗ trống cuối cùng trong phòng; đèn thứ 3 treo trên bàn trong cùng hàng đầu. Không chọn: máy 2 group (máy thứ 4 đè máy rửa ly), cây và tranh (hết chỗ), quầy bar cửa sổ (hết chỗ bàn), mở rộng và ngoài trời (thêm khu mới), máy làm đá (đã giảm 90%). |
 | `BONUS_LEVEL_PRICE_MULT` | 3 | Ở giá thường, 8 cấp thêm tốn khoảng 38 triệu ở Thường, dưới một tuần lãi của c. Nhân 3 thành khoảng 113 triệu: c ở Dễ chi 30 triệu ngay khi lên cấp 7 và vẫn phải dành tiền cho các cấp sau. |
 
+## Đã sửa ở E-05
+
+Vấn đề ở bảng trên: c hết đồ để mua từ tuần 3 (`buyable` = 0 ở Dễ và Thường) và dồn tiền thành đống. E-05 thay phần thưởng cấp quán 4–10 bằng 21 cấp thêm có giá và hiệu ứng riêng, cộng 4 đồ trang trí cao cấp, và thêm hiệu ứng `priceBonus` (giá bán mọi món). Danh sách đầy đủ ở [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05). Số dưới đây là trung bình 3 seed của `c_spend`, in từ `p23-long-run.test.ts`; trong ngoặc là `a_basic`.
+
+| Chỉ số | Độ khó | Trước | Sau |
+|---|---|---|---|
+| `spent` tuần 3 | Dễ | 1,35 triệu | 29,6 triệu |
+| | Thường | 3,33 triệu | 36,0 triệu |
+| | Khó | 36,4 triệu | 43,6 triệu |
+| `spent` tuần 4 | Dễ | 88,5 triệu | 46,7 triệu |
+| | Thường | 1,5 triệu | 29,5 triệu |
+| | Khó | 0 | 31,8 triệu |
+| `buyable` cuối tuần 2 / tuần 3 | Dễ | 0 / 0 | 1,3 / 1,0 |
+| | Thường | 0,3 / 0 | 4,0 / 1,0 |
+| | Khó | 5,3 / 0 | 5,3 / 2,3 |
+| Tiền cuối tuần 4 | Dễ | 93,6 triệu | 169,5 triệu (89,5 triệu) |
+| | Thường | 142,3 triệu | 137,9 triệu (77,8 triệu) |
+| | Khó | 82,6 triệu | 67,7 triệu (57,8 triệu) |
+
+- Từ tuần 3, c còn thứ để mua ở cả ba độ khó, chi đều hơn giữa tuần 3 và 4 thay vì một cú 88,5 triệu ở Dễ tuần 4.
+- Hard seed 777 là seed sát nhất: biên 1,7 triệu.
+- `p22-strategies.test.ts` không đổi, vẫn đạt.
+- Hoàn vốn của các món có `priceBonus` khoảng 0,78–1,97 tuần.
+- Bốn đồ trang trí chưa có model 3D.
+- Các cấp thêm ở cấp quán 4–6 là chủ ý thiết kế, không phải thiếu sót.
+- `BONUS_LEVEL_PRICE_MULT` (×3) ở bảng "Lý do chọn số" là số của bản trước E-05; giá cấp thêm nay ghi thẳng từng cấp trong `extraLevels`.
+
+Các số trước/sau do chủ epic cung cấp từ lần chạy test; chưa chạy lại trong worktree này.
+
 ## Ngưỡng test cũ
 
 - `tests/integration/p22-strategies.test.ts`: không đổi, vẫn đạt.
