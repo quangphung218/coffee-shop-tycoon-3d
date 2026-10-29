@@ -122,6 +122,41 @@ Vấn đề ở bảng trên: c hết đồ để mua từ tuần 3 (`buyable` =
 
 Các số "Sau" đã kiểm bằng cách chạy `p23-long-run`. Các số "Trước" lấy từ lần đo gốc của epic ở commit a2a5206 và chưa chạy lại.
 
+## Đã sửa ở E-07
+
+Vấn đề: lợi nhuận tuần trừ đủ tiền nâng cấp trong tuần mua, nên quán chi tiền tái đầu tư ở tuần 2 (`c_spend` 57–62 điểm) điểm thấp hơn quán không mua gì (`a_basic` 67–71), rồi vọt lên 100 ở tuần 3–4 khi mục tiêu tăng chậm. E-07 sửa hai chỗ trong `src/sim/week.ts` và `src/sim/data/week.ts`:
+
+- Tiền nâng cấp mua từ tuần 2 chia đều 2 tuần (`UPGRADE_AMORTIZE_WEEKS` = 2: tuần mua và tuần kế tiếp). Tuần 1 vẫn trừ đủ. Tuần đã chấm theo luật cũ không có `upgradeCharge` và không tính lại; không đổi `SAVE_VERSION`.
+- Mục tiêu doanh thu tuần 2–4 là bội của tuần 1 (`WEEK_GOAL_MULTS`) thay cho `WEEK_GOAL_GROWTH` 0,6: Dễ 1 / 1,9 / 3,6 / 3,6, Thường 1 / 1,9 / 3,5 / 3,5, Khó 1 / 1,9 / 2,9 / 3,55; từ tuần 4 giữ hệ số cuối.
+- Màn Tổng kết tuần có khối "Lợi nhuận tuần" ghi luật tính.
+
+Điểm tuần 2 / 3 / 4, trung bình 3 seed, trước -> sau, in từ `p23-long-run.test.ts`:
+
+| Độ khó | Chiến lược | Trước | Sau |
+|---|---|---|---|
+| Dễ | `a_basic` | 67,3 / 55,3 / 47,0 | 60,0 / 42,0 / 41,0 |
+| | `c_spend` | 59,0 / 100 / 100 | 97,7 / 82,0 / 97,3 |
+| | `e_marketing` | 57,7 / 100 / 100 | 96,3 / 81,3 / 96,0 |
+| Thường | `a_basic` | 71,0 / 58,7 / 49,0 | 63,0 / 44,0 / 43,0 |
+| | `c_spend` | 61,7 / 98,0 / 100 | 99,0 / 81,0 / 97,3 |
+| | `e_marketing` | 61,7 / 99,0 / 100 | 98,7 / 81,3 / 96,3 |
+| Khó | `a_basic` | 70,0 / 58,0 / 47,0 | 62,0 / 48,7 / 41,3 |
+| | `c_spend` | 57,0 / 58,0 / 96,7 | 90,7 / 64,0 / 82,3 |
+| | `e_marketing` | 56,7 / 55,0 / 97,7 | 92,3 / 64,7 / 87,3 |
+
+Số tuần `c_spend` đạt 3 cúp trong 6 lượt (tuần 3 và 4, 3 seed): Dễ 6/6 -> 3/6, Thường 6/6 -> 3/6, Khó 3/6 -> 1/6.
+
+Lý do chọn:
+
+- Chia 2 tuần: chi quá sức vẫn kéo điểm lợi nhuận xuống ở tuần mua và tuần sau, nhưng quán tái đầu tư vừa phải không còn thấp hơn quán không mua gì ở tuần 2. Chia dài hơn đẩy quán chi tiền lên mức tối đa ở tuần 3–4 ở mọi mục tiêu mà `a_basic` còn lấy được 1 cúp.
+- Đường mục tiêu: `a_basic` có doanh thu khoảng 1,1 lần mục tiêu tuần 1 mỗi tuần, nên hệ số tuần 3–4 đặt để nó còn 1 cúp tới tuần 4 và số cúp không tăng; còn `c_spend` và `e_marketing` (2–4,4 lần) phải có tuần mạnh mới đạt 3 cúp ở tuần 3–4.
+
+Lưu ý:
+
+- Tuần 2 nay vượt mức: quán chi tiền được 97–99 điểm và 3 cúp ở Dễ và Thường.
+- Biên của `a_basic` ở tuần 4 sát vạch 1 cúp (Dễ seed 42 đúng 40 điểm).
+- Đường mục tiêu khớp với kinh tế hiện tại; sau mỗi thay đổi kinh tế phải đo lại và chỉnh `WEEK_GOAL_MULTS`.
+
 ## Ngưỡng test cũ
 
 - `tests/integration/p22-strategies.test.ts`: không đổi, vẫn đạt.
