@@ -217,7 +217,19 @@ Nguồn: `extraLevels` trong `src/sim/data/upgrades.ts` (giá, hiệu ứng), `m
 | `grand_piano` | Đàn piano | 10 | 1 | 18.000.000đ | +10% / +6% / +0,08 |
 
 - Giá cấp 2 = giá cấp 1 × 1,1 (`costGrowth`), làm tròn 1.000đ.
-- Chưa có model 3D cho bốn món này: mua có hiệu ứng nhưng chưa hiện trong cảnh.
+
+Vị trí trong cảnh (x/z theo đơn vị thế giới; tường trước z = 6, tường trái x = -4,5). Vị trí nằm trong `PREMIUM_SLOTS` (`src/sim/upgrades.ts`), mô hình dựng trong `src/render/scene/shop.ts`:
+
+| Id | Vị trí | Hình dựng |
+| --- | --- | --- |
+| `chandelier` | Cấp 1: (0, 2,75), trên lối đi chính ở hàng bàn giữa. Cấp 2: (0, 4,75), hàng bàn trước. Bỏ hàng bàn đầu (z = 0,75) vì quạt trần treo ở z = 0,5. Không chiếm sàn. | Vòng vàng đôi với bốn nan trên dây treo, 8 viên pha lê quanh vòng và 1 viên giữa; viên thấp nhất ngay trên đỉnh tường. |
+| `marble_tables` | Mọi bàn. | Một tấm đá cẩm thạch mỏng kem có vân đặt trên mặt mỗi bàn; cấp 2 thêm viền vàng. |
+| `art_gallery` | Trên tường trái, x = -4,47. Cấp 1: z = 3,75, giữa tranh tường bên và chậu cây phía trước; che ô cửa sổ gần phía trước nhất của tường trái (z = 3,75). Cấp 2: z = 0,05, giữa giá sách và tranh tường bên; nằm trước ô cửa sổ giữa (z = 0,75), ô này đã bị tranh tường (z = 1,75) che khi mua đủ tranh. | Ba khung tranh viền vàng (một lớn giữa hai nhỏ) dưới thanh treo tranh vàng, dài 1,8. |
+| `grand_piano` | (1,6, 5,705), dựa tường trước bên phải cửa. | Đàn piano đứng, rộng 1,3 × sâu 0,55, cao 1,12 (dưới bảng neon trên tường trước). Là món duy nhất có chỗ trên sàn (footprint loại `piano`). |
+
+- Số draw call của cảnh đầy đủ tăng từ 51 lên 54 (+3) khi có cả bốn món.
+- Không đổi số liệu kinh tế nào: chỉ thêm hiển thị.
+- Test: `tests/sim/p27-decor-layout.test.ts` (vị trí không đè bàn, ghế, máy, lối đi), `tests/render/e06-premium-decor.test.ts` (mô hình và số draw call).
 
 ## Save cũ
 

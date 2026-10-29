@@ -62,6 +62,7 @@ export function navLayoutKey(layout: ShopLayout): number {
   for (const t of layout.tables) h = mix(mix(mix(mix(h, t.pos.x), t.pos.z), t.seats), t.zone === 'outdoor' ? 1 : 0);
   h = mix(h, layout.decor.length);
   for (const d of layout.decor) h = mix(mix(mix(h, d.kind === 'plant' ? 1 : d.kind === 'light' ? 2 : 3), d.pos.x), d.pos.z);
+  for (const p of layout.premium) if (p.kind === 'grand_piano') h = mix(mix(mix(h, 4), p.pos.x), p.pos.z);
   return h >>> 0;
 }
 
