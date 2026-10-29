@@ -1,5 +1,5 @@
 import { LEVELS, MAX_SHOP_LEVEL, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
-import { getUpgrade, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
+import { getUpgrade, levelEffect, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import {
   DECOR_REFUND_SHARE,
@@ -40,6 +40,17 @@ export const UPGRADE_GROUPS: readonly { title: string; icon: IconId; ids: readon
 
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 const dec = (v: number): string => String(Math.round(v * 100) / 100).replace('.', ',');
+/** "6,5%": a percent kept to one decimal, for price bonuses. */
+const pctDec = (v: number): string => `${String(Math.round(v * 1000) / 10).replace('.', ',')}%`;
+
+/** Label of a row (or its next level) waiting on the shop level. */
+export const needShopLevel = (level: number): string => `Cần cấp quán ${level}`;
+
+/** "mỗi cấp …", or "cấp N: …" when the next level (`canBuy`) is an extra one with its own effect. */
+export function levelEffectText(def: UpgradeDef, level: number, canBuy: boolean): string {
+  const next = level + 1;
+  return canBuy && next > def.maxLevel && def.extraLevels?.[next - def.maxLevel - 1] ? `cấp ${next}: ${effectText(levelEffect(def, next))}` : `mỗi cấp ${effectText(def.effectPerLevel)}`;
+}
 
 /** "+2 chỗ ngồi · +0,05 sao mỗi đơn · +4% khách · pha nhanh hơn 20%" per level. */
 export function effectText(e: UpgradeEffect): string {
@@ -54,6 +65,7 @@ export function effectText(e: UpgradeEffect): string {
   if (e.foodAppeal) parts.push(`+${pct(e.foodAppeal)} gọi món ăn`);
   if (e.cleanSpeed) parts.push(`dọn bàn nhanh hơn ${pct(e.cleanSpeed)}`);
   if (e.iceCostReduction) parts.push(`−${pct(e.iceCostReduction)} giá đá`);
+  if (e.priceBonus) parts.push(`giá bán +${pctDec(e.priceBonus)}`);
   return parts.join(' · ');
 }
 
@@ -70,7 +82,7 @@ export function tierText(id: UpgradeId, level: number, canBuy: boolean): string 
   return `Bậc ${tier}/${top} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
 }
 
-/** Next shop level (7..10) that raises the upgrade's cap, or null when none is left. */
+/** Next shop level (4..10) that raises the upgrade's cap, or null when none is left. */
 export function nextBonusShopLevel(state: GameState, id: UpgradeId): number | null {
   const now = maxLevelBonus(state.shopLevel, id);
   return LEVELS.find((def) => def.level > state.shopLevel && maxLevelBonus(def.level, id) > now)?.level ?? null;
@@ -94,8 +106,9 @@ export function decorRefund(state: GameState, id: UpgradeId): number {
 /**
  * Nâng cấp by group, one row per upgrade (icon of the current tier | name +
  * price of the next level (money, plus Tem when it has a ticketCost), current
- * level and the effect per level, then "Bậc n/3" once bought | "Mở ngày N" /
- * "Mở ở cấp quán N" / "Tối đa" | Mua). Mua is aria-disabled with the reason
+ * level and the effect per level (or of the next extra level), then "Bậc n/3"
+ * once bought | "Mở ngày N" / "Cần cấp quán N" / "Tối đa" | Mua). Icons come
+ * from the atlas (UPGRADE_ICONS), never the emoji in the data's `icon` field. Mua is aria-disabled with the reason
  * (an upgrade it needs, money, then Tem) when it cannot be bought. "Mua" asks for an in-place confirm, then sends buy_upgrade.
  * Owned decor without seats has "Gỡ (+X)": the first click arms it for
  * REMOVE_CONFIRM_MS, a second click sends remove_decor.
@@ -196,22 +209,24 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         const cost = nextUpgradeCost(s, id);
         const max = maxUpgradeLevel(s, id);
         const tickets = nextUpgradeTicketCost(s, id) ?? 0;
-        meta.textContent = `${cost === null ? '' : `Giá ${priceText(cost, tickets)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}mỗi cấp ${effectText(def.effectPerLevel)}`;
-        // Not open yet: a flat "Mở ngày N" / "Mở ở cấp N" label, Mua disabled with the reason.
+        meta.textContent = `${cost === null ? '' : `Giá ${priceText(cost, tickets)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}${levelEffectText(def, lv, cost !== null)}`;
+        // Not open yet: a flat "Mở ngày N" / "Cần cấp quán N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
         badge.hidden = !locked && cost !== null;
         if (locked) {
           const opens = unlockHint(s, 'upgrade', id);
+          const byLevel = !opens.badge.startsWith('Mở ngày');
+          const level = upgradeUnlockLevel(id);
           badge.className = 'badge badge-neutral';
-          setIconText(badge, 'i-lock', opens.badge);
+          setIconText(badge, 'i-lock', byLevel ? needShopLevel(level) : opens.badge);
           setAriaDisabled(buy, true);
-          setReason(why, buy, opens.reason);
+          setReason(why, buy, byLevel ? `${needShopLevel(level)} để mở khóa.` : opens.reason);
         } else if (cost === null) {
-          // At the cap: a later shop level (7..10) may still raise it.
+          // At the cap: a later shop level (4..10) may still raise it.
           const bonusAt = nextBonusShopLevel(s, id);
           badge.className = `badge ${bonusAt === null ? 'badge-ok' : 'badge-neutral'}`;
-          setIconText(badge, bonusAt === null ? 'i-ok' : 'i-lock', bonusAt === null ? 'Tối đa' : `Mở ở cấp quán ${bonusAt}`);
+          setIconText(badge, bonusAt === null ? 'i-ok' : 'i-lock', bonusAt === null ? 'Tối đa' : needShopLevel(bonusAt));
           setReason(why, buy, null);
         } else {
           const have = s.retention?.tickets ?? 0;
@@ -230,7 +245,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
       (s) => upgradeTier(id, upgradeLevel(s, id)),
       (tier) => iconBox.replaceChildren(tierIcon(UPGRADE_ICONS[id], tier, { size: 32 })),
     );
-    // "Mới" only in an empty label slot (not over "Mở ở cấp N" or "Tối đa").
+    // "Mới" only in an empty label slot (not over "Cần cấp quán N" or "Tối đa").
     w.watch(
       () => fresh.has('upgrades', id) && badge.hidden,
       (on) => setFresh(newBadge, on),

@@ -182,7 +182,7 @@ describe('"Mới" on the dock and rows', () => {
 
     m.hud.openPanel('upgrades');
     const up = q(m.hud.panelEl, 'li[data-upgrade="better_machine"]');
-    expect(q(up, '.badge:not([data-fresh])').textContent).toContain('Mở ở cấp 3');
+    expect(q(up, '.badge:not([data-fresh])').textContent).toContain('Cần cấp quán 3');
     expect(q(up, '[data-fresh]').hidden).toBe(true);
   });
 
