@@ -148,14 +148,14 @@ Số nhân viên tối đa: 6 (`BASE_MAX_STAFF`), thêm 1 ở Mở rộng diện
 
 ## Mở rộng diện tích
 
-Nguồn: `expand_area` trong `src/sim/data/upgrades.ts` (`baseCost` 5.000.000, `costGrowth` 2, `maxLevel` 2), `maxLevelBonus` trong `src/sim/data/levels.ts`. Cấp trên `maxLevel` đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`).
+Nguồn: `expand_area` trong `src/sim/data/upgrades.ts` (`baseCost` 5.000.000, `costGrowth` 2, `maxLevel` 2). Cấp 3–4 nằm trong `extraLevels` của nó, mỗi cấp có giá, cấp quán cần và `priceBonus` riêng (+7% giá bán ở cấp 3, +8% ở cấp 4).
 
 | Cấp | Mở khi | Giá Thường | Dễ | Khó | Thêm |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Cấp quán 6, hoặc tặng sáng ngày 7 tuần 1 | 5.000.000đ | 4.500.000đ | 5.750.000đ | Phòng bên, 3 bàn (6 ghế) |
 | 2 | Cùng cấp 1 | 10.000.000đ | 9.000.000đ | 11.500.000đ | 3 bàn |
-| 3 | Cấp quán 7 | 60.000.000đ | 54.000.000đ | 69.000.000đ | 3 bàn, 1 chỗ nhân viên |
-| 4 | Cấp quán 9 | 120.000.000đ | 108.000.000đ | 138.000.000đ | 3 bàn, 1 chỗ nhân viên |
+| 3 | Cấp quán 7 | 13.000.000đ | 11.700.000đ | 14.950.000đ | 3 bàn, 1 chỗ nhân viên |
+| 4 | Cấp quán 9 | 14.000.000đ | 12.600.000đ | 16.100.000đ | 3 bàn, 1 chỗ nhân viên |
 
 Mỗi cấp còn +10% khách đến (`appeal` 0,1) và nới phòng bên thêm một cột bàn.
 

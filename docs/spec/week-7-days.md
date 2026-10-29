@@ -125,7 +125,7 @@ Save cũ không có `week` không bao giờ có `week_ended` và chơi tiếp nh
 
 ## Cấp quán 7–10
 
-Tới cấp 6 quán đã mở mọi món và mọi nâng cấp, trừ những thứ mở ở cấp 7–8: cấp 7 mở Tháp cold brew và món Cold brew, cấp 8 mở Lò nướng, Bánh quy sô-cô-la và Góc sofa ([p31-equipment.md](p31-equipment.md)). Cấp 7–10 (`LEVELS` trong `src/sim/data/levels.ts`) còn cho mua thêm 1 cấp của vài nâng cấp đã có (`maxLevelBonus`). Cấp vượt trần gốc đắt gấp 3 (`BONUS_LEVEL_PRICE_MULT`). Mở rộng diện tích cấp 3–4: [p27-retention.md](p27-retention.md#mở-rộng-diện-tích).
+Tới cấp 6 quán đã mở mọi món và mọi nâng cấp, trừ những thứ mở ở cấp 7–8: cấp 7 mở Tháp cold brew và món Cold brew, cấp 8 mở Lò nướng, Bánh quy sô-cô-la và Góc sofa ([p31-equipment.md](p31-equipment.md)). Cấp 7–10 (`LEVELS` trong `src/sim/data/levels.ts`) còn cho mua thêm 1 cấp của vài nâng cấp đã có (`maxLevelBonus`). Từ E-05, các cấp thêm ghi giá và cấp quán cần riêng trong `extraLevels` ([p27-retention.md](p27-retention.md)). Mở rộng diện tích cấp 3–4: [p27-retention.md](p27-retention.md#mở-rộng-diện-tích).
 
 | Cấp | Tên | KN cần | Thêm 1 cấp cho |
 | --- | --- | --- | --- |
