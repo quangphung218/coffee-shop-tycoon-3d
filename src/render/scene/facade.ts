@@ -13,6 +13,7 @@ import {
 } from 'three';
 import type { Quality } from '../../save/settings';
 import {
+  ART_GALLERY_SIZE,
   BOOKSHELF_SIZE,
   DOOR_FRAME_DEPTH,
   DOOR_LEAF_THICKNESS,
@@ -129,11 +130,12 @@ export interface FacadePlan {
   fans: Vec2[];
 }
 
-/** Window centres along the side and front walls, skipping spots taken by a painting or a bookshelf. */
+/** Window centres along the side and front walls, skipping spots taken by a painting, a bookshelf or the art gallery. */
 export function windowSpots(layout: ShopLayout): WindowSpot[] {
   const spans = wallSpans(layout);
   const paintings = layout.decor.filter((d) => d.kind === 'painting');
   const shelves = layout.decor.filter((d) => d.kind === 'bookshelf');
+  const galleries = layout.premium.filter((p) => p.kind === 'art_gallery');
   const out: WindowSpot[] = [];
   for (const wall of [1, 2, 3, 4]) {
     const [cx, cz, sx, sz] = spans[wall]!;
@@ -152,7 +154,9 @@ export function windowSpots(layout: ShopLayout): WindowSpot[] {
       );
       // Bookshelves stand against a side wall, as tall as the window.
       const shelved = !alongX && shelves.some((s) => Math.abs(s.pos.x - x) < 0.5 && Math.abs(s.pos.z - z) < (WINDOW_WIDTH + BOOKSHELF_SIZE.length) / 2);
-      if (!covered && !shelved) out.push({ wall, x, z, yaw });
+      // The gallery frames hang on the left wall.
+      const hung = !alongX && galleries.some((g) => Math.abs(g.pos.x - x) < 0.5 && Math.abs(g.pos.z - z) < (WINDOW_WIDTH + ART_GALLERY_SIZE.length) / 2);
+      if (!covered && !shelved && !hung) out.push({ wall, x, z, yaw });
     }
   }
   return out;

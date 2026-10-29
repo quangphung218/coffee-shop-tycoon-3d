@@ -86,6 +86,7 @@ const FILL: Readonly<Record<FootprintKind, string>> = {
   plant: '#8fcf5f',
   bookshelf: '#a0704c',
   sofa: '#d9822b',
+  piano: '#2e3a35',
 };
 const KIND_NAME: Readonly<Record<FootprintKind, string>> = {
   wall: 'tường',
@@ -100,6 +101,7 @@ const KIND_NAME: Readonly<Record<FootprintKind, string>> = {
   plant: 'chậu cây',
   bookshelf: 'kệ sách',
   sofa: 'góc sofa',
+  piano: 'đàn piano',
 };
 
 /** World units to px. */
@@ -285,13 +287,25 @@ function plot(layout: ShopLayout, c: PlotCase): string {
   return out.join('\n');
 }
 
-const P27_FURNITURE: ReadonlySet<string> = new Set(['neon_sign', 'bookshelf', 'record_player', 'sofa_corner', 'cold_brew_tower', 'oven']);
+const P27_FURNITURE: ReadonlySet<string> = new Set([
+  'neon_sign',
+  'bookshelf',
+  'record_player',
+  'sofa_corner',
+  'cold_brew_tower',
+  'oven',
+  // E-05 premium decor, placed on the floor plan since E-06.
+  'chandelier',
+  'marble_tables',
+  'art_gallery',
+  'grand_piano',
+]);
 
 /** Every upgrade at its last level: both table rows, the side room, the patio, the long counter. */
 function maxedState(): GameState {
   const state = createNewGame('Quán Va Chạm', 'normal', SEED);
   state.money = 1e12;
-  // The plots show the P18 floor: the P27 furniture and the P31 tools are left out.
+  // The plots show the P18 floor: the P27 furniture, the P31 tools and the E-05 premium decor are left out.
   for (const def of UPGRADES.filter((u) => !P27_FURNITURE.has(u.id))) {
     while (nextUpgradeCost(state, def.id) !== null) {
       if (!buyUpgrade(state, def.id).ok) throw new Error(`cannot buy ${def.id}`);
