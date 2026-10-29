@@ -896,3 +896,47 @@
     animation: none;
   }
 }
+
+/* Live week goal (src/ui/weekGoal.ts), in the Việc panel and the report's
+   week strip: label | bar | figures per criterion, then the cups line. */
+.week-goal {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-label);
+}
+.week-goal-row {
+  display: contents;
+}
+.week-goal-label,
+.week-goal-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.week-goal-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.week-goal-line {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.week-goal-row.is-done .progress > span {
+  background: var(--text-ok);
+}
+.rpt-week.is-goal {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+@media (max-width: 480px) {
+  .week-goal {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .week-goal-num {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+}

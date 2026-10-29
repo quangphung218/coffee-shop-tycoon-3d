@@ -12,6 +12,7 @@ import { LEVEL_ICON, MENU_ICONS, MISSION_ICON, UPGRADE_ICONS } from '../core/ico
 import { icon, type IconId } from '../core/icons';
 import { debtHints, debtWarning } from '../hud/hud';
 import { MISSION_META } from '../panels/tasks';
+import { weekGoalBlock, weekGoalView, type WeekGoalView } from '../weekGoal';
 import { renderInsights } from './insights';
 import { fillReviews } from './reviews';
 
@@ -58,6 +59,8 @@ export interface DailyReportView {
 export interface SummaryStats {
   deltas: readonly StatDelta[] | null;
   week: WeekToDate | null;
+  /** Live week score (weekGoalView): the strip shows its three bars; absent or null keeps the revenue bar alone. */
+  weekGoal?: WeekGoalView | null;
   /** The shop is counting down to bankruptcy (debtWarning); absent or null otherwise. */
   debt?: ReportDebt | null;
 }
@@ -223,8 +226,16 @@ function debtBlock(d: ReportDebt): HTMLElement {
 
 // ── Week progress ───────────────────────────────────────────────────────────
 
-/** Week revenue against its goal and the week day, one line with a bar. */
-function weekStrip(w: WeekToDate): HTMLElement {
+/** The week day and, with a live goal, its revenue, profit and stars bars; otherwise the revenue bar alone. */
+function weekStrip(w: WeekToDate, goal?: WeekGoalView | null): HTMLElement {
+  if (goal) {
+    return h(
+      'div',
+      { class: 'rpt-week is-goal', attrs: { 'data-block': 'week' } },
+      h('span', { class: 'rpt-week-label' }, icon('i-trophy', { size: 16 }), h('b', { text: `Tuần ${w.index}` }), ` · ngày ${w.days}/${WEEK_LENGTH}`),
+      weekGoalBlock(goal),
+    );
+  }
   const pct = Math.round(w.revenueProgress * 100);
   const fill = h('span', { class: 'rpt-bar-fill' });
   fill.setAttribute('style', `width:${Math.min(100, pct)}%`);
@@ -444,7 +455,7 @@ export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryS
     ...(stats.debt ? [debtBlock(stats.debt)] : []),
     ...(band ? [band] : []),
     figures(r, stats),
-    ...(stats.week ? [weekStrip(stats.week)] : []),
+    ...(stats.week ? [weekStrip(stats.week, stats.weekGoal)] : []),
     h('div', { class: 'rpt-split' }, money(r), h('div', { class: 'rpt-col' }, ...missionsBlock(r), goodsLine(r))),
     suggestions(r, weekEnded),
   ];
@@ -579,7 +590,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function renderBodies(s: GameState): void {
     const r = s.lastReport ?? null;
     const ended = s.week?.result !== undefined;
-    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s), debt: reportDebt(s) }) : [renderBusy(day)]));
+    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s), weekGoal: weekGoalView(s), debt: reportDebt(s) }) : [renderBusy(day)]));
     setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
   }
 
