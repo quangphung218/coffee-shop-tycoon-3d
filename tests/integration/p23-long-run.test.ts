@@ -17,7 +17,12 @@ import { playDay } from './helpers';
  * seed and prints one row per week. Asserts the hard invariants (money never
  * below zero, same seed → same numbers) and the two P23 targets: the spender
  * still has an upgrade to buy at the end of week 3, and the basic strategy
- * cannot take 3 cups in week 2. Read in docs/reports/p23-long-economy.md.
+ * cannot take 3 cups in week 2. E-07 adds the weeks 2–4 score balance
+ * (upgrade cost spread over UPGRADE_AMORTIZE_WEEKS, goals on WEEK_GOAL_MULTS):
+ * the spender scores at least the basic strategy in week 2, takes 3 cups in at
+ * most half its week 3–4 games, 100 points only well past the revenue target,
+ * and the basic strategy keeps a cup every week with cups never rising.
+ * Read in docs/reports/p23-long-economy.md.
  */
 
 const SEEDS = [1, 42, 777];
@@ -44,6 +49,11 @@ const STRATEGIES: Record<string, Strategy> = {
 interface WeekRow {
   week: number;
   revenue: number;
+  /** Week revenue target (the week's goal). */
+  revenueTarget: number;
+  /** Profit the score counts (weekProfit: upgrades spread over UPGRADE_AMORTIZE_WEEKS) and its target. */
+  scoreProfit: number;
+  profitTarget: number;
   /** Sum of the daily profits (revenue less ingredients, wages and marketing); upgrades are not in it. */
   profit: number;
   /** Upgrades bought over the week. */
@@ -63,6 +73,8 @@ interface WeekRow {
   cups: number;
   /** Loyalty tickets ('Tem') held at the end of the week. */
   tickets: number;
+  /** The game had gone bankrupt by the end of the week. */
+  bankrupt: boolean;
 }
 
 function enableUnlocked(state: GameState): void {
@@ -140,6 +152,9 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
     rows.push({
       week: weekIndex(state),
       revenue: summary.revenue,
+      revenueTarget: result.revenueTarget,
+      scoreProfit: result.profit ?? 0,
+      profitTarget: result.profitTarget ?? 0,
       profit: summary.profit,
       spent,
       reward: weekReward(difficulty, result.cups),
@@ -153,6 +168,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
       score: result.score,
       cups: result.cups,
       tickets: state.retention?.tickets ?? 0,
+      bankrupt: state.bankrupt,
     });
     spent = 0;
   }
@@ -205,6 +221,9 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
             String(SEEDS[i]),
             String(row.week),
             k(row.revenue),
+            k(row.revenueTarget),
+            k(row.scoreProfit),
+            k(row.profitTarget),
             k(row.endMoney),
             String(row.level),
             String(row.buyable),
@@ -218,7 +237,7 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
       }
     }
     console.log(`Mean of seeds ${SEEDS.join(', ')}\n${markdownTable(head, meanBody)}`);
-    console.log(`Per seed\n${markdownTable(['difficulty', 'strategy', 'seed', 'week', 'revenue', 'endMoney', 'level', 'buyable', 'left', 'stars', 'score', 'cups', 'tickets'], seedBody)}`);
+    console.log(`Per seed\n${markdownTable(['difficulty', 'strategy', 'seed', 'week', 'revenue', 'goal', 'scoreProfit', 'profitTarget', 'endMoney', 'level', 'buyable', 'left', 'stars', 'score', 'cups', 'tickets'], seedBody)}`);
     for (const perSeed of runs.values()) for (const rows of perSeed) expect(rows.map((r) => r.week)).toEqual([1, 2, 3, 4]);
   });
 
@@ -270,6 +289,50 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
   it('keeps 3 cups out of reach of the basic strategy in week 2', () => {
     for (const d of DIFFICULTIES) {
       runs.get(`${d}/a_basic`)!.forEach((rows, i) => expect(rows[1]!.cups, `${d} seed ${SEEDS[i]}`).toBeLessThan(3));
+    }
+  });
+
+  it('scores the spender at least as high as the basic strategy in week 2 (E-07)', () => {
+    for (const d of DIFFICULTIES) {
+      const basic = runs.get(`${d}/a_basic`)!;
+      runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
+        expect(rows[1]!.score, `${d} seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(basic[i]![1]!.score);
+      });
+    }
+  });
+
+  it('gives the spender 3 cups in at most half its week 3–4 games per difficulty (E-07)', () => {
+    for (const d of DIFFICULTIES) {
+      const games = runs.get(`${d}/c_spend`)!.flatMap((rows) => rows.slice(2, 4));
+      const three = games.filter((r) => r.cups === 3).length;
+      console.log(`${d}: c_spend 3 cups in ${three}/${games.length} week 3–4 games`);
+      expect(three, d).toBeLessThanOrEqual(games.length / 2);
+    }
+  });
+
+  it('scores 100 only when the revenue reaches 120% of its target (E-07)', () => {
+    for (const [key, perSeed] of runs) {
+      perSeed.forEach((rows, i) => {
+        for (const row of rows.filter((r) => r.score === 100)) {
+          expect(row.revenue, `${key} seed ${SEEDS[i]} week ${row.week}`).toBeGreaterThanOrEqual(row.revenueTarget * 1.2);
+        }
+      });
+    }
+  });
+
+  it('keeps the basic strategy at 1 cup or more in weeks 2–4, never gaining cups (E-07)', () => {
+    for (const d of DIFFICULTIES) {
+      runs.get(`${d}/a_basic`)!.forEach((rows, i) => {
+        const cups = rows.slice(1, 4).map((r) => r.cups);
+        for (const c of cups) expect(c, `${d} seed ${SEEDS[i]} cups ${cups.join(',')}`).toBeGreaterThanOrEqual(1);
+        for (let w = 1; w < cups.length; w++) expect(cups[w], `${d} seed ${SEEDS[i]} cups ${cups.join(',')}`).toBeLessThanOrEqual(cups[w - 1]!);
+      });
+    }
+  });
+
+  it('never goes bankrupt (E-07)', () => {
+    for (const [key, perSeed] of runs) {
+      perSeed.forEach((rows, i) => expect(rows.some((r) => r.bankrupt), `${key} seed ${SEEDS[i]}`).toBe(false));
     }
   });
 });

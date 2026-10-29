@@ -74,15 +74,17 @@ Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` v
 
 ## Mục tiêu tuần
 
-Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu cộng thêm 60% mức tuần 1 mỗi tuần (`WEEK_GOAL_GROWTH` 0,6), tối đa gấp 3 tuần 1 (`WEEK_GOAL_MAX_MULT`, từ tuần 5), làm tròn tới 100.000. Mục tiêu sao giữ nguyên.
+Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu bằng mức tuần 1 nhân hệ số trong `WEEK_GOAL_MULTS` (tuần 1, 2, 3, 4), làm tròn tới 100.000; từ tuần 5 giữ hệ số tuần 4. Mục tiêu sao giữ nguyên. Từ E-07 bảng hệ số thay công thức cộng 60% mỗi tuần (`WEEK_GOAL_GROWTH`, đã bỏ).
 
-| Độ khó | Sao | Tuần 1 | Tuần 2 | Tuần 3 | Tuần 4 | Từ tuần 5 (trần ×3) |
+| Độ khó | Sao | Hệ số tuần 1 / 2 / 3 / 4 | Tuần 1 | Tuần 2 | Tuần 3 | Từ tuần 4 |
 | --- | --- | --- | --- | --- | --- | --- |
-| Dễ | 3,8 | 28.000.000 | 44.800.000 | 61.600.000 | 78.400.000 | 84.000.000 |
-| Thường | 4,0 | 26.500.000 | 42.400.000 | 58.300.000 | 74.200.000 | 79.500.000 |
-| Khó | 4,2 | 23.200.000 | 37.100.000 | 51.000.000 | 65.000.000 | 69.600.000 |
+| Dễ | 3,8 | 1 / 1,9 / 3,6 / 3,6 | 35.000.000 | 66.500.000 | 126.000.000 | 126.000.000 |
+| Thường | 4,0 | 1 / 1,9 / 3,5 / 3,5 | 32.000.000 | 60.800.000 | 112.000.000 | 112.000.000 |
+| Khó | 4,2 | 1 / 1,9 / 2,9 / 3,55 | 33.000.000 | 62.700.000 | 95.700.000 | khoảng 117.200.000 |
 
-Các mức trên được chọn bằng các chiến lược sau, chơi có lịch sự kiện:
+Hệ số tuần 3 và 4 chọn để quán không mua gì (`a_basic`, doanh thu khoảng 1,1 lần mục tiêu tuần 1 mỗi tuần) còn giữ ít nhất 1 cúp tới hết tuần 4 và số cúp không tăng, còn quán chi tiền (`c_spend`, `e_marketing`) phải có tuần mạnh mới đạt 3 cúp ở tuần 3–4. Các hệ số này khớp với kinh tế hiện tại; sau khi đổi kinh tế phải đo lại bằng `p23-long-run.test.ts`. Số đo trước và sau: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-07).
+
+Mục tiêu tuần 1 được chọn bằng các chiến lược sau (số đo dưới đây là của lần chọn mục tiêu tuần 1 đó, chơi có lịch sự kiện):
 
 | Chiến lược | Mỗi sáng | Test | Seed |
 | --- | --- | --- | --- |
@@ -104,7 +106,8 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
 
 - Doanh thu = tổng `revenue` của 7 ngày tuần (`history` và hôm nay).
 - Sao = `state.rating` lúc đóng ngày 7, làm tròn 1 chữ số thập phân như số hiển thị; đạt khi sao ≥ mục tiêu sao.
-- Điểm = round(60 × min(1, doanh thu / mục tiêu) + 40 × min(1, sao / mục tiêu sao)), từ 0 tới 100.
+- Lợi nhuận tuần = `weekProfit`: tổng lãi ngày (doanh thu trừ nguyên liệu, lương, marketing) trừ `weekUpgradeCharge`, phần tiền nâng cấp và dụng cụ mà tuần này phải gánh. Mục tiêu lợi nhuận = `weekProfitTarget` = mục tiêu doanh thu × `WEEK_PROFIT_SHARE` (Dễ 0,59, Thường 0,5, Khó 0,35), làm tròn 100.000. Lỗ không được điểm lợi nhuận.
+- Điểm = round(25 × min(1, doanh thu / mục tiêu) + 55 × min(1, lợi nhuận / mục tiêu lợi nhuận) + 20 × min(1, sao / mục tiêu sao)), từ 0 tới 100 (`SCORE_REVENUE`, `SCORE_PROFIT`, `SCORE_STARS`).
 - Cúp: điểm ≥ 90 được 3, ≥ 70 được 2, ≥ 40 được 1, còn lại 0.
 - Thưởng tiền (`WEEK_REWARDS`), cộng ngay tối ngày 7:
 
@@ -115,7 +118,19 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
   | Khó | 2.000.000 | 3.000.000 |
 - `days`: mỗi ngày tuần một dòng gồm ngày, doanh thu, khách đã phục vụ, thời tiết và sự kiện theo lịch.
 
-Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Nút **Xem tổng kết tuần** của báo cáo mở màn Tổng kết tuần; nút **Sang tuần N+1** ở đó gửi `next_day`.
+### Chia nhỏ tiền nâng cấp
+
+Cách `weekUpgradeCharge` tính tiền nâng cấp trong lợi nhuận tuần:
+
+- Tuần 1 trừ toàn bộ tiền nâng cấp mua trong tuần, như trước.
+- Từ tuần 2, mỗi khoản nâng cấp chia đều `UPGRADE_AMORTIZE_WEEKS` = 2 tuần: tuần mua và tuần kế tiếp, mỗi tuần trừ một nửa. Đồ mua ở tuần 1 đã trừ hết trong tuần 1 nên không chuyển sang tuần 2.
+- Chi quá sức vẫn làm tụt điểm lợi nhuận ở tuần mua và tuần sau.
+- Tuần đã chấm theo luật cũ (dòng `archive` không có `upgradeCharge`) không tính lại, và nâng cấp mua trong tuần đó không chuyển sang tuần sau. Không đổi `SAVE_VERSION`.
+- Màn Tổng kết tuần có khối **Lợi nhuận tuần** ghi lợi nhuận, mục tiêu và luật trên (`weekProfitRule` trong `src/ui/screens/weekEnd.ts`).
+
+Chọn 2 tuần vì chia dài hơn đẩy quán chi tiền lên điểm tối đa ở tuần 3–4 ở mọi mục tiêu mà quán không mua gì còn lấy được 1 cúp. Số đo: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-07).
+
+Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`, và `upgradeCharge` từ tuần 2) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Nút **Xem tổng kết tuần** của báo cáo mở màn Tổng kết tuần; nút **Sang tuần N+1** ở đó gửi `next_day`.
 
 ### Sang tuần mới
 

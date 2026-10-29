@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { WEEK_GOALS, WEEK_LENGTH, weekGoal, weekProfitTarget } from '../../src/sim/data/week';
+import { UPGRADE_AMORTIZE_WEEKS, WEEK_GOALS, WEEK_GOAL_MULTS, WEEK_LENGTH, weekGoal, weekGoalMaxMult, weekProfitTarget } from '../../src/sim/data/week';
 import { profit } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { weekDay } from '../../src/sim/progression';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState, WeekResult } from '../../src/sim/types';
-import { rollWeekPlan, scoreWeek, weekCups, weekProfit, weekScore } from '../../src/sim/week';
+import { rollWeekPlan, scoreWeek, weekCups, weekProfit, weekScore, weekUpgradeCharge } from '../../src/sim/week';
 import { playDay } from '../integration/helpers';
 
 const SEED = 4242;
@@ -31,6 +31,36 @@ function scoredWith(revenue: number, stars: number, cost = 0): WeekResult {
   state.today.ingredientCost = cost;
   state.rating = stars;
   return scoreWeek(state)!;
+}
+
+/**
+ * A normal game on the last day of week `index`, every earlier day in its
+ * history: `buys` maps a game day to the upgrades bought on it, `daily` sets
+ * the takings of every day.
+ */
+function atWeekEnd(index: number, buys: Record<number, number>, daily: { revenue?: number; ingredientCost?: number } = {}): GameState {
+  const state = createNewGame('Khấu hao', 'normal', SEED);
+  const startedDay = (index - 1) * WEEK_LENGTH + 1;
+  const lastDay = startedDay + WEEK_LENGTH - 1;
+  // Earlier weeks scored with the spread: their archive rows carry upgradeCharge.
+  const archive = Array.from({ length: index - 1 }, (_, i) => ({
+    index: i + 1,
+    startedDay: i * WEEK_LENGTH + 1,
+    revenue: 0,
+    profit: 0,
+    customersServed: 0,
+    stars: 4,
+    score: 0,
+    cups: 0,
+    upgradeCharge: 0,
+  }));
+  state.week = { ...state.week!, index, startedDay, plan: rollWeekPlan(SEED, index), goal: weekGoal('normal', index), archive };
+  const day = (d: number) => Object.assign(createDayStats(d, 4), daily, { upgradeCost: buys[d] ?? 0 });
+  state.history = Array.from({ length: lastDay - 1 }, (_, i) => day(i + 1));
+  state.day = lastDay;
+  state.today = day(lastDay);
+  state.rating = 4;
+  return state;
 }
 
 describe('week goal', () => {
@@ -123,12 +153,17 @@ describe('end of the week', { timeout: 30_000 }, () => {
 });
 
 describe('weekGoal', () => {
-  it('is WEEK_GOALS in week 1, then grows 60% a week up to 3 times, stars unchanged', () => {
+  it('is WEEK_GOALS in week 1, then follows WEEK_GOAL_MULTS up to its last entry, stars unchanged', () => {
     for (const d of ['easy', 'normal', 'hard'] as const) {
+      const at = (mult: number) => Math.round((WEEK_GOALS[d].revenue * mult) / 100_000) * 100_000;
       expect(weekGoal(d, 1)).toEqual(WEEK_GOALS[d]);
-      expect(weekGoal(d, 2).revenue).toBe(Math.round((WEEK_GOALS[d].revenue * 1.6) / 100_000) * 100_000);
-      expect(weekGoal(d, 5).revenue).toBe(WEEK_GOALS[d].revenue * 3);
-      expect(weekGoal(d, 30).revenue).toBe(WEEK_GOALS[d].revenue * 3);
+      expect(WEEK_GOAL_MULTS[d]).toHaveLength(4);
+      WEEK_GOAL_MULTS[d].forEach((mult, i) => expect(weekGoal(d, i + 1).revenue, `${d} week ${i + 1}`).toBe(at(mult)));
+      expect(weekGoalMaxMult(d)).toBe(WEEK_GOAL_MULTS[d][3]);
+      expect(weekGoal(d, 5).revenue).toBe(at(weekGoalMaxMult(d)));
+      expect(weekGoal(d, 30).revenue).toBe(at(weekGoalMaxMult(d)));
+      // Week 3 asks for more than the old +60% a week did (2.2×), which the spenders maxed out.
+      expect(weekGoal(d, 3).revenue).toBeGreaterThan(at(2.2));
       for (let i = 2; i <= 8; i++) {
         expect(weekGoal(d, i).revenue).toBeGreaterThanOrEqual(weekGoal(d, i - 1).revenue);
         expect(weekGoal(d, i).stars).toBe(WEEK_GOALS[d].stars);
@@ -165,6 +200,35 @@ describe('week score formula', () => {
     Object.assign(state.today, { revenue: 10_000_000, ingredientCost: 2_000_000, wages: 1_000_000, marketingCost: 500_000, upgradeCost: 1_500_000 });
     expect(weekProfit([state.today])).toBe(profit(state.today) - 1_500_000);
     expect(scoreWeek(state)!.profit).toBe(5_000_000);
+  });
+
+  it('charges week 1 its upgrades in full, so the opening week scores as before', () => {
+    const state = atWeekEnd(1, { 3: 2_000_000, 7: 1_000_000 });
+    expect(weekUpgradeCharge(state)).toBe(3_000_000);
+    expect(scoreWeek(state)!.profit).toBe(weekProfit([...state.history, state.today]));
+  });
+
+  it('spreads an upgrade bought from week 2 on over UPGRADE_AMORTIZE_WEEKS weeks', () => {
+    expect(UPGRADE_AMORTIZE_WEEKS).toBe(2);
+    const buys = { 3: 2_000_000, 10: 4_000_000, 17: 6_000_000, 24: 1_000_000 };
+    // Week 1's purchase was charged in week 1; week 2 pays half of what it bought.
+    expect(weekUpgradeCharge(atWeekEnd(2, buys))).toBe(2_000_000);
+    // Week 3: the other half of week 2's, half of its own.
+    expect(weekUpgradeCharge(atWeekEnd(3, buys))).toBe(2_000_000 + 3_000_000);
+    // Week 4: week 2's is paid off.
+    expect(weekUpgradeCharge(atWeekEnd(4, buys))).toBe(3_000_000 + 500_000);
+    const state = atWeekEnd(3, buys);
+    const days = [...state.history, state.today].filter((d) => d.day >= 15);
+    expect(scoreWeek(state)!.profit).toBe(days.reduce((s, d) => s + profit(d), 0) - 5_000_000);
+  });
+
+  it('still scores spending beyond what the shop earns low, in the week bought and the next', () => {
+    const daily = { revenue: 6_000_000, ingredientCost: 1_000_000 };
+    const quiet = atWeekEnd(2, {}, daily);
+    const reckless = atWeekEnd(2, { 9: 100_000_000 }, daily);
+    expect(scoreWeek(reckless)!.profit).toBeLessThan(0);
+    expect(scoreWeek(reckless)!.score).toBeLessThan(scoreWeek(quiet)!.score);
+    expect(scoreWeek(atWeekEnd(3, { 9: 100_000_000 }, daily))!.score).toBeLessThan(scoreWeek(atWeekEnd(3, {}, daily))!.score);
   });
 
   it('does not reach the cap on revenue and stars alone, so spending less scores more', () => {
