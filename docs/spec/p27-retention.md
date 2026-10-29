@@ -222,9 +222,9 @@ Vị trí trong cảnh (x/z theo đơn vị thế giới; tường trước z = 
 
 | Id | Vị trí | Hình dựng |
 | --- | --- | --- |
-| `chandelier` | Cấp 1: (0, 2,75), trên lối đi chính ở hàng bàn giữa. Cấp 2: (0, 4,75), hàng bàn trước. Bỏ hàng z = 0,5 vì có quạt trần. Không chiếm sàn. | Vòng vàng đôi với bốn nan trên dây treo, 8 viên pha lê quanh vòng và 1 viên giữa; viên thấp nhất ngay trên đỉnh tường. |
+| `chandelier` | Cấp 1: (0, 2,75), trên lối đi chính ở hàng bàn giữa. Cấp 2: (0, 4,75), hàng bàn trước. Bỏ hàng bàn đầu (z = 0,75) vì quạt trần treo ở z = 0,5. Không chiếm sàn. | Vòng vàng đôi với bốn nan trên dây treo, 8 viên pha lê quanh vòng và 1 viên giữa; viên thấp nhất ngay trên đỉnh tường. |
 | `marble_tables` | Mọi bàn. | Một tấm đá cẩm thạch mỏng kem có vân đặt trên mặt mỗi bàn; cấp 2 thêm viền vàng. |
-| `art_gallery` | Trên tường trái, x = -4,47. Cấp 1: z = 3,75, giữa tranh tường bên và chậu cây phía trước. Cấp 2: z = 0,05, giữa giá sách và tranh tường bên; che ô cửa sổ cuối của tường trái. | Ba khung tranh viền vàng (một lớn giữa hai nhỏ) dưới thanh treo tranh vàng, dài 1,8. |
+| `art_gallery` | Trên tường trái, x = -4,47. Cấp 1: z = 3,75, giữa tranh tường bên và chậu cây phía trước; che ô cửa sổ gần phía trước nhất của tường trái (z = 3,75). Cấp 2: z = 0,05, giữa giá sách và tranh tường bên; nằm trước ô cửa sổ giữa (z = 0,75), ô này đã bị tranh tường (z = 1,75) che khi mua đủ tranh. | Ba khung tranh viền vàng (một lớn giữa hai nhỏ) dưới thanh treo tranh vàng, dài 1,8. |
 | `grand_piano` | (1,6, 5,705), dựa tường trước bên phải cửa. | Đàn piano đứng, rộng 1,3 × sâu 0,55, cao 1,12 (dưới bảng neon trên tường trước). Là món duy nhất có chỗ trên sàn (footprint loại `piano`). |
 
 - Số draw call của cảnh đầy đủ tăng từ 51 lên 54 (+3) khi có cả bốn món.
