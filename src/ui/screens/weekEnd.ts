@@ -1,7 +1,7 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { LEVELS, MAX_SHOP_LEVEL, unlocksBetween, xpToReach } from '../../sim/data/levels';
 import { getUpgrade } from '../../sim/data/upgrades';
-import { weekGoal } from '../../sim/data/week';
+import { UPGRADE_AMORTIZE_WEEKS, weekGoal } from '../../sim/data/week';
 import { weekIndex } from '../../sim/progression';
 import { bestDay, weekCompare, type StatId, type WeekCompare } from '../../sim/stats';
 import type { GameState, UpgradeId, WeekResult } from '../../sim/types';
@@ -87,6 +87,32 @@ function revenueBlock(r: WeekResult): HTMLElement {
       h('p', { class: 'wk-goal-num' }, h('b', { text: formatMoney(r.revenue) }), h('span', { class: 'rpt-muted', text: ` / mục tiêu ${formatMoney(r.revenueTarget)}` })),
       h('span', { class: 'rpt-bar-track wk-track', attrs: { role: 'progressbar', 'aria-label': 'Doanh thu so mục tiêu', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.min(100, pct)) } }, fill),
       h('p', { class: 'wk-goal-foot' }, goalBadge(r.revenue >= r.revenueTarget), h('span', { class: 'rpt-muted', text: `${pct}% mục tiêu` })),
+    ),
+  );
+}
+
+/**
+ * How the week profit of the score is counted (weekUpgradeCharge): week 1
+ * pays all its upgrades, later weeks spread each one over UPGRADE_AMORTIZE_WEEKS.
+ */
+export function weekProfitRule(index: number): string {
+  return index <= 1
+    ? 'Lãi các ngày trừ toàn bộ tiền nâng cấp mua trong tuần.'
+    : `Lãi các ngày trừ tiền nâng cấp chia đều ${UPGRADE_AMORTIZE_WEEKS} tuần kể từ tuần mua; đồ mua ở tuần 1 đã trừ hết trong tuần 1.`;
+}
+
+/** Week profit the score counts against its target, with the rule; null for weeks scored before profit counted. */
+function profitBlock(r: WeekResult, index: number): HTMLElement | null {
+  if (r.profit === undefined || r.profitTarget === undefined) return null;
+  return section(
+    'i-trend-up',
+    'Lợi nhuận tuần',
+    h(
+      'div',
+      { class: 'wk-goal', attrs: { 'data-block': 'profit' } },
+      h('p', { class: 'wk-goal-num' }, h('b', { text: formatMoney(r.profit) }), h('span', { class: 'rpt-muted', text: ` / mục tiêu ${formatMoney(r.profitTarget)}` })),
+      h('p', { class: 'wk-goal-foot' }, goalBadge(r.profit >= r.profitTarget)),
+      h('p', { class: 'rpt-muted', attrs: { 'data-block': 'profit-rule' }, text: weekProfitRule(index) }),
     ),
   );
 }
@@ -394,7 +420,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
           body,
           // Only what closeDay actually paid; v2 weeks have no reward and show none.
           scoreBlock(result, result.reward ?? 0),
-          h('div', { class: 'rpt-grid' }, revenueBlock(result), starsBlock(result)),
+          h('div', { class: 'rpt-grid' }, revenueBlock(result), profitBlock(result, index), starsBlock(result)),
           compare && compare.current.index === index ? compareBlock(compare) : null,
           daysBlock(result, bestDay(state)?.weekDay ?? null),
           nextWeekBlock(state, index),

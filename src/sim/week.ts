@@ -1,5 +1,5 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, weekProfitTarget } from './data/week';
+import { DAY_EVENTS, UPGRADE_AMORTIZE_WEEKS, WEEK_GOALS, WEEK_LENGTH, weekProfitTarget } from './data/week';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
@@ -154,11 +154,54 @@ export function weekScore(w: WeekScoreInput): number {
 
 /**
  * Profit of a run of days for the week score: the daily profit() (revenue
- * less ingredients, wages and marketing) less the upgrades and tools bought,
- * so money spent on the shop counts against the week it was spent in.
+ * less ingredients, wages and marketing) less `upgradeCharge`, the share of
+ * the upgrades and tools bought that this week pays (weekUpgradeCharge).
+ * Without it every upgrade bought in these days counts in full.
  */
-export function weekProfit(days: readonly DayStats[]): number {
-  return days.reduce((s, d) => s + profit(d) - d.upgradeCost, 0);
+export function weekProfit(days: readonly DayStats[], upgradeCharge = days.reduce((s, d) => s + d.upgradeCost, 0)): number {
+  return days.reduce((s, d) => s + profit(d), 0) - upgradeCharge;
+}
+
+/**
+ * Upgrade spending the score of the current week counts against its profit.
+ *
+ * Week 1 pays all it bought, as before, so the opening week scores the same
+ * (its goals are measured with tests/integration/p22-strategies.test.ts).
+ * From week 2 an upgrade is paid in UPGRADE_AMORTIZE_WEEKS equal parts, the
+ * week it is bought and the weeks after: a shop that reinvests its week-2
+ * takings no longer scores below one that buys nothing (P23 measured c_spend
+ * at 57–62 points against a_basic's 67–71 with the full charge), while
+ * spending past what the shop earns still sinks the profit share for two weeks,
+ * so reckless buying keeps scoring low. Two weeks rather than more because a
+ * longer spread let the spenders max out weeks 3–4 at any goal a non-spender
+ * can still take a cup from (tests/integration/p23-long-run.test.ts).
+ * Earlier weeks are read from `state.history`, which keeps more days than the
+ * spread needs; a week whose archive row has no upgradeCharge was scored
+ * before the spread and paid its upgrades in full, so it carries nothing.
+ * Rounded to whole đồng.
+ */
+export function weekUpgradeCharge(state: GameState): number {
+  const week = state.week;
+  if (!week) return 0;
+  const index = weekIndex(state);
+  const lastDay = week.startedDay + week.length - 1;
+  let charge = 0;
+  for (const d of [...state.history, state.today]) {
+    if (d.upgradeCost <= 0 || d.day > lastDay) continue;
+    // Weeks follow each other with no gap, so a day before this week falls in week index - ceil(gap / length).
+    const bought = d.day >= week.startedDay ? index : index - Math.ceil((week.startedDay - d.day) / week.length);
+    if (bought <= 1) {
+      if (index <= 1) charge += d.upgradeCost;
+    } else if (index - bought < UPGRADE_AMORTIZE_WEEKS && (bought === index || spreadInWeek(state, bought))) {
+      charge += d.upgradeCost / UPGRADE_AMORTIZE_WEEKS;
+    }
+  }
+  return Math.round(charge);
+}
+
+/** True when week `index` was scored with its upgrades spread (its archive row has upgradeCharge). */
+function spreadInWeek(state: GameState, index: number): boolean {
+  return state.week?.archive?.some((w) => w.index === index && w.upgradeCharge !== undefined) ?? false;
 }
 
 /** Cups 0..3 for a week score. */
@@ -203,7 +246,7 @@ export function scoreWeek(state: GameState): WeekResult | null {
   const revenue = days.reduce((s, d) => s + d.revenue, 0);
   // Rounded to one decimal like the shown rating, so "4,0 / 4,0" always reaches the goal.
   const stars = Math.round(state.rating * 10) / 10;
-  const weekProfitSum = weekProfit(stats);
+  const weekProfitSum = weekProfit(stats, weekUpgradeCharge(state));
   const score = weekScore({
     revenue,
     revenueTarget: goal.revenue,
@@ -243,6 +286,8 @@ export function summarizeWeek(state: GameState, result: WeekResult): WeekSummary
     stars: result.stars,
     score: result.score,
     cups: result.cups,
+    // Week 1 always pays its upgrades in full, so only later weeks record the charge.
+    ...(weekIndex(state) > 1 ? { upgradeCharge: weekUpgradeCharge(state) } : {}),
   };
 }
 
