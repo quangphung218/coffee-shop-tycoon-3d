@@ -79,7 +79,7 @@ Hoàn vốn dụng cụ trong tuần = (lãi c + tiền mua c − lãi b) / ti�
 | E5 | Máy rửa ly mở ngày 7 (ngày cuối tuần) nên mua là lỗ trọn giá; máy làm đá mở ngày 6 chỉ còn 2 ngày dùng | c/d/e: dụng cụ mua vào ngày 2, 3, 5, 6, 7 ở 50/54 ván (4 ván Khó e mua máy xay hạt muộn 1–2 ngày); máy rửa ly 800k × hệ số giá (720k–920k) mua sáng ngày 7, tuần kết thúc tối đó | 2 | 1 |
 | E6 | Giá Cao luôn thắng giá Chuẩn, đánh đổi sao không đủ để thành quyết định | d − c: lãi +2.143k đến +3.075k, 18/18 ván thắng; sao −0,13 đến −0,22, cúp vẫn 3 ở 18/18 | 3 | 1 |
 | E7 | Marketing rẻ nhất gần như luôn lỗ: khách thêm bỏ về vì quán đã đầy | e − c: lãi −217k đến −483k, thắng 3/18 ván; khách bỏ về +3,2 đến +5,8 điểm %; ly bán chỉ +5 đến +36 | 2 | 2 |
-| E8 | Không có áp lực tiền: tiền không bao giờ xuống sát 0, cuối tuần dư gấp 6–11 lần vốn đầu | Tiền thấp nhất a/b = vốn đầu − hàng nhập ngày 1 (2.613k / 1.690k / 947k); tiền cuối tuần 10.742k–25.730k; thấp nhất toàn bộ 184k (Khó e, seed 42) | 2 | 2 |
+| E8 | Không có áp lực tiền: tiền không bao giờ xuống sát 0, cuối tuần dư gấp 6–11 lần vốn đầu (đã sửa ở E-04) | Tiền thấp nhất a/b = vốn đầu − hàng nhập ngày 1 (2.613k / 1.690k / 947k); tiền cuối tuần 10.742k–25.730k; thấp nhất toàn bộ 184k (Khó e, seed 42) | 2 | 2 |
 | E9 | Điểm tuần chỉ tính doanh thu và sao, không tính lãi: chi tiền mua dụng cụ hay marketing không bao giờ bị phạt điểm | c lãi thấp hơn b 1.917k–3.719k nhưng điểm c ≥ b ở cả 3 độ khó (100,0 / 100,0 / 99,5 so với 100,0 / 99,5 / 97,3) | 2 | 2 |
 | E10 | Không có ngày nhàm theo định nghĩa (không mở khoá, không sự kiện) | Ngày nhàm = 0 ở 90/90 ván: lịch mở khoá có mục mới mỗi ngày từ ngày 2, ngày 1 mở món khởi đầu | 1 | 1 |
 
@@ -173,6 +173,36 @@ Còn lại:
 - Giá Cao vẫn thắng khi ngày bị chặn bởi tồn kho hoặc tốc độ phục vụ.
 - Khó: điểm trung bình d (73,5) vẫn nhỉnh hơn c (73,0).
 
+### Đã sửa ở E-04
+
+Sửa E8: thêm tiền thuê mặt bằng mỗi ngày để tiền có áp lực.
+- Tiền thuê ở `src/sim/data/rent.ts`: Dễ 250k + 20k mỗi cấp quán, Thường 400k + 30k, Khó 550k + 40k (cấp quán trên 1 mới cộng thêm).
+- Trừ cuối ngày cùng lương. Hiện thành một dòng chi trong báo cáo cuối ngày và bản xem trước trong báo cáo ngày hôm sau (không phải HUD).
+- Save v4 → v5, không tính lại các ngày đã chơi.
+- `WEEK_PROFIT_SHARE` hạ để mục tiêu lãi khớp lãi mới: Dễ 0,65 → 0,59, Thường 0,6 → 0,5, Khó 0,45 → 0,35.
+- Chiến lược f ở `tests/integration/p22-strategies.test.ts`, thêm assert áp lực tiền.
+
+Chạy lại `p22-strategies`, 6 seed mỗi độ khó. Trước = E-03 không thuê mặt bằng; khoảng là min–max của chiến lược a–e theo trung bình seed.
+
+| Chỉ số | Độ khó | Trước | Sau |
+| --- | --- | --- | --- |
+| Tiền thấp nhất | Dễ | 1.930k–2.613k | 1.680k–2.613k |
+| | Thường | 1.061k–1.690k | 661k–1.690k |
+| | Khó | 302k–947k | 180k–818k |
+| Tiền cuối tuần | Dễ | 21.188k–26.427k | 19.351k–24.577k |
+| | Thường | 18.925k–22.432k | 16.005k–19.512k |
+| | Khó | 13.444k–16.999k | 8.460k–12.863k |
+| Ván phá sản a–e | Dễ / Thường / Khó | 0 / 0 / 0 | 0 / 0 / 0 |
+| Ván phá sản f | Dễ / Thường / Khó | | 0/6 / 6/6 / 6/6 |
+| Ván đủ 3 cúp | Dễ / Thường / Khó | 16/30 / 7 / 1 | 16/30 / 6 / 0 |
+
+Khó, tiền thấp nhất từng ván sau khi sửa: a 712k, b 463k, c 279k, d 219k, e 55k. Ngưỡng 30% vốn đầu là 360k. Ở Khó, f phá sản cả 6/6 ván, đều vào ngày 4.
+
+Lưu ý:
+- Khó khó hơn thật: điểm trung bình 64–75 (trước 73–81).
+- f không bao giờ phá sản ở Dễ.
+- Bản xem trước tiền thuê nằm trong báo cáo ngày, không có trên HUD.
+
 ### Không sửa
 
 | Id | Lý do |
@@ -180,5 +210,4 @@ Còn lại:
 | E3 | Thuê người luôn lãi, không phải luôn lỗ. |
 | E4 | Sau khi sửa E5, tủ bánh và máy xay sinh tố còn lỗ trong tuần nhưng có ván lãi khi bật món. |
 | E7 | Marketing lãi 3/18 ván, không phải mọi ván. |
-| E8 | Tiền không âm ở 90/90 ván; thiếu áp lực tiền không phải lỗi rõ. |
 | E10 | Không có ngày nhàm. |
