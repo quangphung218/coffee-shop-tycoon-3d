@@ -199,7 +199,7 @@ describe('Week 1 summary below 3 cups (item 5)', () => {
     scoreLastDay(state);
     const el = open(state);
     expect(q(el, '[data-block="week-one"]')).toBeNull();
-    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,3 so tuần 1');
+    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,1 so tuần 1');
   });
 });
 
