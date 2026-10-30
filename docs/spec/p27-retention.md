@@ -79,6 +79,11 @@ Từ E-13 Tem nằm ở đồ trang trí rẻ, mở sớm (cấp 1 của Cây xa
 
 Số dư Tem hiện trên HUD cạnh tiền. Gỡ nội thất không hoàn Tem.
 
+Đầu bảng Nâng cấp có hai dòng tóm tắt (`src/ui/panels/upgrades.ts`):
+
+- `Tem: X/Y → tên nâng cấp`: X là số dư, Y là Tem của cấp kế tiếp rẻ nhất về Tem trong các nâng cấp đã mở và không bị chặn (`nextTicketUpgrade`; bằng Tem thì lấy cấp rẻ tiền hơn). Khi không còn cấp nào cần Tem, dòng chỉ ghi `Tem: X`.
+- `Giá bán +X% nhờ nâng cấp`: tổng `priceBonus` của mọi cấp đã mua (`ownedPriceBonus`).
+
 ## Thành tựu
 
 Nguồn: `ACHIEVEMENTS` trong `src/sim/data/retention.ts`. Mỗi thành tựu có 3 mốc, thưởng 2 / 4 / 8 Tem (`TIER_TICKETS`), chấm lúc cuối ngày. Thành tựu không cho XP.
