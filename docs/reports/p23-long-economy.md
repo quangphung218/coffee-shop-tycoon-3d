@@ -1,6 +1,6 @@
 # P23: kinh tế dài hạn và cấp quán 7–10
 
-Mô phỏng 56 ngày (8 tuần) ở 3 độ khó × 3 chiến lược × 3 seed. Báo cáo này ghi số đo và lý do chọn mục tiêu tuần, thưởng cúp và cấp 7–10. Bảng 4 tuần cũ (trước E-05) đã xóa vì lỗi thời; số hiện tại ở mục "Đã sửa ở E-11".
+Mô phỏng 56 ngày (8 tuần) ở 3 độ khó × 3 chiến lược × 3 seed. Báo cáo này ghi số đo và lý do chọn mục tiêu tuần, thưởng cúp và cấp 7–10. Bảng 4 tuần cũ (trước E-05) đã xóa vì lỗi thời; số hiện tại ở mục "Đã sửa ở E-12".
 
 ## Chạy lại
 
@@ -31,8 +31,8 @@ Seed 1, 42, 777.
 
 | Số | Giá trị | Lý do |
 | --- | --- | --- |
-| `WEEK_GOAL_GROWTH` | 0,5/tuần | Với 20%/tuần cũ, a vẫn 3 cúp ở tuần 2 (điểm 95–98). Muốn a dưới 90 điểm ở tuần 2, mục tiêu Dễ phải trên 37 triệu, Khó trên 32 triệu, tức khoảng ×1,4–1,5. Chọn ×1,5: a được 83–87 điểm (2 cúp), cao nhất 87 ở Khó seed 777. (Bản cũ; đường mục tiêu nay ở mục E-11.) |
-| `WEEK_GOAL_MAX_MULT` | 3 | Bản cũ, đã bỏ: từ tuần 5 mục tiêu từng được chặn ở ×3. Nay không có trần (xem E-11). |
+| `WEEK_GOAL_GROWTH` | 0,5/tuần | Với 20%/tuần cũ, a vẫn 3 cúp ở tuần 2 (điểm 95–98). Muốn a dưới 90 điểm ở tuần 2, mục tiêu Dễ phải trên 37 triệu, Khó trên 32 triệu, tức khoảng ×1,4–1,5. Chọn ×1,5: a được 83–87 điểm (2 cúp), cao nhất 87 ở Khó seed 777. (Bản cũ; đường mục tiêu nay ở mục E-12.) |
+| `WEEK_GOAL_MAX_MULT` | 3 | Bản cũ, đã bỏ: từ tuần 5 mục tiêu từng được chặn ở ×3. Nay không có trần (xem E-12). |
 | `WEEK_REWARDS` | Dễ 1/1,5 · Thường 1,5/2,25 · Khó 2/3 triệu cho 2/3 cúp | Khoảng 5–15% lãi tuần của a: đủ thấy, không đổi nhịp mua sắm. Khó trả nhiều hơn vì giá cao hơn và khó đạt cúp hơn. 3 cúp trả gấp rưỡi 2 cúp. |
 | Ngưỡng XP cấp 7–10 | 27.000 · 37.000 · 49.000 · 63.000 | Bước tăng 8k, 10k, 12k, 14k nối tiếp bước của cấp 2–6 (1,1k … 7k). c đạt khoảng 7.800 XP/tuần ở Dễ, 6.000 ở Thường, 4.500 ở Khó: Dễ lên cấp 7 trong tuần 4, Thường khoảng tuần 5, cấp 10 rơi vào khoảng tuần 8–11. |
 | `maxLevelBonus` (bản trước E-05; nay thay bằng 21 cấp thêm ở cấp quán 4–10, xem [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05)) | 7: máy cao cấp, máy xay hạt · 8: bàn ghế, tủ bánh · 9: đèn, máy sinh tố · 10: máy cao cấp, máy rửa ly | Lý do của bản trước E-05, nay không còn đúng với cây, tranh và mở rộng (đã có cấp thêm). Chỉ chọn nâng cấp mà cấp thêm không cần model mới hay chỗ đặt mới: máy và dụng cụ chỉ đổi hiệu ứng, model máy đã chặn ở bậc cao nhất; bàn thứ 7 lấy chỗ trống cuối cùng trong phòng; đèn thứ 3 treo trên bàn trong cùng hàng đầu. Không chọn: máy 2 group (máy thứ 4 đè máy rửa ly), cây và tranh (hết chỗ), quầy bar cửa sổ (hết chỗ bàn), mở rộng và ngoài trời (thêm khu mới), máy làm đá (đã giảm 90%). |
@@ -91,7 +91,7 @@ Vấn đề: lợi nhuận tuần trừ đủ tiền nâng cấp trong tuần mu
 Vấn đề: tuần 1 trừ đủ tiền nâng cấp trong lợi nhuận nên điểm tuần 1 và tuần 2 lệch nhau, và đường mục tiêu E-07 (nhảy ×1,9 rồi ×3,5, chặn trần) làm điểm `c_spend` lên xuống mạnh. E-11 sửa ở `src/sim/week.ts` và `src/sim/data/week.ts`:
 
 - Tuần 1 chia nhỏ tiền nâng cấp như các tuần sau: 2 tuần (Dễ, Thường), 3 tuần ở Khó (`UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY`).
-- Đường mục tiêu mượt hơn, bội của tuần 1 (`WEEK_GOAL_MULTS`), sau đó cộng thêm mỗi tuần, không có trần (`WEEK_GOAL_LATE_GROWTH`):
+- Đường mục tiêu mượt hơn, bội của tuần 1 (`WEEK_GOAL_MULTS`), sau đó cộng thêm mỗi tuần, không có trần (`WEEK_GOAL_LATE_GROWTH`). Bảng dưới là số E-11 (v0.22.0, lịch sử), đã thay ở E-12:
 
   | Độ khó | Tuần 1 / 2 / 3 / 4 | Từ tuần 5 |
   | --- | --- | --- |
@@ -101,11 +101,11 @@ Vấn đề: tuần 1 trừ đủ tiền nâng cấp trong lợi nhuận nên đ
 
 - Kiểm tra tụt điểm bắt đầu ở tuần 2→3; tuần 1→2 vẫn có thể tụt tới 18 điểm ở Dễ.
 - Hai chỗ riêng của Khó (chia 3 tuần và tuần 2 ×1,65) là lệch so với thiết kế gốc, người builder chọn và review chấp nhận: không đường mục tiêu nào khác giữ `c_spend` Khó trong 10 điểm ở tuần 2→3. Phương án dự phòng là nới kiểm tra tụt điểm.
-- Quyết định Q-05, phương án A: bỏ assert "3 cúp < 100%"; thay bằng `c_spend` và `b_steady` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó, `a_basic` giữ ≥ 1 cúp, `b_steady` ≥ 2 cúp ở 21/21 ván tuần 2–8.
+- (Trước E-12, v0.22.0; đã thay ở E-12, xem mục "Đã sửa ở E-12") Quyết định Q-05, phương án A: bỏ assert "3 cúp < 100%"; thay bằng `c_spend` và `b_steady` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó, `a_basic` giữ ≥ 1 cúp, `b_steady` ≥ 2 cúp ở 21/21 ván tuần 2–8.
 - Chiến lược `e_marketing` được thay bằng `b_steady` trong test. Không phá sản ở ván nào.
 - Chữ luật ở màn Tổng kết tuần (`weekProfitRule`) nay ghi số tuần theo độ khó.
 
-Điểm tuần trung bình 3 seed (1, 42, 777), tuần 1 → 8:
+Điểm tuần trung bình 3 seed (1, 42, 777), tuần 1 → 8 (số E-11, v0.22.0, lịch sử: `b_steady` cũ giống `c_spend`; đã thay bằng bảng ở mục "Đã sửa ở E-12"):
 
 | Độ khó | Chiến lược | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -164,5 +164,5 @@ Các chỉ số khác:
 
 - `tests/integration/p22-strategies.test.ts`: một test đổi ở E-11, xem [p22-economy.md](p22-economy.md).
 - `tests/integration/level-balance.test.ts`: các mốc P20 nói về cấp 6, nay ghi là `FULL_UNLOCK_LEVEL` thay cho `MAX_SHOP_LEVEL` (giờ là 10). Bản tách quán đo hoàn vốn dụng cụ đặt `xp = -1e6` thay vì `1e6`, để quán giữ cấp 6 như khi đo. Không đổi ngưỡng số nào.
-- `tests/sim/week-goal.test.ts`: kiểm đường mục tiêu hiện tại (xem E-11).
+- `tests/sim/week-goal.test.ts`: kiểm đường mục tiêu hiện tại (xem E-12).
 - `tests/ui/level-ui.test.ts`: chip cấp tối đa kiểm `MAX_SHOP_LEVEL` thay cho số 6.
