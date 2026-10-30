@@ -218,11 +218,11 @@ describe('week summary', () => {
     expect(stars.textContent).toContain('mục tiêu 4,2 sao');
     expect(stars.textContent).toContain('Đạt mục tiêu');
 
-    // Week 1 profit counts every upgrade bought in the week.
+    // Week 1 spreads its upgrades like later weeks (E-11); Hard over three weeks.
     const profitEl = block(el, 'profit');
     expect(profitEl.closest('section')?.textContent).toContain('Lợi nhuận tuần');
     expect(profitEl.textContent).toContain(`${formatMoney(r.profit!)} / mục tiêu ${formatMoney(r.profitTarget!)}`);
-    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ toàn bộ tiền nâng cấp mua trong tuần.');
+    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ tiền nâng cấp chia đều 3 tuần kể từ tuần mua.');
 
     expect(block(el, 'score').textContent).toContain(`${r.score}/100`);
     const cups = block(el, 'cups');
@@ -262,8 +262,8 @@ describe('week summary', () => {
     expect(el.querySelector('.rpt-sub')?.textContent).toContain('Ngày 8–14');
     expect(state.week!.result!.revenue).toBe(28_000_000);
 
-    // From week 2 upgrades are spread over two weeks.
-    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ tiền nâng cấp chia đều 2 tuần kể từ tuần mua; đồ mua ở tuần 1 đã trừ hết trong tuần 1.');
+    // Hard spreads upgrades over three weeks.
+    expect(block(el, 'profit-rule').textContent).toBe('Lãi các ngày trừ tiền nâng cấp chia đều 3 tuần kể từ tuần mua.');
 
     const compare = block(el, 'compare');
     expect(compare.closest('section')?.textContent).toContain('So với tuần 1');
@@ -375,7 +375,7 @@ describe('week summary', () => {
     delete state.week!.result!.profitTarget;
     const { root } = openWeekEnd(state);
     expect(weekEndEl(root).querySelector('[data-block="profit"]')).toBeNull();
-    for (const i of [1, 2, 3]) expect(weekProfitRule(i)).not.toMatch(/\p{Extended_Pictographic}/u);
+    for (const d of ['easy', 'normal', 'hard'] as const) expect(weekProfitRule(d)).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
   it('says the last day was not saved, offers "Thử lại", and keeps the results', () => {
