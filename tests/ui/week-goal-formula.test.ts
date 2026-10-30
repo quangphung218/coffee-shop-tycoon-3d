@@ -9,11 +9,11 @@ import { formatMoney, formatRating } from '../../src/ui/core/format';
 import { nextWeekGoalText, weekProfitRule } from '../../src/ui/screens/weekEnd';
 import { weekGoalBlock, weekGoalView } from '../../src/ui/weekGoal';
 
-/** The E-11 goal curve, written out: weeks 1–4, then a fixed step a week with no cap. */
+/** The E-12 goal curve, written out: weeks 1–4, then a fixed step a week with no cap. */
 const FACTORS: Record<Difficulty, { first: number[]; step: number }> = {
-  easy: { first: [1, 1.7, 2.4, 2.9], step: 0.15 },
-  normal: { first: [1, 1.7, 2.3, 2.8], step: 0.15 },
-  hard: { first: [1, 1.65, 2.3, 2.8], step: 0.1 },
+  easy: { first: [1, 1.7, 2.2, 2.35], step: 0.1 },
+  normal: { first: [1, 1.7, 2.2, 2.4], step: 0.1 },
+  hard: { first: [1, 1.65, 2.1, 2.25], step: 0.1 },
 };
 const SPREAD: Record<Difficulty, number> = { easy: 2, normal: 2, hard: 3 };
 const DIFFS: Difficulty[] = ['easy', 'normal', 'hard'];
@@ -43,7 +43,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('weekly goal shown under the E-11 formula', () => {
+describe('weekly goal shown under the E-12 formula', () => {
   for (const d of DIFFS) {
     it(`${d}: weeks 1–${LAST_WEEK} show the curve's revenue and profit targets`, () => {
       for (let week = 1; week <= LAST_WEEK; week++) {
@@ -74,10 +74,10 @@ describe('weekly goal shown under the E-11 formula', () => {
   }
 
   it('keeps growing past week 4 with no cap (spot values)', () => {
-    expect(expected('normal', 10).revenue).toBe(118_400_000); // 32tr × 3,7
-    expect(expected('easy', 10).revenue).toBe(133_000_000); // 35tr × 3,8
-    expect(expected('hard', 10).revenue).toBe(112_200_000); // 33tr × 3,4
-    expect(weekGoalView(atWeek('hard', 10))!.bars[0]!.target).toBe(112_200_000);
+    expect(expected('normal', 10).revenue).toBe(96_000_000); // 32tr × 3,0
+    expect(expected('easy', 10).revenue).toBe(103_300_000); // 35tr × 2,95
+    expect(expected('hard', 10).revenue).toBe(94_100_000); // 33tr × 2,85
+    expect(weekGoalView(atWeek('hard', 10))!.bars[0]!.target).toBe(94_100_000);
   });
 });
 
