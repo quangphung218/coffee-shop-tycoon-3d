@@ -190,6 +190,17 @@ export function dispatch(state: GameState, cmd: Command): boolean {
 
 export { endOfDay, openShop, startNextDay } from './clock';
 export { uniformOf, unlockedUniforms } from './data/uniforms';
+export {
+  MILESTONE_TICKETS,
+  MILESTONE_VISITS,
+  REGULAR_BOOK,
+  milestonesReached,
+  regularBook,
+  regularBookEntry,
+  type RegularBookEntry,
+  type RegularBookPage,
+  type RegularMilestone,
+} from './data/regularMilestones';
 export { STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf, type StyleDef } from './data/styles';
 export {
   buyStyle,
