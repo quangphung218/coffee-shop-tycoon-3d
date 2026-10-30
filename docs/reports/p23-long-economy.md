@@ -8,11 +8,11 @@ Mô phỏng 56 ngày (8 tuần) ở 3 độ khó × 3 chiến lược × 3 seed.
 npx vitest run tests/integration/p23-long-run.test.ts --reporter=verbose
 ```
 
-Test chạy khoảng 64–68 giây (giới hạn 3 phút), in bảng trung bình theo tuần và bảng từng seed, rồi kiểm:
+Test chạy khoảng 60–125 giây (giới hạn 3 phút; trước E-12 là 69 giây), in bảng trung bình theo tuần và bảng từng seed, rồi kiểm:
 
 - Tiền không bao giờ âm, không phá sản.
 - Chơi lại cùng seed ra cùng số.
-- Điểm `c_spend` và `b_steady` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó; `a_basic` giữ ít nhất 1 cúp.
+- Điểm `c_spend` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó; `b_steady` không đạt 3 cúp ở tuần 5–8 (0/12); `a_basic` giữ ít nhất 1 cúp (từ E-12; trước đó cả `b_steady` cũng 12/12).
 - `b_steady` có ít nhất 2 cúp ở 21/21 ván tuần 2–8 mỗi độ khó.
 
 ## Chiến lược
@@ -23,7 +23,7 @@ Mỗi sáng mọi chiến lược bật món đã mở và nhập hàng theo g�
 | --- | --- |
 | `a_basic` | Tự phục vụ một mình, không thuê, không mua nâng cấp. |
 | `c_spend` | Thuê 1 barista ngày 1; mỗi sáng mua nâng cấp hay dụng cụ rẻ nhất đang mở, lặp tới khi tiền chỉ còn đủ lương tối nay và hàng nhập ngày mai. |
-| `b_steady` | 1 barista; chỉ mua nâng cấp khi tiền ≥ 2 lần giá, giữ lại quỹ lương, thuê mặt bằng và nhập hàng; giá Chuẩn. |
+| `b_steady` | Từ E-12: barista từ ngày 2, giá Chuẩn, không marketing; cứ 3 ngày một lần vào mục Nâng cấp, mua tối đa 1 món rẻ nhất có ảnh hưởng doanh thu; không mở thêm dụng cụ sau ngày 7. (Trước E-12: 1 barista ngày 1, mua nâng cấp khi tiền ≥ 2 lần giá, giữ quỹ lương, thuê mặt bằng và nhập hàng.) |
 
 Seed 1, 42, 777.
 
@@ -118,6 +118,47 @@ Vấn đề: tuần 1 trừ đủ tiền nâng cấp trong lợi nhuận nên đ
 | Khó | `a_basic` | 85 | 68 | 56 | 47 | 47 | 46 | 44 | 44 |
 | | `c_spend` | 98 | 100 | 93 | 95 | 100 | 100 | 100 | 100 |
 | | `b_steady` | 98 | 100 | 95 | 94 | 100 | 100 | 100 | 100 |
+
+## Đã sửa ở E-12
+
+Vấn đề: ở v0.22.0 `b_steady` (chiến lược "chơi thong thả") ra cùng chi tiêu và cùng tiền cuối với `c_spend`, nên hai chiến lược không phân biệt được và 3 cúp tuần 5–8 đạt 12/12 cả hai. Người chơi thư giãn không nên được 3 cúp như người tối ưu.
+
+Đổi ở `src/sim/data/week.ts` và test p23:
+
+- `b_steady` viết lại: barista từ ngày 2, giá Chuẩn, mỗi 3 ngày một lần vào mục Nâng cấp mua tối đa 1 món rẻ nhất có ảnh hưởng doanh thu, không marketing, không mở thêm dụng cụ sau ngày 7. Có assert `b_steady` khác `c_spend` (chi tiêu, tiền cuối).
+- Đường mục tiêu mới (`WEEK_GOAL_MULTS`), sau tuần 4 cộng +0,1/tuần (`WEEK_GOAL_LATE_GROWTH`), mục tiêu không bao giờ giảm:
+
+  | Độ khó | Tuần 1 / 2 / 3 / 4 | Từ tuần 5 |
+  | --- | --- | --- |
+  | Dễ | 1 / 1,7 / 2,2 / 2,35 | +0,1/tuần |
+  | Thường | 1 / 1,7 / 2,2 / 2,4 | +0,1/tuần |
+  | Khó | 1 / 1,65 / 2,1 / 2,25 | +0,1/tuần |
+
+- Luật 30/10 của chủ quán: người chơi thư giãn đạt 2 cúp; muốn 3 cúp phải tối ưu.
+- Kiểm 3 cúp tuần 5–8 chỉ áp cho `c_spend`.
+- Không đổi: tiền thuê, giá nâng cấp, luật phá sản, `WEEK_REWARDS`.
+
+Điểm / cúp trung bình 3 seed (1, 42, 777), tuần 1 → 8, in từ `p23-long-run.test.ts`:
+
+| Độ khó | Chiến lược | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 |
+|---|---|---|---|---|---|---|---|---|---|
+| Dễ | `a_basic` | 89,0 / 2,33 | 64,7 / 1,00 | 55,3 / 1,00 | 52,0 / 1,00 | 50,7 / 1,00 | 49,7 / 1,00 | 48,7 / 1,00 | 47,3 / 1,00 |
+| | `b_steady` | 100 / 3,00 | 91,7 / 2,67 | 79,7 / 2,00 | 75,7 / 2,00 | 76,7 / 2,00 | 75,7 / 2,00 | 73,3 / 2,00 | 72,0 / 1,67 |
+| | `c_spend` | 100 / 3,00 | 88,7 / 2,33 | 99,7 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 |
+| Thường | `a_basic` | 93,0 / 2,67 | 68,0 / 1,33 | 58,7 / 1,00 | 53,3 / 1,00 | 52,7 / 1,00 | 51,0 / 1,00 | 50,0 / 1,00 | 49,0 / 1,00 |
+| | `b_steady` | 100 / 3,00 | 94,0 / 3,00 | 83,7 / 2,00 | 77,0 / 2,00 | 80,0 / 2,00 | 78,7 / 2,00 | 77,3 / 2,00 | 77,0 / 2,00 |
+| | `c_spend` | 100 / 3,00 | 91,7 / 2,67 | 98,0 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 |
+| Khó | `a_basic` | 85,0 / 2,00 | 68,3 / 1,33 | 59,3 / 1,00 | 53,7 / 1,00 | 53,3 / 1,00 | 52,0 / 1,00 | 50,3 / 1,00 | 49,0 / 1,00 |
+| | `b_steady` | 97,7 / 3,00 | 90,0 / 2,67 | 80,7 / 2,00 | 77,0 / 2,00 | 80,7 / 2,00 | 81,0 / 2,00 | 79,3 / 2,00 | 77,7 / 2,00 |
+| | `c_spend` | 98,3 / 3,00 | 100 / 3,00 | 97,7 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 | 100 / 3,00 |
+
+Các chỉ số khác:
+
+- `c_spend` đạt 3 cúp tuần 5–8 ở 12/12 ván (100%) mỗi độ khó; `b_steady` 0/12.
+- `b_steady` có ít nhất 2 cúp ở tuần 2–8: Dễ 20/21, Thường 21/21, Khó 21/21.
+- Tiền nâng cấp của `b_steady` so với `c_spend`: Dễ 3% (29.523k so với 967.986k), Thường 4% (31.902k so với 892.743k), Khó 4% (34.614k so với 815.855k).
+- Tiền cuối tuần 8 trung bình (Dễ / Thường / Khó): `a_basic` 174k / 149k / 112k, `b_steady` 297k / 256k / 191k, `c_spend` 830k / 625k / 383k.
+- Thời gian chạy p23: khoảng 60–125 giây (trước 69 giây), dưới giới hạn 3 phút.
 
 ## Ngưỡng test cũ
 
