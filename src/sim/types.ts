@@ -623,9 +623,10 @@ export interface WeekSummary {
   score: number;
   cups: number;
   /**
-   * Upgrade spending the week's score counted (weekUpgradeCharge), from week 2.
-   * Absent on week 1 and on weeks scored before upgrades were spread over weeks
-   * (E-07): those paid their own upgrades in full, so none of it carries on.
+   * Upgrade spending the week's score counted (weekUpgradeCharge). Absent on
+   * weeks scored before upgrades were spread over weeks (week 1 before E-11,
+   * later weeks before E-07): those paid their own upgrades in full, so none
+   * of it carries on.
    */
   upgradeCharge?: number;
 }

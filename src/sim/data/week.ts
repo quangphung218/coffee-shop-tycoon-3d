@@ -37,40 +37,67 @@ export function weekProfitTarget(difficulty: Difficulty, revenueTarget: number):
 }
 
 /**
- * Weeks an upgrade bought from week 2 on is paid over in the week score
- * (weekUpgradeCharge in src/sim/week.ts); week 1 pays its upgrades in full.
+ * Weeks an upgrade is paid over in the week score on Easy and Normal, the week
+ * it is bought included (weekUpgradeCharge in src/sim/week.ts); Hard uses
+ * UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY.
  */
 export const UPGRADE_AMORTIZE_WEEKS = 2;
 
 /**
- * Revenue target of weeks 1, 2, 3, 4 as a multiple of week 1; later weeks
- * keep the last one. Fitted with tests/integration/p23-long-run.test.ts so that
- * the shop that buys nothing (a_basic, about 1.1× the week-1 target in revenue
- * every week) keeps at least 1 cup through week 4 with cups never rising, while
- * the spenders (c_spend, e_marketing: 2–4.4×) need a strong week to reach
- * 3 cups in weeks 3–4 and only reach 100 points well past the revenue target.
+ * Weeks an upgrade is paid over in the week score, by difficulty. Hard keeps
+ * the smallest profit share (WEEK_PROFIT_SHARE), so two weeks let the level-up
+ * buying of week 3 sink a reinvesting shop by up to 30 points; three keep the
+ * drop within 10 (tests/integration/p23-long-run.test.ts) and change no Hard
+ * week-1 cup count of tests/integration/p22-strategies.test.ts. Easy and Normal
+ * stay at two: three would lift their week-1 3-cup counts past the P22 band.
  */
-export const WEEK_GOAL_MULTS: Readonly<Record<Difficulty, readonly number[]>> = {
-  easy: [1, 1.9, 3.6, 3.6],
-  normal: [1, 1.9, 3.5, 3.5],
-  hard: [1, 1.9, 2.9, 3.55],
+export const UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY: Readonly<Record<Difficulty, number>> = {
+  easy: UPGRADE_AMORTIZE_WEEKS,
+  normal: UPGRADE_AMORTIZE_WEEKS,
+  hard: 3,
 };
 
-/** Highest revenue target multiple of a difficulty: the last entry of WEEK_GOAL_MULTS. */
-export function weekGoalMaxMult(difficulty: Difficulty): number {
-  return WEEK_GOAL_MULTS[difficulty].at(-1)!;
+/** Weeks an upgrade is paid over in the week score on `difficulty`. */
+export function upgradeAmortizeWeeks(difficulty: Difficulty): number {
+  return UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY[difficulty];
 }
 
 /**
- * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue follows
- * WEEK_GOAL_MULTS up to weekGoalMaxMult times, rounded to 100.000; the stars
- * target stays.
+ * Revenue target of weeks 1, 2, 3, 4 as a multiple of week 1, rising in even
+ * steps so a shop that keeps growing never sees its score fall off a cliff.
+ * Fitted with tests/integration/p23-long-run.test.ts.
+ */
+export const WEEK_GOAL_MULTS: Readonly<Record<Difficulty, readonly number[]>> = {
+  easy: [1, 1.7, 2.4, 2.9],
+  normal: [1, 1.7, 2.3, 2.8],
+  hard: [1, 1.65, 2.3, 2.8],
+};
+
+/**
+ * Multiple of week 1 the revenue target adds each week after the last entry of
+ * WEEK_GOAL_MULTS, with no cap: endless play keeps asking a little more.
+ */
+export const WEEK_GOAL_LATE_GROWTH: Readonly<Record<Difficulty, number>> = {
+  easy: 0.15,
+  normal: 0.15,
+  hard: 0.1,
+};
+
+/** Revenue target multiple of week `index` (from 1): WEEK_GOAL_MULTS, then WEEK_GOAL_LATE_GROWTH a week. */
+export function weekGoalMult(difficulty: Difficulty, index: number): number {
+  const mults = WEEK_GOAL_MULTS[difficulty];
+  const i = Math.max(1, Math.floor(index));
+  if (i <= mults.length) return mults[i - 1]!;
+  return mults.at(-1)! + WEEK_GOAL_LATE_GROWTH[difficulty] * (i - mults.length);
+}
+
+/**
+ * Targets of week `index` (from 1): week 1 is WEEK_GOALS, then revenue is
+ * weekGoalMult times that, rounded to 100.000; the stars target stays.
  */
 export function weekGoal(difficulty: Difficulty, index: number): WeekGoal {
   const base = WEEK_GOALS[difficulty];
-  const mults = WEEK_GOAL_MULTS[difficulty];
-  const mult = mults[Math.min(mults.length, Math.max(1, Math.floor(index))) - 1]!;
-  return { revenue: Math.round((base.revenue * mult) / 100_000) * 100_000, stars: base.stars };
+  return { revenue: Math.round((base.revenue * weekGoalMult(difficulty, index)) / 100_000) * 100_000, stars: base.stars };
 }
 
 /** Fewest cups a week needs to pay WEEK_REWARDS. */

@@ -305,7 +305,7 @@ describe('week summary', () => {
 
     const next = block(el, 'next-week');
     expect(next.closest('section')?.textContent).toContain('Tuần 2');
-    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('62.700.000đ');
+    expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('54.500.000đ');
     expect(next.querySelector('[data-next="goal"]')?.textContent).toContain('4,2 sao');
     const levelEl = next.querySelector<HTMLElement>('[data-next="level"]')!;
     const level = levelEl.textContent ?? '';

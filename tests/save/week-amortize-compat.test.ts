@@ -6,7 +6,7 @@ import { profit } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState } from '../../src/sim/types';
-import { rollWeekPlan, weekUpgradeCharge } from '../../src/sim/week';
+import { rollWeekPlan, scoreWeek, summarizeWeek, weekUpgradeCharge } from '../../src/sim/week';
 
 /** Week 2's goal as the game stored it before E-07: +60% on week 1. */
 const OLD_GOAL = { revenue: 51_200_000, stars: 4 };
@@ -90,5 +90,55 @@ describe('saves from before the upgrade spread (E-07)', () => {
     const loaded = load(state);
     expect(dispatch(loaded, { type: 'next_day' })).toBe(true);
     expect(weekUpgradeCharge(loaded)).toBe(BOUGHT / 2);
+  });
+});
+
+/** A save on the report of `day` (1..7) of week 1: same shape before and after E-11, nothing scored yet. */
+function insideWeek1(day: number): GameState {
+  const state = createNewGame('Quán Tuần Một', 'normal', 1111);
+  const stats = (d: number) => Object.assign(createDayStats(d, 4), { revenue: 5_000_000, ingredientCost: 1_000_000, upgradeCost: d === 3 ? BOUGHT : 0 });
+  state.history = Array.from({ length: day - 1 }, (_, i) => stats(i + 1));
+  state.day = day;
+  state.today = stats(day);
+  state.rating = 4;
+  state.phase = 'report';
+  return state;
+}
+
+describe('saves inside or after week 1 from before week 1 spread its upgrades (E-11)', () => {
+  it('spreads the upgrades of a save inside week 1 over weeks 1 and 2, never charging more than bought', () => {
+    const loaded = load(insideWeek1(5));
+    expect(loaded.week!.index).toBe(1);
+    expect(loaded.week!.result).toBeUndefined();
+    expect(weekUpgradeCharge(loaded)).toBe(BOUGHT / 2);
+    // Played on to the week-1 report: half the upgrade is charged and recorded for week 2 to carry.
+    const end = load(insideWeek1(WEEK_LENGTH));
+    const result = scoreWeek(end)!;
+    const days = [...end.history, end.today];
+    expect(result.profit).toBe(days.reduce((s, d) => s + profit(d), 0) - BOUGHT / 2);
+    const row = summarizeWeek(end, result)!;
+    expect(row.upgradeCharge).toBe(BOUGHT / 2);
+    end.week!.result = result;
+    end.week!.archive = [row];
+    expect(dispatch(end, { type: 'next_day' })).toBe(true);
+    expect(end.week!.index).toBe(2);
+    // Week 2 pays the other half: BOUGHT in all.
+    expect(weekUpgradeCharge(end)).toBe(BOUGHT / 2);
+  });
+
+  it('does not charge week 2 again for a week 1 scored before E-11 with its upgrades in full', () => {
+    const state = insideWeek1(WEEK_LENGTH);
+    const days = [...state.history, state.today];
+    const oldResult = { ...scoreWeek(state)!, profit: days.reduce((s, d) => s + profit(d), 0) - BOUGHT, score: 80, cups: 2 };
+    state.week!.result = oldResult;
+    // Archived the way the game did before E-11: no upgradeCharge on week 1.
+    state.week!.archive = [{ index: 1, startedDay: 1, revenue: oldResult.revenue, profit: oldResult.profit!, customersServed: 0, stars: 4, score: 80, cups: 2 }];
+    const loaded = load(state);
+    expect(loaded.week!.result).toEqual(oldResult);
+    expect(loaded.week!.archive).toEqual(state.week!.archive);
+    expect(dispatch(loaded, { type: 'next_day' })).toBe(true);
+    expect(loaded.week!.index).toBe(2);
+    expect(loaded.week!.archive!.map((w) => [w.index, w.score, w.cups])).toEqual([[1, 80, 2]]);
+    expect(weekUpgradeCharge(loaded)).toBe(0);
   });
 });
