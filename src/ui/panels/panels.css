@@ -321,10 +321,11 @@
 }
 /* "Thiếu Cam" opens Kho, so it is drawn as a button (design/p20 §4): ink
    frame and bottom shadow instead of the label's pill, danger tint kept,
-   arrow after the text; the hit area is 44 px tall without growing the row.
+   arrow after the text; the button itself is at least 44 px tall.
    Class repeated to beat .badge: game-*.css loads before ui.css. */
 .badge-btn.badge-btn {
   position: relative;
+  min-height: var(--size-target);
   border: var(--size-outline-sm) solid var(--border-outline);
   border-radius: var(--btn-radius);
   box-shadow: var(--shadow-sm);

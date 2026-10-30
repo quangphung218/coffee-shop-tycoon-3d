@@ -1,4 +1,4 @@
-import { LEVELS, MAX_SHOP_LEVEL, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
+import { LEVELS, maxLevelBonus, upgradeUnlockLevel } from '../../sim/data/levels';
 import { getUpgrade, levelEffect, UPGRADES, upgradeTier } from '../../sim/data/upgrades';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import {
@@ -12,7 +12,7 @@ import {
   upgradeLevelPrice,
 } from '../../sim/upgrades';
 import type { GameState, UpgradeDef, UpgradeEffect, UpgradeId } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
+import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import { fresh } from '../core/fresh';
 import { UPGRADE_ICONS } from '../core/iconMap';
@@ -46,6 +46,14 @@ const pctDec = (v: number): string => `${String(Math.round(v * 1000) / 10).repla
 /** Label of a row (or its next level) waiting on the shop level. */
 export const needShopLevel = (level: number): string => `Cần cấp quán ${level}`;
 
+/** Summary of the collapsed group holding the rows a later shop level opens. */
+export const laterGroupTitle = (n: number): string => `Mở ở cấp sau (${n})`;
+
+/** Not bought and waiting on the shop level: the row goes to "Mở ở cấp sau". */
+export function waitsForLevel(state: GameState, id: UpgradeId): boolean {
+  return upgradeLevel(state, id) === 0 && upgradeUnlockLevel(id) > state.shopLevel;
+}
+
 /** "mỗi cấp …", or "cấp N: …" when the next level (`canBuy`) is an extra one with its own effect. */
 export function levelEffectText(def: UpgradeDef, level: number, canBuy: boolean): string {
   const next = level + 1;
@@ -67,19 +75,6 @@ export function effectText(e: UpgradeEffect): string {
   if (e.iceCostReduction) parts.push(`−${pct(e.iceCostReduction)} giá đá`);
   if (e.priceBonus) parts.push(`giá bán +${pctDec(e.priceBonus)}`);
   return parts.join(' · ');
-}
-
-/**
- * "Bậc 1/3 · mua để lên bậc 2 · " for the upgrade meta line once bought; the
- * hint only when the next level (`canBuy`) changes the look. Empty at level 0.
- * The number after "/" is the highest tier the upgrade reaches at MAX_SHOP_LEVEL.
- */
-export function tierText(id: UpgradeId, level: number, canBuy: boolean): string {
-  const tier = upgradeTier(id, level);
-  if (tier === 0) return '';
-  const next = canBuy ? upgradeTier(id, level + 1) : tier;
-  const top = upgradeTier(id, getUpgrade(id).maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, id));
-  return `Bậc ${tier}/${top} · ${next > tier ? `mua để lên bậc ${next} · ` : ''}`;
 }
 
 /** Next shop level (4..10) that raises the upgrade's cap, or null when none is left. */
@@ -106,8 +101,9 @@ export function decorRefund(state: GameState, id: UpgradeId): number {
 /**
  * Nâng cấp by group, one row per upgrade (icon of the current tier | name +
  * price of the next level (money, plus Tem when it has a ticketCost), current
- * level and the effect per level (or of the next extra level), then "Bậc n/3"
- * once bought | "Mở ngày N" / "Cần cấp quán N" / "Tối đa" | Mua). Icons come
+ * level and the effect per level (or of the next extra level) | "Mở ngày N" /
+ * "Cần cấp quán N" / "Tối đa" | Mua). Rows a later shop level opens sit in a
+ * collapsed "Mở ở cấp sau (N)" group at the end, by unlock level. Icons come
  * from the atlas (UPGRADE_ICONS), never the emoji in the data's `icon` field. Mua is aria-disabled with the reason
  * (an upgrade it needs, money, then Tem) when it cannot be bought. "Mua" asks for an in-place confirm, then sends buy_upgrade.
  * Owned decor without seats has "Gỡ (+X)": the first click arms it for
@@ -158,7 +154,7 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
 
   function row(id: UpgradeId): HTMLElement {
     const def = getUpgrade(id);
-    const badge = h('span', { class: 'badge', hidden: true });
+    const badge = h('span', { class: 'badge', id: uid('lock'), hidden: true });
     const newBadge = freshBadge();
     const meta = h('p', { class: 'item-meta' });
     const iconBox = h('span', { class: 'item-icon' });
@@ -209,7 +205,8 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
         const cost = nextUpgradeCost(s, id);
         const max = maxUpgradeLevel(s, id);
         const tickets = nextUpgradeTicketCost(s, id) ?? 0;
-        meta.textContent = `${cost === null ? '' : `Giá ${priceText(cost, tickets)} · `}Cấp ${lv}/${max} · ${tierText(id, lv, cost !== null)}${levelEffectText(def, lv, cost !== null)}`;
+        // The level only; the look tier shows in the icon.
+        meta.textContent = `${cost === null ? '' : `Giá ${priceText(cost, tickets)} · `}Cấp ${lv}/${max} · ${levelEffectText(def, lv, cost !== null)}`;
         // Not open yet: a flat "Mở ngày N" / "Cần cấp quán N" label, Mua disabled with the reason.
         const locked = lv === 0 && !isUnlocked(s, 'upgrade', id);
         li.classList.toggle('is-locked', locked);
@@ -221,7 +218,9 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
           badge.className = 'badge badge-neutral';
           setIconText(badge, 'i-lock', byLevel ? needShopLevel(level) : opens.badge);
           setAriaDisabled(buy, true);
-          setReason(why, buy, byLevel ? `${needShopLevel(level)} để mở khóa.` : opens.reason);
+          // By level the label is the reason: Mua points at it, no second line.
+          setReason(why, buy, byLevel ? null : opens.reason);
+          if (byLevel) buy.setAttribute('aria-describedby', badge.id);
         } else if (cost === null) {
           // At the cap: a later shop level (4..10) may still raise it.
           const bonusAt = nextBonusShopLevel(s, id);
@@ -253,15 +252,35 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
     return li;
   }
 
-  body.append(
-    h(
-      'div',
-      { class: 'prep' },
-      ...UPGRADE_GROUPS.map((g) =>
-        h('section', { class: 'stack', attrs: { 'aria-label': g.title } }, h('h3', { class: 'section-title' }, ...withIcon(g.icon, g.title, 24)), h('ul', { class: 'stack' }, ...g.ids.map(row))),
-      ),
-    ),
+  const rows = new Map<UpgradeId, HTMLElement>(UPGRADES.map((u) => [u.id, row(u.id)]));
+  const groups = UPGRADE_GROUPS.map((g) => {
+    const list = h('ul', { class: 'stack' });
+    const section = h('section', { class: 'stack', attrs: { 'aria-label': g.title } }, h('h3', { class: 'section-title' }, ...withIcon(g.icon, g.title, 24)), list);
+    return { ids: g.ids, list, section };
+  });
+  // Collapsed by default (a native disclosure, not a dialog); opening it is the player's choice.
+  const laterSummary = h('summary', { class: 'section-title' });
+  const laterList = h('ul', { class: 'stack' });
+  const later = h('details', { class: 'stack later-group', attrs: { 'data-group': 'later' } }, laterSummary, laterList);
+  const laterOrder = UPGRADE_GROUPS.flatMap((g) => g.ids)
+    .map((id, i) => ({ id, i }))
+    .sort((a, b) => upgradeUnlockLevel(a.id) - upgradeUnlockLevel(b.id) || a.i - b.i)
+    .map((u) => u.id);
+  w.watch(
+    (s) => laterOrder.filter((id) => waitsForLevel(s, id)).join(','),
+    (key) => {
+      const waiting = new Set(key ? (key.split(',') as UpgradeId[]) : []);
+      for (const g of groups) {
+        const open = g.ids.filter((id) => !waiting.has(id));
+        g.list.replaceChildren(...open.map((id) => rows.get(id)!));
+        g.section.hidden = open.length === 0;
+      }
+      laterList.replaceChildren(...laterOrder.filter((id) => waiting.has(id)).map((id) => rows.get(id)!));
+      setIconText(laterSummary, 'i-lock', laterGroupTitle(waiting.size));
+      later.hidden = waiting.size === 0;
+    },
   );
+  body.append(h('div', { class: 'prep' }, ...groups.map((g) => g.section), later));
   const state = ctx.getState();
   if (state) w.run(state);
   return { update: (s) => w.run(s) };

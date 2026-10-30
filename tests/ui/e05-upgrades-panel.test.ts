@@ -52,7 +52,7 @@ afterEach(() => document.body.replaceChildren());
 
 describe('E-05 Nâng cấp: premium decor and extra levels', () => {
   it('lists every premium decor item under Trang trí with its atlas icon, not the data emoji', () => {
-    const { body } = mount(game(1));
+    const { body } = mount(game(10));
     const decor = q(body, 'section[aria-label="Trang trí"]');
     for (const [id] of PREMIUM) {
       const row = q(decor, `[data-upgrade="${id}"]`);
@@ -75,7 +75,7 @@ describe('E-05 Nâng cấp: premium decor and extra levels', () => {
       expect(badgeOf(row).textContent).toBe(`Cần cấp quán ${level}`);
       const buy = q<HTMLButtonElement>(row, '[data-action="buy"]');
       expect(buy.getAttribute('aria-disabled')).toBe('true');
-      expect(reasonOf(row)).toBe(`Cần cấp quán ${level} để mở khóa.`);
+      expect(reasonOf(row)).toBe(`Cần cấp quán ${level}`);
       buy.click();
       expect(sent).toHaveLength(0);
       expect(row.querySelector('.confirm')).toBeNull();

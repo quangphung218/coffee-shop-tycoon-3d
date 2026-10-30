@@ -22,9 +22,9 @@ const METRIC_ICON: Record<MetricId, IconId> = {
 };
 
 const METRIC_LABEL: Record<MetricId, string> = {
-  food_cost: 'Food cost',
+  food_cost: 'Chi phí nguyên liệu',
   labor_cost: 'Chi phí lương',
-  prime_cost: 'Prime cost',
+  prime_cost: 'Chi phí chính',
   aov: 'Đơn trung bình',
   seat_fill: 'Lấp ghế',
   avg_wait: 'Chờ trung bình',
@@ -32,6 +32,9 @@ const METRIC_LABEL: Record<MetricId, string> = {
   peak_hour: 'Giờ cao điểm',
   abandon_rate: 'Tỷ lệ bỏ về',
 };
+
+/** The usual industry term, kept in the label's title for players who know it. */
+const METRIC_TERM: Partial<Record<MetricId, string>> = { food_cost: 'Food cost', prime_cost: 'Prime cost' };
 
 /** "Ngưỡng tốt" line under each KPI; AOV is reference only, so it names its formula. */
 const METRIC_TARGET: Partial<Record<MetricId, string>> = {
@@ -104,7 +107,7 @@ function kpiGrid(ins: Insights): HTMLElement {
         h(
           'div',
           { class: 'rpt-kpi', attrs: { 'data-metric': id } },
-          h('span', { class: 'rpt-kpi-label' }, icon(METRIC_ICON[id], { size: 16 }), METRIC_LABEL[id]),
+          h('span', { class: 'rpt-kpi-label', attrs: { title: METRIC_TERM[id] } }, icon(METRIC_ICON[id], { size: 16 }), METRIC_LABEL[id]),
           h('span', { class: 'rpt-kpi-value', text: metricValue(m) }),
           statusLabel(m),
           target ? h('span', { class: 'rpt-kpi-target', text: target }) : null,
