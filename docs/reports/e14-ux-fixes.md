@@ -7,7 +7,7 @@ E-14 sửa các mục UX còn lại sau đợt soát. **Không đổi kinh tế*
 | Mã | Sửa | Vị trí |
 | --- | --- | --- |
 | UX-004 | Mọi nút "Mở cửa" đi qua một guard chung. Kho không làm được món nào hoặc chưa có nhân viên thì hiện một dòng xác nhận liệt kê từng cảnh báo, kèm liên kết "Mở Kho" / "Mở Nhân viên". Guard chỉ hỏi: "Vẫn mở cửa" luôn mở được quán, không bao giờ chặn. Không có cảnh báo thì gửi `start_day` ngay. | `src/ui/openGuard.ts`; dùng ở thanh HUD (`src/ui/hud/hud.ts`) và bảng Việc (`src/ui/panels/tasks.ts`) |
-| UX-102 | Khi Báo cáo ngày đang mở, chồng toast tối đa 1 (đóng báo cáo thì về lại `MAX_TOASTS`). "Đã tự lưu ngày N" là một dòng ở chân báo cáo, không còn là toast. | `src/ui/core/toast.ts`, `src/ui/screens/shell.ts`, `src/ui/report/` |
+| UX-102 | Khi Báo cáo ngày đang mở, chồng toast tối đa 1 (đóng báo cáo thì về lại `MAX_TOASTS`). "Đã tự lưu ngày N" là một dòng ở chân báo cáo, không còn là toast. | `src/ui/core/toast.ts`, `src/ui/screens/game.ts`, `src/ui/report/` |
 | UX-101 | Chọn: dòng cúp ghi điểm hiện có và ngưỡng kế tiếp, dạng "Hiện X điểm · cần 70 để 2 cúp" (cần 90 để 3 cúp; ở mức cao nhất là "Hiện X điểm · đủ 3 cúp"). Bỏ chữ "Đang hướng tới". Dòng có icon cúp. | `cupsLineText`, `weekGoalBlock` trong `src/ui/weekGoal.ts` |
 | UX-103 | Footer tuần ở 480 px: "Sang tuần" chiếm trọn hàng đầu; "Về menu" và "Chơi lại" chia đôi hàng hai. | `src/ui/report/report.css` |
 | UX-104 | Bảng Nâng cấp ẩn dòng "Giá bán +0%"; dòng Tem ghi nguồn: "Tem: N · nhận từ Quà hằng ngày". | `src/ui/panels/upgrades.ts` |
