@@ -10,8 +10,8 @@ import {
   Object3D,
   OctahedronGeometry,
   PlaneGeometry,
+  RingGeometry,
   type Scene,
-  TorusGeometry,
 } from 'three';
 import type { Quality } from '../../save/settings';
 import { UPGRADES } from '../../sim/data/upgrades';
@@ -407,13 +407,37 @@ const CHANDELIER_RING_Y = CEILING_Y - 0.5;
 export const CHANDELIER_BOTTOM_Y = CHANDELIER_RING_Y - 0.18;
 const CHANDELIER_RADIUS = 0.45;
 const CHANDELIER_CRYSTALS = 8;
-/** Glow halo round the ring, part of the crystal mesh so it adds no draw call or material; inside the aisle, clear of the chairs. */
-const CHANDELIER_HALO_RADIUS = CHANDELIER_RADIUS + 0.12;
+/** Soft shadow blob on the floor under the chandelier, inside the aisle (clear of the chairs) and apart from the lamp body. */
+export const CHANDELIER_SHADOW_RADIUS = CHANDELIER_RADIUS + 0.1;
+/** Just above the floor top (y = 0) and under the light pools (ambient.ts POOL_Y), so it never z-fights the floor. */
+const CHANDELIER_SHADOW_Y = 0.008;
+/** Darkest the blob gets at its middle, as a fraction of the floor colour. */
+const CHANDELIER_SHADOW_DARK = 0.72;
 
-/** Chandelier frame: a gold crown of two rings and four arms on a cord up to the lamp cords' top. */
+/**
+ * Shadow blob: a flat disc whose vertex colour fades from a darker floor in
+ * the middle to the floor colour at its rim, so it reads as a soft shadow on
+ * the shared opaque material (no extra mesh, material or draw call).
+ */
+function chandelierShadowGeometry(): BufferGeometry {
+  const rings = 4;
+  const g = part(new RingGeometry(0, CHANDELIER_SHADOW_RADIUS, 16, rings), PALETTE.floor, 0, CHANDELIER_SHADOW_Y, 0, 0, -Math.PI / 2);
+  const pos = g.getAttribute('position');
+  const color = g.getAttribute('color');
+  for (let i = 0; i < pos.count; i++) {
+    const t = Math.min(1, Math.hypot(pos.getX(i), pos.getZ(i)) / CHANDELIER_SHADOW_RADIUS);
+    // Flat core to 30% of the radius, then a smooth fade to the bare floor at the rim.
+    const f = Math.max(0, (t - 0.3) / 0.7);
+    const k = CHANDELIER_SHADOW_DARK + (1 - CHANDELIER_SHADOW_DARK) * f * f * (3 - 2 * f);
+    color.setXYZ(i, color.getX(i) * k, color.getY(i) * k, color.getZ(i) * k);
+  }
+  return g;
+}
+
+/** Chandelier frame: a gold crown of two rings and four arms on a cord up to the ceiling, plus its shadow blob on the floor. */
 function chandelierGeometry(): BufferGeometry {
   const y = CHANDELIER_RING_Y;
-  const cord = NEON_CORD_TOP - (y + 0.3);
+  const cord = CEILING_Y - (y + 0.3);
   return merge([
     part(tube(0.012, 0.012, cord, 4), PALETTE.gold, 0, y + 0.3 + cord / 2, 0),
     part(tube(CHANDELIER_RADIUS, CHANDELIER_RADIUS, 0.04, 10), PALETTE.gold, 0, y, 0),
@@ -421,12 +445,13 @@ function chandelierGeometry(): BufferGeometry {
     part(box(2 * CHANDELIER_RADIUS, 0.025, 0.025), PALETTE.gold, 0, y + 0.08, 0),
     part(box(0.025, 0.025, 2 * CHANDELIER_RADIUS), PALETTE.gold, 0, y + 0.08, 0),
     part(new ConeGeometry(0.1, 0.18, 6), PALETTE.gold, 0, y + 0.22, 0),
+    chandelierShadowGeometry(),
   ]);
 }
 
-/** Glowing crystals hanging round the chandelier's ring and one drop in the middle, the lowest at CHANDELIER_BOTTOM_Y, inside a flat halo ring. */
+/** Glowing crystals hanging round the chandelier's ring and one drop in the middle, the lowest at CHANDELIER_BOTTOM_Y. */
 function crystalGeometry(): BufferGeometry {
-  const parts: BufferGeometry[] = [part(new TorusGeometry(CHANDELIER_HALO_RADIUS, 0.025, 3, 20), PALETTE.bulb, 0, CHANDELIER_RING_Y, 0, 0, Math.PI / 2)];
+  const parts: BufferGeometry[] = [];
   for (let k = 0; k < CHANDELIER_CRYSTALS; k++) {
     const a = (k / CHANDELIER_CRYSTALS) * Math.PI * 2;
     parts.push(part(new OctahedronGeometry(0.06, 0), PALETTE.bulb, Math.cos(a) * CHANDELIER_RADIUS, CHANDELIER_RING_Y - 0.08, Math.sin(a) * CHANDELIER_RADIUS));
