@@ -10,6 +10,8 @@ import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { DayStats, GameState } from '../../src/sim/types';
 import { rollWeekPlan, scoreWeek, summarizeWeek } from '../../src/sim/week';
 import { MAX_TOASTS, Toasts } from '../../src/ui/core/toast';
+import { createHud } from '../../src/ui/hud/hud';
+import { registerPrepPanels } from '../../src/ui/panels';
 import { renderUpgradesPanel } from '../../src/ui/panels/upgrades';
 import { createDailyReport } from '../../src/ui/report';
 import { WEEK_AVG_MIN_DAYS } from '../../src/ui/report/report';
@@ -252,6 +254,44 @@ describe('UX-109 toast above the dock with a panel open', () => {
   it('keeps one bottom anchor above the dock; no rule moves the stack up when a dock button is pressed', () => {
     expect(rule(UI_CSS, '#ui > .toasts')).toMatch(/bottom:\s*calc\(var\(--dock-h, var\(--dock-space\)\) \+ var\(--space-2\)\)/);
     expect(UI_CSS).not.toMatch(/aria-pressed='true'\]\)\s*>\s*\.toasts/);
+  });
+
+  it('on a phone with a panel open, lifts the stack above the panel foot as well', () => {
+    const phone = rule(media(UI_CSS, '(max-width: 640px)'), '#ui:has(> .panel:not([hidden])) > .toasts');
+    expect(phone).toMatch(/bottom:\s*calc\(var\(--dock-h, var\(--dock-space\)\) \+ var\(--space-2\) \+ var\(--panel-foot-h, 0px\) \+ var\(--space-2\)\)/);
+    expect(phone).not.toMatch(/(^|[;\s])top:/);
+  });
+
+  it('measures the open panel foot into --panel-foot-h, so the toast bottom clears "Mở cửa"', () => {
+    const offPanels = registerPrepPanels();
+    const state = createNewGame('Quán T38', 'normal', 1);
+    const hud = createHud({ dispatch: () => false,getState: () => state, onPause() {}, onSettings() {}, onResetCamera() {} });
+    const host = document.createElement('div');
+    host.id = 'ui';
+    document.body.append(host);
+    host.append(hud.el, hud.panelEl);
+    hud.el.hidden = false;
+    hud.update(state);
+    // jsdom has no layout: a 390 px phone, panel bottom at 700, its foot 96 px tall.
+    const rects: Record<string, { top: number; bottom: number }> = { panel: { top: 120, bottom: 700 }, 'panel-foot': { top: 604, bottom: 700 } };
+    const proto = HTMLElement.prototype;
+    const real = proto.getBoundingClientRect;
+    proto.getBoundingClientRect = function (this: HTMLElement) {
+      const r = rects[[...this.classList].find((c) => c in rects) ?? ''] ?? { top: 0, bottom: 0 };
+      return { ...r, left: 0, right: 390, width: 390, height: r.bottom - r.top, x: 0, y: r.top, toJSON() {} } as DOMRect;
+    };
+    try {
+      hud.openPanel('tasks');
+      const foot = hud.panelEl.querySelector<HTMLElement>('.panel-foot')!;
+      expect(foot.querySelector('[data-action="open"]')).not.toBeNull();
+      expect(host.style.getPropertyValue('--panel-foot-h')).toBe('96px');
+      hud.closePanel();
+      expect(host.style.getPropertyValue('--panel-foot-h')).toBe('0px');
+    } finally {
+      proto.getBoundingClientRect = real;
+      hud.dispose();
+      offPanels();
+    }
   });
 });
 

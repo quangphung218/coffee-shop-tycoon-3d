@@ -1882,8 +1882,16 @@ legend {
   width: min(360px, calc(100% - var(--space-6)));
   pointer-events: none;
 }
-/* With a panel open, at every width, the stack stays where it always is,
-   just above the dock: never over the panel head, its title or Đóng. */
+/* With a panel open, at every width, the stack stays above the dock: never
+   over the panel head, its title or Đóng. On a phone the panel spans the whole
+   width, so the stack also clears its sticky foot ("Mở cửa", the totals) by
+   --panel-foot-h (hud.ts measures it, 0px without a foot) and never covers a
+   focused foot button (WCAG 2.4.11). Position only, no layout shift. */
+@media (max-width: 640px) {
+  #ui:has(> .panel:not([hidden])) > .toasts {
+    bottom: calc(var(--dock-h, var(--dock-space)) + var(--space-2) + var(--panel-foot-h, 0px) + var(--space-2));
+  }
+}
 /* Cream sticker card; the level shows in the icon chip colour, the icon
    itself and the title colour (not colour alone). */
 .toast {

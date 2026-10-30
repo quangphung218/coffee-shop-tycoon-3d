@@ -35,7 +35,7 @@ const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = 
 /** Cups a week can earn (weekCups). */
 const MAX_CUPS = 3;
 
-const percent =(value: number, target: number): number => (target > 0 ? Math.round((Math.max(0, value) / target) * 100) : 100);
+const percent = (value: number, target: number): number => (target > 0 ? Math.round((Math.max(0, value) / target) * 100) : 100);
 
 /**
  * The week score read on the numbers so far (scoreWeek, read-only): revenue,
