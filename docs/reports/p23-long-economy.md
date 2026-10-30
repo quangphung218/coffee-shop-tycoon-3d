@@ -160,6 +160,37 @@ Các chỉ số khác:
 - Tiền cuối tuần 8 trung bình (Dễ / Thường / Khó): `a_basic` 174k / 149k / 112k, `b_steady` 297k / 256k / 191k, `c_spend` 830k / 625k / 383k.
 - Thời gian chạy p23: khoảng 60–125 giây (trước 69 giây), dưới giới hạn 3 phút.
 
+## Đã sửa ở E-13
+
+Vấn đề: Tem kiếm được không có chỗ tiêu. Ở cuối tuần 4, `c_spend` kiếm khoảng 116–130 Tem mà tiêu 0–3 (số tiêu trước E-13 lấy từ brief E-13, không chạy lại), vì Tem nằm ở máy espresso cao cấp cấp 4 (30 triệu + 150 Tem, đắt hơn cả cấp 5) và các món khác xa tầm. E-13 chuyển Tem sang đồ trang trí rẻ, mở sớm, và rẻ lại cấp 4 của máy. Danh sách ở [p27-retention.md](../spec/p27-retention.md#tem).
+
+Đổi ở `src/sim/data/upgrades.ts` (T-34), UI ở T-35:
+
+| Nâng cấp | Trước E-13 | Sau E-13 |
+| --- | --- | --- |
+| Máy espresso cao cấp cấp 4 | 30 triệu + 150 Tem, +17% giá bán | 10 triệu, không Tem, +6% giá bán (cấp 5: 12 triệu, cấp 6: 14 triệu) |
+| Đèn trang trí cấp 1 / 2 / 3 | không Tem | 10 / 12 / 15 Tem |
+| Cây xanh cấp 2 / 3 / 4 / 5 | không Tem | 12 / 12 / 15 / 20 Tem |
+| Tranh treo tường cấp 2 / 3 / 4 | không Tem | 12 / 12 / 15 Tem |
+| Cây xanh, Tranh treo tường cấp 1 | không Tem | không Tem |
+| Thêm bàn ghế cấp 7 | 11 triệu | 10 triệu (hoàn vốn e05 từ 2,38 xuống 2,16 tuần) |
+
+Dụng cụ không bao giờ cần Tem. Trong mỗi nâng cấp, cấp sau không rẻ hơn cấp trước cả về tiền lẫn Tem.
+
+Tem kiếm và tiêu tới hết tuần 4 (p23, khoảng thấp nhất–cao nhất theo seed và độ khó; 3 seed × 3 độ khó; cột Kiếm và Tiêu sau là số sau E-13, cột Tiêu trước là số từ brief E-13, không chạy lại):
+
+| Chiến lược | Kiếm | Tiêu trước | Tiêu sau |
+| --- | --- | --- | --- |
+| `c_spend` | 116–130 | 0–3 | 100–123 (83–95%) |
+| `b_steady` | khoảng 110–122 | 0 | 34 (28–31%) |
+| `a_basic` | khoảng 81–98 | 0 | 0 (không đổi, chỉ dùng dụng cụ) |
+
+- Assert mới ở p23: `c_spend` tiêu ≥ 50% số Tem kiếm, `b_steady` ≥ 25%. `data.test` kiểm `extraLevels` không rẻ đi (tiền và Tem) theo cấp.
+- `p22-strategies.test.ts` không đổi: 3 cốc Dễ 21/30, Thường 12/30, Khó 0/30; `f` phá sản 0/6, 6/6, 6/6.
+- `SAVE_VERSION` giữ 6. Save cũ đã mua máy cấp 4 giữ cấp và số dư Tem.
+- Biên hẹp: `b_steady` 28–31% sát ngưỡng 25%, `c_spend` 83–95% so với 50%.
+- Ảnh chụp 390px của bảng Nâng cấp chưa chụp; dòng "Tem: X/Y" và "Giá bán +X%" mới chỉ được xem qua CSS.
+
 ## Ngưỡng test cũ
 
 - `tests/integration/p22-strategies.test.ts`: một test đổi ở E-11, xem [p22-economy.md](p22-economy.md).
