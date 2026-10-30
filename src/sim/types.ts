@@ -618,8 +618,14 @@ export interface WeekState {
   startedDay: number;
   /** Weather and event of each week day, rolled from the seed and the index (rollWeekPlan). */
   plan: DayPlan[];
-  /** What the week is scored against (weekGoal by difficulty and index). */
+  /** What the week is scored against (scaledWeekGoal: weekGoal by difficulty and index, or the recent revenue from shop level 10). */
   goal: WeekGoal;
+  /**
+   * True when the goal's revenue came from the recent weeks' revenue
+   * (scaledWeekGoal), not weekGoal. Absent otherwise and in weeks started
+   * before E-19, which keep the goal they were saved with.
+   */
+  goalScaled?: true;
   /** Score of the week just finished; set when week day 7 closes, cleared when next_day starts the next week. */
   result?: WeekResult;
   /** One row per finished week, oldest first. */

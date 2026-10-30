@@ -100,6 +100,37 @@ export function weekGoal(difficulty: Difficulty, index: number): WeekGoal {
   return { revenue: Math.round((base.revenue * weekGoalMult(difficulty, index)) / 100_000) * 100_000, stars: base.stars };
 }
 
+/** Shop level from which a new week's revenue target follows the shop's recent revenue (scaledWeekGoal). */
+export const SCALED_GOAL_MIN_LEVEL = 10;
+
+/** Finished weeks whose revenue is averaged for a scaled goal. */
+export const SCALED_GOAL_WEEKS = 4;
+
+/** Share of the recent average week revenue a scaled goal asks for at least. */
+export const SCALED_GOAL_RATIO = 0.9;
+
+/**
+ * Targets of week `index` started at shop level `shopLevel`, given the revenue
+ * of the finished weeks oldest first. Below SCALED_GOAL_MIN_LEVEL it is
+ * weekGoal; from it the revenue target is the larger of weekGoal and
+ * SCALED_GOAL_RATIO times the average of the last SCALED_GOAL_WEEKS weeks,
+ * rounded to 100.000. `scaled` is true when the average set the target.
+ */
+export function scaledWeekGoal(
+  difficulty: Difficulty,
+  index: number,
+  shopLevel: number,
+  pastRevenues: readonly number[],
+): { goal: WeekGoal; scaled: boolean } {
+  const goal = weekGoal(difficulty, index);
+  const recent = pastRevenues.slice(-SCALED_GOAL_WEEKS);
+  if (shopLevel < SCALED_GOAL_MIN_LEVEL || recent.length === 0) return { goal, scaled: false };
+  const avg = recent.reduce((s, r) => s + r, 0) / recent.length;
+  const revenue = Math.round((avg * SCALED_GOAL_RATIO) / 100_000) * 100_000;
+  if (revenue <= goal.revenue) return { goal, scaled: false };
+  return { goal: { revenue, stars: goal.stars }, scaled: true };
+}
+
 /** Fewest cups a week needs to pay WEEK_REWARDS. */
 export const WEEK_REWARD_MIN_CUPS = 2;
 
