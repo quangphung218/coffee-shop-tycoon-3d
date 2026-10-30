@@ -174,7 +174,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // Under the screens, as when the whole shell was built at once: they share
   // a stacking level and the later element paints on top.
   const firstScreen = screens.get('menu')?.el ?? null;
-  for (const el of [serveHints.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
+  for (const el of [serveHints.el, serveHints.walkoutEl, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
@@ -198,7 +198,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     state.events = [];
     runId = newRunId();
     logPlay('run_start');
-    serveHints.start(state, from !== undefined);
+    serveHints.start(state);
     angryHinted = false;
     hud.closePanel();
     toasts.clear();
@@ -397,6 +397,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       if (!state) return;
       for (const event of events) {
         let toast = toastForEvent(event, state);
+        // Day 1: one toast, then the walkouts only count up next to the HUD.
+        if (toast && event.type === 'angry' && !serveHints.onWalkout(state)) toast = null;
         if (toast && event.type === 'angry' && !angryHinted) {
           angryHinted = true;
           toast = { ...toast, text: `${toast.text ?? ''} ${ANGRY_HINT}`.trim() };
