@@ -1,4 +1,5 @@
-import { challengeProgress, describeChallenge } from '../sim/challenges';
+import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim/challenges';
+import { styleById } from '../sim/data/styles';
 import type { GameState } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
 import { isWeekGoalScaled, scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
@@ -128,8 +129,10 @@ export interface ChallengeView {
   target: number;
   done: boolean;
   failed: boolean;
-  /** Tem paid on completion; `reward.unlock` has nothing to show yet. */
+  /** Tem paid on completion. */
   tickets: number;
+  /** Shop style it opens: the one it unlocked once done, else the next challenge-gated one; null once all are open. */
+  style: string | null;
 }
 
 /** The week's side challenge and its progress so far; null before CHALLENGE_FIRST_WEEK or without one, so its block hides. */
@@ -138,7 +141,15 @@ export function challengeView(state: GameState): ChallengeView | null {
   const p = challengeProgress(state);
   if (!challenge || !p) return null;
   const { name, description } = describeChallenge(challenge);
-  return { name, description, value: p.value, target: p.target, done: p.done, failed: p.failed, tickets: challenge.reward.tickets };
+  const styleId = p.done ? challenge.reward.unlock?.id : nextChallengeStyle(state);
+  const style = (styleId && styleById(styleId)?.name) || null;
+  return { name, description, value: p.value, target: p.target, done: p.done, failed: p.failed, tickets: challenge.reward.tickets, style };
+}
+
+/** "Mở kiểu Biển neon" while it can still be won, "Đã mở kiểu Biển neon" once done; null when failed or with no style left. */
+export function challengeStyleText(v: Pick<ChallengeView, 'style' | 'done' | 'failed'>): string | null {
+  if (!v.style || v.failed) return null;
+  return v.done ? `Đã mở kiểu ${v.style}` : `Mở kiểu ${v.style}`;
 }
 
 function challengeStatus(v: ChallengeView): string {
@@ -147,8 +158,9 @@ function challengeStatus(v: ChallengeView): string {
   return `Thưởng +${v.tickets} Tem`;
 }
 
-/** "Thử thách: name", what to do, one bar with "value/target" and the reward, or done/failed in its place. */
+/** "Thử thách: name", what to do, one bar with "value/target" and the reward, or done/failed in its place, then the style it opens. */
 export function challengeBlock(v: ChallengeView): HTMLElement {
+  const style = challengeStyleText(v);
   const pct = v.done ? 100 : v.target > 0 ? Math.min(100, Math.round((v.value / v.target) * 100)) : 100;
   const fill = h('span');
   fill.setAttribute('style', `width:${pct}%`);
@@ -171,5 +183,6 @@ export function challengeBlock(v: ChallengeView): HTMLElement {
       ),
       h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'reward' }, text: challengeStatus(v) }),
     ),
+    style ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-challenge': 'style' }, text: style }) : null,
   );
 }

@@ -18,6 +18,9 @@ export function stylePriceText(style: StyleDef): string {
   return style.tickets > 0 ? `${formatMoney(style.price)} + ${style.tickets} Tem` : formatMoney(style.price);
 }
 
+/** Badge of a challenge-gated style still locked. */
+export const LOCKED_STYLE_BADGE = `Mở bằng thử thách (từ tuần ${CHALLENGE_FIRST_WEEK})`;
+
 /** What the player does to open a challenge-gated style: how many more weekly challenges, any of them (CHALLENGE_STYLE_ORDER). */
 export function lockedStyleText(state: Pick<GameState, 'styles'>, id: string): string {
   const n = Math.max(1, challengesToUnlock(state, id));
@@ -170,7 +173,7 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
           setIconText(badge, 'i-ok', 'Đang dùng');
         } else if (locked) {
           badge.className = 'badge badge-neutral';
-          setIconText(badge, 'i-lock', 'Thử thách tuần');
+          setIconText(badge, 'i-lock', LOCKED_STYLE_BADGE);
         }
         more.hidden = !shown;
         if (!shown) {

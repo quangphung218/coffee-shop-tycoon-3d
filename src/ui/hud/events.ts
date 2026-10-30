@@ -1,13 +1,14 @@
-import { describeChallenge } from '../../sim/challenges';
+import { describeChallenge, nextChallengeStyle } from '../../sim/challenges';
 import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
+import { styleById } from '../../sim/data/styles';
 import { regularById } from '../../sim/data/regulars';
 import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { UNIFORMS } from '../../sim/data/uniforms';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { stockOutlook } from '../../sim/inventory';
-import { weekIndex } from '../../sim/progression';
+import { weekDay, weekIndex } from '../../sim/progression';
 import { VIP_TICKETS } from '../../sim/specialOrders';
 import type { GameEvent, GameState, SpendKind, Unlocks } from '../../sim/types';
 import { formatMoney } from '../core/format';
@@ -55,9 +56,61 @@ export const REGULAR_TOAST_GAP_MS = 20_000;
 
 let lastRegularToastAt: number | null = null;
 
-/** Forgets the last regular toast, so the next arrival toasts again; called by the shell's `startGame` (Ván mới, Chơi lại, loading a save) and by tests. */
+/** Regular milestones toasted on `day`, and their Tem, for the merged toast. */
+let milestonesToday = { day: 0, count: 0, tickets: 0 };
+
+/** Forgets the last regular toast and the day's milestones, so the next arrival toasts again; called by the shell's `startGame` (Ván mới, Chơi lại, loading a save) and by tests. */
 export function resetRegularToasts(): void {
   lastRegularToastAt = null;
+  milestonesToday = { day: 0, count: 0, tickets: 0 };
+}
+
+/** "3 khách quen lên mốc · +4 Tem": the merged toast from the day's second milestone on. */
+export function mergedMilestoneTitle(count: number, tickets: number): string {
+  return `${count} khách quen lên mốc · +${tickets} Tem`;
+}
+
+/**
+ * The day's first milestone names the regular; from the second one the same
+ * toast reads mergedMilestoneTitle with the day's count and Tem, in place.
+ */
+function milestoneToast(event: Extract<GameEvent, { type: 'regular_milestone' }>, state: GameState): ToastInput | null {
+  const name = regularById(event.regularId)?.name;
+  if (!name) return null;
+  if (milestonesToday.day !== state.day) milestonesToday = { day: state.day, count: 0, tickets: 0 };
+  milestonesToday.count += 1;
+  milestonesToday.tickets += event.tickets;
+  if (milestonesToday.count > 1) {
+    return { level: 'success', icon: 'i-face-happy', title: mergedMilestoneTitle(milestonesToday.count, milestonesToday.tickets), text: 'Xem trong Sổ khách quen.', key: 'regular_milestone', replace: true };
+  }
+  return {
+    level: 'success',
+    icon: 'i-face-happy',
+    title: `${name}: mốc ${event.milestone} trong Sổ khách quen`,
+    text: `Ghé ${event.visits} lần · +${event.tickets} Tem`,
+    key: 'regular_milestone',
+  };
+}
+
+/** Name of the shop style a challenge opens: the one it unlocked, or else the next one a completed challenge would. */
+export function challengeStyleName(state: Pick<GameState, 'styles'>, unlock?: { id: string }): string | null {
+  const id = unlock?.id ?? nextChallengeStyle(state);
+  return id ? (styleById(id)?.name ?? null) : null;
+}
+
+/** Morning of a week with a side challenge: "Tuần 5 có thử thách: …", what to do and the style it opens; null otherwise. */
+export function weekChallengeToast(state: GameState): ToastInput | null {
+  const challenge = state.week?.challenge;
+  if (!challenge || challenge.status !== 'active' || weekDay(state) !== 1) return null;
+  const { name, description } = describeChallenge(challenge);
+  const style = challengeStyleName(state);
+  return {
+    level: 'info',
+    icon: 'i-sparkle',
+    title: `Tuần ${weekIndex(state)} có thử thách: ${name}`,
+    text: `${description} Thưởng +${challenge.reward.tickets} Tem${style ? `, mở kiểu ${style}` : ''}.`,
+    key: 'challenge',
+  };
 }
 
 /** "Khách quen mới: Cô Lan" or "Cô Lan ghé quán (lần 3)", at most one per REGULAR_TOAST_GAP_MS of real time. */
@@ -82,17 +135,8 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
   switch (event.type) {
     case 'regular_arrived':
       return regularToast(event, now);
-    case 'regular_milestone': {
-      const name = regularById(event.regularId)?.name;
-      if (!name) return null;
-      return {
-        level: 'success',
-        icon: 'i-face-happy',
-        title: `${name}: mốc ${event.milestone} trong Sổ khách quen`,
-        text: `Ghé ${event.visits} lần · +${event.tickets} Tem`,
-        key: `regular_milestone:${event.regularId}:${event.milestone}`,
-      };
-    }
+    case 'regular_milestone':
+      return milestoneToast(event, state);
     case 'notify':
       return { level: event.level, title: event.text };
     case 'angry':
@@ -182,14 +226,17 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
         key: 'special_order',
       };
     }
-    case 'challenge_completed':
+    case 'challenge_completed': {
+      // The style is already open by now, so only the event's own unlock names it.
+      const style = event.challenge.reward.unlock ? challengeStyleName(state, event.challenge.reward.unlock) : null;
       return {
         level: 'success',
         icon: 'i-trophy',
         title: `Xong thử thách: ${describeChallenge(event.challenge).name}`,
-        text: `+${event.challenge.reward.tickets} Tem`,
+        text: `+${event.challenge.reward.tickets} Tem${style ? ` · Mở kiểu ${style}` : ''}`,
         key: 'challenge',
       };
+    }
     case 'vip_arrived':
       return { level: 'info', icon: 'i-star', title: 'Khách VIP vừa tới!', text: `Phục vụ để nhận +${VIP_TICKETS} Tem.`, key: 'vip' };
     case 'staff_promoted': {

@@ -7,7 +7,7 @@ import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
-import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/events';
+import { resetRegularToasts, toastForEvent, uniformUnlockToast, weekChallengeToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { createServeHints } from '../hud/serveHints';
 import { openOtherPanel } from '../panels/widgets';
@@ -46,6 +46,8 @@ const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
 /** Set once the day-2 speed hint was shown. */
 export const SPEED_HINT_KEY = 'cst3d:hint:speed';
 export const SPEED_HINT = 'Bấm 2x để một ngày còn 3,5 phút';
+/** The speed hint's button: switches to 2x at once. */
+export const SPEED_HINT_ACTION = 'Chuyển 2x';
 /** Added once per run to the first "Khách bỏ đi" toast. */
 export const ANGRY_HINT = 'Chạm vào khách đang chờ, hoặc thuê pha chế.';
 
@@ -88,7 +90,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     } catch {
       return;
     }
-    toasts.show({ level: 'info', icon: 'i-speed-2', title: SPEED_HINT });
+    toasts.show({ level: 'info', icon: 'i-speed-2', title: SPEED_HINT, action: { label: SPEED_HINT_ACTION, run: () => dispatch({ type: 'set_speed', speed: 2 }) } });
   }
 
   // Anonymous play log (save/playlog.ts): one random id per run, and only the
@@ -286,6 +288,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       screens.show(null);
       hud.update(state);
       syncReport();
+      const challenge = weekChallengeToast(state);
+      if (challenge) toasts.show(challenge);
       hud.el.querySelector<HTMLElement>('.hud-btn-cta:not([hidden])')?.focus();
     },
     onReplay: replay,
@@ -395,8 +399,10 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     },
     handleEvents(events) {
       if (!state) return;
+      // A regular who reaches a milestone gets that toast, not a second "ghé quán" one.
+      const milestone = events.some((e) => e.type === 'regular_milestone');
       for (const event of events) {
-        let toast = toastForEvent(event, state);
+        let toast = event.type === 'regular_arrived' && milestone ? null : toastForEvent(event, state);
         // Day 1: one toast, then the walkouts only count up next to the HUD.
         if (toast && event.type === 'angry' && !serveHints.onWalkout(state)) toast = null;
         if (toast && event.type === 'angry' && !angryHinted) {
