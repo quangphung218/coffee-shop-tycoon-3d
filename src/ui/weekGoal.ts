@@ -1,3 +1,4 @@
+import { challengeProgress, describeChallenge } from '../sim/challenges';
 import type { GameState } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
 import { scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
@@ -106,5 +107,59 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)
       : null,
+  );
+}
+
+/** The week's side challenge as the Mục tiêu tuần block shows it (challengeProgress). */
+export interface ChallengeView {
+  name: string;
+  description: string;
+  value: number;
+  target: number;
+  done: boolean;
+  failed: boolean;
+  /** Tem paid on completion; `reward.unlock` has nothing to show yet. */
+  tickets: number;
+}
+
+/** The week's side challenge and its progress so far; null before CHALLENGE_FIRST_WEEK or without one, so its block hides. */
+export function challengeView(state: GameState): ChallengeView | null {
+  const challenge = state.week?.challenge;
+  const p = challengeProgress(state);
+  if (!challenge || !p) return null;
+  const { name, description } = describeChallenge(challenge);
+  return { name, description, value: p.value, target: p.target, done: p.done, failed: p.failed, tickets: challenge.reward.tickets };
+}
+
+function challengeStatus(v: ChallengeView): string {
+  if (v.done) return 'Đã xong';
+  if (v.failed) return 'Đã hụt';
+  return `Thưởng +${v.tickets} Tem`;
+}
+
+/** "Thử thách: name", what to do, one bar with "value/target" and the reward, or done/failed in its place. */
+export function challengeBlock(v: ChallengeView): HTMLElement {
+  const pct = v.done ? 100 : v.target > 0 ? Math.min(100, Math.round((v.value / v.target) * 100)) : 100;
+  const fill = h('span');
+  fill.setAttribute('style', `width:${pct}%`);
+  return h(
+    'div',
+    { class: 'week-goal week-challenge', attrs: { 'data-block': 'challenge', 'data-state': v.done ? 'done' : v.failed ? 'failed' : 'active' } },
+    h('p', { class: 'week-goal-line', attrs: { 'data-challenge': 'name' } }, icon('i-sparkle', { size: 16 }), h('span', { text: `Thử thách: ${v.name}` })),
+    h('p', { class: 'week-goal-line item-meta', attrs: { 'data-challenge': 'description' }, text: v.description }),
+    h(
+      'div',
+      { class: `week-goal-row${v.done ? ' is-done' : ''}${v.failed ? ' is-failed' : ''}`, attrs: { 'data-challenge': 'bar' } },
+      h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'value' }, text: `${v.value}/${v.target}` }),
+      h(
+        'span',
+        {
+          class: 'progress',
+          attrs: { role: 'progressbar', 'aria-label': `Thử thách ${v.name}`, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct) },
+        },
+        fill,
+      ),
+      h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'reward' }, text: challengeStatus(v) }),
+    ),
   );
 }

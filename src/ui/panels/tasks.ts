@@ -18,7 +18,7 @@ import { localDateKey } from '../core/today';
 import { unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDayLabel } from '../hud/hud';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { weekGoalBlock, weekGoalView } from '../weekGoal';
+import { challengeBlock, challengeView, weekGoalBlock, weekGoalView, type ChallengeView } from '../weekGoal';
 import { guardStartDay } from '../openGuard';
 import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
@@ -436,6 +436,16 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       setChildren(goalBox, v ? weekGoalBlock(v) : null);
     },
   );
+  // The week's side challenge under the goal, from CHALLENGE_FIRST_WEEK.
+  const challengeBox = h('div', { hidden: true });
+  w.watch(
+    (s) => JSON.stringify(challengeView(s)),
+    (key) => {
+      const v = JSON.parse(key) as ChallengeView | null;
+      challengeBox.hidden = v === null;
+      setChildren(challengeBox, v ? challengeBlock(v) : null);
+    },
+  );
 
   const summary = h('span');
   const bar = h('span');
@@ -580,6 +590,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     weekList,
     goalTitle,
     goalBox,
+    challengeBox,
     progress,
     list,
     missionTitle,
@@ -604,7 +615,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     (s) => s.day === 1,
     (first) => {
       if (first) prep.prepend(progress, list);
-      else goalBox.after(progress, list);
+      else challengeBox.after(progress, list);
     },
   );
   const state = ctx.getState();
