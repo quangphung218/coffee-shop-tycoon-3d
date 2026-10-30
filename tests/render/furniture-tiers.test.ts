@@ -5,6 +5,7 @@ import { ShopView, type LookTier, type TieredPiece } from '../../src/render/scen
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, type ShopLayout } from '../../src/sim/upgrades';
 import type { GameState, UpgradeId } from '../../src/sim/types';
+import { ensureRetention } from '../../src/sim/retention';
 
 const TIERS: readonly LookTier[] = [1, 2, 3];
 /** Pieces with trim: steel from tier 2, gold at tier 3 (the bulbs only glow). */
@@ -18,6 +19,7 @@ function buy(s: GameState, id: UpgradeId, levels = 1): void {
 function furnished(): GameState {
   const s = createNewGame('Quán Mây', 'normal', 1);
   s.money = 1_000_000_000;
+  ensureRetention(s).tickets = 1000;
   buy(s, 'tables', 6);
   buy(s, 'outdoor_seating', 2);
   buy(s, 'plants', 3);
@@ -201,6 +203,7 @@ describe('ShopView tier swap', () => {
   it('follows the tables upgrade: one more table per level, a new look at each tier step', () => {
     const state = createNewGame('Quán Mây', 'normal', 1);
     state.money = 1_000_000_000;
+    ensureRetention(state).tickets = 1000;
     const shop = new ShopView(new Scene(), 'medium');
     shop.update(state, 0, 0, 0);
     const v = internals(shop);
@@ -226,6 +229,7 @@ describe('ShopView tier swap', () => {
   it('adds one decor instance per level bought and swaps to the tier look', () => {
     const state = createNewGame('Quán Mây', 'normal', 1);
     state.money = 1_000_000_000;
+    ensureRetention(state).tickets = 1000;
     const shop = new ShopView(new Scene(), 'medium');
     shop.update(state, 0, 0, 0);
     const v = internals(shop);

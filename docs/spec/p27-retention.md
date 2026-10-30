@@ -71,9 +71,18 @@ Một vòng 7 ngày ở Thường cho 810.000đ và 14 Tem. Tiền làm tròn t�
 | Đào tạo nhân viên lên cấp 5 | 5 |
 | Máy hát đĩa | 3 |
 | Góc sofa | 5 |
-| Máy espresso cao cấp cấp 4 | 150 |
+| Đèn trang trí cấp 1 / 2 / 3 | 10 / 12 / 15 |
+| Cây xanh cấp 2 / 3 / 4 / 5 | 12 / 12 / 15 / 20 |
+| Tranh treo tường cấp 2 / 3 / 4 | 12 / 12 / 15 |
+
+Từ E-13 Tem nằm ở đồ trang trí rẻ, mở sớm (cấp 1 của Cây xanh và Tranh treo tường vẫn không cần Tem); dụng cụ không bao giờ cần Tem. Trong mỗi nâng cấp, cấp sau không rẻ hơn cấp trước cả về tiền lẫn Tem. Mô phỏng p23 tới hết tuần 4: người chơi mua hết (c_spend) tiêu 83–95% số Tem kiếm được, người chơi đều tay (b_steady) 28–31%.
 
 Số dư Tem hiện trên HUD cạnh tiền. Gỡ nội thất không hoàn Tem.
+
+Đầu bảng Nâng cấp có hai dòng tóm tắt (`src/ui/panels/upgrades.ts`):
+
+- `Tem: X/Y → tên nâng cấp`: X là số dư, Y là Tem của cấp kế tiếp rẻ nhất về Tem trong các nâng cấp đã mở và không bị chặn (`nextTicketUpgrade`; bằng Tem thì lấy cấp rẻ tiền hơn). Khi không còn cấp nào cần Tem, dòng chỉ ghi `Tem: X`.
+- `Giá bán +X% nhờ nâng cấp`: tổng `priceBonus` của mọi cấp đã mua (`ownedPriceBonus`).
 
 ## Thành tựu
 
@@ -181,14 +190,14 @@ Nguồn: `extraLevels` trong `src/sim/data/upgrades.ts` (giá, hiệu ứng), `m
 
 | Nâng cấp | Cấp | Mở ở cấp quán | Giá (Thường) | Tem | Hiệu ứng riêng | Giá bán |
 | --- | --- | --- | --- | --- | --- | --- |
-| Máy espresso cao cấp (`better_machine`) | 4 | 4 | 30.000.000đ | 150 | +0,2 sao | +17% |
+| Máy espresso cao cấp (`better_machine`) | 4 | 4 | 10.000.000đ | — | +0,2 sao | +6% |
 | Máy espresso cao cấp | 5 | 7 | 12.000.000đ | — | +0,2 sao | +7% |
 | Máy espresso cao cấp | 6 | 10 | 14.000.000đ | — | +0,2 sao | +8% |
 | Máy xay hạt (`grinder`) | 4 | 4 | 5.000.000đ | — | pha cà phê +15%, +0,05 sao, +6% khách | +3% |
 | Máy xay hạt | 5 | 7 | 9.000.000đ | — | như trên | +5% |
-| Cây xanh (`plants`) | 4 | 4 | 3.000.000đ | — | +4% khách, +0,05 sao | +2% |
-| Cây xanh | 5 | 6 | 8.000.000đ | — | như trên | +4,5% |
-| Tranh treo tường (`paintings`) | 4 | 4 | 5.000.000đ | — | +5% khách, +0,05 sao | +3% |
+| Cây xanh (`plants`) | 4 | 4 | 3.000.000đ | 15 | +4% khách, +0,05 sao | +2% |
+| Cây xanh | 5 | 6 | 8.000.000đ | 20 | như trên | +4,5% |
+| Tranh treo tường (`paintings`) | 4 | 4 | 5.000.000đ | 15 | +5% khách, +0,05 sao | +3% |
 | Biển neon (`neon_sign`) | 3 | 4 | 5.000.000đ | — | +5% khách, +0,04 sao | +3% |
 | Biển neon | 4 | 6 | 10.000.000đ | — | như trên | +5,5% |
 | Kệ sách (`bookshelf`) | 3 | 5 | 5.000.000đ | — | +4% khách, +0,06 sao | +3% |
@@ -200,10 +209,10 @@ Nguồn: `extraLevels` trong `src/sim/data/upgrades.ts` (giá, hiệu ứng), `m
 | Máy rửa ly | 4 | 10 | 14.000.000đ | — | như trên | +8% |
 | Mở rộng diện tích (`expand_area`) | 3 | 7 | 13.000.000đ | — | +6 ghế, +10% khách | +7% |
 | Mở rộng diện tích | 4 | 9 | 14.000.000đ | — | như trên | +8% |
-| Đèn trang trí (`lights`) | 3 | 9 | 12.500.000đ | — | +6% khách, +0,05 sao | +7% |
-| Thêm bàn ghế (`tables`) | 7 | 8 | 11.000.000đ | — | +2 ghế | +6% |
+| Đèn trang trí (`lights`) | 3 | 9 | 12.500.000đ | 15 | +6% khách, +0,05 sao | +7% |
+| Thêm bàn ghế (`tables`) | 7 | 8 | 10.000.000đ | — | +2 ghế | +6% |
 
-- Máy espresso cao cấp cấp 4 đắt nhất: 30.000.000đ và 150 Tem. Tem chỉ kiếm trong game ([Tem](#tem)).
+- E-13: Máy espresso cao cấp cấp 4 còn 10.000.000đ, không Tem, +6% giá bán (trước là 30.000.000đ + 150 Tem, đắt hơn cấp 5). Save cũ đã mua cấp này giữ cấp và số dư Tem. Tem chỉ kiếm trong game ([Tem](#tem)).
 - Các cấp thêm ở cấp quán 4–6 là chủ ý thiết kế: giá nhỏ, thưởng `priceBonus` nhỏ, để người chơi có thứ mua sớm.
 - Cấp thêm nằm ở bảng Nâng cấp cùng nâng cấp gốc, không có mục riêng.
 

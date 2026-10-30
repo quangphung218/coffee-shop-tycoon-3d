@@ -105,7 +105,9 @@ describe('upgrades', () => {
       const c0 = upgradeCost(u, 0)!;
       expect(c0).toBeGreaterThan(0);
       if (u.maxLevel >= 2) expect(upgradeCost(u, 1)!).toBeGreaterThan(c0);
-      for (const t of u.ticketCost ?? []) expect(t, u.id).toBeGreaterThan(0);
+      // E-13: the first levels of plants and paintings are free of Tem; a ticketCost still prices some level.
+      for (const t of u.ticketCost ?? []) expect(t, u.id).toBeGreaterThanOrEqual(0);
+      if (u.ticketCost) expect(Math.max(...u.ticketCost), u.id).toBeGreaterThan(0);
       expect(u.ticketCost?.length ?? u.maxLevel, u.id).toBe(u.maxLevel);
       expect(upgradeCost(u, u.maxLevel)).toBeNull();
       expect(Object.keys(u.effectPerLevel).length).toBeGreaterThan(0);
@@ -149,6 +151,19 @@ describe('upgrades', () => {
     const e = totalUpgradeEffect({ better_machine: bm.maxLevel + 1 });
     expect(e.ratingBonus).toBeCloseTo(0.2 * bm.maxLevel + bm.extraLevels![0]!.effect.ratingBonus!);
     expect(e.priceBonus).toBeCloseTo(bm.extraLevels![0]!.effect.priceBonus!);
+  });
+
+  it('never makes a later level cheaper in money or Tem, extra levels included (E-13)', () => {
+    for (const u of UPGRADES) {
+      const levels = [
+        ...Array.from({ length: u.maxLevel }, (_, l) => ({ cost: upgradeCost(u, l)!, tickets: u.ticketCost?.[l] ?? 0 })),
+        ...(u.extraLevels ?? []).map((x) => ({ cost: x.cost, tickets: x.tickets ?? 0 })),
+      ];
+      for (let l = 1; l < levels.length; l++) {
+        expect(levels[l]!.cost, `${u.id} level ${l + 1} money`).toBeGreaterThanOrEqual(levels[l - 1]!.cost);
+        expect(levels[l]!.tickets, `${u.id} level ${l + 1} Tem`).toBeGreaterThanOrEqual(levels[l - 1]!.tickets);
+      }
+    }
   });
 });
 

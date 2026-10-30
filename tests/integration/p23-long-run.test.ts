@@ -97,6 +97,8 @@ interface WeekRow {
   cups: number;
   /** Loyalty tickets ('Tem') held at the end of the week. */
   tickets: number;
+  /** Tem spent on upgrades from day 1 to the end of the week (cumulative). */
+  ticketsSpent: number;
   /** The game had gone bankrupt by the end of the week. */
   bankrupt: boolean;
 }
@@ -115,7 +117,8 @@ function reserve(state: GameState): number {
 }
 
 /** Buys the cheapest open upgrade `pick` allows while `affordable(cost)` holds, again and again, at most `max` times. */
-function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean, pick: (id: UpgradeId) => boolean = () => true, max = 100): void {
+function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean, pick: (id: UpgradeId) => boolean = () => true, max = 100): number {
+  let ticketsSpent = 0;
   for (let guard = 0; guard < max; guard++) {
     let best: { id: UpgradeId; cost: number } | null = null;
     for (const def of UPGRADES) {
@@ -126,10 +129,12 @@ function buyCheapest(state: GameState, track: () => void, affordable: (cost: num
       if ((nextUpgradeTicketCost(state, def.id) ?? 0) > (state.retention?.tickets ?? 0) || upgradeBlockedReason(state, def.id)) continue;
       if (best === null || cost < best.cost) best = { id: def.id, cost };
     }
-    if (!best) return;
+    if (!best) return ticketsSpent;
+    ticketsSpent += nextUpgradeTicketCost(state, best.id) ?? 0;
     expect(dispatch(state, { type: 'buy_upgrade', upgradeId: best.id })).toBe(true);
     track();
   }
+  return ticketsSpent;
 }
 
 function buyable(state: GameState): number {
@@ -140,7 +145,8 @@ function left(state: GameState): number {
   return UPGRADES.filter((u) => upgradeLevel(state, u.id) < u.maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, u.id)).length;
 }
 
-function morning(state: GameState, s: Strategy, track: () => void): void {
+/** Plays the morning; returns the Tem spent on upgrades. */
+function morning(state: GameState, s: Strategy, track: () => void): number {
   enableUnlocked(state);
   dispatch(state, { type: 'apply_restock' });
   track();
@@ -148,8 +154,10 @@ function morning(state: GameState, s: Strategy, track: () => void): void {
     const pick = [...state.candidates].sort((a, b) => a.wagePerDay - b.wagePerDay || a.id - b.id)[0]!;
     expect(dispatch(state, { type: 'hire_staff', candidateId: pick.id, role: 'barista' })).toBe(true);
   }
-  if (s.spend) buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost);
-  if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost, steadyPick, 1);
+  let tickets = 0;
+  if (s.spend) tickets += buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost);
+  if (s.steady && state.day % STEADY_VISIT_EVERY === 0) tickets += buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost, steadyPick, 1);
+  return tickets;
 }
 
 function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[] {
@@ -160,10 +168,11 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
     minMoney = Math.min(minMoney, state.money);
   };
   let spent = 0;
+  let ticketsSpent = 0;
   for (let day = 1; day <= WEEKS * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
-    morning(state, s, track);
+    ticketsSpent += morning(state, s, track);
     playDay(state, { onMinute: track });
     track();
     spent += state.today.upgradeCost;
@@ -189,6 +198,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
       score: result.score,
       cups: result.cups,
       tickets: state.retention?.tickets ?? 0,
+      ticketsSpent,
       bankrupt: state.bankrupt,
     });
     spent = 0;
@@ -387,6 +397,26 @@ describe('P23 long run: 56 days × 3 difficulties × strategies a/c/b_steady', {
         for (let w = 1; w < cups.length; w++) expect(cups[w], `${d} seed ${SEEDS[i]} cups ${cups.join(',')}`).toBeLessThanOrEqual(cups[w - 1]!);
       });
     }
+  });
+
+  // Tem earned = held + spent (a new game starts at 0). The spender spends at least half by the end of week 4, steady play a quarter (E-13).
+  it('has the spender spend ≥50% and steady play ≥25% of the Tem earned by the end of week 4 (E-13)', () => {
+    const MIN_SHARE: Record<string, number> = { c_spend: 0.5, b_steady: 0.25 };
+    const body: string[][] = [];
+    const checks: { label: string; spent: number; min: number }[] = [];
+    for (const d of DIFFICULTIES) {
+      for (const name of Object.keys(STRATEGIES)) {
+        runs.get(`${d}/${name}`)!.forEach((rows, i) => {
+          const row = rows[3]!;
+          const earned = row.tickets + row.ticketsSpent;
+          body.push([d, name, String(SEEDS[i]), String(earned), String(row.ticketsSpent), earned ? `${Math.round((100 * row.ticketsSpent) / earned)}%` : '-']);
+          const share = MIN_SHARE[name];
+          if (share !== undefined) checks.push({ label: `${d}/${name} seed ${SEEDS[i]} earned ${earned}`, spent: row.ticketsSpent, min: share * earned });
+        });
+      }
+    }
+    console.log(`Tem by the end of week 4\n${markdownTable(['difficulty', 'strategy', 'seed', 'earned', 'spent', 'share'], body)}`);
+    for (const c of checks) expect(c.spent, c.label).toBeGreaterThanOrEqual(c.min);
   });
 
   it('never goes bankrupt (E-07)', () => {

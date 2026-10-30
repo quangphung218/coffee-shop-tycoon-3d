@@ -16,7 +16,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 400000,
     costGrowth: 1.35,
     effectPerLevel: { capacity: 2 },
-    extraLevels: [extra(8, 11_000_000, 0.06, { capacity: 2 })],
+    extraLevels: [extra(8, 10_000_000, 0.06, { capacity: 2 })],
   },
   {
     id: 'better_machine',
@@ -28,7 +28,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 1500000,
     costGrowth: 1.8,
     effectPerLevel: { ratingBonus: 0.2 },
-    extraLevels: [extra(4, 30_000_000, 0.17, { ratingBonus: 0.2 }, 150), extra(7, 12_000_000, 0.07, { ratingBonus: 0.2 }), extra(10, 14_000_000, 0.08, { ratingBonus: 0.2 })],
+    extraLevels: [extra(4, 10_000_000, 0.06, { ratingBonus: 0.2 }), extra(7, 12_000_000, 0.07, { ratingBonus: 0.2 }), extra(10, 14_000_000, 0.08, { ratingBonus: 0.2 })],
   },
   {
     id: 'fast_machine',
@@ -85,7 +85,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 300000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.04, ratingBonus: 0.05 },
-    extraLevels: [extra(4, 3_000_000, 0.02, { appeal: 0.04, ratingBonus: 0.05 }), extra(6, 8_000_000, 0.045, { appeal: 0.04, ratingBonus: 0.05 })],
+    ticketCost: [0, 12, 12],
+    extraLevels: [extra(4, 3_000_000, 0.02, { appeal: 0.04, ratingBonus: 0.05 }, 15), extra(6, 8_000_000, 0.045, { appeal: 0.04, ratingBonus: 0.05 }, 20)],
   },
   {
     id: 'paintings',
@@ -97,7 +98,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 400000,
     costGrowth: 1.5,
     effectPerLevel: { appeal: 0.05, ratingBonus: 0.05 },
-    extraLevels: [extra(4, 5_000_000, 0.03, { appeal: 0.05, ratingBonus: 0.05 })],
+    ticketCost: [0, 12, 12],
+    extraLevels: [extra(4, 5_000_000, 0.03, { appeal: 0.05, ratingBonus: 0.05 }, 15)],
   },
   {
     id: 'lights',
@@ -109,7 +111,8 @@ export const UPGRADES: readonly UpgradeDef[] = [
     baseCost: 500000,
     costGrowth: 1.6,
     effectPerLevel: { appeal: 0.06, ratingBonus: 0.05 },
-    extraLevels: [extra(9, 12_500_000, 0.07, { appeal: 0.06, ratingBonus: 0.05 })],
+    ticketCost: [10, 12],
+    extraLevels: [extra(9, 12_500_000, 0.07, { appeal: 0.06, ratingBonus: 0.05 }, 15)],
   },
   {
     id: 'window_bar',

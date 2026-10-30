@@ -33,6 +33,7 @@ import { ShopView, layoutKey } from '../../src/render/scene/shop';
 import { createNewGame } from '../../src/sim/state';
 import type { GameState, UpgradeId } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
+import { ensureRetention } from '../../src/sim/retention';
 
 describe('zoom', () => {
   it('clamps to the zoom limits', () => {
@@ -420,6 +421,7 @@ describe('renderer quality', () => {
 function rich(): GameState {
   const s = createNewGame('A', 'normal', 1);
   s.money = 100_000_000;
+  ensureRetention(s).tickets = 1000;
   return s;
 }
 

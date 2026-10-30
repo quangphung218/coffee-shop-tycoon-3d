@@ -26,12 +26,14 @@ import { ShopView } from '../../src/render/scene/shop';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, nextUpgradeCost } from '../../src/sim/upgrades';
 import type { GameState, UpgradeId, Weather } from '../../src/sim/types';
+import { ensureRetention } from '../../src/sim/retention';
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 
 function game(): GameState {
   const s = createNewGame('Quán Mây', 'normal', 1);
   s.money = 100_000_000;
+  ensureRetention(s).tickets = 1000;
   s.weather = 'sunny';
   const buy = (id: UpgradeId, levels: number): void => {
     for (let i = 0; i < levels && nextUpgradeCost(s, id) !== null; i++) expect(buyUpgrade(s, id).ok).toBe(true);

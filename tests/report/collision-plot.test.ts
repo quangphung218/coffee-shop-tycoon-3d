@@ -20,6 +20,7 @@ import { staffSpots } from '../../src/sim/staff';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, GameState, Order, Staff, StaffRole, StaffTask, Vec2 } from '../../src/sim/types';
 import { UPGRADES } from '../../src/sim/data/upgrades';
+import { ensureRetention } from '../../src/sim/retention';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, tableZone, type ShopLayout, type TableZone } from '../../src/sim/upgrades';
 
 /**
@@ -305,6 +306,7 @@ const P27_FURNITURE: ReadonlySet<string> = new Set([
 function maxedState(): GameState {
   const state = createNewGame('Quán Va Chạm', 'normal', SEED);
   state.money = 1e12;
+  ensureRetention(state).tickets = 1000;
   // The plots show the P18 floor: the P27 furniture, the P31 tools and the E-05 premium decor are left out.
   for (const def of UPGRADES.filter((u) => !P27_FURNITURE.has(u.id))) {
     while (nextUpgradeCost(state, def.id) !== null) {

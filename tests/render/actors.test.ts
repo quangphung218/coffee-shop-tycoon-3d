@@ -76,6 +76,7 @@ import { CHAIR_OFFSET, buildNavGrid, cellAt, cellCenter, findPath, isWalkable, n
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, CustomerState, GameState, PersonaId, StaffTaskKind, Vec2 } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout, nextUpgradeCost } from '../../src/sim/upgrades';
+import { ensureRetention } from '../../src/sim/retention';
 
 const CUSTOMER_STATES: readonly CustomerState[] = [
   'entering',
@@ -417,6 +418,7 @@ function samples(from: Vec2, path: readonly Vec2[], skip = 0): Vec2[] {
 function fullShop(): GameState {
   const state = newState();
   state.money = 1e10;
+  ensureRetention(state).tickets = 1000;
   for (const id of ['tables', 'outdoor_seating', 'expand_area', 'plants', 'big_counter', 'fast_machine'] as const) {
     while (nextUpgradeCost(state, id) !== null) expect(buyUpgrade(state, id).ok).toBe(true);
   }

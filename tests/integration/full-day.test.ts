@@ -6,6 +6,7 @@ import { DAY_START_MINUTE, createNewGame } from '../../src/sim/state';
 import type { DailyReport, GameState } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout } from '../../src/sim/upgrades';
 import { playDay } from './helpers';
+import { ensureRetention } from '../../src/sim/retention';
 
 const SEED = 20261014;
 
@@ -96,6 +97,7 @@ describe('full day, headless', () => {
   it('never leaves a customer or staff member inside furniture or walls over several days', () => {
     const state = createNewGame('Quán Va Chạm', 'normal', SEED);
     state.money = 1e12;
+    ensureRetention(state).tickets = 1000;
     for (const i of state.inventory) i.qty = 100000;
     for (const id of ['tables', 'tables', 'outdoor_seating', 'expand_area', 'plants', 'plants', 'big_counter'] as const) {
       expect(buyUpgrade(state, id).ok, id).toBe(true);

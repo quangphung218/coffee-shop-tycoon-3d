@@ -7,10 +7,12 @@ import { dayScore } from '../../src/sim/rating';
 import { createNewGame } from '../../src/sim/state';
 import { DECOR_REFUND_SHARE, getShopLayout, isRemovableDecor, removeDecor } from '../../src/sim/upgrades';
 import type { GameState } from '../../src/sim/types';
+import { ensureRetention } from '../../src/sim/retention';
 
 function rich(difficulty: GameState['difficulty'] = 'normal'): GameState {
   const s = createNewGame('A', difficulty, 1);
   s.money = 100_000_000;
+  ensureRetention(s).tickets = 1000;
   s.shopLevel = 6;
   return s;
 }
