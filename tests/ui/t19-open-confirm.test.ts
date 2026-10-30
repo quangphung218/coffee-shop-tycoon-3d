@@ -27,6 +27,13 @@ const emptyStock = (): GameState => {
   return { ...s, inventory: s.inventory.map((i) => ({ ...i, qty: 0 })) };
 };
 
+/** A game with one barista hired, so only the stock check is in play. */
+function withStaff(s: GameState): GameState {
+  const c = s.candidates[0]!;
+  expect(simDispatch(s, { type: 'hire_staff', candidateId: c.id, role: 'barista' })).toBe(true);
+  return s;
+}
+
 const openBtn = (body: HTMLElement): HTMLButtonElement => body.querySelector<HTMLButtonElement>('[data-action="open"]')!;
 const confirmRow = (body: HTMLElement): HTMLElement | null => body.querySelector<HTMLElement>('.panel-foot .confirm');
 const button = (row: HTMLElement, text: string): HTMLButtonElement | undefined => [...row.querySelectorAll('button')].find((b) => b.textContent === text);
@@ -89,7 +96,7 @@ describe('T-19 open-shop confirmation when stock makes no dish (UX-004)', () => 
   });
 
   it('sellable stock: Open starts the day directly, no confirmation', () => {
-    const state = createNewGame('Quán Thử', 'normal', 42);
+    const state = withStaff(createNewGame('Quán Thử', 'normal', 42));
     expect(stockMakesNoDish(state)).toBe(false);
     const m = mount(state);
     openBtn(m.body).click();

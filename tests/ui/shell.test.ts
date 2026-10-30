@@ -421,6 +421,9 @@ describe('HUD', () => {
     const state = game();
     const { hud, dispatch } = makeHud(state);
     button(hud.el, 'Mở cửa').click();
+    // No staff yet: the shared guard asks first (UX-004).
+    expect(dispatch).not.toHaveBeenCalled();
+    q<HTMLButtonElement>(hud.el, '.hud-confirm [data-action="confirm"]').click();
     expect(dispatch).toHaveBeenCalledWith({ type: 'start_day' });
     q<HTMLButtonElement>(hud.el, '[data-speed="4"]').click();
     expect(dispatch).toHaveBeenCalledWith({ type: 'set_speed', speed: 4 });

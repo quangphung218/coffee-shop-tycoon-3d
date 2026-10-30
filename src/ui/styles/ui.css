@@ -1566,6 +1566,15 @@ legend {
   background: var(--surface-danger);
   color: var(--text-danger);
 }
+/* "Mở cửa" confirmation under the bar (UX-004). */
+.hud-confirm {
+  flex-wrap: wrap;
+  border-radius: var(--radius-md);
+  border-color: var(--text-danger);
+}
+.hud-confirm p {
+  flex: 1 1 100%;
+}
 .hud-money-danger {
   color: var(--text-danger);
 }

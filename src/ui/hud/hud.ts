@@ -13,6 +13,7 @@ import { fresh } from '../core/fresh';
 import { PHASE_STEPS, phaseLabel } from '../core/phase';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { guardStartDay } from '../openGuard';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
 
 export interface HudActions {
@@ -564,7 +565,10 @@ export function createHud(actions: HudActions): Hud {
     {
       class: 'hud-btn hud-btn-cta is-mint',
       attrs: { type: 'button', 'data-action': 'open', title: OPEN_HINT },
-      on: { click: () => actions.dispatch({ type: 'start_day' }) },
+      on: {
+        click: () =>
+          guardStartDay({ host: bar, before: note, className: 'hud-note hud-confirm', getState: actions.getState, start: () => actions.dispatch({ type: 'start_day' }), back: openBtn }),
+      },
     },
     icon('i-open'),
     'Mở cửa',
