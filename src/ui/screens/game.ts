@@ -9,6 +9,7 @@ import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
+import { createServeHints } from '../hud/serveHints';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
 import { createBankrupt, latestPlayableSave } from './bankrupt';
@@ -45,6 +46,8 @@ const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
 /** Set once the day-2 speed hint was shown. */
 export const SPEED_HINT_KEY = 'cst3d:hint:speed';
 export const SPEED_HINT = 'Bấm 2x để một ngày còn 3,5 phút';
+/** Added once per run to the first "Khách bỏ đi" toast. */
+export const ANGRY_HINT = 'Chạm vào khách đang chờ, hoặc thuê pha chế.';
 
 /** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
@@ -63,9 +66,12 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const { root, storage, scene, screens } = base;
   let state: GameState | null = null;
   const toasts = new Toasts();
+  const serveHints = createServeHints(storage, options.locateHint);
+  let angryHinted = false;
 
   function dispatch(cmd: Command): boolean {
     if (!state || !simDispatch(state, cmd)) return false;
+    serveHints.onCommand(cmd);
     // The speed picked on the HUD (buttons or 1/2/3) is the next run's speed too.
     if (cmd.type === 'set_speed' && SPEEDS.includes(cmd.speed as GameSpeed) && cmd.speed !== base.settings.gameSpeed) {
       base.changeSettings({ gameSpeed: cmd.speed as GameSpeed });
@@ -167,7 +173,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // Under the screens, as when the whole shell was built at once: they share
   // a stacking level and the later element paints on top.
   const firstScreen = screens.get('menu')?.el ?? null;
-  for (const el of [hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
+  for (const el of [serveHints.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
@@ -191,6 +197,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     state.events = [];
     runId = newRunId();
     logPlay('run_start');
+    serveHints.start(state, from !== undefined);
+    angryHinted = false;
     hud.closePanel();
     toasts.clear();
     resetRegularToasts();
@@ -208,6 +216,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     logPlay('quit_to_menu', leavePhase());
     state = null;
     runId = null;
+    serveHints.stop();
     hud.closePanel();
     toasts.clear();
     hud.el.hidden = true;
@@ -381,11 +390,16 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     update() {
       if (state) hud.update(state);
       syncReport();
+      serveHints.update(state, screens.current !== null || report.visible);
     },
     handleEvents(events) {
       if (!state) return;
       for (const event of events) {
-        const toast = toastForEvent(event, state);
+        let toast = toastForEvent(event, state);
+        if (toast && event.type === 'angry' && !angryHinted) {
+          angryHinted = true;
+          toast = { ...toast, text: `${toast.text ?? ''} ${ANGRY_HINT}`.trim() };
+        }
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);

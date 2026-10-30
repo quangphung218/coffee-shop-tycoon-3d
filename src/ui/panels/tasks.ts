@@ -570,34 +570,42 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
 
-  body.append(
-    h(
-      'div',
-      { class: 'prep' },
-      giftTitle,
-      gift,
-      weekTitle,
-      weekList,
-      goalTitle,
-      goalBox,
-      h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar)),
-      list,
-      missionTitle,
-      missionEmpty,
-      missionList,
-      orderTitle,
-      orderHint,
-      vipLine,
-      orderList,
-      regularTitle,
-      regularEmpty,
-      regularList,
-      achBtn,
-      achList,
-      sugTitle,
-      sugList,
-      foot,
-    ),
+  const progress = h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar));
+  const prep = h(
+    'div',
+    { class: 'prep' },
+    giftTitle,
+    gift,
+    weekTitle,
+    weekList,
+    goalTitle,
+    goalBox,
+    progress,
+    list,
+    missionTitle,
+    missionEmpty,
+    missionList,
+    orderTitle,
+    orderHint,
+    vipLine,
+    orderList,
+    regularTitle,
+    regularEmpty,
+    regularList,
+    achBtn,
+    achList,
+    sugTitle,
+    sugList,
+    foot,
+  );
+  body.append(prep);
+  // Day 1 (E-15): the prep checklist first, the gift and the week goal below it.
+  w.watch(
+    (s) => s.day === 1,
+    (first) => {
+      if (first) prep.prepend(progress, list);
+      else goalBox.after(progress, list);
+    },
   );
   const state = ctx.getState();
   if (state) w.run(state);

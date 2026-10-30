@@ -86,8 +86,11 @@ describe('daily gift card', () => {
     expect(btn.textContent).toBe('Nhận quà ngày 1');
     expect(btn.getAttribute('aria-disabled')).toBeNull();
     expect(gift.textContent).toContain('Quà ngày 1: +50.000đ · +1 Tem');
-    // The card heads the panel.
-    expect(q(body, '.prep').firstElementChild!.textContent).toBe('Quà hằng ngày');
+    // Day 1 (E-15): the checklist heads the panel; from day 2 the card does.
+    expect(q(body, '.prep').firstElementChild!.textContent).toMatch(/^Đã xong/);
+    const later = game();
+    later.day = 2;
+    expect(q(mount(later).body, '.prep').firstElementChild!.textContent).toBe('Quà hằng ngày');
   });
 
   it('sends claim_daily_gift with the local date key and then says to come back tomorrow', () => {
