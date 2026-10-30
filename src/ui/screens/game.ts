@@ -1,6 +1,6 @@
 import { appendPlayLog, type PlayLogKind, type PlayLogPhase } from '../../save/playlog';
 import { autosave, autosaveAtRisk, keepAutosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
-import type { Settings } from '../../save/settings';
+import type { GameSpeed, Settings } from '../../save/settings';
 import { dispatch as simDispatch } from '../../sim';
 import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
@@ -41,6 +41,11 @@ export interface Shell {
   dispose(): void;
 }
 
+const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
+/** Set once the day-2 speed hint was shown. */
+export const SPEED_HINT_KEY = 'cst3d:hint:speed';
+export const SPEED_HINT = 'Bấm 2x để một ngày còn 3,5 phút';
+
 /** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
   const c = globalThis.crypto;
@@ -60,7 +65,24 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const toasts = new Toasts();
 
   function dispatch(cmd: Command): boolean {
-    return state ? simDispatch(state, cmd) : false;
+    if (!state || !simDispatch(state, cmd)) return false;
+    // The speed picked on the HUD (buttons or 1/2/3) is the next run's speed too.
+    if (cmd.type === 'set_speed' && SPEEDS.includes(cmd.speed as GameSpeed) && cmd.speed !== base.settings.gameSpeed) {
+      base.changeSettings({ gameSpeed: cmd.speed as GameSpeed });
+    }
+    return true;
+  }
+
+  // Day 2, once per browser: the day at 1x is long on a phone.
+  function hintSpeed(): void {
+    if (!state || state.day !== 2 || state.speed !== 1) return;
+    try {
+      if (storage.getItem(SPEED_HINT_KEY) !== null) return;
+      storage.setItem(SPEED_HINT_KEY, '1');
+    } catch {
+      return;
+    }
+    toasts.show({ level: 'info', icon: 'i-speed-2', title: SPEED_HINT });
   }
 
   // Anonymous play log (save/playlog.ts): one random id per run, and only the
@@ -317,13 +339,23 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     if (target instanceof Node && (hud.panelEl.contains(target) || report.el.contains(target))) return false;
     return screens.current === null || screens.current === 'pause';
   }
+  // A phone may drop a background tab without notice: save the run where it
+  // stands, mid-day too, under the same keepAutosave rule as the end of a day.
+  // A bankrupt run is not saved, so the slot keeps its last playable day.
+  function saveOnLeave(): void {
+    if (!state || state.bankrupt || screens.current === 'bankrupt') return;
+    runAutosave(state, state.day);
+  }
   function onVisibility(): void {
     logPlay(document.hidden ? 'hidden' : 'visible', leavePhase());
-    if (document.hidden && state && screens.current === null) openPause();
+    if (!document.hidden) return;
+    saveOnLeave();
+    if (state && screens.current === null) openPause();
   }
   // Closing the tab or navigating away may skip visibilitychange on some browsers.
   function onPageHide(): void {
     logPlay('hidden', leavePhase());
+    saveOnLeave();
   }
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);
@@ -357,7 +389,10 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);
-        if (event.type === 'phase') logPlay('phase', event.phase);
+        if (event.type === 'phase') {
+          logPlay('phase', event.phase);
+          if (event.phase === 'opening') hintSpeed();
+        }
         else if (event.type === 'week_ended') logPlay('week_end');
         if (event.type === 'dayEnded') {
           logPlay('day_end');

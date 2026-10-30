@@ -59,6 +59,8 @@ export interface MenuShell {
   /** True once attachGame was called. */
   readonly attached: boolean;
   openSettings(): void;
+  /** Saves a setting changed outside Settings, such as the speed picked on the HUD. */
+  changeSettings(patch: Partial<Settings>): void;
   /**
    * Plugs in the game part. "Ván mới" or "Tải game" pressed before this
    * opens its screen now, unless the player has left the menu since.
@@ -108,18 +110,16 @@ export function createMenuShell(options: ShellOptions): MenuShell {
       onSettings: () => openSettings(),
     }, scene),
   );
-  screens.add(
-    'settings',
-    createSettings(storage, settings, {
-      onChange: (next) => {
-        settings = next;
-        game?.onSettingsChange(next);
-        applyReducedMotion(next);
-        options.onSettingsChange?.(next);
-      },
-      onBack: () => screens.show(settingsReturn),
-    }),
-  );
+  const settingsScreen = createSettings(storage, settings, {
+    onChange: (next) => {
+      settings = next;
+      game?.onSettingsChange(next);
+      applyReducedMotion(next);
+      options.onSettingsChange?.(next);
+    },
+    onBack: () => screens.show(settingsReturn),
+  });
+  screens.add('settings', settingsScreen);
 
   function onKeyDown(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -152,6 +152,7 @@ export function createMenuShell(options: ShellOptions): MenuShell {
       return game !== null;
     },
     openSettings,
+    changeSettings: (patch) => settingsScreen.apply(patch),
     attachGame(next) {
       game = next;
       const open = pending;
