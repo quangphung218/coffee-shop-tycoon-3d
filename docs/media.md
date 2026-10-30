@@ -590,6 +590,24 @@ Kịch bản `scripts/scenarios/p31.mjs`. Lệnh build bản hiện tại, xuấ
 | `npm run perf:frames -- --base fe1fe8e --runs 5 --headed --scene tools-p31` | Đo khung hình cảnh có tháp và lò bậc 2 so với bản gốc ([Đo khung hình khi có hiệu ứng](#đo-khung-hình-khi-có-hiệu-ứng)). |
 | `P31_SAVES_ONLY=1 node scripts/capture.mjs p31` | Chỉ chơi và in tóm tắt save của bản hiện tại, không mở server hay trình duyệt. |
 
+## Ảnh E-17 (Phong cách quán)
+
+```sh
+npm run media -- --scenario e17
+```
+
+Kịch bản `scripts/scenarios/e17.mjs`, không có bản gốc. Sim chơi save trưa ngày 2, trời nắng, như `media:p29` (cùng seed). Mỗi save được cho 2.000.000.000 đ và 400 Tem, mở khóa các phong cách cần thử thách bằng `unlockStyle`, rồi mua đủ 4 ô bằng `buy_style`. Bảng giá xem [báo cáo E-17](reports/e17-shop-style.md). Mỗi save chụp một ảnh cảnh 1280×800 ở mức Cao, bằng kiểu shot `scene`. Yêu cầu giống `npm run media` (không cần ffmpeg).
+
+Ảnh JPEG trong `docs/media/e17/`, ghi đè mỗi lần chạy:
+
+| File | Tường | Sàn | Biển | Mái hiên |
+| --- | --- | --- | --- | --- |
+| `style-mint-1280-e17.jpg` | `wall_mint` | `floor_tile` | `sign_chalk` | `awning_mint` |
+| `style-brick-1280-e17.jpg` | `wall_brick` | `floor_terrazzo` | `sign_neon` | `awning_navy` |
+| `style-royal-1280-e17.jpg` | `wall_mural` | `floor_marble` | `sign_brass` | `awning_royal` |
+
+Lệnh in `!!` và trả mã 1 khi không ghi được ảnh. Nếu sim từ chối mua một phong cách, lệnh dừng ngay khi chơi save. `--only mint,brick,royal` chụp một phần. `E17_SAVES_ONLY=1` (hoặc `--saves-only`) chỉ chơi save rồi dừng.
+
 ## Tùy chọn
 
 | Biến | Mặc định | Tác dụng |
