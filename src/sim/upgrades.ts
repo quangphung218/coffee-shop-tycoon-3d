@@ -2,7 +2,7 @@ import { DOOR_POS, PICKUP_POS, totalSeats } from './customers';
 import { DIFFICULTIES } from './data/difficulty';
 import { maxLevelBonus } from './data/levels';
 import { getMenuItem } from './data/menu';
-import { getUpgrade, levelEffect, upgradeCost, upgradeTier } from './data/upgrades';
+import { UPGRADES, getUpgrade, levelEffect, totalUpgradeEffect, upgradeCost, upgradeTier } from './data/upgrades';
 import { BOOKSHELF_SIZE, CHAIR_OFFSET, PIANO_SIZE, SOFA_SIZE } from './nav/footprints';
 import { isUnlocked } from './progression';
 import { ensureRetention } from './retention';
@@ -314,6 +314,28 @@ export function nextUpgradeTicketCost(state: GameState, id: UpgradeId): number |
   const def = getUpgrade(id);
   if (level >= def.maxLevel) return def.extraLevels?.[level - def.maxLevel]?.tickets ?? 0;
   return def.ticketCost?.[level] ?? 0;
+}
+
+/** Sell-price bonus of every owned upgrade level together (0.1 = +10%), before the price policy. */
+export function ownedPriceBonus(state: GameState): number {
+  return totalUpgradeEffect(state.upgrades).priceBonus;
+}
+
+/**
+ * The open upgrade whose next level costs Tem, the fewest Tem first, then the
+ * least money; null when none does. Upgrades waiting on another one
+ * (upgradeBlockedReason) are left out.
+ */
+export function nextTicketUpgrade(state: GameState): { id: UpgradeId; tickets: number; cost: number } | null {
+  let best: { id: UpgradeId; tickets: number; cost: number } | null = null;
+  for (const def of UPGRADES) {
+    if (!isUnlocked(state, 'upgrade', def.id) || upgradeBlockedReason(state, def.id)) continue;
+    const tickets = nextUpgradeTicketCost(state, def.id) ?? 0;
+    const cost = nextUpgradeCost(state, def.id);
+    if (tickets <= 0 || cost === null) continue;
+    if (!best || tickets < best.tickets || (tickets === best.tickets && cost < best.cost)) best = { id: def.id, tickets, cost };
+  }
+  return best;
 }
 
 /** Why the upgrade cannot be bought whatever the money and tickets (an upgrade it needs is missing), or null. */

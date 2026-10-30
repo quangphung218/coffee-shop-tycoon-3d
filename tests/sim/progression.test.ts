@@ -99,33 +99,37 @@ describe('shop levels 7–10', () => {
   });
 
   it('opens the extra level only from the shop level that grants it, at its own price and Tem (E-05)', () => {
-    const def = getUpgrade('better_machine');
+    // E-13: plants is a Tem-priced upgrade whose first extra level opens at shop level 4.
+    const def = getUpgrade('plants');
     const s3 = rich(3);
-    maxOut(s3, 'better_machine');
-    expect(upgradeLevel(s3, 'better_machine')).toBe(def.maxLevel);
-    expect(nextUpgradeCost(s3, 'better_machine')).toBeNull();
+    maxOut(s3, 'plants');
+    expect(upgradeLevel(s3, 'plants')).toBe(def.maxLevel);
+    expect(nextUpgradeCost(s3, 'plants')).toBeNull();
 
     const s4 = rich(4);
-    maxOut(s4, 'better_machine');
-    expect(maxUpgradeLevel(s4, 'better_machine')).toBe(def.maxLevel + 1);
-    expect(upgradeLevel(s4, 'better_machine')).toBe(maxUpgradeLevel(s4, 'better_machine'));
+    maxOut(s4, 'plants');
+    expect(maxUpgradeLevel(s4, 'plants')).toBe(def.maxLevel + 1);
+    expect(upgradeLevel(s4, 'plants')).toBe(maxUpgradeLevel(s4, 'plants'));
     const extra = def.extraLevels![0]!;
     expect(extra.shopLevel).toBe(4);
-    expect(upgradeLevelPrice(s4, 'better_machine', def.maxLevel + 1)).toBe(extra.cost * DIFFICULTIES.normal.priceMult);
-    expect(upgradeLevelPrice(s4, 'better_machine', def.maxLevel)).toBe(
-      upgradeCost(def, def.maxLevel - 1, DIFFICULTIES.normal.priceMult),
-    );
-    // The Tem were paid on top of the money.
-    expect(s4.retention!.tickets).toBe(1000 - extra.tickets!);
+    expect(upgradeLevelPrice(s4, 'plants', def.maxLevel + 1)).toBe(extra.cost * DIFFICULTIES.normal.priceMult);
+    expect(upgradeLevelPrice(s4, 'plants', def.maxLevel)).toBe(upgradeCost(def, def.maxLevel - 1, DIFFICULTIES.normal.priceMult));
+    // The Tem of every level were paid on top of the money.
+    const baseTickets = (def.ticketCost ?? []).reduce((a, b) => a + b, 0);
+    expect(extra.tickets).toBeGreaterThan(0);
+    expect(s4.retention!.tickets).toBe(1000 - baseTickets - extra.tickets!);
   });
 
   it('refuses a Tem-priced extra level while the Tem are short', () => {
     const s = rich(4);
-    ensureRetention(s).tickets = 0;
-    for (let l = 0; l < getUpgrade('better_machine').maxLevel; l++) expect(buyUpgrade(s, 'better_machine').ok).toBe(true);
-    expect(nextUpgradeTicketCost(s, 'better_machine')).toBe(getUpgrade('better_machine').extraLevels![0]!.tickets);
+    const def = getUpgrade('plants');
+    // Just the Tem of the base levels.
+    ensureRetention(s).tickets = (def.ticketCost ?? []).reduce((a, b) => a + b, 0);
+    for (let l = 0; l < def.maxLevel; l++) expect(buyUpgrade(s, 'plants').ok).toBe(true);
+    expect(s.retention!.tickets).toBe(0);
+    expect(nextUpgradeTicketCost(s, 'plants')).toBe(def.extraLevels![0]!.tickets);
     const money = s.money;
-    expect(buyUpgrade(s, 'better_machine').ok).toBe(false);
+    expect(buyUpgrade(s, 'plants').ok).toBe(false);
     expect(s.money).toBe(money);
   });
 
