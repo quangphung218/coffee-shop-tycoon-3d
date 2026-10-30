@@ -10,7 +10,7 @@ Người chơi dùng tiền và Tem để đổi màu bốn phần của quán: 
 - Mỗi ô có một phong cách mặc định giá 0 (mục đầu của ô), khớp bảng màu của cảnh.
 - Phong cách có cờ `challenge` phải được mở trước bằng phần thưởng thử thách tuần (`{kind:'decor', id}`, xem E-16) rồi mới mua được. `id` của phong cách chính là `ChallengeUnlock.id`.
 - Bot không bao giờ mua phong cách.
-- 3D (T-50): cảnh vẽ theo phong cách đang chọn.
+- 3D (T-50): phong cách chỉ tô lại màu cho hình khối và vật liệu có sẵn qua `recolor()`: màu đỉnh đã nướng của `geo.wall`, các mesh sàn, vùng đỉnh của mái hiên và bảng hiệu, các sọc diềm mái, cộng với vẽ lại canvas biển trên `signMaterial` sẵn có. Không thêm mesh, vật liệu hay draw call. Phong cách mặc định khớp màu cũ. Xem trước đi qua `World.setStylePreview` (`src/render/scene/shop.ts:884`, nối ở `src/main.ts:108`) mà không mua.
 
 ## Bảng giá
 
@@ -70,6 +70,7 @@ Có 16 phong cách mua được (không tính 4 mặc định).
 ## Đã chạy
 
 - `npm run check` xanh trong các lần chạy của builder: tsc, 2201 test, build.
+- `tests/render/shop-styles.test.ts` (T-50), 5 test: với mọi phong cách ở chất lượng low, medium và high, số mesh, số đỉnh và danh sách vật liệu không đổi. Đây là bằng chứng cấu trúc về draw call, tách biệt với thời gian khung hình, vốn chưa đo (`perf:frames` chưa kiểm chứng, xem dưới).
 - Layout của panel phong cách: 24/24, chỉ khi chạy với `LAYOUT_OFFLINE=1`.
 
 ## Chưa kiểm chứng
