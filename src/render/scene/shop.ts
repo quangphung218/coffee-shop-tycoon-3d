@@ -11,6 +11,7 @@ import {
   OctahedronGeometry,
   PlaneGeometry,
   type Scene,
+  TorusGeometry,
 } from 'three';
 import type { Quality } from '../../save/settings';
 import { UPGRADES } from '../../sim/data/upgrades';
@@ -398,11 +399,16 @@ function sofaGeometry(tier: LookTier): BufferGeometry {
   return merge(parts);
 }
 
-/** Lowest point of the chandelier's crystals: above the walls, so it hangs clear of everyone walking under it. */
-export const CHANDELIER_BOTTOM_Y = WALL_HEIGHT + 0.02;
-const CHANDELIER_RING_Y = CHANDELIER_BOTTOM_Y + 0.18;
+/** Ceiling height in the shop: the cords of lamps, neon signs and the chandelier hang from here (there is no ceiling mesh). */
+export const CEILING_Y = NEON_CORD_TOP;
+/** Chandelier ring, hung just under the ceiling: well above the walls, pendant lamps and ceiling fans (2,6). */
+const CHANDELIER_RING_Y = CEILING_Y - 0.5;
+/** Lowest point of the chandelier's crystals. */
+export const CHANDELIER_BOTTOM_Y = CHANDELIER_RING_Y - 0.18;
 const CHANDELIER_RADIUS = 0.45;
 const CHANDELIER_CRYSTALS = 8;
+/** Glow halo round the ring, part of the crystal mesh so it adds no draw call or material; inside the aisle, clear of the chairs. */
+const CHANDELIER_HALO_RADIUS = CHANDELIER_RADIUS + 0.12;
 
 /** Chandelier frame: a gold crown of two rings and four arms on a cord up to the lamp cords' top. */
 function chandelierGeometry(): BufferGeometry {
@@ -418,9 +424,9 @@ function chandelierGeometry(): BufferGeometry {
   ]);
 }
 
-/** Glowing crystals hanging round the chandelier's ring and one drop in the middle, the lowest at CHANDELIER_BOTTOM_Y. */
+/** Glowing crystals hanging round the chandelier's ring and one drop in the middle, the lowest at CHANDELIER_BOTTOM_Y, inside a flat halo ring. */
 function crystalGeometry(): BufferGeometry {
-  const parts: BufferGeometry[] = [];
+  const parts: BufferGeometry[] = [part(new TorusGeometry(CHANDELIER_HALO_RADIUS, 0.025, 3, 20), PALETTE.bulb, 0, CHANDELIER_RING_Y, 0, 0, Math.PI / 2)];
   for (let k = 0; k < CHANDELIER_CRYSTALS; k++) {
     const a = (k / CHANDELIER_CRYSTALS) * Math.PI * 2;
     parts.push(part(new OctahedronGeometry(0.06, 0), PALETTE.bulb, Math.cos(a) * CHANDELIER_RADIUS, CHANDELIER_RING_Y - 0.08, Math.sin(a) * CHANDELIER_RADIUS));

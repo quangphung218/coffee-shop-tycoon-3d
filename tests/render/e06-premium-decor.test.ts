@@ -3,7 +3,7 @@ import { Box3, type BufferGeometry, InstancedMesh, type Material, Matrix4, type 
 import { describe, expect, it } from 'vitest';
 import { windowSpots } from '../../src/render/scene/facade';
 import { GLOW_MATERIAL, SHARED_MATERIAL, WALL_HEIGHT } from '../../src/render/scene/parts';
-import { CHANDELIER_BOTTOM_Y, PIANO_HEIGHT, ShopView } from '../../src/render/scene/shop';
+import { CEILING_Y, CHANDELIER_BOTTOM_Y, PIANO_HEIGHT, ShopView } from '../../src/render/scene/shop';
 import { loadGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
 import { ART_GALLERY_SIZE, layoutFootprints, shapeBounds } from '../../src/sim/nav/footprints';
@@ -23,6 +23,7 @@ type Internals = {
   pianos: InstancedMesh;
   marbleTops: InstancedMesh;
   tables: InstancedMesh;
+  chairs: InstancedMesh;
 };
 
 function internals(shop: ShopView): Internals {
@@ -180,6 +181,38 @@ describe('E-06 premium decor in the scene', () => {
     for (const g of layout.premium.filter((p) => p.kind === 'art_gallery')) {
       expect(windowSpots(layout).some((w) => w.wall === 1 && Math.abs(w.z - g.pos.z) < ART_GALLERY_SIZE.length / 2)).toBe(false);
     }
+    shop.dispose();
+  });
+
+  it('UX-012: hangs the chandelier at ceiling height, clear of every table and chair, with its halo in the crystal mesh', () => {
+    const s = full();
+    buyAll(s);
+    const shop = view(s);
+    const v = internals(shop);
+    expect(v.chandeliers.count).toBe(2);
+    // Near the ceiling: the whole chandelier sits in the top band under the cord top, well above the walls.
+    expect(CHANDELIER_BOTTOM_Y).toBeGreaterThanOrEqual(CEILING_Y - 0.8);
+    expect(CHANDELIER_BOTTOM_Y).toBeGreaterThan(WALL_HEIGHT + 0.4);
+    const furniture: Box3[] = [];
+    for (let i = 0; i < v.tables.count; i++) furniture.push(placed(v.tables, i));
+    for (let i = 0; i < v.chairs.count; i++) furniture.push(placed(v.chairs, i));
+    expect(furniture.length).toBeGreaterThan(0);
+    for (let i = 0; i < v.chandeliers.count; i++) {
+      const frame = placed(v.chandeliers, i);
+      const glow = placed(v.crystals, i);
+      expect(frame.max.y).toBeLessThanOrEqual(CEILING_Y + 1e-6);
+      expect(glow.min.y).toBeGreaterThanOrEqual(CEILING_Y - 0.8);
+      for (const f of furniture) {
+        expect(frame.intersectsBox(f)).toBe(false);
+        expect(glow.intersectsBox(f)).toBe(false);
+        // Not even overlapping in plan: it hangs over the aisle, not over a table or chair.
+        const plan = (b: Box3): Box3 => new Box3(b.min.clone().setY(0), b.max.clone().setY(0));
+        expect(plan(glow).intersectsBox(plan(f))).toBe(false);
+      }
+      // The halo reaches past the gold ring.
+      expect(glow.max.x - glow.min.x).toBeGreaterThan(frame.max.x - frame.min.x);
+    }
+    expect(v.crystals.material).toBe(GLOW_MATERIAL);
     shop.dispose();
   });
 
