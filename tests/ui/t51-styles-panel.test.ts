@@ -131,7 +131,7 @@ describe('Phong cách quán panel', () => {
     const { body, sent } = mount(rich());
     const wood = row(body, 'wall_wood');
     expect(wood.classList.contains('is-locked')).toBe(true);
-    expect(wood.querySelector('.badge')!.textContent).toBe('Thử thách tuần');
+    expect(wood.querySelector('.badge')!.textContent).toBe('Mở bằng thử thách (từ tuần 5)');
     btn(wood, 'preview').click();
     const buy = btn(wood, 'buy');
     expect(buy.getAttribute('aria-disabled')).toBe('true');

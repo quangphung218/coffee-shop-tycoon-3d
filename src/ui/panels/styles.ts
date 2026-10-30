@@ -3,7 +3,7 @@ import { CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
 import { STYLE_SLOTS, stylesOf, styleById, type StyleDef } from '../../sim/data/styles';
 import { isStyleUnlocked, ownsStyle, styleBlockedReason, styleOf } from '../../sim/styles';
 import type { GameState, StyleSlot } from '../../sim/types';
-import { h, isAriaDisabled, setAriaDisabled, Watcher } from '../core/dom';
+import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { inlineConfirm, reasonLine, segmented, sender, setIconText, setReason, shortOfMoney } from './widgets';
@@ -17,6 +17,9 @@ export const SLOT_LABELS: Readonly<Record<StyleSlot, string>> = { wall: 'Tườn
 export function stylePriceText(style: StyleDef): string {
   return style.tickets > 0 ? `${formatMoney(style.price)} + ${style.tickets} Tem` : formatMoney(style.price);
 }
+
+/** Badge of a challenge-gated style still locked. */
+export const LOCKED_STYLE_BADGE = `Mở bằng thử thách (từ tuần ${CHALLENGE_FIRST_WEEK})`;
 
 /** What the player does to open a challenge-gated style: how many more weekly challenges, any of them (CHALLENGE_STYLE_ORDER). */
 export function lockedStyleText(state: Pick<GameState, 'styles'>, id: string): string {
@@ -41,6 +44,15 @@ function swatch(style: StyleDef): HTMLElement {
   return el;
 }
 
+/** Widths where the panel spans the phone and would hide the previewed part: the preview collapses into a bar (UX-201). */
+export const PREVIEW_BAR_MEDIA = '(max-width: 480px)';
+
+/** The row's price line: what the style costs, or that it is owned. */
+function styleMetaText(state: GameState, style: StyleDef): string {
+  if (styleOf(state, style.slot).id === style.id) return style.price > 0 ? 'Đã có' : 'Kiểu gốc';
+  return ownsStyle(state, style.id) ? 'Đã có · đổi miễn phí' : `Giá ${stylePriceText(style)}`;
+}
+
 /**
  * Phong cách quán: four slot tabs (Tường, Sàn, Biển hiệu, Mái hiên) over the
  * slot's styles. Tapping a style shows it on the shop (ctx.previewStyle) and
@@ -48,19 +60,36 @@ function swatch(style: StyleDef): HTMLElement {
  * the rest, which asks for an in-place confirm before buy_style. A locked or
  * unaffordable style keeps "Mua" dimmed with what to do. One preview at a
  * time; switching tab, buying, using and closing the panel end it.
+ *
+ * At PREVIEW_BAR_MEDIA a preview collapses the panel into a bar over the dock
+ * (name, price, "Bỏ xem thử", "Mua") and the camera goes back to its home
+ * view, so the previewed part is in sight; tapping the bar opens the list again.
  */
 export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHandle {
   const w = new Watcher<GameState>();
   const send = sender(ctx, (s) => w.run(s));
   let slot: StyleSlot = STYLE_SLOTS[0]!;
   let preview: string | null = null;
+  /** The list was opened again from the bar during this preview. */
+  let expanded = false;
+  const narrowMq = typeof matchMedia === 'function' ? matchMedia(PREVIEW_BAR_MEDIA) : null;
+  const opts = new Map<string, HTMLElement>();
+  const acts = new Map<string, HTMLElement>();
 
   function setPreview(id: string | null): void {
     const prev = preview ? styleById(preview) : undefined;
     if (prev && prev.slot !== (id ? styleById(id)?.slot : prev.slot)) ctx.previewStyle?.(prev.slot, null);
     preview = id;
+    expanded = false;
     const style = id ? styleById(id) : prev;
     if (style) ctx.previewStyle?.(style.slot, id);
+    if (id && narrowMq?.matches) ctx.resetCamera?.();
+    const s = ctx.getState();
+    if (s) w.run(s);
+  }
+
+  function reopen(): void {
+    expanded = true;
     const s = ctx.getState();
     if (s) w.run(s);
   }
@@ -82,6 +111,8 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
     const more = h('div', { class: 'item-actions', hidden: true }, bar, why);
     const li = h('li', { class: 'item style-row', attrs: { 'data-style': style.id } }, opt, more);
     const confirming = (): boolean => !!li.querySelector('.confirm');
+    opts.set(style.id, opt);
+    acts.set(style.id, act);
 
     opt.addEventListener('click', () => {
       const s = ctx.getState();
@@ -135,14 +166,14 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
         opt.setAttribute('aria-pressed', String(shown || (preview === null && worn)));
         li.classList.toggle('is-worn', worn);
         li.classList.toggle('is-locked', locked);
-        meta.textContent = worn ? (style.price > 0 ? 'Đã có' : 'Kiểu gốc') : owned ? 'Đã có · đổi miễn phí' : `Giá ${stylePriceText(style)}`;
+        meta.textContent = styleMetaText(s, style);
         badge.hidden = !locked && !worn;
         if (worn) {
           badge.className = 'badge badge-ok';
           setIconText(badge, 'i-ok', 'Đang dùng');
         } else if (locked) {
           badge.className = 'badge badge-neutral';
-          setIconText(badge, 'i-lock', 'Thử thách tuần');
+          setIconText(badge, 'i-lock', LOCKED_STYLE_BADGE);
         }
         more.hidden = !shown;
         if (!shown) {
@@ -184,20 +215,87 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
     (s) => s.retention?.tickets ?? 0,
     (n) => (tem.textContent = `Tem: ${n} · nhận từ Quà hằng ngày`),
   );
-  body.append(
-    h(
-      'div',
-      { class: 'prep styles-panel' },
-      h('div', { class: 'intro' }, h('p', { text: 'Bấm một kiểu để xem thử trên quán. Mua một lần bằng tiền và Tem, sau đó đổi qua lại miễn phí.' }), tem),
-      tabs.el,
-      ...lists.values(),
-    ),
+  const list = h(
+    'div',
+    { class: 'style-list', id: uid('style-list') },
+    h('div', { class: 'intro' }, h('p', { text: 'Bấm một kiểu để xem thử trên quán. Mua một lần bằng tiền và Tem, sau đó đổi qua lại miễn phí.' }), tem),
+    tabs.el,
+    ...lists.values(),
   );
+
+  // The collapsed preview: tapping anywhere but its two buttons opens the list again.
+  const barSwatch = h('span', { class: 'style-bar-swatch' });
+  const barName = h('span', { class: 'item-title' });
+  const barPrice = h('span', { class: 'item-meta' });
+  const barOpen = h(
+    'button',
+    { class: 'style-bar-open', attrs: { type: 'button', 'data-action': 'reopen', 'aria-expanded': 'false', 'aria-controls': list.id } },
+    barSwatch,
+    h('span', { class: 'style-text' }, barName, barPrice),
+    h('span', { class: 'style-bar-hint', text: 'Xem danh sách' }),
+  );
+  const barBack = h('button', { class: 'btn btn-secondary btn-sm', attrs: { type: 'button', 'data-action': 'unpreview' }, text: 'Bỏ xem thử' });
+  const barBuy = h('button', { class: 'btn btn-primary btn-sm', attrs: { type: 'button', 'data-action': 'buy' } });
+  const bar = h('div', { class: 'style-bar', hidden: true, attrs: { role: 'group', 'aria-label': 'Đang xem thử' } }, barOpen, h('div', { class: 'style-act' }, barBack, barBuy));
+  bar.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('.style-act')) return;
+    reopen();
+    if (preview) opts.get(preview)?.focus();
+  });
+  barBack.addEventListener('click', () => {
+    const id = preview;
+    setPreview(null);
+    if (id) opts.get(id)?.focus();
+  });
+  // "Mua" goes through the row: its in-place confirm (or its reason, when dimmed) shows in the list.
+  barBuy.addEventListener('click', () => {
+    const id = preview;
+    const act = id ? acts.get(id) : undefined;
+    if (!act) return;
+    reopen();
+    if (isAriaDisabled(act)) act.focus();
+    else act.click();
+    act.closest('li')?.scrollIntoView?.({ block: 'nearest' });
+  });
+
+  const root = h('div', { class: 'prep styles-panel' }, bar, list);
+  w.watch(
+    (s) => {
+      const style = preview ? styleById(preview) : undefined;
+      const collapsed = !!style && !expanded && !!narrowMq?.matches;
+      return collapsed && style ? `${style.id}|${styleMetaText(s, style)}|${ownsStyle(s, style.id) ? 1 : 0}|${styleBuyReason(s, style) ?? ''}` : '';
+    },
+    (key, s) => {
+      const style = key && preview ? styleById(preview) : undefined;
+      const collapsed = !!style;
+      root.classList.toggle('is-collapsed', collapsed);
+      bar.hidden = !collapsed;
+      list.hidden = collapsed;
+      barOpen.setAttribute('aria-expanded', String(!collapsed));
+      if (!style) return;
+      barSwatch.replaceChildren(swatch(style));
+      barName.textContent = style.name;
+      barPrice.textContent = styleMetaText(s, style);
+      const owned = ownsStyle(s, style.id);
+      barBuy.textContent = owned ? 'Dùng kiểu này' : 'Mua';
+      setAriaDisabled(barBuy, !owned && styleBuyReason(s, style) !== null);
+      // The tapped row is hidden now; keep focus in the panel.
+      if (list.contains(document.activeElement)) barOpen.focus({ preventScroll: true });
+    },
+  );
+  const onMedia = (): void => {
+    const s = ctx.getState();
+    if (s) w.run(s);
+  };
+  narrowMq?.addEventListener?.('change', onMedia);
+
+  body.append(root);
   const state = ctx.getState();
   if (state) w.run(state);
   return {
     update: (s) => w.run(s),
     dispose: () => {
+      narrowMq?.removeEventListener?.('change', onMedia);
       if (preview) setPreview(null);
     },
   };

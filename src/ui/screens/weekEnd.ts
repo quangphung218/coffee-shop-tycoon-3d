@@ -1,3 +1,4 @@
+import { CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { LEVELS, MAX_SHOP_LEVEL, unlocksBetween, xpToReach } from '../../sim/data/levels';
 import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
@@ -13,10 +14,11 @@ import { formatMoney, formatRating, formatSavedAt } from '../core/format';
 import { DAY_EVENT_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
 import { screenLayer, type Screen } from '../core/screens';
-import { unlockNames } from '../hud/events';
+import { challengeStyleName, unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS } from '../hud/hud';
 import type { SaveStatus } from '../report';
 import { starsEl } from '../report/reviews';
+import { challengeBlock, challengeView } from '../weekGoal';
 
 export interface WeekEndActions {
   /** Game whose finished week is shown; read each time the screen opens. */
@@ -414,8 +416,28 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
       // One text node, so the line's flex gap never puts a space before the period.
       h('p', { attrs: { 'data-next': 'goal' } }, icon('i-trophy', { size: 16 }), h('span', { text: nextWeekGoalText(state) })),
       nextLevelLine(state),
+      nextChallengeLine(state, index + 1),
     ),
   );
+}
+
+/** Week `next` draws a side challenge (from CHALLENGE_FIRST_WEEK): say so and name the style it can open; null before. */
+function nextChallengeLine(state: GameState, next: number): HTMLElement | null {
+  if (next < CHALLENGE_FIRST_WEEK) return null;
+  const style = challengeStyleName(state);
+  return h(
+    'p',
+    { attrs: { 'data-next': 'challenge' } },
+    icon('i-sparkle', { size: 16 }),
+    h('span', { text: `Tuần ${next} có thử thách: xong để nhận Tem${style ? ` và mở kiểu ${style}` : ''}.` }),
+  );
+}
+
+/** The scored week's side challenge, done, failed or missed, and the style it opened; null for a week without one. */
+function challengeSection(state: GameState): HTMLElement | null {
+  const v = challengeView(state);
+  // The week is over: a challenge still active was missed.
+  return v ? section('i-sparkle', 'Thử thách tuần', challengeBlock({ ...v, failed: !v.done })) : null;
 }
 
 // ── Week 1 below 3 cups ─────────────────────────────────────────────────────
@@ -579,6 +601,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
           h('div', { class: 'rpt-grid wk-grid' }, revenueBlock(result), profitBlock(result, state.difficulty), starsBlock(result)),
           compare && compare.current.index === index ? compareBlock(compare) : null,
           daysBlock(result, bestDay(state)?.weekDay ?? null, start),
+          challengeSection(state),
           nextWeekBlock(state, index),
           weekOneBlock(state, result, index),
         );

@@ -54,10 +54,10 @@ export interface World {
   /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
   rotateCamera(dYaw: number): void;
   /**
-   * Canvas point (CSS px) just over a customer's tag or the first coffee
-   * machine, for the day-1 serving hints; null when not drawn or behind the camera.
+   * Canvas point (CSS px) just over a customer's tag, the first coffee
+   * machine or a table, for the day-1 serving hints; null when not drawn or behind the camera.
    */
-  screenPoint(target: { kind: 'customer'; id: number } | { kind: 'machine' }): { x: number; y: number } | null;
+  screenPoint(target: { kind: 'customer'; id: number } | { kind: 'machine' } | { kind: 'table'; id: number }): { x: number; y: number } | null;
   /** Registers a handler for Commands from clicks in the scene; returns an unsubscribe function. */
   onCommand(handler: (cmd: Command) => void): () => void;
   dispose(): void;
@@ -66,6 +66,7 @@ export interface World {
 /** Heights of the serving hints: above a customer's order bubble, above a machine on the back counter. */
 const HINT_OVER_HEAD_Y = HEAD_TOP_Y + 0.75;
 const HINT_OVER_MACHINE_Y = BACK_COUNTER_HEIGHT + 0.8;
+const HINT_OVER_TABLE_Y = 1.6;
 
 /** Longest frame step fed to camera damping, so a background tab does not jump. */
 const MAX_FRAME_DT = 0.1;
@@ -176,6 +177,10 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
         const m = shop.current?.machines[0];
         if (!m) return null;
         projected.set(m.pos.x, HINT_OVER_MACHINE_Y, m.pos.z);
+      } else if (target.kind === 'table') {
+        const t = shop.current?.tables.find((x) => x.id === target.id);
+        if (!t) return null;
+        projected.set(t.pos.x, HINT_OVER_TABLE_Y, t.pos.z);
       } else {
         const a = actors.inspect(`c${target.id}`);
         if (!a?.visible) return null;

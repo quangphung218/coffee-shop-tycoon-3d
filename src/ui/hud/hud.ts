@@ -856,7 +856,7 @@ export function createHud(actions: HudActions): Hud {
     panelTitle.textContent = def.label;
     measureEdges();
     panelEl.hidden = false;
-    handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel, previewStyle: actions.previewStyle }) ?? null;
+    handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel, previewStyle: actions.previewStyle, resetCamera: actions.onResetCamera }) ?? null;
     syncPressed();
     watchFoot();
     panelEl.scrollTop = 0;

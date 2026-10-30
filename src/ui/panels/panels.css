@@ -1032,6 +1032,11 @@
     grid-column: 1 / -1;
     white-space: normal;
   }
+  /* The challenge row is value | bar, its reward under them: the value keeps
+     the first column so the bar gets the second, not a 0 px auto one. */
+  .week-challenge .week-goal-num[data-challenge='value'] {
+    grid-column: auto;
+  }
 }
 
 /* Phong cách quán: slot tabs over the slot's styles. Each row is one tap
@@ -1080,6 +1085,13 @@
   outline: var(--size-focus-width) solid var(--focus-ring);
   outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
 }
+/* "Mở bằng thử thách (từ tuần 5)" wraps in two lines rather than squeeze the name. */
+.style-opt > .badge {
+  max-width: 10em;
+  padding-block: calc(var(--space-1) / 2);
+  white-space: normal;
+  line-height: var(--line-height-tight);
+}
 .style-text {
   display: flex;
   flex-direction: column;
@@ -1118,4 +1130,63 @@
 }
 .style-act[hidden] {
   display: none;
+}
+.style-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+/* UX-201: at ≤ 480 px a preview collapses the panel into a bar over the dock
+   (styles.ts adds .is-collapsed): no head, no list, the panel hugs the bar so
+   the previewed part of the shop stays in sight. Not a dialog; the whole bar
+   but its two buttons opens the list again. */
+.style-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.style-bar[hidden] {
+  display: none;
+}
+.style-bar-open {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-target);
+  padding: var(--space-1) var(--space-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.style-bar-open:focus-visible {
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--size-focus-width));
+}
+.style-bar-swatch {
+  display: contents;
+}
+.style-bar-hint {
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+}
+.style-bar .style-act > .btn {
+  flex: 1 1 0;
+}
+@media (max-width: 480px) {
+  #ui > .panel:has(.styles-panel.is-collapsed) {
+    top: auto;
+    animation: none;
+  }
+  #ui > .panel:has(.styles-panel.is-collapsed) > .panel-head {
+    display: none;
+  }
+  #ui > .panel:has(.styles-panel.is-collapsed) > .panel-body {
+    padding: var(--space-2) var(--space-3);
+  }
 }
