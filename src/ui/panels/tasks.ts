@@ -8,6 +8,7 @@ import { missionProgress } from '../../sim/progression';
 import { achievementProgress, giftPreview, parseDateKey, type AchievementProgress } from '../../sim/retention';
 import { isVipDay, SPECIAL_ORDER_FROM_DAY } from '../../sim/specialOrders';
 import { REGULARS } from '../../sim/data/regulars';
+import { regularBook, type RegularBookPage } from '../../sim/data/regularMilestones';
 import type { GameState, MenuItemId, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
@@ -298,6 +299,59 @@ function regularCard(r: RegularRow): HTMLElement {
   );
 }
 
+/** Open cell of the Sổ khách quen: regular id and milestone index (0–2). */
+export interface BookOpen {
+  regularId: string;
+  index: number;
+}
+
+/**
+ * One page of the Sổ khách quen: name + visits, three milestone cells
+ * (locked or reached), and the line under them that the open cell fills in
+ * place: story and favourite dish once reached, the visits still needed if not.
+ */
+function regularBookRow(page: RegularBookPage, open: BookOpen | null, toggle: (index: number) => void): HTMLElement {
+  const name = page.regular.name;
+  const detailId = uid('book');
+  const openIndex = open?.regularId === page.regular.id ? open.index : -1;
+  const meta = page.visits === 0 ? 'Chưa ghé quán' : page.nextVisits === null ? `Ghé ${page.visits} lần · Đã mở cả 3 mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
+  const cells = page.milestones.map((m, i) =>
+    h(
+      'button',
+      {
+        class: `book-cell${m.reached ? ' is-reached' : ''}`,
+        attrs: {
+          type: 'button',
+          'data-milestone': String(i + 1),
+          'data-reached': String(m.reached),
+          'aria-expanded': String(i === openIndex),
+          'aria-controls': detailId,
+          'aria-label': `${name}, mốc ${i + 1}, ${m.visits} lần ghé, ${m.reached ? 'đã mở, xem chuyện' : 'chưa mở'}`,
+        },
+      },
+      icon(m.reached ? 'i-star' : 'i-lock', { size: 16 }),
+      h('span', { attrs: { 'aria-hidden': 'true' }, text: `${m.visits} lần` }),
+    ),
+  );
+  cells.forEach((c, i) => c.addEventListener('click', () => toggle(i)));
+  const m = openIndex >= 0 ? page.milestones[openIndex] : undefined;
+  const detail = h(
+    'div',
+    { id: detailId, class: 'book-detail', hidden: !m, attrs: { 'data-book-detail': '' } },
+    m?.reached ? h('p', { class: 'item-meta', text: m.story }) : null,
+    m?.reached ? h('p', { class: 'item-meta book-dish' }, ...withIcon('i-cup-hot', `Món yêu thích: ${page.favoriteDish}`)) : null,
+    m && !m.reached ? h('p', { class: 'item-meta' }, ...withIcon('i-lock', `Mở khi ${name} ghé đủ ${m.visits} lần (đang ${page.visits}).`)) : null,
+    m?.reached ? h('p', { class: 'item-meta' }, ...withIcon('i-coin', `Đã nhận +${m.tickets} Tem`)) : null,
+  );
+  return h(
+    'li',
+    { class: 'item item-row', attrs: { 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
+    h('span', { class: 'item-icon' }, icon(MENU_ICONS[page.regular.favorite], { size: 32 })),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: name }), h('p', { class: 'item-meta', text: meta })),
+    h('div', { class: 'item-actions' }, h('div', { class: 'book-cells', attrs: { role: 'group', 'aria-label': `Mốc của ${name}` } }, ...cells), detail),
+  );
+}
+
 /** "1.200.000đ" for the revenue achievement, plain counts for the others. */
 function achievementAmount(a: AchievementProgress, n: number): string {
   return a.id === 'revenue' ? formatMoney(n) : String(n);
@@ -534,6 +588,43 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
 
+  // Sổ khách quen (E-18): a disclosure like Thành tựu; cells open in place, no modal.
+  const bookListId = uid('book');
+  const bookLabel = h('span');
+  const bookBtn = h(
+    'button',
+    { class: 'btn btn-secondary btn-block ach-toggle', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': bookListId, 'data-action': 'regular-book' } },
+    icon('i-face-happy'),
+    bookLabel,
+    icon('i-chevron-down', { size: 16, class: 'ach-chevron' }),
+  );
+  const bookList = h('ul', { id: bookListId, class: 'stack', hidden: true, attrs: { 'aria-label': 'Sổ khách quen' } });
+  bookBtn.addEventListener('click', () => {
+    const open = bookBtn.getAttribute('aria-expanded') !== 'true';
+    bookBtn.setAttribute('aria-expanded', String(open));
+    bookList.hidden = !open;
+  });
+  let bookOpen: BookOpen | null = null;
+  const drawBook = (pages: RegularBookPage[]): void => {
+    const reached = pages.reduce((n, p) => n + p.reached, 0);
+    bookLabel.textContent = `Sổ khách quen · ${reached}/${pages.length * 3} mốc`;
+    setChildren(
+      bookList,
+      ...pages.map((p) =>
+        regularBookRow(p, bookOpen, (index) => {
+          const same = bookOpen?.regularId === p.regular.id && bookOpen.index === index;
+          bookOpen = same ? null : { regularId: p.regular.id, index };
+          drawBook(pages);
+          bookList.querySelector<HTMLElement>(`[data-book="${p.regular.id}"] [data-milestone="${index + 1}"]`)?.focus();
+        }),
+      ),
+    );
+  };
+  w.watch(
+    (s) => JSON.stringify(regularBook(s).map((p) => p.visits)),
+    (_, s) => drawBook(regularBook(s)),
+  );
+
   const achListId = uid('ach');
   const achLabel = h('span');
   const achBtn = h(
@@ -603,6 +694,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     regularTitle,
     regularEmpty,
     regularList,
+    bookBtn,
+    bookList,
     achBtn,
     achList,
     sugTitle,

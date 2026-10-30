@@ -1,11 +1,13 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
+import { milestoneAt, regularBookEntry } from './data/regularMilestones';
 import { REGULARS_FROM_DAY, pickRegular, regularById } from './data/regulars';
 import { totalUpgradeEffect } from './data/upgrades';
 import { hourOf, recordRevenue } from './economy';
 import { canMake, consume, servingCost } from './inventory';
 import { customerMultiplier } from './marketing';
+import { addTickets } from './retention';
 import {
   CHAIR_OFFSET,
   DOOR_WIDTH,
@@ -367,6 +369,7 @@ export function spawnCustomer(state: GameState): Customer | null {
   if (vip) state.events.push({ type: 'vip_arrived', customerId: customer.id });
   if (regular) {
     state.events.push({ type: 'regular_arrived', customerId: customer.id, regularId: regular.id, visits: regular.visits });
+    reachMilestone(state, regular.id, regular.visits);
   }
   return customer;
 }
@@ -387,6 +390,19 @@ function admitRegular(state: GameState, id: number): { id: string; visits: numbe
   entry.lastDay = state.day;
   regulars[regular.id] = entry;
   return { id: regular.id, visits: entry.visits };
+}
+
+/**
+ * Fires 'regular_milestone' and pays its Tem when visit `visits` is exactly a
+ * milestone of the regular's book. Older saves whose count is already past a
+ * milestone keep it as reached without being paid for it again.
+ */
+function reachMilestone(state: GameState, regularId: string, visits: number): void {
+  const milestone = milestoneAt(visits);
+  const def = milestone ? regularBookEntry(regularId)?.milestones[milestone - 1] : undefined;
+  if (!def) return;
+  state.events.push({ type: 'regular_milestone', regularId, milestone, visits, tickets: def.tickets });
+  addTickets(state, def.tickets, 'regular_milestone');
 }
 
 /** Adds this minute's arrivals. Arrivals blocked by a full shop wait outside (at most one). */

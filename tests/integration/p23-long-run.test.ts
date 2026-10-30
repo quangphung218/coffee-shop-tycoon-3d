@@ -95,7 +95,7 @@ interface WeekRow {
   stars: number;
   score: number;
   cups: number;
-  /** Loyalty tickets ('Tem') held at the end of the week, less the challenge Tem set aside. */
+  /** Loyalty tickets ('Tem') held at the end of the week, less the challenge and milestone Tem set aside. */
   tickets: number;
   /** Tem spent on upgrades from day 1 to the end of the week (cumulative). */
   ticketsSpent: number;
@@ -117,9 +117,10 @@ function reserve(state: GameState): number {
 }
 
 /**
- * Tem the week challenges (E-16) paid this game. The strategies set them aside
- * and spend only the Tem of the older sources, and the tickets column leaves
- * them out, so the tables keep the numbers they had before the challenges.
+ * Tem the week challenges (E-16) and the regulars' milestones (E-18) paid this
+ * game. The strategies set them aside and spend only the Tem of the older
+ * sources, and the tickets column leaves them out, so the tables keep the
+ * numbers they had before the challenges and the milestones.
  */
 let challengeTem = 0;
 
@@ -187,7 +188,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
     state.events = [];
     ticketsSpent += morning(state, s, track);
     for (const e of playDay(state, { onMinute: track })) {
-      if (e.type === 'tickets_earned' && e.reason === 'challenge') challengeTem += e.amount;
+      if (e.type === 'tickets_earned' && (e.reason === 'challenge' || e.reason === 'regular_milestone')) challengeTem += e.amount;
     }
     track();
     spent += state.today.upgradeCost;

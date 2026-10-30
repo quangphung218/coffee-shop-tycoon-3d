@@ -82,6 +82,17 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
   switch (event.type) {
     case 'regular_arrived':
       return regularToast(event, now);
+    case 'regular_milestone': {
+      const name = regularById(event.regularId)?.name;
+      if (!name) return null;
+      return {
+        level: 'success',
+        icon: 'i-face-happy',
+        title: `${name}: mốc ${event.milestone} trong Sổ khách quen`,
+        text: `Ghé ${event.visits} lần · +${event.tickets} Tem`,
+        key: `regular_milestone:${event.regularId}:${event.milestone}`,
+      };
+    }
     case 'notify':
       return { level: event.level, title: event.text };
     case 'angry':
@@ -190,7 +201,7 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
         key: `promoted:${event.staffId}`,
       };
     }
-    // Tickets are already on the gift, achievement, order, VIP and challenge toasts of the same frame.
+    // Tickets are already on the gift, achievement, order, VIP, challenge and regular milestone toasts of the same frame.
     case 'tickets_earned':
     default:
       return null;

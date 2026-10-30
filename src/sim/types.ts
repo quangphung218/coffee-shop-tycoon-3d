@@ -862,7 +862,7 @@ export type GameEvent =
   | { type: 'staff_promoted'; staffId: number; level: number }
   | { type: 'gift_claimed'; streak: number; money: number; tickets: number }
   /** Tickets were added; `total` is the balance after it. */
-  | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' | 'challenge' }
+  | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' | 'challenge' | 'regular_milestone' }
   | { type: 'achievement_unlocked'; id: AchievementId; tier: number }
   /** The week's side challenge reached its target at the close of a day; its Tem come in the 'tickets_earned' after it. */
   | { type: 'challenge_completed'; challenge: WeekChallenge }
@@ -870,6 +870,8 @@ export type GameEvent =
   | { type: 'vip_arrived'; customerId: number }
   /** A named regular came through the door; `visits` counts this one. Comes after 'doorbell'. */
   | { type: 'regular_arrived'; customerId: number; regularId: string; visits: number }
+  /** That visit reached milestone 1–3 of the regular's book (E-18); its `tickets` Tem come in the 'tickets_earned' after it. */
+  | { type: 'regular_milestone'; regularId: string; milestone: number; visits: number; tickets: number }
   /** `set_uniform` switched the team to another uniform. */
   | { type: 'uniform_changed'; uniformId: UniformId }
   /** `buy_style` paid for a style; it is worn from now on ('style_changed' follows). */
