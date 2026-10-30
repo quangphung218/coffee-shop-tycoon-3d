@@ -1,9 +1,12 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { LEVELS, MAX_SHOP_LEVEL, unlocksBetween, xpToReach } from '../../sim/data/levels';
-import { getUpgrade } from '../../sim/data/upgrades';
-import { UPGRADE_AMORTIZE_WEEKS, weekGoal } from '../../sim/data/week';
-import { weekIndex } from '../../sim/progression';
+import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
+import { UPGRADE_AMORTIZE_WEEKS, WEEK_REWARD_MIN_CUPS, weekGoal, weekProfitTarget, weekReward } from '../../sim/data/week';
+import { profit as dayProfit } from '../../sim/economy';
+import { isUnlocked, weekIndex } from '../../sim/progression';
 import { bestDay, weekCompare, type StatId, type WeekCompare } from '../../sim/stats';
+import { nextUpgradeCost, nextUpgradeTicketCost, upgradeBlockedReason } from '../../sim/upgrades';
+import { SCORE_PROFIT, SCORE_REVENUE, SCORE_STARS, weekCups } from '../../sim/week';
 import type { GameState, UpgradeId, WeekResult } from '../../sim/types';
 import { h, setChildren, uid } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
@@ -49,6 +52,107 @@ function goalBadge(reached: boolean): HTMLElement {
     : h('span', { class: 'badge badge-warn' }, icon('i-warning', { size: 16 }), 'Chưa đạt');
 }
 
+/** One criterion of the score: the points it gave out of the most it can give. */
+export interface ScoreRow {
+  id: 'revenue' | 'profit' | 'stars';
+  label: string;
+  points: number;
+  max: number;
+}
+
+/**
+ * Points each criterion gave (weekScore's shares), split so they add up to the
+ * stored score: rounded down, then the largest remainders get the points left.
+ * Null for weeks scored before profit counted, whose score had other parts.
+ */
+export function scoreRows(r: WeekResult): ScoreRow[] | null {
+  if (r.profit === undefined || r.profitTarget === undefined) return null;
+  const share = (value: number, target: number) => (target > 0 ? Math.min(1, Math.max(0, value) / target) : 1);
+  const raw = [
+    { id: 'revenue' as const, label: 'Doanh thu', max: SCORE_REVENUE, exact: SCORE_REVENUE * share(r.revenue, r.revenueTarget) },
+    { id: 'profit' as const, label: 'Lợi nhuận', max: SCORE_PROFIT, exact: SCORE_PROFIT * share(r.profit, r.profitTarget) },
+    { id: 'stars' as const, label: 'Sao', max: SCORE_STARS, exact: SCORE_STARS * share(r.stars, r.starsTarget) },
+  ];
+  const rows = raw.map((x) => ({ id: x.id, label: x.label, max: x.max, points: Math.floor(x.exact), rest: x.exact - Math.floor(x.exact) }));
+  let left = r.score - rows.reduce((s, x) => s + x.points, 0);
+  for (const x of [...rows].sort((a, b) => b.rest - a.rest)) {
+    if (left <= 0) break;
+    if (x.points < x.max) {
+      x.points++;
+      left--;
+    }
+  }
+  return rows.map(({ id, label, points, max }) => ({ id, label, points, max }));
+}
+
+/** Lowest score that earns `cups` cups (weekCups). */
+function cupMinScore(cups: number): number {
+  for (let s = 0; s <= 100; s++) if (weekCups(s) >= cups) return s;
+  return 100;
+}
+
+/** "Từ 70 điểm được 2 cúp: thưởng …; từ 90 điểm được 3 cúp: thưởng …." */
+export function cupRuleText(state: GameState): string {
+  const parts: string[] = [];
+  for (let c = WEEK_REWARD_MIN_CUPS; c <= MAX_CUPS; c++) parts.push(`từ ${cupMinScore(c)} điểm được ${c} cúp: thưởng ${formatMoney(weekReward(state.difficulty, c))}`);
+  const text = parts.join('; ');
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+}
+
+/** Sum of the daily profits of the scored week, before the upgrade charge; null without a week. */
+function weekDaysProfit(state: GameState): number | null {
+  const week = state.week;
+  if (!week) return null;
+  const lastDay = week.startedDay + week.length - 1;
+  return [...state.history, state.today].filter((d) => d.day >= week.startedDay && d.day <= lastDay).reduce((s, d) => s + dayProfit(d), 0);
+}
+
+/** Money with "−" for a loss. */
+function signed(dong: number): string {
+  return dong < 0 ? `−${formatMoney(-dong)}` : formatMoney(dong);
+}
+
+/** Criterion → points, how the week profit was counted and the cups a score earns; null before profit counted. */
+function scoreDetail(state: GameState, r: WeekResult): HTMLElement | null {
+  const rows = scoreRows(r);
+  if (!rows) return null;
+  const days = weekDaysProfit(state);
+  return h(
+    'div',
+    { class: 'wk-score-detail', attrs: { 'data-block': 'score-table' } },
+    h(
+      'table',
+      { class: 'rpt-margins wk-points' },
+      h('thead', {}, h('tr', {}, h('th', { text: 'Tiêu chí' }), h('th', { class: 'is-num', text: 'Điểm' }))),
+      h(
+        'tbody',
+        {},
+        ...rows.map((row) =>
+          h('tr', { attrs: { 'data-criterion': row.id } }, h('td', { class: 'rpt-strong', text: row.label }), h('td', { class: 'is-num', text: `${row.points}/${row.max}` })),
+        ),
+      ),
+      h('tfoot', {}, h('tr', {}, h('td', { class: 'rpt-strong', text: 'Tổng' }), h('td', { class: 'is-num rpt-strong', text: `${r.score}/100` }))),
+    ),
+    days !== null
+      ? h('p', { attrs: { 'data-line': 'profit-formula' }, text: `Lãi các ngày ${signed(days)} − khấu hao nâng cấp ${formatMoney(days - r.profit!)} = ${signed(r.profit!)}` })
+      : null,
+    h('p', { class: 'rpt-muted', attrs: { 'data-line': 'cup-rule' }, text: cupRuleText(state) }),
+  );
+}
+
+/** A goal bar and its share of the target in percent, as the revenue and profit cards show it. */
+function goalBar(label: string, value: number, target: number): { bar: HTMLElement; pct: number } {
+  const pct = target > 0 ? Math.round((Math.max(0, value) / target) * 100) : 100;
+  const fill = h('span', { class: 'rpt-bar-fill' });
+  fill.setAttribute('style', `width:${Math.min(100, pct)}%`);
+  const bar = h(
+    'span',
+    { class: 'rpt-bar-track wk-track', attrs: { role: 'progressbar', 'aria-label': `${label} so mục tiêu`, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.min(100, pct)) } },
+    fill,
+  );
+  return { bar, pct };
+}
+
 /** Score out of 100, the cups (unearned ones dimmed) and the cup reward when there is one. */
 function scoreBlock(r: WeekResult, reward: number): HTMLElement {
   const cups = Math.max(0, Math.min(MAX_CUPS, r.cups));
@@ -74,10 +178,7 @@ function scoreBlock(r: WeekResult, reward: number): HTMLElement {
 }
 
 function revenueBlock(r: WeekResult): HTMLElement {
-  const share = r.revenueTarget > 0 ? r.revenue / r.revenueTarget : 1;
-  const pct = Math.round(Math.max(0, share) * 100);
-  const fill = h('span', { class: 'rpt-bar-fill' });
-  fill.setAttribute('style', `width:${Math.min(100, pct)}%`);
+  const { bar, pct } = goalBar('Doanh thu', r.revenue, r.revenueTarget);
   return section(
     'i-coin',
     'Doanh thu tuần',
@@ -85,7 +186,7 @@ function revenueBlock(r: WeekResult): HTMLElement {
       'div',
       { class: 'wk-goal', attrs: { 'data-block': 'revenue' } },
       h('p', { class: 'wk-goal-num' }, h('b', { text: formatMoney(r.revenue) }), h('span', { class: 'rpt-muted', text: ` / mục tiêu ${formatMoney(r.revenueTarget)}` })),
-      h('span', { class: 'rpt-bar-track wk-track', attrs: { role: 'progressbar', 'aria-label': 'Doanh thu so mục tiêu', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.min(100, pct)) } }, fill),
+      bar,
       h('p', { class: 'wk-goal-foot' }, goalBadge(r.revenue >= r.revenueTarget), h('span', { class: 'rpt-muted', text: `${pct}% mục tiêu` })),
     ),
   );
@@ -104,14 +205,16 @@ export function weekProfitRule(index: number): string {
 /** Week profit the score counts against its target, with the rule; null for weeks scored before profit counted. */
 function profitBlock(r: WeekResult, index: number): HTMLElement | null {
   if (r.profit === undefined || r.profitTarget === undefined) return null;
+  const { bar, pct } = goalBar('Lợi nhuận', r.profit, r.profitTarget);
   return section(
     'i-trend-up',
     'Lợi nhuận tuần',
     h(
       'div',
       { class: 'wk-goal', attrs: { 'data-block': 'profit' } },
-      h('p', { class: 'wk-goal-num' }, h('b', { text: formatMoney(r.profit) }), h('span', { class: 'rpt-muted', text: ` / mục tiêu ${formatMoney(r.profitTarget)}` })),
-      h('p', { class: 'wk-goal-foot' }, goalBadge(r.profit >= r.profitTarget)),
+      h('p', { class: 'wk-goal-num' }, h('b', { text: signed(r.profit) }), h('span', { class: 'rpt-muted', text: ` / mục tiêu ${formatMoney(r.profitTarget)}` })),
+      bar,
+      h('p', { class: 'wk-goal-foot' }, goalBadge(r.profit >= r.profitTarget), h('span', { class: 'rpt-muted', text: `${pct}% mục tiêu` })),
       h('p', { class: 'rpt-muted', attrs: { 'data-block': 'profit-rule' }, text: weekProfitRule(index) }),
     ),
   );
@@ -278,25 +381,67 @@ function nextLevelLine(state: GameState): HTMLElement {
   );
 }
 
-function nextWeekBlock(state: GameState, index: number): HTMLElement {
+/** 1.9 → "1,9". */
+function factorText(x: number): string {
+  return (Math.round(x * 10) / 10).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/** Next week's revenue (with its multiple of week 1), profit and stars targets as one sentence. */
+export function nextWeekGoalText(state: GameState, index: number): string {
   const goal = weekGoal(state.difficulty, index + 1);
+  const base = weekGoal(state.difficulty, 1).revenue;
+  const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
+  return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} so tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
+}
+
+function nextWeekBlock(state: GameState, index: number): HTMLElement {
   return section(
     'i-forward',
     `Tuần ${index + 1}`,
     h(
       'div',
       { class: 'wk-next', attrs: { 'data-block': 'next-week' } },
-      h(
-        'p',
-        { attrs: { 'data-next': 'goal' } },
-        icon('i-trophy', { size: 16 }),
-        'Mục tiêu: ',
-        h('b', { text: formatMoney(goal.revenue) }),
-        ' doanh thu và ',
-        h('b', { text: `${formatRating(goal.stars)} sao` }),
-        '.',
-      ),
+      // One text node, so the line's flex gap never puts a space before the period.
+      h('p', { attrs: { 'data-next': 'goal' } }, icon('i-trophy', { size: 16 }), h('span', { text: nextWeekGoalText(state, index) })),
       nextLevelLine(state),
+    ),
+  );
+}
+
+// ── Week 1 below 3 cups ─────────────────────────────────────────────────────
+
+/** True when the money pays the next level of an upgrade or tool open now that needs no tickets and no other upgrade first. */
+function canAffordUpgrade(state: GameState): boolean {
+  return UPGRADES.some((u) => {
+    if (!isUnlocked(state, 'upgrade', u.id) || upgradeBlockedReason(state, u.id)) return false;
+    const cost = nextUpgradeCost(state, u.id);
+    return cost !== null && (nextUpgradeTicketCost(state, u.id) ?? 0) === 0 && state.money >= cost;
+  });
+}
+
+/** Up to two things to do next week, read from the shop: hire when nobody works, buy when the money pays an upgrade. */
+export function weekOneHints(state: GameState): string[] {
+  const hints: string[] = [];
+  if (state.staff.length === 0) hints.push('Thuê pha chế');
+  if (canAffordUpgrade(state)) hints.push('Mua nâng cấp, tiền chia ra các tuần');
+  return hints.slice(0, 2);
+}
+
+/** Week 1 below 3 cups: revenue a day week 2 needs against this week's, and the hints; null otherwise. */
+function weekOneBlock(state: GameState, r: WeekResult, index: number): HTMLElement | null {
+  const week = state.week;
+  if (!week || index !== 1 || r.cups >= MAX_CUPS) return null;
+  const need = Math.round(weekGoal(state.difficulty, index + 1).revenue / week.length);
+  const got = Math.round(r.revenue / (r.days.length || week.length));
+  const hints = weekOneHints(state);
+  return section(
+    'i-forward',
+    `Chuẩn bị tuần ${index + 1}`,
+    h(
+      'div',
+      { class: 'wk-next', attrs: { 'data-block': 'week-one' } },
+      h('p', { attrs: { 'data-next': 'per-day' } }, icon('i-coin', { size: 16 }), h('span', { text: `Doanh thu mỗi ngày tuần ${index + 1} cần ${formatMoney(need)}, tuần này đạt ${formatMoney(got)}.` })),
+      hints.length ? h('ul', { class: 'wk-hints', attrs: { 'data-block': 'hints' } }, ...hints.map((t) => h('li', { attrs: { 'data-hint': '' }, text: `${t}.` }))) : null,
     ),
   );
 }
@@ -420,10 +565,12 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
           body,
           // Only what closeDay actually paid; v2 weeks have no reward and show none.
           scoreBlock(result, result.reward ?? 0),
-          h('div', { class: 'rpt-grid' }, revenueBlock(result), profitBlock(result, index), starsBlock(result)),
+          scoreDetail(state, result),
+          h('div', { class: 'rpt-grid wk-grid' }, revenueBlock(result), profitBlock(result, index), starsBlock(result)),
           compare && compare.current.index === index ? compareBlock(compare) : null,
           daysBlock(result, bestDay(state)?.weekDay ?? null),
           nextWeekBlock(state, index),
+          weekOneBlock(state, result, index),
         );
       }
       renderSave();
