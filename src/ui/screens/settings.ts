@@ -26,6 +26,8 @@ export interface SettingsActions {
 export interface SettingsScreen extends Screen {
   /** Current values shown by the form. */
   readonly value: Settings;
+  /** Saves a change made outside the form (the HUD speed buttons) and reports it like one made here. */
+  apply(patch: Partial<Settings>): void;
 }
 
 const QUALITY_OPTIONS: readonly { value: Quality; label: string }[] = [
@@ -382,6 +384,12 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     el,
     get value() {
       return { ...value };
+    },
+    apply(patch) {
+      value = { ...value, ...patch };
+      saveSettings(value, storage);
+      syncAll();
+      actions.onChange({ ...value });
     },
     onShow: () => {
       status.textContent = '';
