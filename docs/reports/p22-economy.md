@@ -216,6 +216,17 @@ Tuần 1 nay chia nhỏ tiền nâng cấp như các tuần sau (2 tuần; Khó 
 
 Test "scores hiring alone above hiring plus tools" đã viết lại: thuê người một mình nay chỉ dẫn dưới 1 triệu. Test mới: thuê người cộng dụng cụ điểm cao hơn ở Dễ mọi seed, và mức dẫn nằm dưới ngưỡng 1,5 triệu cũ. Khó trải tiền nâng cấp ra 3 tuần nên 0 ván 3 cúp không đổi.
 
+### Đã sửa ở E-12
+
+E-12 viết lại `b_steady` và đổi đường mục tiêu tuần 2–4 của p23 ([p23-long-economy.md](p23-long-economy.md#đã-sửa-ở-e-12)); mục tiêu tuần 1 không đổi. Chạy lại `p22-strategies`, số ván 3 cúp không đổi:
+
+| Chỉ số | Độ khó | Trước | Sau |
+| --- | --- | --- | --- |
+| Ván a–e đủ 3 cúp (trên 30) | Dễ / Thường / Khó | 21 / 12 / 0 | 21 / 12 / 0 |
+| Ván phá sản f | Dễ / Thường / Khó | 0/6 / 6/6 / 6/6 | 0/6 / 6/6 / 6/6 |
+
+Lưu ý: ở bảng từng seed của test, tiêu đề cột "cups" nằm trên cột số khách đã phục vụ (chưa sửa).
+
 ### Không sửa
 
 | Id | Lý do |

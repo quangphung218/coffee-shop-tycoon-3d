@@ -74,15 +74,17 @@ Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` v
 
 ## Mục tiêu tuần
 
-Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu bằng mức tuần 1 nhân hệ số trong `WEEK_GOAL_MULTS` (tuần 1, 2, 3, 4), làm tròn tới 100.000; từ tuần 5 hệ số tăng thêm `WEEK_GOAL_LATE_GROWTH` mỗi tuần (Dễ và Thường 0,15, Khó 0,10), không có trần. Mục tiêu sao giữ nguyên.
+Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu bằng mức tuần 1 nhân hệ số trong `WEEK_GOAL_MULTS` (tuần 1, 2, 3, 4), làm tròn tới 100.000; từ tuần 5 hệ số tăng thêm `WEEK_GOAL_LATE_GROWTH` mỗi tuần (+0,1 ở cả ba độ khó), không có trần và mục tiêu không bao giờ giảm. Mục tiêu sao giữ nguyên.
 
 | Độ khó | Sao | Hệ số tuần 1 / 2 / 3 / 4 | Từ tuần 5 | Tuần 1 | Tuần 2 |
 | --- | --- | --- | --- | --- | --- |
-| Dễ | 3,8 | 1 / 1,7 / 2,4 / 2,9 | +0,15/tuần | 35.000.000 | 59.500.000 |
-| Thường | 4,0 | 1 / 1,7 / 2,3 / 2,8 | +0,15/tuần | 32.000.000 | 54.400.000 |
-| Khó | 4,2 | 1 / 1,65 / 2,3 / 2,8 | +0,10/tuần | 33.000.000 | 54.500.000 |
+| Dễ | 3,8 | 1 / 1,7 / 2,2 / 2,35 | +0,1/tuần | 35.000.000 | 59.500.000 |
+| Thường | 4,0 | 1 / 1,7 / 2,2 / 2,4 | +0,1/tuần | 32.000.000 | 54.400.000 |
+| Khó | 4,2 | 1 / 1,65 / 2,1 / 2,25 | +0,1/tuần | 33.000.000 | 54.500.000 |
 
-Đường cong chọn (E-11) để điểm tuần của quán chi tiền không tụt quá 10 điểm từ tuần 2→3 (tuần 1→2 vẫn có thể tụt tới 18 điểm ở Dễ), và quán không mua gì (`a_basic`) giảm dần nhưng giữ ít nhất 1 cúp. Hệ số tuần 2 của Khó (1,65) là lệch có chủ ý, review chấp nhận. Điểm trung bình `a_basic` tuần 1 → 8: Dễ 89 65 52 46 44 44 43 42, Thường 93 68 57 49 47 46 45 44, Khó 85 68 56 47 47 46 44 44. Các hệ số khớp với kinh tế hiện tại; sau khi đổi kinh tế phải đo lại bằng `p23-long-run.test.ts`. Số đo 8 tuần: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-11).
+Đường cong E-12 (thay đường E-11) theo luật chủ quán 30/10: người chơi thư giãn (`b_steady`) được 2 cúp ở tuần 3–8, muốn 3 cúp phải tối ưu như `c_spend`; quán không mua gì (`a_basic`) giảm dần nhưng giữ ít nhất 1 cúp. Điểm trung bình tuần 1 → 8 (xem bảng đầy đủ ở báo cáo): `a_basic` Dễ 89 65 55 52 51 50 49 47, Thường 93 68 59 53 53 51 50 49, Khó 85 68 59 54 53 52 50 49. Các hệ số khớp với kinh tế hiện tại; sau khi đổi kinh tế phải đo lại bằng `p23-long-run.test.ts`. Số đo 8 tuần: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-12).
+
+Save cũ giữ mục tiêu đã lưu ở `state.week.goal`; chỉ các tuần mới mở sau khi đổi mới dùng đường cong này. `SAVE_VERSION` vẫn là 6.
 
 Mục tiêu tuần 1 được chọn bằng các chiến lược sau (số đo dưới đây là của lần chọn mục tiêu tuần 1 đó, chơi có lịch sự kiện):
 
@@ -95,8 +97,9 @@ Mục tiêu tuần 1 được chọn bằng các chiến lược sau (số đo d
 Kết quả:
 
 - Cơ bản đạt khoảng 80% mục tiêu tuần 1: trung bình Dễ 22,54 triệu (80,5%), Thường 21,07 triệu (79,5%), Khó 18,21 triệu (78,5%); từng seed 75,3–83,4%; 2 cúp (điểm 83–89).
-- Cơ bản bật món (E-11, trung bình 3 seed, tuần 1 → 8): Dễ 89 65 52 46 44 44 43 42; Thường 93 68 57 49 47 46 45 44; Khó 85 68 56 47 47 46 44 44. Giữ ít nhất 1 cúp.
-- Nâng cấp (`c_spend`): 3 cúp tuần 5–8 ở 12/12 ván mỗi độ khó; điểm trung bình tuần 2 là 89–100. Chi tiết ở [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-11).
+- Cơ bản bật món (E-12, trung bình 3 seed, tuần 1 → 8): Dễ 89 65 55 52 51 50 49 47; Thường 93 68 59 53 53 51 50 49; Khó 85 68 59 54 53 52 50 49. Giữ ít nhất 1 cúp.
+- Nâng cấp (`c_spend`): 3 cúp tuần 5–8 ở 12/12 ván mỗi độ khó; điểm trung bình tuần 2 là 89–100. Chi tiết ở [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-12).
+- Thong thả (`b_steady`, E-12): 0/12 ván 3 cúp tuần 5–8; ít nhất 2 cúp ở 62/63 ván tuần 2–8 (Dễ 20/21).
 
 Số đo từng seed ở [reports/p24-ui.md](../reports/p24-ui.md#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập).
 
