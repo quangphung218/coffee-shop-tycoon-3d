@@ -203,6 +203,19 @@ Lưu ý:
 - f không bao giờ phá sản ở Dễ.
 - Bản xem trước tiền thuê nằm trong báo cáo ngày, không có trên HUD.
 
+### Đã sửa ở E-11
+
+Tuần 1 nay chia nhỏ tiền nâng cấp như các tuần sau (2 tuần; Khó 3 tuần), xem [p23-long-economy.md](p23-long-economy.md#đã-sửa-ở-e-11). Chạy lại `p22-strategies`, tuần 1:
+
+| Chỉ số | Độ khó | Trước | Sau |
+| --- | --- | --- | --- |
+| Ván a–e đủ 3 cúp (trên 30) | Dễ | 16 | 21 |
+| | Thường | 6 | 12 |
+| | Khó | 0 | 0 |
+| Ván phá sản f | Dễ / Thường / Khó | 0/6 / 6/6 / 6/6 | 0/6 / 6/6 / 6/6 |
+
+Test "scores hiring alone above hiring plus tools" đã viết lại: thuê người một mình nay chỉ dẫn dưới 1 triệu. Test mới: thuê người cộng dụng cụ điểm cao hơn ở Dễ mọi seed, và mức dẫn nằm dưới ngưỡng 1,5 triệu cũ. Khó trải tiền nâng cấp ra 3 tuần nên 0 ván 3 cúp không đổi.
+
 ### Không sửa
 
 | Id | Lý do |

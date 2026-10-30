@@ -1,6 +1,6 @@
-# P23: kinh tế 4 tuần và cấp quán 7–10
+# P23: kinh tế dài hạn và cấp quán 7–10
 
-Mô phỏng 28 ngày ở 3 độ khó × 3 chiến lược × 3 seed. Báo cáo này ghi số đo và lý do chọn mục tiêu tuần, thưởng cúp và cấp 7–10.
+Mô phỏng 56 ngày (8 tuần) ở 3 độ khó × 3 chiến lược × 3 seed. Báo cáo này ghi số đo và lý do chọn mục tiêu tuần, thưởng cúp và cấp 7–10. Bảng 4 tuần cũ (trước E-05) đã xóa vì lỗi thời; số hiện tại ở mục "Đã sửa ở E-11".
 
 ## Chạy lại
 
@@ -8,14 +8,12 @@ Mô phỏng 28 ngày ở 3 độ khó × 3 chiến lược × 3 seed. Báo cáo 
 npx vitest run tests/integration/p23-long-run.test.ts --reporter=verbose
 ```
 
-Test in bảng trung bình theo tuần và bảng từng seed, rồi kiểm:
+Test chạy khoảng 64–68 giây (giới hạn 3 phút), in bảng trung bình theo tuần và bảng từng seed, rồi kiểm:
 
-- Tiền không bao giờ âm.
+- Tiền không bao giờ âm, không phá sản.
 - Chơi lại cùng seed ra cùng số.
-- `c_spend` còn món mua được (`buyable` > 0) tới hết tuần 3 ở mọi độ khó.
-- Tuần 3–4, `c_spend` tiêu ít nhất 20% lãi tuần.
-- Tuần 4, `c_spend` có tiền cuối nhiều hơn `a_basic` (từng seed).
-- Tuần 2, chiến lược a không được 3 cúp ở độ khó nào, seed nào.
+- Điểm `c_spend` và `b_steady` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó; `a_basic` giữ ít nhất 1 cúp.
+- `b_steady` có ít nhất 2 cúp ở 21/21 ván tuần 2–8 mỗi độ khó.
 
 ## Chiến lược
 
@@ -25,69 +23,16 @@ Mỗi sáng mọi chiến lược bật món đã mở và nhập hàng theo g�
 | --- | --- |
 | `a_basic` | Tự phục vụ một mình, không thuê, không mua nâng cấp. |
 | `c_spend` | Thuê 1 barista ngày 1; mỗi sáng mua nâng cấp hay dụng cụ rẻ nhất đang mở, lặp tới khi tiền chỉ còn đủ lương tối nay và hàng nhập ngày mai. |
-| `e_marketing` | Như c, thêm chiến dịch rẻ nhất vào ngày lẻ trong tuần khi đủ tiền. |
+| `b_steady` | 1 barista; chỉ mua nâng cấp khi tiền ≥ 2 lần giá, giữ lại quỹ lương, thuê mặt bằng và nhập hàng; giá Chuẩn. |
 
-Seed 1, 42, 777. c và e mua mọi nâng cấp chứ không chỉ dụng cụ như bản P22, để đo xem người chi tiêu mạnh có hết đồ để mua không.
-
-## Bảng 4 tuần (trung bình 3 seed, trước E-05)
-
-Bảng này và mục "Đọc bảng" là lần chạy cũ, trước E-05, một lần chạy riêng (ví dụ Thường c_spend tuần 4 tiền cuối 156,020k). Cột "Trước" ở mục "Đã sửa ở E-05" là số trung bình 3 seed từ lần đo gốc của epic nên không trùng bảng này. Số hiện tại ở mục "Đã sửa ở E-05".
-
-`profit` là tổng lãi ngày (doanh thu − nguyên liệu − lương − marketing), chưa trừ nâng cấp. `spent` là tiền mua nâng cấp trong tuần. `buyable`: nâng cấp đang mở và còn dưới trần ở cấp hiện tại. `left`: nâng cấp còn dưới trần ở cấp 10.
-
-| difficulty | strategy | week | revenue | profit | spent | reward | endMoney | level | xp | buyable | left | stars | score | cups |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| easy | a_basic | 1 | 27,895k | 18,962k | 0k | 1,500k | 25,024k | 3.0 | 4323 | 15.0 | 15.0 | 4.07 | 99.7 | 3.00 |
-| easy | a_basic | 2 | 30,843k | 20,799k | 0k | 1,000k | 48,625k | 4.0 | 8847 | 15.0 | 15.0 | 4.03 | 84.0 | 2.00 |
-| easy | a_basic | 3 | 30,808k | 21,271k | 0k | 1,000k | 72,662k | 5.0 | 13326 | 15.0 | 15.0 | 4.03 | 73.0 | 2.00 |
-| easy | a_basic | 4 | 30,768k | 20,862k | 0k | 0k | 95,129k | 5.0 | 17711 | 15.0 | 15.0 | 4.07 | 66.3 | 1.00 |
-| easy | c_spend | 1 | 52,160k | 34,931k | 27,187k | 1,500k | 13,388k | 3.0 | 5915 | 4.7 | 10.0 | 4.90 | 100.0 | 3.00 |
-| easy | c_spend | 2 | 87,637k | 58,154k | 23,665k | 1,500k | 50,709k | 5.0 | 13704 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| easy | c_spend | 3 | 88,878k | 60,536k | 0k | 1,500k | 114,838k | 6.0 | 21571 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| easy | c_spend | 4 | 88,255k | 58,889k | 30,255k | 1,500k | 146,991k | 7.0 | 29349 | 0.0 | 6.0 | 5.00 | 100.0 | 3.00 |
-| easy | e_marketing | 1 | 48,763k | 32,000k | 23,673k | 1,500k | 14,010k | 3.0 | 5280 | 5.7 | 10.3 | 4.77 | 100.0 | 3.00 |
-| easy | e_marketing | 2 | 92,460k | 60,193k | 27,179k | 1,500k | 49,819k | 5.0 | 13035 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| easy | e_marketing | 3 | 93,728k | 62,586k | 0k | 1,500k | 115,730k | 6.0 | 20832 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| easy | e_marketing | 4 | 95,502k | 62,422k | 20,170k | 1,500k | 161,159k | 7.0 | 28605 | 0.7 | 6.3 | 5.00 | 100.0 | 3.00 |
-| normal | a_basic | 1 | 26,735k | 17,237k | 0k | 2,250k | 22,912k | 2.3 | 3438 | 13.7 | 15.0 | 4.03 | 99.3 | 3.00 |
-| normal | a_basic | 2 | 29,907k | 19,039k | 0k | 1,500k | 45,158k | 3.3 | 6819 | 15.0 | 15.0 | 4.00 | 84.7 | 2.00 |
-| normal | a_basic | 3 | 29,885k | 19,624k | 0k | 1,500k | 67,896k | 4.0 | 10150 | 15.0 | 15.0 | 4.00 | 73.0 | 2.00 |
-| normal | a_basic | 4 | 29,330k | 18,815k | 0k | 0k | 88,133k | 5.0 | 13360 | 15.0 | 15.0 | 4.03 | 66.3 | 1.00 |
-| normal | c_spend | 1 | 43,970k | 27,727k | 19,968k | 2,250k | 12,796k | 3.0 | 4302 | 8.0 | 11.0 | 4.80 | 100.0 | 3.00 |
-| normal | c_spend | 2 | 86,900k | 53,925k | 36,535k | 2,250k | 33,111k | 4.0 | 10053 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| normal | c_spend | 3 | 90,568k | 57,836k | 0k | 2,250k | 95,299k | 5.0 | 16107 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| normal | c_spend | 4 | 91,630k | 57,002k | 0k | 2,250k | 156,020k | 6.0 | 22009 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| normal | e_marketing | 1 | 45,272k | 27,748k | 19,456k | 2,250k | 13,578k | 3.0 | 4233 | 8.3 | 11.0 | 4.70 | 100.0 | 3.00 |
-| normal | e_marketing | 2 | 88,357k | 54,308k | 37,047k | 2,250k | 34,086k | 4.0 | 10163 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| normal | e_marketing | 3 | 88,292k | 56,001k | 0k | 2,250k | 94,315k | 5.0 | 16297 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| normal | e_marketing | 4 | 90,902k | 56,335k | 0k | 2,250k | 154,520k | 6.0 | 22303 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| hard | a_basic | 1 | 22,487k | 13,324k | 0k | 3,000k | 18,794k | 2.0 | 2443 | 13.0 | 15.0 | 4.03 | 96.3 | 3.00 |
-| hard | a_basic | 2 | 27,298k | 15,934k | 0k | 2,000k | 38,432k | 3.0 | 5035 | 15.0 | 15.0 | 4.03 | 86.0 | 2.00 |
-| hard | a_basic | 3 | 27,793k | 16,763k | 0k | 2,000k | 58,755k | 4.0 | 7577 | 15.0 | 15.0 | 4.03 | 74.7 | 2.00 |
-| hard | a_basic | 4 | 28,345k | 16,490k | 0k | 667k | 77,376k | 4.0 | 9977 | 15.0 | 15.0 | 4.07 | 68.3 | 1.33 |
-| hard | c_spend | 1 | 33,843k | 19,157k | 12,428k | 3,000k | 11,801k | 2.0 | 2993 | 7.7 | 11.7 | 4.73 | 100.0 | 3.00 |
-| hard | c_spend | 2 | 71,930k | 40,109k | 39,186k | 3,000k | 16,782k | 4.0 | 7160 | 1.3 | 8.0 | 5.00 | 100.0 | 3.00 |
-| hard | c_spend | 3 | 81,892k | 47,637k | 13,363k | 3,000k | 55,711k | 4.0 | 11719 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| hard | c_spend | 4 | 80,645k | 45,648k | 0k | 3,000k | 106,207k | 5.0 | 16193 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| hard | e_marketing | 1 | 35,227k | 19,219k | 12,428k | 3,000k | 12,201k | 2.0 | 2905 | 7.7 | 11.7 | 4.63 | 100.0 | 3.00 |
-| hard | e_marketing | 2 | 76,180k | 42,074k | 39,186k | 3,000k | 18,920k | 3.7 | 7215 | 1.3 | 8.0 | 5.00 | 100.0 | 3.00 |
-| hard | e_marketing | 3 | 83,537k | 48,302k | 13,363k | 3,000k | 58,595k | 4.3 | 11877 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-| hard | e_marketing | 4 | 87,325k | 48,469k | 0k | 3,000k | 111,647k | 5.0 | 16454 | 0.0 | 7.0 | 5.00 | 100.0 | 3.00 |
-
-Bảng từng seed in ra cùng lệnh trên.
-
-## Đọc bảng (trước E-05)
-
-- Từ tuần 2, mọi món và nâng cấp của lịch tuần 1 đều mở. Người chi tiêu mạnh (c, e) mua hết 15 nâng cấp trong tuần 2 và có lãi 45–60 triệu mỗi tuần sau đó.
-- Không có cấp 7–10 thì từ tuần 3 người chơi này không còn gì để mua. Với cấp 7–10 còn 7 nâng cấp chờ nâng trần (`left` = 7, 6 sau khi cấp 7 tới ở Dễ tuần 4).
-- Chiến lược a giữ doanh thu gần như không đổi (khoảng 1,1 lần tuần 1) vì không đầu tư.
+Seed 1, 42, 777.
 
 ## Lý do chọn số
 
 | Số | Giá trị | Lý do |
 | --- | --- | --- |
-| `WEEK_GOAL_GROWTH` | 0,5/tuần | Với 20%/tuần cũ, a vẫn 3 cúp ở tuần 2 (điểm 95–98). Muốn a dưới 90 điểm ở tuần 2, mục tiêu Dễ phải trên 37 triệu, Khó trên 32 triệu, tức khoảng ×1,4–1,5. Chọn ×1,5: a được 83–87 điểm (2 cúp), cao nhất 87 ở Khó seed 777. |
-| `WEEK_GOAL_MAX_MULT` | 3 | Từ tuần 5 mục tiêu là Dễ 84 triệu, Thường 79,5 triệu, Khó 69 triệu, ngay dưới doanh thu tuần của c (80–92 triệu). Người đầu tư đủ vẫn giữ 3 cúp; người đầu tư nửa vời phải cố mới được 3 cúp; a xuống 1 cúp từ tuần 4. |
+| `WEEK_GOAL_GROWTH` | 0,5/tuần | Với 20%/tuần cũ, a vẫn 3 cúp ở tuần 2 (điểm 95–98). Muốn a dưới 90 điểm ở tuần 2, mục tiêu Dễ phải trên 37 triệu, Khó trên 32 triệu, tức khoảng ×1,4–1,5. Chọn ×1,5: a được 83–87 điểm (2 cúp), cao nhất 87 ở Khó seed 777. (Bản cũ; đường mục tiêu nay ở mục E-11.) |
+| `WEEK_GOAL_MAX_MULT` | 3 | Bản cũ, đã bỏ: từ tuần 5 mục tiêu từng được chặn ở ×3. Nay không có trần (xem E-11). |
 | `WEEK_REWARDS` | Dễ 1/1,5 · Thường 1,5/2,25 · Khó 2/3 triệu cho 2/3 cúp | Khoảng 5–15% lãi tuần của a: đủ thấy, không đổi nhịp mua sắm. Khó trả nhiều hơn vì giá cao hơn và khó đạt cúp hơn. 3 cúp trả gấp rưỡi 2 cúp. |
 | Ngưỡng XP cấp 7–10 | 27.000 · 37.000 · 49.000 · 63.000 | Bước tăng 8k, 10k, 12k, 14k nối tiếp bước của cấp 2–6 (1,1k … 7k). c đạt khoảng 7.800 XP/tuần ở Dễ, 6.000 ở Thường, 4.500 ở Khó: Dễ lên cấp 7 trong tuần 4, Thường khoảng tuần 5, cấp 10 rơi vào khoảng tuần 8–11. |
 | `maxLevelBonus` (bản trước E-05; nay thay bằng 21 cấp thêm ở cấp quán 4–10, xem [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05)) | 7: máy cao cấp, máy xay hạt · 8: bàn ghế, tủ bánh · 9: đèn, máy sinh tố · 10: máy cao cấp, máy rửa ly | Lý do của bản trước E-05, nay không còn đúng với cây, tranh và mở rộng (đã có cấp thêm). Chỉ chọn nâng cấp mà cấp thêm không cần model mới hay chỗ đặt mới: máy và dụng cụ chỉ đổi hiệu ứng, model máy đã chặn ở bậc cao nhất; bàn thứ 7 lấy chỗ trống cuối cùng trong phòng; đèn thứ 3 treo trên bàn trong cùng hàng đầu. Không chọn: máy 2 group (máy thứ 4 đè máy rửa ly), cây và tranh (hết chỗ), quầy bar cửa sổ (hết chỗ bàn), mở rộng và ngoài trời (thêm khu mới), máy làm đá (đã giảm 90%). |
@@ -95,7 +40,7 @@ Bảng từng seed in ra cùng lệnh trên.
 
 ## Đã sửa ở E-05
 
-Vấn đề ở bảng trên: c hết đồ để mua từ tuần 3 (`buyable` = 0 ở Dễ và Thường) và dồn tiền thành đống. E-05 thay phần thưởng cấp quán 4–10 bằng 21 cấp thêm có giá và hiệu ứng riêng, cộng 4 đồ trang trí cao cấp, và thêm hiệu ứng `priceBonus` (giá bán mọi món). Danh sách đầy đủ ở [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05). Số dưới đây là trung bình 3 seed của `c_spend`, in từ `p23-long-run.test.ts`; trong ngoặc là `a_basic`.
+Vấn đề: c hết đồ để mua từ tuần 3 (`buyable` = 0 ở Dễ và Thường) và dồn tiền thành đống. E-05 thay phần thưởng cấp quán 4–10 bằng 21 cấp thêm có giá và hiệu ứng riêng, cộng 4 đồ trang trí cao cấp, và thêm hiệu ứng `priceBonus` (giá bán mọi món). Danh sách đầy đủ ở [p27-retention.md](../spec/p27-retention.md#cấp-thêm-và-đồ-cao-cấp-e-05). Số dưới đây là trung bình 3 seed của `c_spend`, in từ `p23-long-run.test.ts`; trong ngoặc là `a_basic`.
 
 | Chỉ số | Độ khó | Trước | Sau |
 |---|---|---|---|
@@ -126,40 +71,57 @@ Các số "Sau" đã kiểm bằng cách chạy `p23-long-run`. Các số "Trư�
 
 Vấn đề: lợi nhuận tuần trừ đủ tiền nâng cấp trong tuần mua, nên quán chi tiền tái đầu tư ở tuần 2 (`c_spend` 57–62 điểm) điểm thấp hơn quán không mua gì (`a_basic` 67–71), rồi vọt lên 100 ở tuần 3–4 khi mục tiêu tăng chậm. E-07 sửa hai chỗ trong `src/sim/week.ts` và `src/sim/data/week.ts`:
 
-- Tiền nâng cấp mua từ tuần 2 chia đều 2 tuần (`UPGRADE_AMORTIZE_WEEKS` = 2: tuần mua và tuần kế tiếp). Tuần 1 vẫn trừ đủ. Tuần đã chấm theo luật cũ không có `upgradeCharge` và không tính lại; không đổi `SAVE_VERSION`.
-- Mục tiêu doanh thu tuần 2–4 là bội của tuần 1 (`WEEK_GOAL_MULTS`) thay cho `WEEK_GOAL_GROWTH` 0,6: Dễ 1 / 1,9 / 3,6 / 3,6, Thường 1 / 1,9 / 3,5 / 3,5, Khó 1 / 1,9 / 2,9 / 3,55; từ tuần 4 giữ hệ số cuối.
+- Tiền nâng cấp mua từ tuần 2 chia đều 2 tuần (`UPGRADE_AMORTIZE_WEEKS` = 2: tuần mua và tuần kế tiếp). Tuần 1 vẫn trừ đủ (đã đổi ở E-11). Tuần đã chấm theo luật cũ không có `upgradeCharge` và không tính lại; không đổi `SAVE_VERSION`.
+- Mục tiêu doanh thu tuần 2–4 là bội của tuần 1 (`WEEK_GOAL_MULTS`) thay cho `WEEK_GOAL_GROWTH` 0,6 (bội số E-07 đã bị thay ở E-11).
 - Màn Tổng kết tuần có khối "Lợi nhuận tuần" ghi luật tính.
 
-Điểm tuần 2 / 3 / 4, trung bình 3 seed, trước -> sau, in từ `p23-long-run.test.ts`:
+Điểm tuần 2 / 3 / 4, trung bình 3 seed, trước -> sau, in từ `p23-long-run.test.ts` (số E-07, lịch sử):
 
 | Độ khó | Chiến lược | Trước | Sau |
 |---|---|---|---|
 | Dễ | `a_basic` | 67,3 / 55,3 / 47,0 | 60,0 / 42,0 / 41,0 |
 | | `c_spend` | 59,0 / 100 / 100 | 97,7 / 82,0 / 97,3 |
-| | `e_marketing` | 57,7 / 100 / 100 | 96,3 / 81,3 / 96,0 |
 | Thường | `a_basic` | 71,0 / 58,7 / 49,0 | 63,0 / 44,0 / 43,0 |
 | | `c_spend` | 61,7 / 98,0 / 100 | 99,0 / 81,0 / 97,3 |
-| | `e_marketing` | 61,7 / 99,0 / 100 | 98,7 / 81,3 / 96,3 |
 | Khó | `a_basic` | 70,0 / 58,0 / 47,0 | 62,0 / 48,7 / 41,3 |
 | | `c_spend` | 57,0 / 58,0 / 96,7 | 90,7 / 64,0 / 82,3 |
-| | `e_marketing` | 56,7 / 55,0 / 97,7 | 92,3 / 64,7 / 87,3 |
 
-Số tuần `c_spend` đạt 3 cúp trong 6 lượt (tuần 3 và 4, 3 seed): Dễ 6/6 -> 3/6, Thường 6/6 -> 3/6, Khó 3/6 -> 1/6.
+## Đã sửa ở E-11
 
-Lý do chọn:
+Vấn đề: tuần 1 trừ đủ tiền nâng cấp trong lợi nhuận nên điểm tuần 1 và tuần 2 lệch nhau, và đường mục tiêu E-07 (nhảy ×1,9 rồi ×3,5, chặn trần) làm điểm `c_spend` lên xuống mạnh. E-11 sửa ở `src/sim/week.ts` và `src/sim/data/week.ts`:
 
-- Chia 2 tuần: chi quá sức vẫn kéo điểm lợi nhuận xuống ở tuần mua và tuần sau, nhưng quán tái đầu tư vừa phải không còn thấp hơn quán không mua gì ở tuần 2. Chia dài hơn đẩy quán chi tiền lên mức tối đa ở tuần 3–4 ở mọi mục tiêu mà `a_basic` còn lấy được 1 cúp.
-- Đường mục tiêu: `a_basic` có doanh thu khoảng 1,1 lần mục tiêu tuần 1 mỗi tuần, nên hệ số tuần 3–4 đặt để nó còn 1 cúp tới tuần 4 và số cúp không tăng; còn `c_spend` và `e_marketing` (2–4,4 lần) phải có tuần mạnh mới đạt 3 cúp ở tuần 3–4.
+- Tuần 1 chia nhỏ tiền nâng cấp như các tuần sau: 2 tuần (Dễ, Thường), 3 tuần ở Khó (`UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY`).
+- Đường mục tiêu mượt hơn, bội của tuần 1 (`WEEK_GOAL_MULTS`), sau đó cộng thêm mỗi tuần, không có trần (`WEEK_GOAL_LATE_GROWTH`):
 
-Lưu ý:
+  | Độ khó | Tuần 1 / 2 / 3 / 4 | Từ tuần 5 |
+  | --- | --- | --- |
+  | Dễ | 1 / 1,7 / 2,4 / 2,9 | +0,15/tuần |
+  | Thường | 1 / 1,7 / 2,3 / 2,8 | +0,15/tuần |
+  | Khó | 1 / 1,65 / 2,3 / 2,8 | +0,10/tuần |
 
-- Tuần 2 nay vượt mức: quán chi tiền được 97–99 điểm và 3 cúp ở Dễ và Thường.
-- Biên của `a_basic` ở tuần 4 sát vạch 1 cúp (Dễ seed 42 đúng 40 điểm).
-- Đường mục tiêu khớp với kinh tế hiện tại; sau mỗi thay đổi kinh tế phải đo lại và chỉnh `WEEK_GOAL_MULTS`.
+- Kiểm tra tụt điểm bắt đầu ở tuần 2→3; tuần 1→2 vẫn có thể tụt tới 18 điểm ở Dễ.
+- Hai chỗ riêng của Khó (chia 3 tuần và tuần 2 ×1,65) là lệch so với thiết kế gốc, người builder chọn và review chấp nhận: không đường mục tiêu nào khác giữ `c_spend` Khó trong 10 điểm ở tuần 2→3. Phương án dự phòng là nới kiểm tra tụt điểm.
+- Quyết định Q-05, phương án A: bỏ assert "3 cúp < 100%"; thay bằng `c_spend` và `b_steady` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó, `a_basic` giữ ≥ 1 cúp, `b_steady` ≥ 2 cúp ở 21/21 ván tuần 2–8.
+- Chiến lược `e_marketing` được thay bằng `b_steady` trong test. Không phá sản ở ván nào.
+- Chữ luật ở màn Tổng kết tuần (`weekProfitRule`) nay ghi số tuần theo độ khó.
+
+Điểm tuần trung bình 3 seed (1, 42, 777), tuần 1 → 8:
+
+| Độ khó | Chiến lược | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 |
+|---|---|---|---|---|---|---|---|---|---|
+| Dễ | `a_basic` | 89 | 65 | 52 | 46 | 44 | 44 | 43 | 42 |
+| | `c_spend` | 100 | 89 | 97 | 100 | 100 | 100 | 100 | 100 |
+| | `b_steady` | 100 | 90 | 97 | 100 | 100 | 100 | 100 | 100 |
+| Thường | `a_basic` | 93 | 68 | 57 | 49 | 47 | 46 | 45 | 44 |
+| | `c_spend` | 100 | 92 | 97 | 100 | 100 | 100 | 100 | 100 |
+| | `b_steady` | 100 | 92 | 97 | 100 | 100 | 100 | 100 | 100 |
+| Khó | `a_basic` | 85 | 68 | 56 | 47 | 47 | 46 | 44 | 44 |
+| | `c_spend` | 98 | 100 | 93 | 95 | 100 | 100 | 100 | 100 |
+| | `b_steady` | 98 | 100 | 95 | 94 | 100 | 100 | 100 | 100 |
 
 ## Ngưỡng test cũ
 
-- `tests/integration/p22-strategies.test.ts`: không đổi, vẫn đạt.
+- `tests/integration/p22-strategies.test.ts`: một test đổi ở E-11, xem [p22-economy.md](p22-economy.md).
 - `tests/integration/level-balance.test.ts`: các mốc P20 nói về cấp 6, nay ghi là `FULL_UNLOCK_LEVEL` thay cho `MAX_SHOP_LEVEL` (giờ là 10). Bản tách quán đo hoàn vốn dụng cụ đặt `xp = -1e6` thay vì `1e6`, để quán giữ cấp 6 như khi đo. Không đổi ngưỡng số nào.
-- `tests/sim/week-goal.test.ts`: kiểm công thức mới (×1,5 ở tuần 2, ×3 từ tuần 5).
+- `tests/sim/week-goal.test.ts`: kiểm đường mục tiêu hiện tại (xem E-11).
 - `tests/ui/level-ui.test.ts`: chip cấp tối đa kiểm `MAX_SHOP_LEVEL` thay cho số 6.
