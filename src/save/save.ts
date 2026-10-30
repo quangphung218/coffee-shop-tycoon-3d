@@ -3,11 +3,12 @@ import { HISTORY_DAYS } from '../sim/clock';
 import { WEEK_CHALLENGE_IDS } from '../sim/data/challenges';
 import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
+import { STYLE_SLOTS, styleById } from '../sim/data/styles';
 import { WEEK_LENGTH } from '../sim/data/week';
 import { settleActors } from '../sim/index';
 import { coverLevel, deriveSeed, historyXp, rollMissions } from '../sim/progression';
 import { createDayStats } from '../sim/state';
-import type { GameState, MenuEntry, UpgradeId, WeekSummary } from '../sim/types';
+import type { GameState, MenuEntry, ShopStyles, UpgradeId, WeekSummary } from '../sim/types';
 import { relayoutTables } from '../sim/upgrades';
 import { SAVE_SLOTS, SAVE_VERSION, isObject, isValidState, saveKey, type SaveErrorKind, type SaveSlot, type SlotInfo } from './slots';
 import { defaultStorage, type StorageLike } from './storage';
@@ -184,6 +185,7 @@ export function migrate(raw: unknown): Result<SaveFile> {
   addMissingMenuItems(file.state);
   dropUnknownItems(file.state);
   dropUnknownChallenge(file.state);
+  cleanStyles(file.state);
   // Saves from before E-16 get a challenge on a week's first morning; mid-week they wait for the next week.
   ensureWeekChallenge(file.state);
   // Every copy of a run saved before runId existed shares its seed and name.
@@ -264,6 +266,29 @@ function dropUnknownChallenge(state: GameState): void {
     isObject(c.reward) &&
     (c.itemId === undefined || MENU.some((m) => m.id === c.itemId));
   if (!known) delete week.challenge;
+}
+
+/**
+ * Keeps the shop styles readable: saves from before E-17 have none (every slot
+ * on its default, no version bump needed); a malformed block is reset and
+ * ids this build does not know are dropped, so styleOf falls back to defaults.
+ */
+function cleanStyles(state: GameState): void {
+  const raw: unknown = state.styles;
+  if (raw === undefined) return;
+  if (!isObject(raw)) {
+    delete state.styles;
+    return;
+  }
+  const ids = (list: unknown): string[] => (Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && !!styleById(id)) : []);
+  const chosen: ShopStyles['chosen'] = {};
+  if (isObject(raw.chosen)) {
+    for (const slot of STYLE_SLOTS) {
+      const id = raw.chosen[slot];
+      if (typeof id === 'string' && styleById(id)?.slot === slot) chosen[slot] = id;
+    }
+  }
+  state.styles = { chosen, owned: ids(raw.owned), unlocked: ids(raw.unlocked) };
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {

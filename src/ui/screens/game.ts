@@ -109,6 +109,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     onPause: () => openPause(),
     onSettings: () => base.openSettings(),
     onResetCamera: () => options.onResetCamera?.(),
+    previewStyle: (slot, id) => options.previewStyle?.(slot, id),
   });
   // Whether the 'auto' slot already holds this run. A new run (or one loaded
   // from a manual slot) first copies what is there to an empty slot, so the

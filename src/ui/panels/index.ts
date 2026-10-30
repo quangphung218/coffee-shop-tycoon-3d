@@ -6,6 +6,7 @@ import { renderInventoryPanel } from './inventory';
 import { renderMarketingPanel } from './marketing';
 import { renderMenuPanel } from './menu';
 import { renderStaffPanel } from './staff';
+import { renderStylesPanel, STYLES_PANEL_ID } from './styles';
 import { dayTasks, renderTasksPanel } from './tasks';
 import { renderUpgradesPanel } from './upgrades';
 import './panels.css';
@@ -24,7 +25,7 @@ export function openTaskCount(state: GameState): number {
 }
 
 /**
- * The six preparation panels, in dock order (design/t237-cartoon HUD). The
+ * The seven preparation panels, in dock order (design/t237-cartoon HUD). The
  * dock splits them into "Vận hành" (ops) and "Phát triển" (dev) with a divider
  * where the group changes (design/p20 §5).
  */
@@ -35,6 +36,7 @@ export const PREP_PANELS: readonly PanelDef[] = [
   { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, group: 'ops' },
   { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel, group: 'dev' },
   { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel, group: 'dev' },
+  { id: STYLES_PANEL_ID, label: 'Phong cách quán', icon: 'i-paintings', render: renderStylesPanel, group: 'dev' },
 ];
 
 /** Panels need a running game; on the main menu they say so instead of failing. */
@@ -48,7 +50,7 @@ function guarded(render: PanelRender): PanelRender {
   };
 }
 
-/** Adds the six panels to the dock. Returns a function that removes them. */
+/** Adds the seven panels to the dock. Returns a function that removes them. */
 export function registerPrepPanels(): () => void {
   const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group));
   return () => offs.forEach((off) => off());

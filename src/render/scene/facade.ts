@@ -32,10 +32,11 @@ import {
   doorPlanters,
   wallSpans,
 } from '../../sim/nav/footprints';
+import { defaultStyle, type StyleDef } from '../../sim/data/styles';
 import type { ShopLayout } from '../../sim/upgrades';
 import type { Vec2 } from '../../sim/types';
 import { PALETTE, cssColor } from './palette';
-import { GLASS_MATERIAL, GLOW_MATERIAL, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part } from './parts';
+import { GLASS_MATERIAL, GLOW_MATERIAL, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, box, cyl, merge, part, recolor } from './parts';
 
 /**
  * Architecture and small interior details of the shop: framed windows with
@@ -451,6 +452,55 @@ function fanBladesGeometry(): BufferGeometry {
 
 // ---------- View ----------
 
+/**
+ * Colours of the styled front parts (E-17). The default sign and awning keep
+ * the scene palette exactly; another style paints the sign board and awning
+ * stripes with its colour, and the sign text, dots and other stripes with its accent.
+ */
+export interface FacadeColors {
+  awning: number;
+  awningAlt: number;
+  signBoard: number;
+  signInk: number;
+  signDots: number;
+}
+
+export const DEFAULT_FACADE_COLORS: Readonly<FacadeColors> = {
+  awning: PALETTE.coral,
+  awningAlt: PALETTE.cream,
+  signBoard: PALETTE.cream,
+  signInk: PALETTE.woodDark,
+  signDots: PALETTE.coral,
+};
+
+/** The front colours for a sign and an awning style. */
+export function facadeColors(sign: StyleDef, awning: StyleDef): FacadeColors {
+  const defSign = sign.id === defaultStyle('sign').id;
+  const defAwning = awning.id === defaultStyle('awning').id;
+  const d = DEFAULT_FACADE_COLORS;
+  return {
+    awning: defAwning ? d.awning : awning.color,
+    awningAlt: defAwning ? d.awningAlt : awning.accent,
+    signBoard: defSign ? d.signBoard : sign.color,
+    signInk: defSign ? d.signInk : sign.accent,
+    signDots: defSign ? d.signDots : sign.accent,
+  };
+}
+
+type SwatchRole = 'awning' | 'awningAlt' | 'signBoard';
+
+/** A vertex range of a built geometry painted with one style colour. */
+interface Swatch {
+  geo: BufferGeometry;
+  start: number;
+  count: number;
+  role: SwatchRole;
+}
+
+function sameColors(a: FacadeColors, b: FacadeColors): boolean {
+  return a.awning === b.awning && a.awningAlt === b.awningAlt && a.signBoard === b.signBoard && a.signInk === b.signInk && a.signDots === b.signDots;
+}
+
 function staticMesh(parts: BufferGeometry[], shadows: boolean, material: Material = SHARED_MATERIAL): Mesh | null {
   if (parts.length === 0) return null;
   const mesh = new Mesh(merge(parts), material);
@@ -460,15 +510,15 @@ function staticMesh(parts: BufferGeometry[], shadows: boolean, material: Materia
 }
 
 /** Draws the shop name on a small canvas; null without OffscreenCanvas (tests, jsdom). */
-function signTexture(name: string): CanvasTexture | null {
+function signTexture(name: string, colors: FacadeColors): CanvasTexture | null {
   if (typeof OffscreenCanvas === 'undefined') return null;
   const canvas = new OffscreenCanvas(SIGN_CANVAS.width, SIGN_CANVAS.height);
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const { width: w, height: h } = SIGN_CANVAS;
-  ctx.fillStyle = cssColor(PALETTE.cream);
+  ctx.fillStyle = cssColor(colors.signBoard);
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = cssColor(PALETTE.coral);
+  ctx.fillStyle = cssColor(colors.signDots);
   for (const x of [28, w - 28]) {
     ctx.beginPath();
     ctx.arc(x, h / 2, 9, 0, Math.PI * 2);
@@ -481,7 +531,7 @@ function signTexture(name: string): CanvasTexture | null {
     size -= 4;
     ctx.font = `700 ${size}px Nunito, sans-serif`;
   }
-  ctx.fillStyle = cssColor(PALETTE.woodDark);
+  ctx.fillStyle = cssColor(colors.signInk);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, w / 2, h / 2 + size * 0.05, w - 100);
@@ -509,6 +559,9 @@ export class FacadeView {
   private readonly signBase = new Color(PALETTE.cream);
   private signName: string | null = null;
   private signGlow = 0;
+  private colors: FacadeColors = { ...DEFAULT_FACADE_COLORS };
+  /** Styled vertex ranges of the current build (awning stripes and valance, sign board). */
+  private swatches: Swatch[] = [];
   private layout: ShopLayout | null = null;
   private quality: Quality;
   private plan: FacadePlan | null = null;
@@ -549,7 +602,19 @@ export class FacadeView {
       if (glass) this.wallGroups[i]!.add(glass);
     });
 
-    const front = [...stepParts(plan), ...awningParts(plan), ...signParts(plan)];
+    const steps = stepParts(plan);
+    const awning = awningParts(plan);
+    const front = [...steps, ...awning, ...signParts(plan)];
+    // Vertex ranges of the awning stripes and sign board, read before merging disposes the parts.
+    const styled: Omit<Swatch, 'geo'>[] = [];
+    let start = 0;
+    front.forEach((p, i) => {
+      const count = p.getAttribute('position').count;
+      const stripe = i - steps.length;
+      if (stripe >= 0 && stripe < plan.awning.stripes) styled.push({ start, count, role: stripe % 2 === 0 ? 'awning' : 'awningAlt' });
+      else if (i === steps.length + awning.length + 1) styled.push({ start, count, role: 'signBoard' });
+      start += count;
+    });
     for (const p of plan.planters) {
       front.push(...planterParts(p));
       const leaves = new Mesh(this.foliageGeometry, SHARED_MATERIAL);
@@ -558,11 +623,18 @@ export class FacadeView {
       this.foliage.push(leaves);
       this.free.add(leaves);
     }
-    this.free.add(staticMesh(front, true)!, staticMesh(interiorParts(plan), false)!);
+    const frontMesh = staticMesh(front, true)!;
+    for (const s of styled) this.swatches.push({ ...s, geo: frontMesh.geometry });
+    this.free.add(frontMesh, staticMesh(interiorParts(plan), false)!);
 
     if (plan.awning.valance) {
       const pivot = valancePivot(plan);
       this.valance = new Mesh(valanceGeometry(plan), SHARED_MATERIAL);
+      const geo = this.valance.geometry;
+      const perStripe = geo.getAttribute('position').count / plan.awning.stripes;
+      for (let i = 0; i < plan.awning.stripes; i++) {
+        this.swatches.push({ geo, start: i * perStripe, count: perStripe, role: i % 2 === 0 ? 'awning' : 'awningAlt' });
+      }
       this.valance.position.set(plan.awning.x, pivot.y, pivot.z);
       this.valance.castShadow = true;
       this.free.add(this.valance);
@@ -583,6 +655,29 @@ export class FacadeView {
     const face = new Mesh(new PlaneGeometry(SIGN_WIDTH - 0.06, SIGN_HEIGHT - 0.06), this.signMaterial);
     face.position.set(plan.sign.x, plan.sign.y, plan.sign.z + 0.06);
     this.free.add(face);
+    this.paintSwatches();
+  }
+
+  /**
+   * Wears a sign and awning style (E-17) by repainting the colours of the
+   * parts already built and redrawing the sign texture: no mesh, material
+   * or draw call is added.
+   */
+  setColors(colors: FacadeColors): void {
+    const old = this.colors;
+    if (sameColors(old, colors)) return;
+    this.colors = { ...colors };
+    this.paintSwatches();
+    if (old.signBoard !== colors.signBoard || old.signInk !== colors.signInk || old.signDots !== colors.signDots) this.drawSign();
+  }
+
+  /** Front colours worn now (tests). */
+  get currentColors(): Readonly<FacadeColors> {
+    return this.colors;
+  }
+
+  private paintSwatches(): void {
+    for (const s of this.swatches) recolor(s.geo, this.colors[s.role], s.start, s.count);
   }
 
   /** Low drops jars, pendant lamps, the awning valance and window bars; high adds flower boxes. */
@@ -604,12 +699,16 @@ export class FacadeView {
   setShopName(name: string): void {
     if (name === this.signName) return;
     this.signName = name;
-    const tex = signTexture(name);
+    this.drawSign();
+  }
+
+  private drawSign(): void {
+    const tex = signTexture(this.signName ?? '', this.colors);
     this.signMaterial.map?.dispose();
     this.signMaterial.map = tex;
     // White lets the name texture show its own palette colours.
     if (tex) this.signBase.setRGB(1, 1, 1);
-    else this.signBase.set(PALETTE.cream);
+    else this.signBase.set(this.colors.signBoard);
     this.setSignGlow(this.signGlow);
     this.signMaterial.needsUpdate = true;
   }
@@ -661,5 +760,6 @@ export class FacadeView {
     this.fans.length = 0;
     this.foliage.length = 0;
     this.valance = null;
+    this.swatches = [];
   }
 }

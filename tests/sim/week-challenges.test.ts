@@ -66,7 +66,9 @@ describe('weekly challenge draw (E-16)', () => {
       const c = rollWeekChallenge(99, w)!;
       expect(c).toMatchObject({ target: WEEK_CHALLENGES[c.id].target, progress: 0, settledDay: 0, status: 'active' });
       expect(c.reward.tickets).toBe(WEEK_CHALLENGES[c.id].reward.tickets);
-      expect(c.reward.unlock).toBeUndefined();
+      // E-17: the template's style unlock, copied so the saved challenge never aliases the data.
+      expect(c.reward.unlock).toEqual(WEEK_CHALLENGES[c.id].reward.unlock);
+      if (c.reward.unlock) expect(c.reward.unlock).not.toBe(WEEK_CHALLENGES[c.id].reward.unlock);
       if (c.id === 'sell_item') expect(dayUnlockDay('menu', c.itemId!)).toBeLessThanOrEqual(WEEK_LENGTH);
       else expect(c.itemId).toBeUndefined();
     }

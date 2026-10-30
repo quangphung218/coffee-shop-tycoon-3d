@@ -5,7 +5,7 @@ import { MAX_SHOP_LEVEL, levelDef, xpToReach } from '../../sim/data/levels';
 import { BANKRUPT_DAYS, debtDaysLeft, debtLimit, isOverDebtLimit } from '../../sim/economy';
 import { DAY_EVENTS } from '../../sim/data/week';
 import { weekDay, weekIndex } from '../../sim/progression';
-import type { Command, DayEventId, GameState, Phase, Weather } from '../../sim/types';
+import type { Command, DayEventId, GameState, Phase, StyleSlot, Weather } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, setChildren, uid, Watcher, type Child } from '../core/dom';
 import { formatClock, formatMoney, formatMoneyShort, formatRating } from '../core/format';
@@ -22,6 +22,8 @@ export interface HudActions {
   onPause(): void;
   onSettings(): void;
   onResetCamera(): void;
+  /** Style preview on the 3D shop (Phong cách quán); see PanelContext.previewStyle. */
+  previewStyle?(slot: StyleSlot, id: string | null): void;
 }
 
 export interface Hud {
@@ -854,7 +856,7 @@ export function createHud(actions: HudActions): Hud {
     panelTitle.textContent = def.label;
     measureEdges();
     panelEl.hidden = false;
-    handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel }) ?? null;
+    handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel, previewStyle: actions.previewStyle }) ?? null;
     syncPressed();
     watchFoot();
     panelEl.scrollTop = 0;

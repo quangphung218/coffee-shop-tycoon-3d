@@ -35,10 +35,12 @@ import {
   wallSpans,
 } from '../../sim/nav/footprints';
 import { getShopLayout, type Area, type DecorKind, type MachineKind, type ShopLayout } from '../../sim/upgrades';
-import type { GameState, UpgradeId } from '../../sim/types';
+import type { GameState, StyleSlot, UpgradeId } from '../../sim/types';
+import { STYLE_SLOTS, styleById, type StyleDef } from '../../sim/data/styles';
+import { chosenStyles } from '../../sim/styles';
 import { BACK_COUNTER_HEIGHT, COLD_BREW_TOWER_HEIGHT, COUNTER_HEIGHT, counterGeometry, machineGeometry } from './equipment';
-import { FacadeView, doorGeometry, doorGlassGeometry } from './facade';
-import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part } from './parts';
+import { FacadeView, doorGeometry, doorGlassGeometry, facadeColors } from './facade';
+import { GLASS_MATERIAL, GLOW_MATERIAL, PALETTE, SHARED_MATERIAL, WALL_HEIGHT, WALL_LOW, WOOD_MATERIAL, box, cyl, merge, part, recolor } from './parts';
 
 export { SHARED_MATERIAL, machineGeometry };
 
@@ -654,6 +656,9 @@ export class ShopView {
 
   private key = -1;
   private layout: ShopLayout | null = null;
+  /** Ids of the styles last painted, joined in STYLE_SLOTS order ('' before the first update). */
+  private styleKey = '';
+  private readonly stylePreview: Partial<Record<StyleSlot, string>> = {};
   private readonly dummy = new Object3D();
 
   private readonly geo = {
@@ -796,6 +801,7 @@ export class ShopView {
       this.applyLayout(getShopLayout(state));
     }
     this.facade.setShopName(state.shopName);
+    this.applyStyles(state);
     this.updateIcons(state, time);
     this.updateWalls(dt, cameraYaw);
     return changed;
@@ -868,6 +874,38 @@ export class ShopView {
       default:
         return null;
     }
+  }
+
+  /**
+   * Shows style `id` on `slot` instead of the chosen one, without buying it
+   * (the style picker); null goes back to the chosen style. Ids of another
+   * slot or unknown ids are ignored. Applied on the next update().
+   */
+  setStylePreview(slot: StyleSlot, id: string | null): void {
+    const style = id === null ? undefined : styleById(id);
+    if (style && style.slot === slot) this.stylePreview[slot] = style.id;
+    else delete this.stylePreview[slot];
+  }
+
+  /** The style each slot is drawn with now: the preview, or else the chosen style. */
+  shownStyles(state: Pick<GameState, 'styles'>): Record<StyleSlot, StyleDef> {
+    const styles = chosenStyles(state);
+    for (const slot of STYLE_SLOTS) {
+      const id = this.stylePreview[slot];
+      if (id) styles[slot] = styleById(id)!;
+    }
+    return styles;
+  }
+
+  /** Paints the shown wall, floor, sign and awning styles onto the existing parts (colours only, E-17). */
+  private applyStyles(state: GameState): void {
+    const styles = this.shownStyles(state);
+    const key = STYLE_SLOTS.map((slot) => styles[slot].id).join();
+    if (key === this.styleKey) return;
+    this.styleKey = key;
+    recolor(this.geo.wall, styles.wall.color);
+    recolor(this.geo.unit, styles.floor.color);
+    this.facade.setColors(facadeColors(styles.sign, styles.awning));
   }
 
   /** Rebuilds the facade details for a graphics quality (low drops the small ones). */

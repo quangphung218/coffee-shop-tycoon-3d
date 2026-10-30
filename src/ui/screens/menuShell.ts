@@ -1,7 +1,7 @@
 import { loadSettings, type Settings } from '../../save/settings';
 import type { SaveSlot } from '../../save/slots';
 import { defaultStorage, type StorageLike } from '../../save/storage';
-import type { GameState } from '../../sim/types';
+import type { GameState, StyleSlot } from '../../sim/types';
 import { SceneGate } from '../core/sceneGate';
 import type { LocateHint } from '../hud/serveHints';
 import { ScreenManager } from '../core/screens';
@@ -30,6 +30,8 @@ export interface ShellOptions {
   onReplay?(finished: GameState): void;
   /** Screen point over a serving hint's target (day-1 labels); without it the label waits mid-screen. */
   locateHint?: LocateHint;
+  /** Draws a style on the 3D shop without buying it (World.setStylePreview); null goes back to the chosen one. */
+  previewStyle?(slot: StyleSlot, id: string | null): void;
   /** Loading state of the 3D scene; the buttons that enter the shop wait for it. Always ready when omitted. */
   scene?: SceneGate;
 }

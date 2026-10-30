@@ -68,10 +68,10 @@ afterEach(() => {
 });
 
 describe('registration', () => {
-  it('registers the six preparation panels as HUD buttons', () => {
+  it('registers the seven preparation panels as HUD buttons', () => {
     const off = registerPrepPanels();
     try {
-      expect(listPanels().map((p) => p.id)).toEqual(['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades']);
+      expect(listPanels().map((p) => p.id)).toEqual(['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades', 'styles']);
       const state = game();
       const hud = createHud({ dispatch: () => true, getState: () => state, onPause() {}, onSettings() {}, onResetCamera() {} });
       document.body.append(hud.el, hud.panelEl);
