@@ -251,8 +251,8 @@ function compareValue(id: StatId, v: number | null): string {
 
 /**
  * Signed change as the cells show it; for the abandon rate a drop is the good
- * direction. The arrow and the colour both tell better (up, green) or worse
- * (down, red); the sign of the number tells which way the figure moved.
+ * direction. The arrow and the sign tell which way the figure moved; the
+ * colour tells better (green) or worse (red).
  */
 function compareDelta(id: StatId, delta: number): { dir: 'up' | 'down' | 'flat'; tone: 'up' | 'down' | 'flat'; text: string } {
   const shown = id === 'stars' ? Math.round(delta * 10) / 10 : Math.round(delta);
@@ -315,7 +315,7 @@ function compareBlock(c: WeekCompare): HTMLElement {
                 'td',
                 { class: 'is-num' },
                 d
-                  ? h('span', { class: `rpt-fig-delta wk-delta is-${d.tone}`, attrs: { 'data-delta': d.dir, 'data-tone': d.tone, 'aria-label': deltaLabel(d) } }, icon(DELTA_ICON[d.tone], { size: 16 }), h('b', { text: d.text }))
+                  ? h('span', { class: `rpt-fig-delta wk-delta is-${d.tone}`, attrs: { 'data-delta': d.dir, 'data-tone': d.tone, 'aria-label': deltaLabel(d) } }, icon(DELTA_ICON[d.dir], { size: 16 }), h('b', { text: d.text }))
                   : h('span', { class: 'rpt-muted', text: '—' }),
               ),
             );
@@ -401,7 +401,7 @@ export function nextWeekGoalText(state: GameState, index: number): string {
   const goal = weekGoal(state.difficulty, index + 1);
   const base = weekGoal(state.difficulty, 1).revenue;
   const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
-  return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} so tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
+  return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} mục tiêu tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
 }
 
 function nextWeekBlock(state: GameState, index: number): HTMLElement {

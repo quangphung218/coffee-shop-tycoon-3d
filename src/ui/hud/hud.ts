@@ -13,6 +13,7 @@ import { fresh } from '../core/fresh';
 import { PHASE_STEPS, phaseLabel } from '../core/phase';
 import { DAY_EVENT_ICONS, LEVEL_ICON, PHASE_ICONS, WEATHER_ICONS } from '../core/iconMap';
 import { icon, type IconId } from '../core/icons';
+import { guardStartDay } from '../openGuard';
 import { listPanels, onPanelsChanged, type PanelHandle } from './panels';
 
 export interface HudActions {
@@ -564,7 +565,10 @@ export function createHud(actions: HudActions): Hud {
     {
       class: 'hud-btn hud-btn-cta is-mint',
       attrs: { type: 'button', 'data-action': 'open', title: OPEN_HINT },
-      on: { click: () => actions.dispatch({ type: 'start_day' }) },
+      on: {
+        click: () =>
+          guardStartDay({ host: bar, before: note, className: 'hud-note hud-confirm', getState: actions.getState, start: () => actions.dispatch({ type: 'start_day' }), back: openBtn }),
+      },
     },
     icon('i-open'),
     'Mở cửa',
@@ -828,6 +832,7 @@ export function createHud(actions: HudActions): Hud {
     panelBody.replaceChildren();
     panelEl.hidden = true;
     syncPressed();
+    watchFoot();
     // The dock may have been rebuilt while the panel was open; fall back to its current button.
     const back = opener?.isConnected ? opener : opener?.dataset.panel ? dockButton(closed) : null;
     back?.focus();
@@ -851,6 +856,7 @@ export function createHud(actions: HudActions): Hud {
     panelEl.hidden = false;
     handle = def.render(panelBody, { dispatch: actions.dispatch, getState: actions.getState, close: closePanel }) ?? null;
     syncPressed();
+    watchFoot();
     panelEl.scrollTop = 0;
     panelBody.scrollTop = 0;
     // The head stays in view: focusing the first control must not scroll it away.
@@ -908,6 +914,26 @@ export function createHud(actions: HudActions): Hud {
     host.style.setProperty('--hud-h', `${hudH}px`);
     host.style.setProperty('--dock-h', `${dockH}px`);
   }
+  // A phone toast sits above the open panel's sticky foot ("Mở cửa", the
+  // totals), not over it (WCAG 2.4.11): --panel-foot-h is the band from the
+  // foot's top edge to the panel's bottom, 0px without a foot.
+  let foot: HTMLElement | null = null;
+  const footSize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measureFoot()) : null;
+  function measureFoot(): void {
+    const host = el.parentElement;
+    if (!host) return;
+    const footH = foot ? Math.max(0, Math.ceil(panelEl.getBoundingClientRect().bottom - foot.getBoundingClientRect().top)) : 0;
+    host.style.setProperty('--panel-foot-h', `${footH}px`);
+  }
+  // Panels re-render their body, so the foot element can change on any update.
+  function watchFoot(): void {
+    const next = panelEl.hidden ? null : panelBody.querySelector<HTMLElement>('.panel-foot');
+    if (next === foot) return;
+    if (foot) footSize?.unobserve(foot);
+    foot = next;
+    if (foot) footSize?.observe(foot);
+    measureFoot();
+  }
   // From 1024 px up the three clusters must share one row (ui.css). Their
   // widths follow the data (a nine-digit sum, Tem, an event's name), so no
   // breakpoint can promise that: lay them out in full, and while a cluster
@@ -942,6 +968,7 @@ export function createHud(actions: HudActions): Hud {
       w.run(state);
       dockWatch.run(state);
       handle?.update?.(state);
+      watchFoot();
     },
     openPanel: (id) => openPanel(id),
     closePanel,
@@ -952,6 +979,7 @@ export function createHud(actions: HudActions): Hud {
       offPanels();
       offFresh();
       edges?.disconnect();
+      footSize?.disconnect();
       closeMenu(false);
       closePhases(false);
       closePanel();

@@ -66,11 +66,13 @@ function mergedLines(m: Merged): { title: string; text: string } {
  * Toast stack in the bottom-left corner, above the dock; toasts never take
  * focus, so they cannot move it off what the player is doing. Info and success hide after 4 s
  * (the countdown stops while hovered or focused); warning and error stay
- * until closed. At most 3 are shown; the oldest goes first.
+ * until closed. At most 3 are shown (1 while the Daily Report is open); the
+ * oldest goes first.
  */
 export class Toasts {
   readonly el: HTMLElement;
   private readonly live: Live[] = [];
+  private max = MAX_TOASTS;
 
   constructor() {
     this.el = h('div', { class: 'toasts', attrs: { 'aria-live': 'polite' } });
@@ -78,6 +80,16 @@ export class Toasts {
 
   get count(): number {
     return this.live.length;
+  }
+
+  /** Most toasts shown at once (1 to MAX_TOASTS); lowering it closes the oldest. */
+  get limit(): number {
+    return this.max;
+  }
+
+  set limit(n: number) {
+    this.max = Math.max(1, Math.min(MAX_TOASTS, n));
+    while (this.live.length > this.max) this.close(this.live[0]!);
   }
 
   show(input: ToastInput): void {
@@ -99,7 +111,7 @@ export class Toasts {
       this.arm(same);
       return;
     }
-    while (this.live.length >= MAX_TOASTS) this.close(this.live[0]!);
+    while (this.live.length >= this.max) this.close(this.live[0]!);
 
     const merged: Merged | null = input.merge
       ? { verb: input.merge.verb, labels: [input.merge.label], amount: input.merge.amount, moneyLeft: input.merge.moneyLeft }

@@ -723,6 +723,9 @@ describe('task board', () => {
 
     const open = q<HTMLButtonElement>(body, '[data-action="open"]');
     open.click();
+    // No staff yet: Open asks first (UX-004), then still opens.
+    expect(sent).toEqual([]);
+    q<HTMLButtonElement>(body, '.panel-foot .confirm [data-action="confirm"]').click();
     expect(sent).toEqual([{ type: 'start_day' }]);
     expect(state.phase).not.toBe('preparation');
     expect(open.getAttribute('aria-disabled')).toBe('true');
