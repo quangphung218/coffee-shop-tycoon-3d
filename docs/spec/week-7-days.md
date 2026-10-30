@@ -130,7 +130,37 @@ Cách `weekUpgradeCharge` tính tiền nâng cấp trong lợi nhuận tuần:
 
 Chọn 2 tuần vì chia dài hơn đẩy quán chi tiền lên điểm tối đa ở tuần 3–4 ở mọi mục tiêu mà quán không mua gì còn lấy được 1 cúp. Số đo: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-07).
 
-Cùng lúc, sim thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`, và `upgradeCharge` từ tuần 2) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Nút **Xem tổng kết tuần** của báo cáo mở màn Tổng kết tuần; nút **Sang tuần N+1** ở đó gửi `next_day`.
+### Mục tiêu tuần hiện rõ (E-09)
+
+E-09 chỉ đổi giao diện: không đổi số kinh tế nào (mục tiêu, `WEEK_PROFIT_SHARE`, điểm, ngưỡng cúp, thưởng, `UPGRADE_AMORTIZE_WEEKS`, giá). Các khối dưới đây chỉ đọc số từ `scoreWeek` và `weekUpgradeCharge`.
+
+**Mục tiêu sống** (`weekGoalView` và `weekGoalBlock` trong `src/ui/weekGoal.ts`). Hiện trong panel Việc (tiêu đề "Mục tiêu tuần N", `src/ui/panels/tasks.ts`) và trong dải tuần của báo cáo ngày (`weekStrip`, `src/ui/report/report.ts`):
+
+- 3 thanh: Doanh thu, Lợi nhuận, Sao, mỗi thanh so với mục tiêu của nó. Lợi nhuận là lãi các ngày đã trừ `weekUpgradeCharge`. Phần trăm = giá trị / mục tiêu, làm tròn; lỗ tính 0%; thanh vẽ tối đa 100%, số có thể vượt.
+- Dòng "Đang hướng tới N cúp · M điểm": cúp và điểm nếu tuần đóng với số hiện tại.
+- Dòng "Nâng cấp tuần này gánh: X đ", chỉ hiện khi `weekUpgradeCharge` > 0.
+- Save cũ không có `week` không có khối này: tiêu đề và khối trong panel Việc ẩn; dải tuần của báo cáo giữ thanh doanh thu như trước.
+
+**Bảng điểm cuối tuần** (`scoreRows` và `scoreDetail` trong `src/ui/screens/weekEnd.ts`), dưới ô Điểm tuần:
+
+- Bảng Tiêu chí/Điểm: Doanh thu x/25, Lợi nhuận x/55, Sao x/20, dòng Tổng n/100. Mỗi điểm lấy phần nguyên của phần điểm đúng, điểm còn thiếu đến điểm đã lưu chia cho phần dư lớn nhất, nên tổng khớp `result.score`.
+- Dòng công thức: "Lãi các ngày X − khấu hao nâng cấp Y = Z" (X là tổng lãi ngày của tuần, Y = X − lợi nhuận tuần, Z là lợi nhuận tuần; âm ghi dấu −).
+- Dòng luật cúp: "Từ 70 điểm được 2 cúp: thưởng …; từ 90 điểm được 3 cúp: thưởng ….", lấy ngưỡng từ `weekCups` và thưởng từ `weekReward`.
+
+**Khối Lợi nhuận tuần** có thêm thanh tiến độ, huy hiệu đạt hoặc chưa và "N% mục tiêu" như khối Doanh thu. Ba khối Doanh thu, Lợi nhuận, Đánh giá chia 3 cột khi cửa sổ rộng từ 1024px (`.rpt-grid.wk-grid`, `src/ui/report/report.css`); hẹp hơn thì xếp dọc.
+
+**Khối tuần kế**: câu "Mục tiêu: … doanh thu (×hệ số so tuần 1), … lợi nhuận và N sao." (`nextWeekGoalText`). Hệ số = doanh thu mục tiêu tuần sau / tuần 1, một chữ số thập phân (ví dụ ×1,9); lợi nhuận = `weekProfitTarget` của doanh thu đó.
+
+**Chuẩn bị tuần 2** (`weekOneBlock`, `weekOneHints`): chỉ hiện ở tổng kết tuần 1 khi dưới 3 cúp; ẩn khi đủ 3 cúp và từ tuần 2. Gồm dòng doanh thu mỗi ngày tuần 2 cần so với mức đạt tuần 1, và tối đa 2 gợi ý đọc từ quán:
+
+- chưa có nhân viên: "Thuê pha chế";
+- tiền đủ mua cấp kế của một nâng cấp hoặc dụng cụ đang mở, không cần vé và không chờ nâng cấp khác: "Mua nâng cấp, tiền chia ra các tuần".
+
+Không có gợi ý nào đúng thì chỉ còn dòng doanh thu mỗi ngày.
+
+**Save cũ**: tuần chấm trước khi có lợi nhuận (kết quả không có `profit` hay `profitTarget`) không có bảng điểm, dòng công thức và khối Lợi nhuận tuần. Save không có `week` ẩn mục tiêu sống và các khối tổng kết tuần. Không đổi `SAVE_VERSION`.
+
+Khi chấm điểm, sim cũng thêm một dòng vào `state.week.archive` (`WeekSummary`: `index`, `startedDay`, `revenue`, `profit`, `customersServed`, `stars`, `score`, `cups`, và `upgradeCharge` từ tuần 2) rồi phát `week_ended` (`result`) ngay sau `dayEnded`. Nút **Xem tổng kết tuần** của báo cáo mở màn Tổng kết tuần; nút **Sang tuần N+1** ở đó gửi `next_day`.
 
 ### Sang tuần mới
 
