@@ -1,5 +1,5 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, UPGRADE_AMORTIZE_WEEKS, WEEK_GOALS, WEEK_LENGTH, weekProfitTarget } from './data/week';
+import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, upgradeAmortizeWeeks, weekProfitTarget } from './data/week';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
@@ -165,19 +165,18 @@ export function weekProfit(days: readonly DayStats[], upgradeCharge = days.reduc
 /**
  * Upgrade spending the score of the current week counts against its profit.
  *
- * Week 1 pays all it bought, as before, so the opening week scores the same
- * (its goals are measured with tests/integration/p22-strategies.test.ts).
- * From week 2 an upgrade is paid in UPGRADE_AMORTIZE_WEEKS equal parts, the
- * week it is bought and the weeks after: a shop that reinvests its week-2
- * takings no longer scores below one that buys nothing (P23 measured c_spend
- * at 57–62 points against a_basic's 67–71 with the full charge), while
- * spending past what the shop earns still sinks the profit share for two weeks,
- * so reckless buying keeps scoring low. Two weeks rather than more because a
- * longer spread let the spenders max out weeks 3–4 at any goal a non-spender
- * can still take a cup from (tests/integration/p23-long-run.test.ts).
+ * Every week, the first included (E-11), pays an upgrade in
+ * upgradeAmortizeWeeks(difficulty) equal parts, the week it is bought and the
+ * weeks after: a shop that reinvests its takings no longer scores below one
+ * that buys nothing (P23 measured c_spend at 57–62 points against a_basic's
+ * 67–71 in week 2, and 85 against 93 in week 1, with the full charge), while
+ * spending past what the shop earns still sinks the profit share for the
+ * weeks after, so reckless buying keeps scoring low. Two weeks on Easy and
+ * Normal, three on Hard (UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY).
  * Earlier weeks are read from `state.history`, which keeps more days than the
  * spread needs; a week whose archive row has no upgradeCharge was scored
- * before the spread and paid its upgrades in full, so it carries nothing.
+ * before the spread (week 1 before E-11, later weeks before E-07) and paid its
+ * upgrades in full, so it carries nothing.
  * Rounded to whole đồng.
  */
 export function weekUpgradeCharge(state: GameState): number {
@@ -185,15 +184,14 @@ export function weekUpgradeCharge(state: GameState): number {
   if (!week) return 0;
   const index = weekIndex(state);
   const lastDay = week.startedDay + week.length - 1;
+  const spread = upgradeAmortizeWeeks(state.difficulty);
   let charge = 0;
   for (const d of [...state.history, state.today]) {
     if (d.upgradeCost <= 0 || d.day > lastDay) continue;
     // Weeks follow each other with no gap, so a day before this week falls in week index - ceil(gap / length).
     const bought = d.day >= week.startedDay ? index : index - Math.ceil((week.startedDay - d.day) / week.length);
-    if (bought <= 1) {
-      if (index <= 1) charge += d.upgradeCost;
-    } else if (index - bought < UPGRADE_AMORTIZE_WEEKS && (bought === index || spreadInWeek(state, bought))) {
-      charge += d.upgradeCost / UPGRADE_AMORTIZE_WEEKS;
+    if (index - bought < spread && (bought === index || spreadInWeek(state, bought))) {
+      charge += d.upgradeCost / spread;
     }
   }
   return Math.round(charge);
@@ -286,8 +284,7 @@ export function summarizeWeek(state: GameState, result: WeekResult): WeekSummary
     stars: result.stars,
     score: result.score,
     cups: result.cups,
-    // Week 1 always pays its upgrades in full, so only later weeks record the charge.
-    ...(weekIndex(state) > 1 ? { upgradeCharge: weekUpgradeCharge(state) } : {}),
+    upgradeCharge: weekUpgradeCharge(state),
   };
 }
 

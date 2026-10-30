@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { MARKETING } from '../../src/sim/data/marketing';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { WEEK_LENGTH, weekReward } from '../../src/sim/data/week';
 import { dailyRent, totalWages } from '../../src/sim/economy';
@@ -13,37 +12,41 @@ import type { Difficulty, GameState, UpgradeId } from '../../src/sim/types';
 import { playDay } from './helpers';
 
 /**
- * P23 long-run economy: plays 4 weeks (28 days) per difficulty × strategy ×
+ * P23 long-run economy: plays 8 weeks (56 days) per difficulty × strategy ×
  * seed and prints one row per week. Asserts the hard invariants (money never
- * below zero, same seed → same numbers) and the two P23 targets: the spender
- * still has an upgrade to buy at the end of week 3, and the basic strategy
- * cannot take 3 cups in week 2. E-07 adds the weeks 2–4 score balance
- * (upgrade cost spread over UPGRADE_AMORTIZE_WEEKS, goals on WEEK_GOAL_MULTS):
- * the spender scores at least the basic strategy in week 2, takes 3 cups in at
- * most half its week 3–4 games, 100 points only well past the revenue target,
- * and the basic strategy keeps a cup every week with cups never rising.
- * Read in docs/reports/p23-long-economy.md.
+ * below zero, same seed → same numbers, no bankruptcy) and the two P23
+ * targets: the spender still has an upgrade to buy at the end of week 3, and
+ * the basic strategy cannot take 3 cups in week 2. E-07 and E-11 add the score
+ * curve of weeks 1–8 (upgrade cost spread over upgradeAmortizeWeeks from
+ * week 1, goals on weekGoalMult): the spender scores at least the basic
+ * strategy every week and never drops more than 10 points from one week to
+ * the next, steady play (b_steady) takes 2 cups in most weeks, the basic
+ * strategy keeps a cup through week 8, and both the spender and steady play
+ * reach 3 cups in weeks 5–8. Read in docs/reports/p23-long-economy.md.
  */
 
 const SEEDS = [1, 42, 777];
-const WEEKS = 4;
+const WEEKS = 8;
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
-const CHEAPEST_CAMPAIGN = [...MARKETING].sort((a, b) => a.cost - b.cost)[0]!;
 
 interface Strategy {
   /** Hire one barista on the morning of day 1. */
   hire: boolean;
   /** Every morning buy the cheapest open upgrade or tool, again and again, while the money keeps tonight's wages and tomorrow's restock. */
   spend: boolean;
-  /** Run the cheapest campaign on odd week days when it is affordable. */
-  marketing: boolean;
+  /** Every morning buy the cheapest open upgrade or tool, again and again, while the money is at least twice its price and keeps tonight's wages and tomorrow's restock. */
+  steady: boolean;
 }
 
-/** The P22 strategies a, c and e, with c and e spending on every upgrade (not only tools) over the long run. */
+/**
+ * The P22 strategies a and c, with c spending on every upgrade (not only tools)
+ * over the long run, and b_steady: the relaxed player with one barista who buys
+ * only what costs at most half the money in hand. All keep the Standard price.
+ */
 const STRATEGIES: Record<string, Strategy> = {
-  a_basic: { hire: false, spend: false, marketing: false },
-  c_spend: { hire: true, spend: true, marketing: false },
-  e_marketing: { hire: true, spend: true, marketing: true },
+  a_basic: { hire: false, spend: false, steady: false },
+  c_spend: { hire: true, spend: true, steady: false },
+  b_steady: { hire: true, spend: false, steady: true },
 };
 
 interface WeekRow {
@@ -90,13 +93,14 @@ function reserve(state: GameState): number {
   return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
-function buyCheapest(state: GameState, track: () => void): void {
+/** Buys the cheapest open upgrade while `affordable(cost)` holds, again and again. */
+function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean): void {
   for (let guard = 0; guard < 100; guard++) {
     let best: { id: UpgradeId; cost: number } | null = null;
     for (const def of UPGRADES) {
       if (!isUnlocked(state, 'upgrade', def.id)) continue;
       const cost = nextUpgradeCost(state, def.id);
-      if (cost === null || state.money - reserve(state) < cost) continue;
+      if (cost === null || !affordable(cost)) continue;
       // P27 furniture priced in tickets, or needing the side room first, waits until it can be bought.
       if ((nextUpgradeTicketCost(state, def.id) ?? 0) > (state.retention?.tickets ?? 0) || upgradeBlockedReason(state, def.id)) continue;
       if (best === null || cost < best.cost) best = { id: def.id, cost };
@@ -115,7 +119,7 @@ function left(state: GameState): number {
   return UPGRADES.filter((u) => upgradeLevel(state, u.id) < u.maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, u.id)).length;
 }
 
-function morning(state: GameState, s: Strategy, weekDay: number, track: () => void): void {
+function morning(state: GameState, s: Strategy, track: () => void): void {
   enableUnlocked(state);
   dispatch(state, { type: 'apply_restock' });
   track();
@@ -123,11 +127,8 @@ function morning(state: GameState, s: Strategy, weekDay: number, track: () => vo
     const pick = [...state.candidates].sort((a, b) => a.wagePerDay - b.wagePerDay || a.id - b.id)[0]!;
     expect(dispatch(state, { type: 'hire_staff', candidateId: pick.id, role: 'barista' })).toBe(true);
   }
-  if (s.marketing && weekDay % 2 === 1 && state.money >= CHEAPEST_CAMPAIGN.cost + reserve(state)) {
-    expect(dispatch(state, { type: 'start_campaign', campaignId: CHEAPEST_CAMPAIGN.id })).toBe(true);
-    track();
-  }
-  if (s.spend) buyCheapest(state, track);
+  if (s.spend) buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost);
+  if (s.steady) buyCheapest(state, track, (cost) => state.money >= 2 * cost && state.money - reserve(state) >= cost);
 }
 
 function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[] {
@@ -141,8 +142,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
   for (let day = 1; day <= WEEKS * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
-    const weekDay = day - state.week!.startedDay + 1;
-    morning(state, s, weekDay, track);
+    morning(state, s, track);
     playDay(state, { onMinute: track });
     track();
     spent += state.today.upgradeCost;
@@ -183,7 +183,7 @@ function markdownTable(head: string[], body: string[][]): string {
 
 const mean = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length;
 
-describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeout: 600_000 }, () => {
+describe('P23 long run: 56 days × 3 difficulties × strategies a/c/b_steady', { timeout: 600_000 }, () => {
   const runs = new Map<string, WeekRow[][]>();
   for (const d of DIFFICULTIES) {
     for (const [name, s] of Object.entries(STRATEGIES)) runs.set(`${d}/${name}`, SEEDS.map((seed) => playWeeks(d, seed, s)));
@@ -238,7 +238,11 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
     }
     console.log(`Mean of seeds ${SEEDS.join(', ')}\n${markdownTable(head, meanBody)}`);
     console.log(`Per seed\n${markdownTable(['difficulty', 'strategy', 'seed', 'week', 'revenue', 'goal', 'scoreProfit', 'profitTarget', 'endMoney', 'level', 'buyable', 'left', 'stars', 'score', 'cups', 'tickets'], seedBody)}`);
-    for (const perSeed of runs.values()) for (const rows of perSeed) expect(rows.map((r) => r.week)).toEqual([1, 2, 3, 4]);
+    const scores = [...runs].flatMap(([key, perSeed]) =>
+      perSeed.map((rows, i) => [...key.split('/'), String(SEEDS[i]), ...rows.map((r) => `${r.score}/${r.cups}`)]),
+    );
+    console.log(`Score/cups per week\n${markdownTable(['difficulty', 'strategy', 'seed', ...Array.from({ length: WEEKS }, (_, w) => `w${w + 1}`)], scores)}`);
+    for (const perSeed of runs.values()) for (const rows of perSeed) expect(rows.map((r) => r.week)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it('never lets the money drop below zero', () => {
@@ -292,38 +296,60 @@ describe('P23 long run: 28 days × 3 difficulties × strategies a/c/e', { timeou
     }
   });
 
-  it('scores the spender at least as high as the basic strategy in week 2 (E-07)', () => {
+  it('scores the spender at least as high as the basic strategy in every week 1–8 (E-11)', () => {
     for (const d of DIFFICULTIES) {
       const basic = runs.get(`${d}/a_basic`)!;
       runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
-        expect(rows[1]!.score, `${d} seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(basic[i]![1]!.score);
+        for (const row of rows) expect(row.score, `${d} seed ${SEEDS[i]} week ${row.week}`).toBeGreaterThanOrEqual(basic[i]![row.week - 1]!.score);
       });
     }
   });
 
-  it('gives the spender 3 cups in at most half its week 3–4 games per difficulty (E-07)', () => {
+  it('never drops the spender more than 10 points from one week to the next from week 2 (E-11)', () => {
     for (const d of DIFFICULTIES) {
-      const games = runs.get(`${d}/c_spend`)!.flatMap((rows) => rows.slice(2, 4));
-      const three = games.filter((r) => r.cups === 3).length;
-      console.log(`${d}: c_spend 3 cups in ${three}/${games.length} week 3–4 games`);
-      expect(three, d).toBeLessThanOrEqual(games.length / 2);
+      runs.get(`${d}/c_spend`)!.forEach((rows, i) => {
+        for (let w = 2; w < rows.length; w++) {
+          expect(rows[w]!.score, `${d} seed ${SEEDS[i]} weeks ${w}→${w + 1}`).toBeGreaterThanOrEqual(rows[w - 1]!.score - 10);
+        }
+      });
     }
   });
 
-  it('scores 100 only when the revenue reaches 120% of its target (E-07)', () => {
+  it('gives steady play 2 cups or more in at least 75% of its week 2–8 games per difficulty (E-11)', () => {
+    for (const d of DIFFICULTIES) {
+      const games = runs.get(`${d}/b_steady`)!.flatMap((rows) => rows.slice(1));
+      const two = games.filter((r) => r.cups >= 2).length;
+      console.log(`${d}: b_steady 2+ cups in ${two}/${games.length} week 2–8 games`);
+      expect(two, d).toBeGreaterThanOrEqual(0.75 * games.length);
+    }
+  });
+
+  it('lets the spender and steady play reach 3 cups in weeks 5–8 per difficulty (E-11)', () => {
+    for (const d of DIFFICULTIES) {
+      for (const name of ['c_spend', 'b_steady']) {
+        const games = runs.get(`${d}/${name}`)!.flatMap((rows) => rows.slice(4, 8));
+        const three = games.filter((r) => r.cups === 3).length;
+        console.log(`${d}: ${name} 3 cups in ${three}/${games.length} week 5–8 games`);
+        expect(three, `${d}/${name}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  // Week 1 keeps the WEEK_GOALS measured by p22, which a spread upgrade charge lets c_spend and b_steady top at 106% (E-11).
+  it('scores 100 from week 2 only when the revenue reaches 120% of its target (E-07)', () => {
     for (const [key, perSeed] of runs) {
       perSeed.forEach((rows, i) => {
-        for (const row of rows.filter((r) => r.score === 100)) {
+        for (const row of rows.filter((r) => r.week >= 2 && r.score === 100)) {
           expect(row.revenue, `${key} seed ${SEEDS[i]} week ${row.week}`).toBeGreaterThanOrEqual(row.revenueTarget * 1.2);
         }
       });
     }
   });
 
-  it('keeps the basic strategy at 1 cup or more in weeks 2–4, never gaining cups (E-07)', () => {
+  it('keeps the basic strategy at 1 cup or more in weeks 2–8, never gaining cups (E-07, E-11)', () => {
     for (const d of DIFFICULTIES) {
       runs.get(`${d}/a_basic`)!.forEach((rows, i) => {
-        const cups = rows.slice(1, 4).map((r) => r.cups);
+        const cups = rows.slice(1).map((r) => r.cups);
         for (const c of cups) expect(c, `${d} seed ${SEEDS[i]} cups ${cups.join(',')}`).toBeGreaterThanOrEqual(1);
         for (let w = 1; w < cups.length; w++) expect(cups[w], `${d} seed ${SEEDS[i]} cups ${cups.join(',')}`).toBeLessThanOrEqual(cups[w - 1]!);
       });

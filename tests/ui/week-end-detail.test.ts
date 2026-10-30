@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/save/settings';
 import { createMemoryStorage } from '../../src/save/storage';
-import { WEEK_LENGTH, weekGoal, weekProfitTarget, weekReward } from '../../src/sim/data/week';
+import { WEEK_LENGTH, upgradeAmortizeWeeks, weekGoal, weekProfitTarget, weekReward } from '../../src/sim/data/week';
 import { grantWeekReward } from '../../src/sim/progression';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState, Staff } from '../../src/sim/types';
@@ -95,9 +95,11 @@ describe('Week-end score table (item 2)', () => {
     const state = week1({ upgradeCost: 4_000_000 });
     const el = open(state);
     const r = state.week!.result!;
-    const days = r.profit! + 4_000_000;
+    // Week 1 pays its share of the upgrade like later weeks (E-11).
+    const charge = Math.round(4_000_000 / upgradeAmortizeWeeks(state.difficulty));
+    const days = r.profit! + charge;
     expect(q(el, '[data-line="profit-formula"]')!.textContent).toBe(
-      `Lãi các ngày ${formatMoney(days)} − khấu hao nâng cấp ${formatMoney(4_000_000)} = ${formatMoney(r.profit!)}`,
+      `Lãi các ngày ${formatMoney(days)} − khấu hao nâng cấp ${formatMoney(charge)} = ${formatMoney(r.profit!)}`,
     );
   });
 
@@ -120,7 +122,7 @@ describe('Week-end next-week block (item 3)', () => {
     const goal = weekGoal('hard', 2);
     const text = q(el, '[data-next="goal"]')!.textContent!;
     expect(text).toBe(
-      `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×1,9 so tuần 1), ${formatMoney(weekProfitTarget('hard', goal.revenue))} lợi nhuận và 4,2 sao.`,
+      `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×1,7 so tuần 1), ${formatMoney(weekProfitTarget('hard', goal.revenue))} lợi nhuận và 4,2 sao.`,
     );
     expect(text).not.toMatch(/\s\./);
     // The sentence is one flex item after the icon, so the line's gap cannot split "sao" from its period.
@@ -197,7 +199,7 @@ describe('Week 1 summary below 3 cups (item 5)', () => {
     scoreLastDay(state);
     const el = open(state);
     expect(q(el, '[data-block="week-one"]')).toBeNull();
-    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,9 so tuần 1');
+    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,3 so tuần 1');
   });
 });
 

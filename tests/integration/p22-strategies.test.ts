@@ -66,6 +66,8 @@ interface WeekRow {
   revenue: number;
   /** revenue − ingredient cost of what was used − wages − rent − upgrades and marketing bought. */
   profit: number;
+  /** Profit the week score counts (weekProfit: upgrades spread over UPGRADE_AMORTIZE_WEEKS from week 1, E-11); 0 when bankrupt. */
+  scoreProfit: number;
   wages: number;
   rent: number;
   /** Upgrades and marketing bought over the week. */
@@ -172,6 +174,7 @@ function playWeek(difficulty: Difficulty, seed: number, s: Strategy): WeekRow {
   return {
     revenue,
     profit: revenue - cogs - wages - rent - spent,
+    scoreProfit: state.bankrupt ? 0 : (state.week!.result!.profit ?? 0),
     wages,
     rent,
     spent,
@@ -284,19 +287,22 @@ describe('P22 strategies: 3 difficulties × 6 strategies × 6 seeds', { timeout:
     }
   });
 
-  it('scores hiring alone above hiring plus tools on a seed where it is clearly more profitable', () => {
-    let compared = 0;
+  // Week 1 spreads tools over upgradeAmortizeWeeks like later weeks (E-11): only a share of their price
+  // counts, so hiring alone no longer leads hiring plus tools by CLEAR_PROFIT_LEAD on the profit the
+  // score counts (it is under 1.000.000đ on every seed). Profit still counts: on Easy the tools earn more
+  // than their share and hiring plus tools scores higher on every seed.
+  it('scores hiring plus tools above hiring alone on Easy, where the tools pay their week-1 share (E-11)', () => {
     for (const d of DIFFICULTIES) {
       const b = runs.get(`${d}/b_hire`)!;
       const c = runs.get(`${d}/c_tools`)!;
       SEEDS.forEach((seed, i) => {
-        if (b[i]!.profit - c[i]!.profit < CLEAR_PROFIT_LEAD) return;
-        compared++;
-        expect(b[i]!.score, `${d} seed ${seed}`).toBeGreaterThan(c[i]!.score);
+        console.log(`${d} seed ${seed}: score profit/score b ${k(b[i]!.scoreProfit)}/${b[i]!.score} · c ${k(c[i]!.scoreProfit)}/${c[i]!.score}`);
+        expect(b[i]!.scoreProfit - c[i]!.scoreProfit, `${d} seed ${seed}`).toBeLessThan(CLEAR_PROFIT_LEAD);
       });
     }
-    // The comparison must not be empty: Normal and Hard have such seeds.
-    expect(compared).toBeGreaterThanOrEqual(SEEDS.length);
+    const easyB = runs.get('easy/b_hire')!;
+    const easyC = runs.get('easy/c_tools')!;
+    SEEDS.forEach((seed, i) => expect(easyC[i]!.score, `easy seed ${seed}`).toBeGreaterThan(easyB[i]!.score));
   });
 
   // A "win" for d is a seed where its week score beats c's on the same seed.
