@@ -90,16 +90,17 @@ function priceText(cost: number, tickets: number): string {
   return tickets > 0 ? `${formatMoney(cost)} + ${tickets} Tem` : formatMoney(cost);
 }
 
-/** "Tem: 3/15 → Cây xanh" toward the next level that costs Tem, or "Tem: 3" when none does. */
+/** "Tem: 3/15 → Cây xanh · nhận từ Quà hằng ngày" toward the next level that costs Tem, or "Tem: 3 · …" when none does. */
 export function ticketGoalText(state: GameState): string {
   const have = state.retention?.tickets ?? 0;
   const next = nextTicketUpgrade(state);
-  return next ? `Tem: ${have}/${next.tickets} → ${getUpgrade(next.id).name}` : `Tem: ${have}`;
+  return `${next ? `Tem: ${have}/${next.tickets} → ${getUpgrade(next.id).name}` : `Tem: ${have}`} · nhận từ Quà hằng ngày`;
 }
 
-/** "Giá bán +6,5% nhờ nâng cấp": the sell-price bonus of every owned level. */
+/** "Giá bán +6,5% nhờ nâng cấp": the sell-price bonus of every owned level; empty (line hidden) while it is 0. */
 export function priceBonusText(state: GameState): string {
-  return `Giá bán +${pctDec(ownedPriceBonus(state))} nhờ nâng cấp`;
+  const bonus = ownedPriceBonus(state);
+  return bonus > 0 ? `Giá bán +${pctDec(bonus)} nhờ nâng cấp` : '';
 }
 
 /** How long "Gỡ" stays armed waiting for a second click, ms (as "Về mặc định" in Cài đặt). */
@@ -298,7 +299,10 @@ export function renderUpgradesPanel(body: HTMLElement, ctx: PanelContext): Panel
   const ticketGoal = h('p', { attrs: { 'data-summary': 'tickets' } });
   const priceBonus = h('p', { attrs: { 'data-summary': 'price' } });
   w.watch(ticketGoalText, (text) => (ticketGoal.textContent = text));
-  w.watch(priceBonusText, (text) => (priceBonus.textContent = text));
+  w.watch(priceBonusText, (text) => {
+    priceBonus.textContent = text;
+    priceBonus.hidden = text === '';
+  });
   const summary = h('div', { class: 'intro' }, ticketGoal, priceBonus);
   body.append(h('div', { class: 'prep' }, summary, ...groups.map((g) => g.section), later));
   const state = ctx.getState();

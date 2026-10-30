@@ -1,5 +1,6 @@
 import type { GameState } from '../sim/types';
-import { scoreWeek, weekUpgradeCharge } from '../sim/week';
+import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
+import { scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
 import { h } from './core/dom';
 import { formatMoney, formatRating } from './core/format';
 import { icon, type IconId } from './core/icons';
@@ -31,6 +32,9 @@ const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = 
   stars: { label: 'Sao', icon: 'i-star' },
 };
 
+/** Cups a week can earn (weekCups). */
+const MAX_CUPS = 3;
+
 const percent = (value: number, target: number): number => (target > 0 ? Math.round((Math.max(0, value) / target) * 100) : 100);
 
 /**
@@ -59,7 +63,23 @@ function barText(b: WeekGoalBar): string {
   return b.id === 'stars' ? `${formatRating(b.value)} / ${formatRating(b.target)}` : `${formatMoney(b.value)} / ${formatMoney(b.target)}`;
 }
 
-/** Three bars (revenue, profit, stars), "Đang hướng tới N cúp" and, after an upgrade, what it costs this week. */
+/** Lowest score that earns `cups` cups (weekCups). */
+function cupMinScore(cups: number): number {
+  for (let s = 0; s <= 100; s++) if (weekCups(s) >= cups) return s;
+  return 100;
+}
+
+/**
+ * "Hiện 52 điểm · cần 70 để 2 cúp": the score so far and the next cup that
+ * pays a reward (at least WEEK_REWARD_MIN_CUPS), or "đủ 3 cúp" at the top.
+ */
+export function cupsLineText(v: Pick<WeekGoalView, 'score' | 'cups'>): string {
+  if (v.cups >= MAX_CUPS) return `Hiện ${v.score} điểm · đủ ${MAX_CUPS} cúp`;
+  const next = Math.max(v.cups + 1, WEEK_REWARD_MIN_CUPS);
+  return `Hiện ${v.score} điểm · cần ${cupMinScore(next)} để ${next} cúp`;
+}
+
+/** Three bars (revenue, profit, stars), "Hiện X điểm · cần Y để N cúp" and, after an upgrade, what it costs this week. */
 export function weekGoalBlock(v: WeekGoalView): HTMLElement {
   return h(
     'div',
@@ -82,7 +102,7 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
         h('span', { class: 'week-goal-num', text: barText(b) }),
       );
     }),
-    h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('b', { text: `Đang hướng tới ${v.cups} cúp` }), ` · ${v.score} điểm`),
+    h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)
       : null,

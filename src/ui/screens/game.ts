@@ -6,7 +6,7 @@ import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
-import { Toasts } from '../core/toast';
+import { MAX_TOASTS, Toasts } from '../core/toast';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { openOtherPanel } from '../panels/widgets';
@@ -154,6 +154,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       screens.show('bankrupt');
     }
     report.update(state, state?.phase === 'report' && screens.current === null);
+    // Over the report one toast at most; its footer already says the day was saved.
+    toasts.limit = report.visible ? 1 : MAX_TOASTS;
   }
 
   function startGame(next: GameState, from?: SaveSlot): void {
@@ -367,13 +369,14 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           const r = runAutosave(state, event.day);
           report.setSaveStatus(r);
           weekEnd.setSaveStatus(r);
-          toasts.show(
-            r.ok
-              ? { level: 'success', icon: 'i-save', title: `Đã tự lưu ngày ${event.day}` }
-              : autosaveHeld
+          // "Đã tự lưu" is a line in the report's footer, not a toast.
+          if (!r.ok) {
+            toasts.show(
+              autosaveHeld
                 ? { level: 'error', icon: 'i-save', title: 'Chưa tự lưu, để giữ ván trước', text: autosaveHeld }
                 : { level: 'error', icon: 'i-save', title: 'Không tự lưu được', text: 'Bộ nhớ trình duyệt đầy hoặc bị chặn. Thử lưu tay trong Tạm dừng.' },
-          );
+            );
+          }
         }
       }
     },

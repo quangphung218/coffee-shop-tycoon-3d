@@ -169,6 +169,9 @@ function deltaLine(id: FigureId, delta: number | null, vs: 'yesterday' | 'week')
   );
 }
 
+/** Days of the week so far (today included) before the change against the week average shows. */
+export const WEEK_AVG_MIN_DAYS = 3;
+
 function figure(
   id: FigureId,
   label: (Node | string)[],
@@ -179,6 +182,8 @@ function figure(
   tone = '',
 ): HTMLElement {
   const d = stats.deltas?.find((s) => s.id === id);
+  // Before week day 3 the week average is at most yesterday again: no "so TB tuần" then.
+  const weekAvg = stats.week && stats.week.days < WEEK_AVG_MIN_DAYS ? null : (d?.vsWeekAvg ?? null);
   // Every cell keeps the sub row (empty for Lãi and Doanh thu) so the changes of all four start on one line.
   return h(
     'div',
@@ -186,7 +191,7 @@ function figure(
     h('span', { class: 'rpt-fig-label' }, ...label),
     h('span', { class: 'rpt-fig-value', text: value }),
     sub ? h('span', { class: 'rpt-fig-sub', text: sub }) : h('span', { class: 'rpt-fig-sub', attrs: { 'aria-hidden': 'true', 'data-empty': '' } }),
-    h('span', { class: 'rpt-fig-deltas' }, deltaLine(id, d?.vsYesterday ?? null, 'yesterday'), deltaLine(id, d?.vsWeekAvg ?? null, 'week')),
+    h('span', { class: 'rpt-fig-deltas' }, deltaLine(id, d?.vsYesterday ?? null, 'yesterday'), deltaLine(id, weekAvg, 'week')),
   );
 }
 

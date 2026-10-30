@@ -110,7 +110,7 @@ describe('Việc panel: live week goal', () => {
     expect(nums(block, 'revenue')).toBe(`6.000.000đ / 32.000.000đ`);
     expect(nums(block, 'stars')).toBe('3,9 / 4,0');
     const v = weekGoalView(state)!;
-    expect(q(block, '[data-goal="cups"]').textContent).toContain(`Đang hướng tới ${v.cups} cúp`);
+    expect(q(block, '[data-goal="cups"]').textContent).toBe(`Hiện ${v.score} điểm · cần 70 để 2 cúp`);
     expect(block.querySelector('[data-goal="charge"]')).toBeNull();
     expect(EMOJI.test(block.textContent ?? '')).toBe(false);
   });
@@ -145,7 +145,7 @@ describe('Việc panel: live week goal', () => {
     const days = Array.from({ length: 6 }, (_, i) => day(i + 1, 6_000_000, 4.5));
     const state = midWeek(days, 4.5);
     const { body } = mountTasks(state);
-    expect(q(body, '[data-goal="cups"]').textContent).toContain('Đang hướng tới 3 cúp');
+    expect(q(body, '[data-goal="cups"]').textContent).toBe('Hiện 100 điểm · đủ 3 cúp');
     for (const id of ['revenue', 'profit', 'stars']) {
       expect(q(body, `[data-goal="${id}"]`).classList.contains('is-done')).toBe(true);
     }
@@ -166,7 +166,7 @@ describe('Daily report weekStrip: live week goal', () => {
     const strip = q(el, '[data-block="week"]');
     expect(strip.textContent).toContain('Tuần 1');
     expect(strip.querySelectorAll('[data-block="week-goal"] [role="progressbar"]')).toHaveLength(3);
-    expect(q(strip, '[data-goal="cups"]').textContent).toContain(`Đang hướng tới ${weekGoalView(state)!.cups} cúp`);
+    expect(q(strip, '[data-goal="cups"]').textContent).toBe(`Hiện ${weekGoalView(state)!.score} điểm · cần 70 để 2 cúp`);
     expect(EMOJI.test(strip.textContent ?? '')).toBe(false);
   });
 
@@ -181,7 +181,7 @@ describe('Daily report weekStrip: live week goal', () => {
   it('heads for 3 cups when every target is met', () => {
     const days = Array.from({ length: 6 }, (_, i) => day(i + 1, 6_000_000, 4.5));
     const el = mountReport(onReport(midWeek(days, 4.5)));
-    expect(q(el, '[data-goal="cups"]').textContent).toContain('Đang hướng tới 3 cúp');
+    expect(q(el, '[data-goal="cups"]').textContent).toBe('Hiện 100 điểm · đủ 3 cúp');
   });
 
   it('hides the week strip for an old save without week data', () => {
