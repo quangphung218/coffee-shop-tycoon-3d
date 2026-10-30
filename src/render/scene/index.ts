@@ -1,6 +1,6 @@
 import { Raycaster, Vector2, Vector3 } from 'three';
 import type { CameraKeys, CameraRotateSpeed, Quality } from '../../save/settings';
-import type { Command, GameState } from '../../sim/types';
+import type { Command, GameState, StyleSlot } from '../../sim/types';
 import { createActors } from '../actors';
 import { HEAD_TOP_Y } from '../actors/rig';
 import { createStreet } from '../street';
@@ -45,6 +45,11 @@ export interface World {
   setEdgePan(enabled: boolean): void;
   /** Force reduced motion on (true) or leave it to the OS media query (false). */
   setReducedMotion(reduce: boolean): void;
+  /**
+   * Draws style `id` on `slot` (wall, floor, sign, awning) without buying it,
+   * for the style picker; null goes back to the chosen style. Only colours change.
+   */
+  setStylePreview(slot: StyleSlot, id: string | null): void;
   resetCamera(): void;
   /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
   rotateCamera(dYaw: number): void;
@@ -180,6 +185,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
       if (projected.z > 1) return null;
       return { x: ((projected.x + 1) / 2) * canvas.clientWidth, y: ((1 - projected.y) / 2) * canvas.clientHeight };
     },
+    setStylePreview: (slot, id) => shop.setStylePreview(slot, id),
     resetCamera: () => camera.reset(),
     rotateCamera: (dYaw) => camera.rotate(dYaw),
     onCommand(handler) {
