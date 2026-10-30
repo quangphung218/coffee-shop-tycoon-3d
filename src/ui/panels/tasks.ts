@@ -18,6 +18,7 @@ import { localDateKey } from '../core/today';
 import { unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDayLabel } from '../hud/hud';
 import type { PanelContext, PanelHandle } from '../hud/panels';
+import { weekGoalBlock, weekGoalView } from '../weekGoal';
 import { inlineConfirm, linkBtn, openOtherPanel, reasonLine, sender, setReason, withIcon } from './widgets';
 
 export interface DayTask {
@@ -426,6 +427,19 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     },
   );
 
+  // Live week goal: hidden for saves without a week.
+  const goalTitle = h('h3', { class: 'section-title' });
+  const goalBox = h('div');
+  w.watch(
+    (s) => `${s.week?.index ?? ''}|${JSON.stringify(weekGoalView(s))}`,
+    (_, s) => {
+      const v = weekGoalView(s);
+      goalTitle.hidden = goalBox.hidden = v === null;
+      setChildren(goalTitle, ...withIcon('i-trophy', `Mục tiêu tuần ${s.week?.index ?? ''}`, 24));
+      setChildren(goalBox, v ? weekGoalBlock(v) : null);
+    },
+  );
+
   const summary = h('span');
   const bar = h('span');
   const list = h('ul', { class: 'stack', attrs: { 'aria-label': 'Việc trong ngày' } });
@@ -585,6 +599,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       gift,
       weekTitle,
       weekList,
+      goalTitle,
+      goalBox,
       h('div', { class: 'stack' }, h('div', { class: 'foot-sum' }, summary), h('div', { class: 'progress', attrs: { 'aria-hidden': 'true' } }, bar)),
       list,
       missionTitle,
