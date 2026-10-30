@@ -6,7 +6,7 @@ import { profit as dayProfit } from '../../sim/economy';
 import { isUnlocked, weekIndex } from '../../sim/progression';
 import { bestDay, weekCompare, type StatId, type WeekCompare } from '../../sim/stats';
 import { nextUpgradeCost, nextUpgradeTicketCost, upgradeBlockedReason } from '../../sim/upgrades';
-import { SCORE_PROFIT, SCORE_REVENUE, SCORE_STARS, weekCups } from '../../sim/week';
+import { nextWeekGoal, SCORE_PROFIT, SCORE_REVENUE, SCORE_STARS, weekCups } from '../../sim/week';
 import type { Difficulty, GameState, UpgradeId, WeekResult } from '../../sim/types';
 import { h, setChildren, uid } from '../core/dom';
 import { formatMoney, formatRating, formatSavedAt } from '../core/format';
@@ -396,9 +396,9 @@ function factorText(x: number): string {
   return (Math.round(x * 10) / 10).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
-/** Next week's revenue (with its multiple of week 1), profit and stars targets as one sentence. */
-export function nextWeekGoalText(state: GameState, index: number): string {
-  const goal = weekGoal(state.difficulty, index + 1);
+/** Next week's revenue (with its multiple of week 1), profit and stars targets as one sentence; scaled from shop level 10 (nextWeekGoal). */
+export function nextWeekGoalText(state: GameState): string {
+  const { goal } = nextWeekGoal(state);
   const base = weekGoal(state.difficulty, 1).revenue;
   const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
   return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} mục tiêu tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
@@ -412,7 +412,7 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
       'div',
       { class: 'wk-next', attrs: { 'data-block': 'next-week' } },
       // One text node, so the line's flex gap never puts a space before the period.
-      h('p', { attrs: { 'data-next': 'goal' } }, icon('i-trophy', { size: 16 }), h('span', { text: nextWeekGoalText(state, index) })),
+      h('p', { attrs: { 'data-next': 'goal' } }, icon('i-trophy', { size: 16 }), h('span', { text: nextWeekGoalText(state) })),
       nextLevelLine(state),
     ),
   );

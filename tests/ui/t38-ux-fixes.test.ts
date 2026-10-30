@@ -298,8 +298,8 @@ describe('UX-109 toast above the dock with a panel open', () => {
 describe('UX-110 week-end wording and arrows', () => {
   it('says "mục tiêu tuần 1" and shows a fall in Khách bỏ đi with a down arrow', () => {
     const state = atWeek2Report();
-    expect(nextWeekGoalText(state, 2)).toContain('mục tiêu tuần 1)');
-    expect(nextWeekGoalText(state, 2)).not.toContain('so tuần 1');
+    expect(nextWeekGoalText(state)).toContain('mục tiêu tuần 1)');
+    expect(nextWeekGoalText(state)).not.toContain('so tuần 1');
     const el = openWeekEnd(state);
     const d = el.querySelector<HTMLElement>('tr[data-stat="abandonRate"] .wk-delta')!;
     expect(d.dataset.delta).toBe('down');
