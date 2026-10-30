@@ -8,6 +8,7 @@ import { buildInsights } from './insights';
 import { autoRestockSuggestion, blockedMenuItems } from './inventory';
 import { grantWeekReward, scoreProgression, type ProgressionResult } from './progression';
 import { updateRating } from './rating';
+import { endOfDayChallenge } from './challenges';
 import { endOfDayRetention } from './retention';
 import { endOfDaySpecialOrder } from './specialOrders';
 import { endOfDayStaffGrowth } from './staffGrowth';
@@ -157,6 +158,7 @@ export function closeDay(state: GameState): DailyReport {
   }
   endOfDayStaffGrowth(state);
   endOfDaySpecialOrder(state, report);
+  endOfDayChallenge(state, report);
   endOfDayRetention(state, report);
   // Last, after every payment and reward of the day has landed.
   updateBankruptcy(state);

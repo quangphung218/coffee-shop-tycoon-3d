@@ -153,8 +153,9 @@ Kiểu đầy đủ ở `src/sim/types.ts`. `dispatch` trả `false` khi lệnh 
 | `week_ended` | Ngày 7 của tuần vừa đóng, ngay sau `dayEnded`; kèm `result` (cũng nằm trong `state.week.result`). |
 | `staff_promoted` | `train_staff` thành công; kèm `staffId` và `level` mới. Toast. |
 | `gift_claimed` | `claim_daily_gift` thành công; kèm `streak` (ngày 1–7 của chuỗi), `money`, `tickets`. Toast. |
-| `tickets_earned` | Mỗi lần cộng Tem; kèm `amount`, `total` (số dư sau khi cộng) và `reason` (`gift`, `achievement`, `special_order`, `vip`). Không có toast riêng: toast của quà, thành tựu, đơn đặc biệt và VIP cùng khung đã ghi số Tem. |
+| `tickets_earned` | Mỗi lần cộng Tem; kèm `amount`, `total` (số dư sau khi cộng) và `reason` (`gift`, `achievement`, `special_order`, `vip`, `challenge`). Không có toast riêng: toast của quà, thành tựu, đơn đặc biệt và VIP cùng khung đã ghi số Tem. |
 | `achievement_unlocked` | Lúc `closeDay`, mỗi mốc thành tựu mới đạt; kèm `id` và `tier` (1–3). Toast. |
+| `challenge_completed` | Lúc `closeDay`, khi thử thách tuần đạt mục tiêu (một lần mỗi tuần); kèm bản sao `challenge`. Ngay sau là `tickets_earned` với `reason: 'challenge'`. Dành cho toast. |
 | `special_order` | Đơn đặc biệt xong (`status: 'completed'`, lúc giao đủ) hoặc hụt (`failed`, quá hạn hay hết ngày); kèm `itemId`. Toast. |
 | `vip_arrived` | Khách VIP vào cửa, ngay sau `doorbell`; kèm `customerId`. Toast. |
 | `regular_arrived` | Khách quen có tên vào cửa, ngay sau `doorbell`; kèm `customerId`, `regularId` và `visits` (tính cả lần này). Toast, cách nhau ít nhất 20 giây thật (`REGULAR_TOAST_GAP_MS`). |
@@ -211,11 +212,12 @@ Mọi ván mới chơi liên tục từng tuần 7 ngày, mỗi tuần có sự 
 
 | Phần | Chi tiết |
 | --- | --- |
-| `state.week` (`WeekState`) | `length` (7), `index` (tuần thứ mấy, từ 1; `weekIndex(state)` coi thiếu là 1), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult` của tuần vừa xong), `archive?` (`WeekSummary[]`, một dòng mỗi tuần đã xong). `createNewGame` điền tuần 1, chưa có `result` và `archive`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
+| `state.week` (`WeekState`) | `length` (7), `index` (tuần thứ mấy, từ 1; `weekIndex(state)` coi thiếu là 1), `startedDay`, `plan` (7 `DayPlan`: `day`, `weather`, `event`), `goal` (`WeekGoal`: `revenue`, `stars`), `result?` (`WeekResult` của tuần vừa xong), `archive?` (`WeekSummary[]`, một dòng mỗi tuần đã xong), `challenge?` (`WeekChallenge`, thử thách phụ từ tuần 5). `createNewGame` điền tuần 1, chưa có `result` và `archive`. Ngày trong tuần `weekDay(state)` = `state.day − startedDay + 1`. |
 | Lịch sự kiện | `rollWeekPlan(seed, weekIndex)` rút từng ngày từ hash(`seed`, tuần, ngày, lần rút), không đọc hay đổi `state.rngState`: cùng seed luôn ra cùng lịch cho từng tuần, dù người chơi làm gì. Tuần 1 dùng thẳng `seed` nên giữ lịch cũ. Tuần sai luật (`isValidWeekPlan(plan, weekIndex)`) rút lại; 64 lần không được thì dùng `FALLBACK_PLAN`. |
 | Mục tiêu | `weekGoal(difficulty, index)`: tuần 1 là `WEEK_GOALS`, sau đó doanh thu +60%/tuần, trần ×3. |
 | Thưởng cúp | Tuần được ≥ 2 cúp: `closeDay` gọi `grantWeekReward` cộng `weekReward(difficulty, cups)` (`WEEK_REWARDS`) vào tiền, phát `notify` và ghi lại `money` của báo cáo ngày. |
-| Sang tuần mới | `next_day` khi có `result`: tạo tuần `index + 1` bắt đầu từ ngày mới, `plan` và `goal` theo index mới, giữ `archive`. |
+| Sang tuần mới | `next_day` khi có `result`: tạo tuần `index + 1` bắt đầu từ ngày mới, `plan`, `goal` và `challenge` theo index mới, giữ `archive`. |
+| Thử thách tuần (E-16) | Từ `CHALLENGE_FIRST_WEEK` (5), `rollWeekChallenge(seed, index)` chọn 1 trong 6 mẫu `WEEK_CHALLENGES` (`src/sim/data/challenges.ts`) bằng hash(`seed`, tuần), không đọc hay đổi `state.rngState`; không lặp mẫu hai tuần liền; `sell_item` hash thêm món (món lịch tuần 1 mở). `endOfDayChallenge` (trong `closeDay`) cộng ngày vừa đóng vào `progress` đúng một lần (`settledDay`); đạt `target` thì `status: 'completed'`, phát `challenge_completed` và trả `reward.tickets` Tem một lần. `stars_week` thành `failed` khi một ngày đóng dưới `minStars`. `reward.unlock?` (`ChallengeUnlock`, hiện chỉ `kind: 'decor'`) để trống, dành cho epic tuỳ biến quán. `challengeProgress(state)` trả `{ value, target, done, failed }` cho UI, tính cả ngày đang mở. Không đổi điểm, cúp hay mục tiêu tuần. |
 | Thời tiết | `startNextDay` vẫn gọi `rollWeather` (giữ nguyên chuỗi RNG), rồi ghi đè `state.weather` bằng thời tiết của `plan`. |
 | Hệ số sự kiện | `dayArrivalMult` nhân vào `arrivalRate` (`customers.ts`); `dayIngredientPriceMult` nhân vào `effectiveUnitPrice` (`inventory.ts`), nên đổi cả giá mua gói lẫn giá vốn phần làm ra. Hệ số ở `DAY_EVENTS`. |
 | Mở khóa | `isUnlocked` trả `true` khi cấp quán đạt cấp mở, hoặc trong tuần 1 `weekDay` ≥ `dayUnlockDay(kind, id)` theo `WEEK_UNLOCKS`, hoặc từ tuần 2 món có trong lịch. Sáng ngày tuần 1 có mở khóa, `next_day` phát `week_unlocks`. |
@@ -516,6 +518,8 @@ Mỗi slot là JSON:
   | `GameState.regulars` | Chưa gặp khách quen nào; đếm từ lần ghé tiếp theo. |
   | `GameState.uniform` | Đồng phục `classic` (`uniformOf`); id lạ cũng mặc `classic`. |
   | `Customer.regularId` | Khách vô danh. |
+  | `WeekState.challenge` (E-16) | Tuần đang chơi không có thử thách; nạp đúng sáng ngày 1 của tuần ≥ 5 (pha chuẩn bị) thì `migrate` gọi `ensureWeekChallenge` rút luôn, còn lại tuần kế tiếp tự rút. Thử thách đọc không được (mẫu hay món lạ) bị bỏ. |
+  | `DayStats.regularsServed` | 0 khách quen được phục vụ hôm đó. |
 
   `retention.lifetime` của save cũ được điền khi tạo (`backfillLifetime`): `served` và `revenue` cộng từ các tuần đã xong trong `week.archive`, rồi các ngày trong `history` không thuộc tuần đó, cộng hôm nay nếu đang ở pha `report`. `fiveStar`, `perfectDays`, `threeCupWeeks` bắt đầu từ 0. Mốc thành tựu đã đủ nhờ phần điền này được trả Tem ở `closeDay` đầu tiên.
 - Thêm trường bắt buộc vào `GameState`: tăng `SAVE_VERSION`, thêm hàm vào `MIGRATIONS` điền giá trị mặc định, và thêm ca kiểm trong `tests/save/`. Trường tùy chọn (`?`) không cần tăng phiên bản.

@@ -117,7 +117,11 @@ describe('named regulars', () => {
 
   it('plays the same day 2 when every regular trace is wiped each minute', () => {
     const wiped = playTwoDays(2024, { forget: true });
-    expect(wiped.state.today).toEqual(run.state.today);
+    // regularsServed (E-16 challenge count) is itself a regular trace; everything else matches.
+    const { regularsServed: _w, ...wipedToday } = wiped.state.today;
+    const { regularsServed, ...runToday } = run.state.today;
+    expect(regularsServed).toBeGreaterThan(0);
+    expect(wipedToday).toEqual(runToday);
     expect(wiped.state.rngState).toBe(run.state.rngState);
     expect(wiped.state.reviews.map(({ author: _a, ...r }) => r)).toEqual(run.state.reviews.map(({ author: _a, ...r }) => r));
   });

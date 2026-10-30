@@ -1,3 +1,4 @@
+import { describeChallenge } from '../../sim/challenges';
 import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
@@ -170,6 +171,14 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
         key: 'special_order',
       };
     }
+    case 'challenge_completed':
+      return {
+        level: 'success',
+        icon: 'i-trophy',
+        title: `Xong thử thách: ${describeChallenge(event.challenge).name}`,
+        text: `+${event.challenge.reward.tickets} Tem`,
+        key: 'challenge',
+      };
     case 'vip_arrived':
       return { level: 'info', icon: 'i-star', title: 'Khách VIP vừa tới!', text: `Phục vụ để nhận +${VIP_TICKETS} Tem.`, key: 'vip' };
     case 'staff_promoted': {
@@ -181,7 +190,7 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
         key: `promoted:${event.staffId}`,
       };
     }
-    // Tickets are already on the gift, achievement, order and VIP toasts of the same frame.
+    // Tickets are already on the gift, achievement, order, VIP and challenge toasts of the same frame.
     case 'tickets_earned':
     default:
       return null;
