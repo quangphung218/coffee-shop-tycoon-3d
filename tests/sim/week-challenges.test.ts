@@ -96,7 +96,7 @@ describe('weekly challenge draw (E-16)', () => {
   it('fills the description with the target, the item and the stars', () => {
     const state = gameInWeek(5);
     expect(describeChallenge(withChallenge(state, 'sell_item', 80)).description).toBe('Bán 80 ly Latte trong tuần.');
-    expect(describeChallenge(withChallenge(state, 'stars_week')).description).toContain('4,6 sao');
+    expect(describeChallenge(withChallenge(state, 'stars_week')).description).toContain(`${WEEK_CHALLENGES.stars_week.minStars!.toLocaleString('vi-VN')} sao`);
   });
 });
 
@@ -149,10 +149,12 @@ describe('weekly challenge progress (E-16)', () => {
   it('fails stars_week on the first day closed below the stars and pays nothing', () => {
     const state = gameInWeek(5);
     withChallenge(state, 'stars_week');
-    state.rating = 4.64;
+    const stars = WEEK_CHALLENGES.stars_week.minStars!;
+    // Rounded to one decimal: just above passes, just below fails.
+    state.rating = stars + 0.04;
     closeAndNext(state);
     expect(state.week!.challenge!.progress).toBe(1);
-    state.rating = 4.54;
+    state.rating = stars - 0.06;
     closeAndNext(state);
     expect(challengeProgress(state)).toEqual({ value: 1, target: 7, done: false, failed: true });
     state.rating = 5;
@@ -164,7 +166,7 @@ describe('weekly challenge progress (E-16)', () => {
   it('completes stars_week after 7 days at the stars', () => {
     const state = gameInWeek(5);
     withChallenge(state, 'stars_week');
-    state.rating = 4.6;
+    state.rating = WEEK_CHALLENGES.stars_week.minStars!;
     for (let i = 0; i < 7; i++) closeAndNext(state);
     expect(challengeProgress(state)!.done).toBe(true);
   });
