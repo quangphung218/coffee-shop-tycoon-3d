@@ -21,7 +21,7 @@ export interface WeekChallengeDef {
 
 /**
  * The side challenges a week from CHALLENGE_FIRST_WEEK can draw, in draw order.
- * Rewards are Tem only; `reward.unlock` is left for the shop-customization epic.
+ * Most rewards also unlock a challenge-gated shop style (`reward.unlock`, src/sim/data/styles.ts).
  */
 export const WEEK_CHALLENGES: Readonly<Record<WeekChallengeId, WeekChallengeDef>> = {
   regular_visits: {
@@ -29,7 +29,7 @@ export const WEEK_CHALLENGES: Readonly<Record<WeekChallengeId, WeekChallengeDef>
     name: 'Khách quen ghé thăm',
     description: 'Phục vụ {n} lượt khách quen trong tuần.',
     target: 55,
-    reward: { tickets: 6 },
+    reward: { tickets: 6, unlock: { kind: 'decor', id: 'wall_wood' } },
   },
   stars_week: {
     id: 'stars_week',
@@ -37,14 +37,14 @@ export const WEEK_CHALLENGES: Readonly<Record<WeekChallengeId, WeekChallengeDef>
     description: 'Cuối cả 7 ngày trong tuần giữ từ {stars} sao trở lên.',
     target: 7,
     minStars: 4.9,
-    reward: { tickets: 8 },
+    reward: { tickets: 8, unlock: { kind: 'decor', id: 'wall_mural' } },
   },
   sell_item: {
     id: 'sell_item',
     name: 'Món của tuần',
     description: 'Bán {n} ly {item} trong tuần.',
     target: 300,
-    reward: { tickets: 6 },
+    reward: { tickets: 6, unlock: { kind: 'decor', id: 'sign_neon' } },
   },
   calm_day: {
     id: 'calm_day',
@@ -52,7 +52,7 @@ export const WEEK_CHALLENGES: Readonly<Record<WeekChallengeId, WeekChallengeDef>
     description: 'Một ngày phục vụ từ {min} khách mà không khách nào bỏ đi.',
     target: 1,
     minServed: 300,
-    reward: { tickets: 5 },
+    reward: { tickets: 5, unlock: { kind: 'decor', id: 'awning_gold' } },
   },
   served_week: {
     id: 'served_week',
@@ -66,7 +66,7 @@ export const WEEK_CHALLENGES: Readonly<Record<WeekChallengeId, WeekChallengeDef>
     name: 'Ngày trọn nhiệm vụ',
     description: 'Hoàn thành cả 3 nhiệm vụ ngày trong {n} ngày.',
     target: 4,
-    reward: { tickets: 6 },
+    reward: { tickets: 6, unlock: { kind: 'decor', id: 'floor_checker' } },
   },
 };
 

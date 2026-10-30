@@ -3,6 +3,7 @@ import { getMenuItem, MENU } from './data/menu';
 import { WEEK_LENGTH, dayUnlockDay } from './data/week';
 import { weekDay, weekIndex } from './progression';
 import { addTickets } from './retention';
+import { unlockStyle } from './styles';
 import type { DailyReport, DayStats, GameState, MenuItemId, WeekChallenge } from './types';
 
 /** Keeps challenge draws apart from the week plans and daily missions, which hash the same seed. */
@@ -44,7 +45,7 @@ export function rollWeekChallenge(seed: number, index: number): WeekChallenge | 
   const challenge: WeekChallenge = {
     id: def.id,
     target: def.target,
-    reward: { ...def.reward },
+    reward: def.reward.unlock ? { ...def.reward, unlock: { ...def.reward.unlock } } : { ...def.reward },
     progress: 0,
     settledDay: 0,
     status: 'active',
@@ -119,7 +120,7 @@ export function challengeProgress(state: GameState): ChallengeProgress | null {
 /**
  * Folds the day just closed into the week's challenge; called from closeDay
  * with the day's report. Reaching the target marks it completed, emits
- * 'challenge_completed' and pays its Tem, once. A day is never folded twice.
+ * 'challenge_completed', pays its Tem and unlocks its style, once. A day is never folded twice.
  */
 export function endOfDayChallenge(state: GameState, report: DailyReport): void {
   const challenge = state.week?.challenge;
@@ -144,4 +145,5 @@ export function endOfDayChallenge(state: GameState, report: DailyReport): void {
   challenge.status = 'completed';
   state.events.push({ type: 'challenge_completed', challenge: { ...challenge, reward: { ...challenge.reward } } });
   addTickets(state, challenge.reward.tickets, 'challenge');
+  if (challenge.reward.unlock?.kind === 'decor') unlockStyle(state, challenge.reward.unlock.id);
 }
