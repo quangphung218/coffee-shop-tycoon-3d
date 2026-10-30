@@ -63,7 +63,7 @@ describe('weekly goal shown under the E-12 formula', () => {
 
         // Week-end screen: next week's goal, read at the end of the week before.
         if (week > 1) {
-          const text = nextWeekGoalText(atWeek(d, week - 1), week - 1);
+          const text = nextWeekGoalText(atWeek(d, week - 1));
           const factor = (Math.round((want.revenue / WEEK_GOALS[d].revenue) * 10) / 10).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
           expect(text).toBe(
             `Mục tiêu: ${formatMoney(want.revenue)} doanh thu (×${factor} mục tiêu tuần 1), ${formatMoney(want.profit)} lợi nhuận và ${formatRating(WEEK_GOALS[d].stars)} sao.`,

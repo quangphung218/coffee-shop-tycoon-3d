@@ -1,7 +1,7 @@
 import { challengeProgress, describeChallenge } from '../sim/challenges';
 import type { GameState } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
-import { scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
+import { isWeekGoalScaled, scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
 import { h } from './core/dom';
 import { formatMoney, formatRating } from './core/format';
 import { icon, type IconId } from './core/icons';
@@ -25,7 +25,12 @@ export interface WeekGoalView {
   cups: number;
   /** Upgrade spending this week's profit counts (weekUpgradeCharge); 0 when nothing was bought. */
   upgradeCharge: number;
+  /** True when the week's goal follows the shop's recent revenue (isWeekGoalScaled, shop level 10+). */
+  scaled?: boolean;
 }
+
+/** Shown under the bars when the week's goal is scaled. */
+export const SCALED_GOAL_TEXT = 'Quán đã lớn: mục tiêu theo 4 tuần gần nhất';
 
 const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = {
   revenue: { label: 'Doanh thu', icon: 'i-coin' },
@@ -57,6 +62,7 @@ export function weekGoalView(state: GameState): WeekGoalView | null {
     score: r.score,
     cups: r.cups,
     upgradeCharge: weekUpgradeCharge(state),
+    scaled: isWeekGoalScaled(state),
   };
 }
 
@@ -80,7 +86,10 @@ export function cupsLineText(v: Pick<WeekGoalView, 'score' | 'cups'>): string {
   return `Hiện ${v.score} điểm · cần ${cupMinScore(next)} để ${next} cúp`;
 }
 
-/** Three bars (revenue, profit, stars), "Hiện X điểm · cần Y để N cúp" and, after an upgrade, what it costs this week. */
+/**
+ * Three bars (revenue, profit, stars), "Hiện X điểm · cần Y để N cúp", the
+ * scaled-goal note from shop level 10 and, after an upgrade, what it costs this week.
+ */
 export function weekGoalBlock(v: WeekGoalView): HTMLElement {
   return h(
     'div',
@@ -104,6 +113,7 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
       );
     }),
     h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
+    v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)
       : null,
