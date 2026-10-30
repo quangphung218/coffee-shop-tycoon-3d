@@ -68,9 +68,9 @@ export function upgradeAmortizeWeeks(difficulty: Difficulty): number {
  * Fitted with tests/integration/p23-long-run.test.ts.
  */
 export const WEEK_GOAL_MULTS: Readonly<Record<Difficulty, readonly number[]>> = {
-  easy: [1, 1.7, 2.4, 2.9],
-  normal: [1, 1.7, 2.3, 2.8],
-  hard: [1, 1.65, 2.3, 2.8],
+  easy: [1, 1.7, 2.2, 2.35],
+  normal: [1, 1.7, 2.2, 2.4],
+  hard: [1, 1.65, 2.1, 2.25],
 };
 
 /**
@@ -78,8 +78,8 @@ export const WEEK_GOAL_MULTS: Readonly<Record<Difficulty, readonly number[]>> = 
  * WEEK_GOAL_MULTS, with no cap: endless play keeps asking a little more.
  */
 export const WEEK_GOAL_LATE_GROWTH: Readonly<Record<Difficulty, number>> = {
-  easy: 0.15,
-  normal: 0.15,
+  easy: 0.1,
+  normal: 0.1,
   hard: 0.1,
 };
 
