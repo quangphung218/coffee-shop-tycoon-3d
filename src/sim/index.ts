@@ -16,6 +16,7 @@ import { claimDailyGift } from './retention';
 import { startDaySpecialOrder, tickSpecialOrders } from './specialOrders';
 import { trainStaff } from './staffGrowth';
 import { uniformById, uniformOf } from './data/uniforms';
+import { buyStyle, selectStyle } from './styles';
 import type { Command, GameState } from './types';
 
 /** Upper bound on ticks per step so a long frame hitch cannot freeze the page. */
@@ -178,6 +179,10 @@ export function dispatch(state: GameState, cmd: Command): boolean {
       state.events.push({ type: 'uniform_changed', uniformId: uniform.id });
       return true;
     }
+    case 'buy_style':
+      return buyStyle(state, cmd.styleId);
+    case 'select_style':
+      return selectStyle(state, cmd.styleId);
     default:
       return false;
   }
@@ -185,6 +190,18 @@ export function dispatch(state: GameState, cmd: Command): boolean {
 
 export { endOfDay, openShop, startNextDay } from './clock';
 export { uniformOf, unlockedUniforms } from './data/uniforms';
+export { STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf, type StyleDef } from './data/styles';
+export {
+  buyStyle,
+  canAffordStyle,
+  chosenStyles,
+  isStyleUnlocked,
+  ownsStyle,
+  selectStyle,
+  styleBlockedReason,
+  styleOf,
+  unlockStyle,
+} from './styles';
 export { brew, cleanTable, collectCash, deliver, takeOrder } from './orders';
 export {
   applyRestockSuggestion,

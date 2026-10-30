@@ -267,6 +267,19 @@ export type CustomerState =
   | 'leaving'
   | 'angry_leave';
 
+/** Part of the shop a style changes, see `src/sim/data/styles.ts`. */
+export type StyleSlot = 'wall' | 'floor' | 'sign' | 'awning';
+
+/** Shop styles: looks only, never read by the stars, customers or economy. */
+export interface ShopStyles {
+  /** Style id chosen per slot; a missing slot shows its default. */
+  chosen: Partial<Record<StyleSlot, string>>;
+  /** Style ids bought; defaults are owned without being listed. */
+  owned: string[];
+  /** Challenge-gated style ids a completed weekly challenge unlocked. */
+  unlocked: string[];
+}
+
 /** Team uniform id, see `src/sim/data/uniforms.ts`. */
 export type UniformId = 'classic' | 'mint' | 'latte' | 'coral';
 
@@ -621,13 +634,10 @@ export interface WeekState {
 /** Templates of the weekly side challenge (WEEK_CHALLENGES in src/sim/data/challenges.ts). */
 export type WeekChallengeId = 'regular_visits' | 'stars_week' | 'sell_item' | 'calm_day' | 'served_week' | 'perfect_days';
 
-/**
- * Something a challenge unlocks besides Tem. No reward sets it yet; the
- * shop-customization epic adds its kinds (wall, floor, sign…) to this union.
- */
+/** Something a challenge unlocks besides Tem: a shop style (`STYLES` id in src/sim/data/styles.ts) that can then be bought. */
 export interface ChallengeUnlock {
   kind: 'decor';
-  /** Id of the one-of-a-kind item, looked up by the epic that adds it. */
+  /** `StyleDef.id` of the style it unlocks. */
   id: string;
 }
 
@@ -786,6 +796,8 @@ export interface GameState {
   regulars?: Record<string, RegularVisits>;
   /** Team uniform (`UNIFORMS` id); absent in older saves = 'classic'. Looks only. */
   uniform?: UniformId;
+  /** Shop styles (wall, floor, sign, awning); absent in older saves = every slot on its default. Looks only. */
+  styles?: ShopStyles;
   events: GameEvent[];
   /** Next id handed out to customers, staff, tables and orders. */
   nextId: number;
@@ -816,6 +828,10 @@ export type Command =
   | { type: 'train_staff'; staffId: number }
   /** Any phase; refused with a notify when the uniform is locked at this shop level or unknown. */
   | { type: 'set_uniform'; uniformId: UniformId }
+  /** Any phase; pays the style's money and Tem once and wears it. Refused when locked, owned or unaffordable. */
+  | { type: 'buy_style'; styleId: string }
+  /** Any phase; wears a style already owned (or a default). */
+  | { type: 'select_style'; styleId: string }
   /** `dateKey` is the player's local date 'YYYY-MM-DD'; the sim only compares keys. */
   | { type: 'claim_daily_gift'; dateKey: string };
 
@@ -855,4 +871,10 @@ export type GameEvent =
   /** A named regular came through the door; `visits` counts this one. Comes after 'doorbell'. */
   | { type: 'regular_arrived'; customerId: number; regularId: string; visits: number }
   /** `set_uniform` switched the team to another uniform. */
-  | { type: 'uniform_changed'; uniformId: UniformId };
+  | { type: 'uniform_changed'; uniformId: UniformId }
+  /** `buy_style` paid for a style; it is worn from now on ('style_changed' follows). */
+  | { type: 'style_bought'; styleId: string; slot: StyleSlot; money: number; tickets: number }
+  /** A slot now wears another style. */
+  | { type: 'style_changed'; slot: StyleSlot; styleId: string }
+  /** A completed weekly challenge unlocked a style for sale. */
+  | { type: 'style_unlocked'; styleId: string; slot: StyleSlot };
