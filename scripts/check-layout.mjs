@@ -47,7 +47,10 @@
 // with its in-place Mua confirm open, then Mái hiên with a locked style
 // previewed. Each must not overflow, must show those parts, and every button
 // and slot tab must be at least --size-target.
-// LAYOUT_ONLY (day, hud, event, p25, p27, styles, comma-separated) runs those parts
+// E-20 UX-202 Việc on the morning of week 5 (the first with a side
+// challenge), at the same four sizes: the challenge block must not overflow,
+// its bar must be at least CHALLENGE_BAR_MIN wide and it names its style.
+// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
 // Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
@@ -440,7 +443,14 @@ const EVENT = 'supplier_hike';
 const LATE_GAME = { money: 109_582_093, tickets: 2, shopLevel: 5, xp: 14_929 };
 
 /** This tree's sim, save code, retention (Tem) and staff (hire roles), loaded once through vite. */
-const loadTree = () => loadSim(ROOT, { retention: '/src/sim/retention.ts', staff: '/src/sim/staff.ts' });
+const loadTree = () =>
+  loadSim(ROOT, {
+    retention: '/src/sim/retention.ts',
+    staff: '/src/sim/staff.ts',
+    challenges: '/src/sim/challenges.ts',
+    week: '/src/sim/week.ts',
+    weekData: '/src/sim/data/week.ts',
+  });
 
 /**
  * Autosave of a new Easy game on the morning of day 1, its plan turned into
@@ -1074,6 +1084,62 @@ async function checkPreviewBar(page, results, size) {
   results.push({ viewport: size, screen: 'Phong cách quán: thanh xem thử, nút', pass: fails.length === 0, detail: `thanh cao ${m.height.toFixed(0)} px trên dock; ${small.count} nút ≥ ${target} px`, fails });
 }
 
+/** Week whose morning the challenge check opens: the first with a side challenge (CHALLENGE_FIRST_WEEK). */
+const CHALLENGE_WEEK = 5;
+/** Narrowest the challenge bar may be, CSS px (E-20 UX-202: it was 0 px at ≤ 480 px). */
+const CHALLENGE_BAR_MIN = 40;
+
+/**
+ * Autosave of a new Easy game on the morning of week CHALLENGE_WEEK's first
+ * day, the week's plan, goal and side challenge drawn by this tree's sim.
+ */
+function challengeSave(mods) {
+  const state = mods.stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+  const startedDay = (CHALLENGE_WEEK - 1) * 7 + 1;
+  state.day = startedDay;
+  state.today = mods.stateMod.createDayStats(startedDay, state.rating);
+  state.week = {
+    length: 7,
+    index: CHALLENGE_WEEK,
+    startedDay,
+    plan: mods.week.rollWeekPlan(state.seed, CHALLENGE_WEEK),
+    goal: mods.weekData.weekGoal('easy', CHALLENGE_WEEK),
+  };
+  const challenge = mods.challenges.rollWeekChallenge(state.seed, CHALLENGE_WEEK);
+  if (!challenge) throw new Error(`week ${CHALLENGE_WEEK} drew no challenge`);
+  state.week.challenge = challenge;
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * E-20 UX-202, Việc on a week with a side challenge: the block must not
+ * overflow, its bar must be at least CHALLENGE_BAR_MIN wide (it collapsed to
+ * 0 px at ≤ 480 px) and it must name the style it opens.
+ */
+async function checkChallengeBar(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const panel = '#ui > .panel:not([hidden])';
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'tasks');
+    const block = page.locator(`${panel} [data-block="challenge"]`);
+    await block.waitFor();
+    await block.scrollIntoViewIfNeeded();
+    await checkScreen(page, results, size, 'Việc: thử thách tuần', PANEL_FRAME);
+    const m = await page.evaluate((panel) => {
+      const el = document.querySelector(`${panel} [data-block="challenge"]`);
+      const bar = el?.querySelector('[data-challenge="bar"] [role="progressbar"]');
+      return { width: bar ? bar.getBoundingClientRect().width : 0, style: el?.querySelector('[data-challenge="style"]')?.textContent ?? '' };
+    }, panel);
+    const fails = [];
+    if (m.width < CHALLENGE_BAR_MIN) fails.push(`challenge bar ${m.width.toFixed(1)} px < ${CHALLENGE_BAR_MIN} px`);
+    if (!/^Mở kiểu /.test(m.style)) fails.push(`style line "${m.style}" does not name the style it opens`);
+    results.push({ viewport: size, screen: 'Việc: thanh thử thách', pass: fails.length === 0, detail: `thanh rộng ${m.width.toFixed(0)} px (≥ ${CHALLENGE_BAR_MIN}); ${m.style}`, fails });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -1093,11 +1159,11 @@ async function main() {
   const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
-  // LAYOUT_ONLY=day,hud,event,p25,p27,styles runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    const mods = part('day') || part('event') || part('styles') ? await loadTree() : null;
+    const mods = part('day') || part('event') || part('styles') || part('challenge') ? await loadTree() : null;
     const report = part('day') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
@@ -1159,6 +1225,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Phong cách quán', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const challenge = part('challenge') ? challengeSave(mods) : null;
+    for (const viewport of part('challenge') ? P25_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkChallengeBar(browser, viewport, challenge, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Việc: thử thách tuần', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {

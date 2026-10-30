@@ -1953,6 +1953,10 @@ legend {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
+/* The one action of a toast ("Chuyển 2x"), under its text. */
+.toast-action {
+  margin-top: var(--space-2);
+}
 
 /* Day-1 serving hint (serveHints.ts): a cream pill over what to tap next.
    Taps go through to the scene. Anchored, its bottom centre sits on the

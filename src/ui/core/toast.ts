@@ -19,6 +19,15 @@ export interface ToastInput {
   key?: string;
   /** Spend toast: a live toast with the same key adds the amount and the label instead of "×n". Overrides title and text. */
   merge?: MergeSpend;
+  /** A live toast with the same key takes this title and text in place, without "×n". */
+  replace?: boolean;
+  /** One button in the toast ("Chuyển 2x"): runs `run`, then closes the toast. */
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  run(): void;
 }
 
 export interface MergeSpend {
@@ -104,6 +113,18 @@ export class Toasts {
         const lines = mergedLines(m);
         same.title.textContent = lines.title;
         if (same.text) same.text.textContent = lines.text;
+      } else if (input.replace) {
+        same.base = input.title;
+        same.count = 1;
+        same.title.textContent = input.title;
+        if (input.text && !same.text) {
+          same.text = h('p', { class: 'toast-text' });
+          same.title.after(same.text);
+        }
+        if (same.text) {
+          same.text.textContent = input.text ?? '';
+          same.text.hidden = !input.text;
+        }
       } else {
         same.count += 1;
         same.title.textContent = `${same.base} ×${same.count}`;
@@ -120,15 +141,23 @@ export class Toasts {
     const title = h('p', { class: 'toast-title', text: lines.title });
     const text = lines.text ? h('p', { class: 'toast-text', text: lines.text }) : null;
     const close = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng thông báo' } }, icon('i-close', { size: 16 }), 'Đóng');
+    const action = input.action
+      ? h('button', { class: 'btn btn-secondary toast-action', attrs: { type: 'button', 'data-action': 'toast-action' }, text: input.action.label })
+      : null;
+    const body = h('div', { class: 'toast-body' }, title, text, action);
     const el = h(
       'div',
       { class: `toast toast-${input.level}`, attrs: { role: input.level === 'error' ? 'alert' : 'status' } },
       h('span', { class: 'toast-icon' }, icon(input.icon ?? ICONS[input.level])),
-      h('div', { class: 'toast-body' }, title, text),
+      body,
       close,
     );
     const toast: Live = { el, title, text, key, base: lines.title, count: 1, merged, timer: null, hold: false, level: input.level };
     close.addEventListener('click', () => this.close(toast));
+    action?.addEventListener('click', () => {
+      input.action!.run();
+      this.close(toast);
+    });
     const hold = (on: boolean) => () => {
       toast.hold = on;
       this.arm(toast);

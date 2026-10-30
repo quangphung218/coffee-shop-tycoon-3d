@@ -1,6 +1,8 @@
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
+import { milestoneAt, regularBookEntry } from '../../sim/data/regularMilestones';
+import { regularById } from '../../sim/data/regulars';
 import { getUpgrade } from '../../sim/data/upgrades';
 import { WEEK_LENGTH } from '../../sim/data/week';
 import { debtLimit } from '../../sim/economy';
@@ -12,7 +14,7 @@ import { LEVEL_ICON, MENU_ICONS, MISSION_ICON, UPGRADE_ICONS } from '../core/ico
 import { icon, type IconId } from '../core/icons';
 import { debtHints, debtWarning } from '../hud/hud';
 import { MISSION_META } from '../panels/tasks';
-import { weekGoalBlock, weekGoalView, type WeekGoalView } from '../weekGoal';
+import { challengeStyleText, challengeView, weekGoalBlock, weekGoalView, type ChallengeView, type WeekGoalView } from '../weekGoal';
 import { renderInsights } from './insights';
 import { fillReviews } from './reviews';
 
@@ -63,6 +65,34 @@ export interface SummaryStats {
   weekGoal?: WeekGoalView | null;
   /** The shop is counting down to bankruptcy (debtWarning); absent or null otherwise. */
   debt?: ReportDebt | null;
+  /** The week's side challenge (challengeView); absent or null hides its line. */
+  challenge?: ChallengeView | null;
+  /** Regulars who reached a milestone of the Sổ khách quen on the report's day (reportMilestones). */
+  milestones?: readonly ReportMilestone[];
+}
+
+/** A regular who reached a milestone of the book on the report's day. */
+export interface ReportMilestone {
+  name: string;
+  milestone: number;
+  tickets: number;
+}
+
+/**
+ * Milestones reached on `day`: a regular comes at most once a day, so one
+ * whose last visit is that day and whose count is exactly a milestone reached
+ * it then (reachMilestone in src/sim/customers.ts).
+ */
+export function reportMilestones(state: Pick<GameState, 'regulars'>, day: number): ReportMilestone[] {
+  const out: ReportMilestone[] = [];
+  for (const [id, seen] of Object.entries(state.regulars ?? {})) {
+    if (seen.lastDay !== day) continue;
+    const milestone = milestoneAt(seen.visits);
+    const def = milestone ? regularBookEntry(id)?.milestones[milestone - 1] : undefined;
+    const name = regularById(id)?.name;
+    if (def && name) out.push({ name, milestone, tickets: def.tickets });
+  }
+  return out;
 }
 
 /** What the debt block at the top of Tổng kết states. */
@@ -260,6 +290,19 @@ function weekStrip(w: WeekToDate, goal?: WeekGoalView | null): HTMLElement {
   );
 }
 
+/** "Thử thách: name · 150/400 · Thưởng +7 Tem · Mở kiểu Biển neon" on one line under the week strip. */
+function challengeLine(v: ChallengeView): HTMLElement {
+  const status = v.done ? 'Đã xong' : v.failed ? 'Đã hụt' : `Thưởng +${v.tickets} Tem`;
+  const style = challengeStyleText(v);
+  return h(
+    'p',
+    { class: 'rpt-line rpt-challenge', attrs: { 'data-block': 'challenge', 'data-state': v.done ? 'done' : v.failed ? 'failed' : 'active' } },
+    icon('i-sparkle', { size: 16 }),
+    h('b', { text: `Thử thách: ${v.name}` }),
+    h('span', { text: ` · ${v.value}/${v.target} · ${status}${style ? ` · ${style}` : ''}` }),
+  );
+}
+
 // ── Money | missions, sellers, stock-outs ───────────────────────────────────
 
 function money(r: DailyReport): HTMLElement {
@@ -345,6 +388,20 @@ function outOfStock(r: DailyReport): HTMLElement {
       'ul',
       { class: 'rpt-inline', attrs: { 'data-block': 'out' } },
       ...r.outOfStock.map((id) => h('li', { class: 'rpt-out', attrs: { 'data-item': id } }, icon(MENU_ICONS[id], { size: 16 }), getMenuItem(id).name)),
+    ),
+  );
+}
+
+/** "Sổ khách quen: Cô Lan mốc 1 +1 Tem, …": the day's milestones as one line of text. */
+function milestonesLine(list: readonly ReportMilestone[]): HTMLElement {
+  return h(
+    'p',
+    { class: 'rpt-line rpt-milestones', attrs: { 'data-block': 'milestones' } },
+    h('b', { text: 'Sổ khách quen: ' }),
+    h(
+      'ul',
+      { class: 'rpt-inline' },
+      ...list.map((m) => h('li', { attrs: { 'data-milestone': String(m.milestone) } }, icon('i-face-happy', { size: 16 }), `${m.name} mốc ${m.milestone} `, h('b', { text: `+${m.tickets} Tem` }))),
     ),
   );
 }
@@ -450,7 +507,8 @@ function reducedMotion(doc: Document): boolean {
 
 /**
  * The summary tab, rebuilt once per report: figures with their change, the
- * week so far, money | missions and a goods line, one tip. It fits a
+ * week so far and its side challenge, money | missions, a goods line and the
+ * day's regular milestones, one tip. It fits a
  * 1280×720 window without scrolling. After the last week day the tip is for
  * next week.
  */
@@ -461,7 +519,13 @@ export function renderSummary(r: DailyReport, weekEnded = false, stats: SummaryS
     ...(band ? [band] : []),
     figures(r, stats),
     ...(stats.week ? [weekStrip(stats.week, stats.weekGoal)] : []),
-    h('div', { class: 'rpt-split' }, money(r), h('div', { class: 'rpt-col' }, ...missionsBlock(r), goodsLine(r))),
+    ...(stats.challenge ? [challengeLine(stats.challenge)] : []),
+    h(
+      'div',
+      { class: 'rpt-split' },
+      money(r),
+      h('div', { class: 'rpt-col' }, ...missionsBlock(r), goodsLine(r), ...(stats.milestones?.length ? [milestonesLine(stats.milestones)] : [])),
+    ),
     suggestions(r, weekEnded),
   ];
 }
@@ -595,7 +659,14 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function renderBodies(s: GameState): void {
     const r = s.lastReport ?? null;
     const ended = s.week?.result !== undefined;
-    setChildren(summary, ...(r ? renderSummary(r, ended, { deltas: dayCompare(s, r), week: weekToDate(s), weekGoal: weekGoalView(s), debt: reportDebt(s) }) : [renderBusy(day)]));
+    setChildren(summary, ...(r ? renderSummary(r, ended, {
+            deltas: dayCompare(s, r),
+            week: weekToDate(s),
+            weekGoal: weekGoalView(s),
+            debt: reportDebt(s),
+            challenge: challengeView(s),
+            milestones: reportMilestones(s, r.day),
+          }) : [renderBusy(day)]));
     setChildren(insights, ...(r ? renderInsights(r, ended ? null : (panel) => options.onOpenPanel?.(panel)) : [renderBusy(day)]));
   }
 

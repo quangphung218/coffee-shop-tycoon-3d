@@ -1032,6 +1032,11 @@
     grid-column: 1 / -1;
     white-space: normal;
   }
+  /* The challenge row is value | bar, its reward under them: the value keeps
+     the first column so the bar gets the second, not a 0 px auto one. */
+  .week-challenge .week-goal-num[data-challenge='value'] {
+    grid-column: auto;
+  }
 }
 
 /* Phong cách quán: slot tabs over the slot's styles. Each row is one tap
@@ -1079,6 +1084,13 @@
   border-color: var(--focus-ring);
   outline: var(--size-focus-width) solid var(--focus-ring);
   outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
+}
+/* "Mở bằng thử thách (từ tuần 5)" wraps in two lines rather than squeeze the name. */
+.style-opt > .badge {
+  max-width: 10em;
+  padding-block: calc(var(--space-1) / 2);
+  white-space: normal;
+  line-height: var(--line-height-tight);
 }
 .style-text {
   display: flex;
