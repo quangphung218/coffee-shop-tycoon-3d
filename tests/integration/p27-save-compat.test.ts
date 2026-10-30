@@ -145,6 +145,10 @@ describe('P27 save compatibility', { timeout: 120_000 }, () => {
         const g = loadText(files[version]!);
         expect(g.retention).toBeUndefined();
         expect(g.specialOrder ?? null).toBeNull();
+        // A v0 save has nobody to hire on its first morning, and day 1 alone is
+        // calm since E-20, too calm for one day of work to reach level 2: play
+        // that day alone so the barista gets two days before the last training.
+        if (g.candidates.length === 0) playDay(g);
         const startDay = g.phase === 'report' ? g.day + 1 : g.day;
 
         const log = playOnWithP27(g);
