@@ -164,7 +164,8 @@ describe('compact switch CSS', () => {
   it('keeps the switch on the first line and the label under the meta', () => {
     const row = rule('.item.menu-row');
     expect(row).toMatch(/grid-template-columns:\s*32px minmax\(0, 1fr\) auto;/);
-    expect(row).toMatch(/grid-template-areas:\s*'icon text control'\s*'\. status \.';/);
+    // The switch spans both lines, so the first line is only as tall as name + meta (T-47: a labelled row ≤ 96 px).
+    expect(row).toMatch(/grid-template-areas:\s*'icon text control'\s*'\. status control';/);
     expect(rule('.menu-row > .toggle')).toMatch(/align-self:\s*start/);
   });
 

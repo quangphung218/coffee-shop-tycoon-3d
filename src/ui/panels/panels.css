@@ -299,24 +299,27 @@
 /* Menu (P25): icon 32 | name + meta | small switch on the first line, so a
    phone shows more items. Name and meta wrap rather than cut; "Giá …" and
    "lãi …%" each stay whole. The one status label sits under the meta in the
-   text column, and its line takes no room while the label slot is empty. */
+   text column, and its line takes no room while the label slot is empty.
+   The switch spans both lines, so the first line is as tall as name + meta
+   (20 + 17.5 px), not the 44 px switch, and a row with the 44 px "Thiếu …"
+   button stays within 96 px at 390 px (scripts/check-layout.mjs MENU_ROW_MAX). */
 .item.menu-row {
   grid-template-columns: 32px minmax(0, 1fr) auto;
   grid-template-areas:
     'icon text control'
-    '. status .';
+    '. status control';
   align-items: center;
   gap: 0 var(--space-2);
   padding: var(--space-1) var(--space-2);
+}
+.menu-row .item-meta {
+  line-height: var(--line-height-tight);
 }
 .menu-row > .toggle {
   align-self: start;
 }
 .menu-row > .item-status {
   justify-self: start;
-}
-.menu-row > .item-status > * {
-  margin-top: var(--space-1);
 }
 .menu-row .item-meta .ic {
   margin-right: var(--space-1);
@@ -943,6 +946,41 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+}
+/* Desktop Daily Report: the week strip in two lines so the level-up report
+   fits 1280×720 (scripts/check-layout.mjs): the week day over the cups line,
+   then per criterion label and bar over its figures. */
+@media (min-width: 1024px) {
+  .rpt-week.is-goal {
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: calc(var(--space-1) / 2) var(--space-4);
+    line-height: var(--line-height-tight);
+  }
+  .rpt-week.is-goal .week-goal {
+    display: contents;
+  }
+  .rpt-week.is-goal .rpt-week-label {
+    grid-area: 1 / 1;
+  }
+  .rpt-week.is-goal .week-goal-line[data-goal='cups'] {
+    grid-area: 2 / 1;
+  }
+  .rpt-week.is-goal .week-goal-line[data-goal='charge'] {
+    grid-area: 3 / 1 / auto / -1;
+  }
+  .rpt-week.is-goal .week-goal-row {
+    display: grid;
+    grid-row: 1 / span 2;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+  }
+  .rpt-week.is-goal .week-goal-num {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
 }
 @media (max-width: 480px) {
   .week-goal {

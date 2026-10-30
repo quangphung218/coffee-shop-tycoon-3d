@@ -48,13 +48,18 @@
 // open: it shares the GPU with perf:frames and measure-startup, so it waits
 // for a running measurement (PERF_LOCK_WAIT_S) and keeps one from starting
 // over it.
+// LAYOUT_OFFLINE=1 is for a sandbox that cannot bind a port or start Chrome's
+// helper processes: no vite preview, the pages get dist/ through Playwright
+// routes and each context gets its own Playwright Chromium in one process
+// (--single-process; software WebGL, so slower, layout only).
 // Prints PASS/FAIL tables; exits 1 on any FAIL.
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, normalize, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { launchBrowser } from './lib/browser.mjs';
+import { chromium } from 'playwright';
+import { BROWSER_ARGS, launchBrowser } from './lib/browser.mjs';
 import { acquirePerfLock } from './lib/perf-lock.mjs';
 import { clockOf, loadSim, playFirstDay, saveText } from './lib/saves.mjs';
 
@@ -86,9 +91,40 @@ const EPS = 0.5;
 /** Elements listed per failing check. */
 const SHOW = 6;
 
+const OFFLINE = process.env.LAYOUT_OFFLINE === '1';
+
+/**
+ * LAYOUT_OFFLINE: a stand-in for the Browser whose newContext launches its own
+ * Chromium in one process (that mode holds one context; closing the context
+ * closes it) and answers URL_BASE from dist/ instead of a server.
+ */
+function offlineBrowser() {
+  const dist = join(ROOT, 'dist');
+  return {
+    async newContext(options) {
+      const browser = await chromium.launch({ headless: process.env.LAYOUT_HEADED !== '1', args: [...BROWSER_ARGS, '--single-process'] });
+      const context = await browser.newContext(options);
+      await context.route(`${URL_BASE}**`, (route) => {
+        const path = decodeURIComponent(new URL(route.request().url()).pathname);
+        const file = join(dist, normalize(path.endsWith('/') ? `${path}index.html` : path));
+        if (!file.startsWith(dist) || !existsSync(file)) return route.fulfill({ status: 404 });
+        return route.fulfill({ path: file });
+      });
+      const close = context.close.bind(context);
+      context.close = async () => {
+        await close();
+        await browser.close();
+      };
+      return context;
+    },
+    async close() {},
+  };
+}
+
 async function startPreview() {
   // Without a build, vite preview answers 404 and never looks started.
   if (!existsSync(join(ROOT, 'dist', 'index.html'))) throw new Error('no dist/index.html: run npm run build first (npm run layout does)');
+  if (OFFLINE) return null;
   const vite = join(ROOT, 'node_modules', '.bin', 'vite');
   const server = spawn(vite, ['preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 100; i++) {
@@ -294,6 +330,19 @@ async function checkHud(page, results, viewport, screen, maxRows) {
   results.push({ viewport, screen, pass: fails.length === 0, detail: `${m.rows} hàng, cao ${m.height} px; ${m.widths}; ${m.buttons} nút ≥ 44 px${event}`, fails });
 }
 
+/**
+ * "Mở cửa" through the start-day guard (src/ui/openGuard.ts): with no staff
+ * or no dish in stock (a new game, the event-day saves) the HUD asks first and
+ * the day only opens after "Vẫn mở cửa". Waiting for the speed control
+ * without that click timed out on every HUD-only and event-day run.
+ */
+async function openShop(page) {
+  await page.locator('.hud [data-action="open"]').click();
+  await page.waitForFunction(() => document.querySelector('.hud .speed:not([hidden]), .hud .hud-confirm [data-action="confirm"]'));
+  const confirm = page.locator('.hud .hud-confirm [data-action="confirm"]');
+  if (await confirm.count()) await confirm.click();
+}
+
 /** Sets 4x: the speed option where the group shows, else the phone's cycling button until it reads 4x. */
 async function setSpeed4(page) {
   // Right after "Mở cửa" the HUD has not redrawn yet; the group and the
@@ -354,7 +403,7 @@ async function runHudOnly(browser, viewport, results) {
   try {
     await startDayOne(page);
     await checkHudPhases(page, results, viewport);
-    await page.locator('.hud [data-action="open"]').click();
+    await openShop(page);
     await setSpeed4(page);
     await checkHud(page, results, `${viewport.width}×${viewport.height}`, 'HUD: mở cửa', hudRows(viewport));
   } finally {
@@ -445,7 +494,7 @@ async function runEventDay(browser, viewport, results, eventSave) {
     await page.locator('.hud [data-chip="event"]:not([hidden])').waitFor();
     const before = results.length;
     await checkHudPhases(page, results, viewport);
-    await page.locator('.hud [data-action="open"]').click();
+    await openShop(page);
     await setSpeed4(page);
     await checkHud(page, results, size, 'HUD: mở cửa', hudRows(viewport));
     for (const r of results.slice(before)) r.screen += viewport.late ? ' (ngày sự kiện, cuối game)' : ' (ngày sự kiện)';
@@ -629,7 +678,7 @@ async function runViewport(browser, viewport, overflow, shift, report) {
     await page.locator(`.dock [data-panel="${PANELS.at(-1)[0]}"]`).click();
     await page.locator('#ui > .panel').waitFor({ state: 'hidden' });
 
-    await page.locator('.hud [data-action="open"]').click();
+    await openShop(page);
     await setSpeed4(page);
     await checkHud(page, overflow, size, 'HUD: mở cửa', hudRows(viewport));
   } finally {
@@ -904,7 +953,7 @@ async function main() {
   const only = process.env.LAYOUT_ONLY?.split(',');
   const lock = await acquirePerfLock(ROOT, { label: `check-layout${only ? ` LAYOUT_ONLY=${only.join(',')}` : ''}` });
   const server = await startPreview();
-  const browser = await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
+  const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
   // LAYOUT_ONLY=day,hud,event,p25,p27 runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
@@ -967,7 +1016,7 @@ async function main() {
     }
   } finally {
     await browser.close();
-    server.kill();
+    server?.kill();
     lock.release();
   }
   printTable('Tràn ngang', overflow);
