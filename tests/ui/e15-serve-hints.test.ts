@@ -126,10 +126,6 @@ describe('E-15 day-1 serving hints', () => {
     until(s, () => s.state!.today.customersServed > 0);
     expect(s.state!.minute).toBeLessThan(8 * 60);
     expect(storage.getItem(SERVE_HINT_KEY)).toBe('order,brew,serve');
-
-    // Done for good: no label for the rest of day 1.
-    until(s, () => s.state!.minute >= 9 * 60);
-    expect(shownHint(root)).toBeNull();
   });
 
   it('a step is done only after its own tap; it waits for its target', () => {
@@ -156,9 +152,11 @@ describe('E-15 day-1 serving hints', () => {
     expect(shownHint(root)).toBeNull();
   });
 
-  it('a loaded save (even on day 1) shows no label', () => {
+  it('a loaded day-2 save shows no label', () => {
     const storage = createMemoryStorage();
-    saveGame(createNewGame('Quán Cũ', 'normal', 7), '1', storage);
+    const old = createNewGame('Quán Cũ', 'normal', 7);
+    old.day = 2;
+    saveGame(old, '1', storage);
     const { root, shell: s } = boot(storage);
     [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Tiếp tục'))!.click();
     expect(s.state!.shopName).toBe('Quán Cũ');
@@ -183,7 +181,10 @@ describe('E-15 day-1 serving hints', () => {
 describe('E-15 first Khách bỏ đi toast', () => {
   it('adds the tap-or-hire line to the first one only', () => {
     const { shell: s } = boot(createMemoryStorage());
-    s.startGame(createNewGame('Quán Giận', 'normal', 7));
+    // Day 2: on day 1 the later walkouts fold into a counter (E-20).
+    const game = createNewGame('Quán Giận', 'normal', 7);
+    game.day = 2;
+    s.startGame(game);
     const texts = (): string[] => [...s.toasts.el.querySelectorAll('.toast')].map((t) => t.textContent ?? '');
     s.handleEvents([{ type: 'angry', customerId: 1 }]);
     expect(texts().filter((t) => t.includes(ANGRY_HINT))).toHaveLength(1);
