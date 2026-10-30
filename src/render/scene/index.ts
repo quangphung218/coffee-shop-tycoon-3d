@@ -1,11 +1,13 @@
-import { Raycaster, Vector2 } from 'three';
+import { Raycaster, Vector2, Vector3 } from 'three';
 import type { CameraKeys, CameraRotateSpeed, Quality } from '../../save/settings';
 import type { Command, GameState } from '../../sim/types';
 import { createActors } from '../actors';
+import { HEAD_TOP_Y } from '../actors/rig';
 import { createStreet } from '../street';
 import { AmbientView } from './ambient';
 import { CameraController } from './camera';
 import { createDayCycle } from './dayCycle';
+import { BACK_COUNTER_HEIGHT } from './equipment';
 import { Picker } from './picking';
 import { createRenderer } from './renderer';
 import { ShopView } from './shop';
@@ -46,10 +48,19 @@ export interface World {
   resetCamera(): void;
   /** Turns the camera around the shop by `dYaw` radians, e.g. the slow spin behind the main menu. */
   rotateCamera(dYaw: number): void;
+  /**
+   * Canvas point (CSS px) just over a customer's tag or the first coffee
+   * machine, for the day-1 serving hints; null when not drawn or behind the camera.
+   */
+  screenPoint(target: { kind: 'customer'; id: number } | { kind: 'machine' }): { x: number; y: number } | null;
   /** Registers a handler for Commands from clicks in the scene; returns an unsubscribe function. */
   onCommand(handler: (cmd: Command) => void): () => void;
   dispose(): void;
 }
+
+/** Heights of the serving hints: above a customer's order bubble, above a machine on the back counter. */
+const HINT_OVER_HEAD_Y = HEAD_TOP_Y + 0.75;
+const HINT_OVER_MACHINE_Y = BACK_COUNTER_HEIGHT + 0.8;
 
 /** Longest frame step fed to camera damping, so a background tab does not jump. */
 const MAX_FRAME_DT = 0.1;
@@ -70,6 +81,7 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
   const ambient = new AmbientView(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const upgradeFx = new UpgradeFx(view.scene, shop, { quality: options.quality ?? 'medium', reducedMotion });
   const ray = new Raycaster();
+  const projected = new Vector3();
   const handlers = new Set<(cmd: Command) => void>();
   let lastState: GameState | null = null;
   let lastTime = -1;
@@ -153,6 +165,20 @@ export function createWorld(canvas: HTMLCanvasElement, options: WorldOptions = {
     setReducedMotion: (reduce) => {
       reducedMotionForced = reduce;
       actors.setReducedMotion(reduce);
+    },
+    screenPoint(target) {
+      if (target.kind === 'machine') {
+        const m = shop.current?.machines[0];
+        if (!m) return null;
+        projected.set(m.pos.x, HINT_OVER_MACHINE_Y, m.pos.z);
+      } else {
+        const a = actors.inspect(`c${target.id}`);
+        if (!a?.visible) return null;
+        projected.set(a.pos.x, HINT_OVER_HEAD_Y, a.pos.z);
+      }
+      projected.project(camera.camera);
+      if (projected.z > 1) return null;
+      return { x: ((projected.x + 1) / 2) * canvas.clientWidth, y: ((1 - projected.y) / 2) * canvas.clientHeight };
     },
     resetCamera: () => camera.reset(),
     rotateCamera: (dYaw) => camera.rotate(dYaw),

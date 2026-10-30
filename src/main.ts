@@ -104,6 +104,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       audio?.setVolumes(s.musicVolume, s.sfxVolume);
     },
     onResetCamera: () => world?.resetCamera(),
+    locateHint: (target) => world?.screenPoint(target) ?? null,
     onGameStart: () => {
       // "Mới" marks belong to the game that opened them.
       fresh.clear();
