@@ -1,6 +1,6 @@
 import { appendPlayLog, type PlayLogKind, type PlayLogPhase } from '../../save/playlog';
 import { autosave, autosaveAtRisk, keepAutosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
-import type { Settings } from '../../save/settings';
+import type { GameSpeed, Settings } from '../../save/settings';
 import { dispatch as simDispatch } from '../../sim';
 import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
@@ -9,6 +9,7 @@ import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
+import { createServeHints } from '../hud/serveHints';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
 import { createBankrupt, latestPlayableSave } from './bankrupt';
@@ -41,6 +42,13 @@ export interface Shell {
   dispose(): void;
 }
 
+const SPEEDS: readonly GameSpeed[] = [1, 2, 4];
+/** Set once the day-2 speed hint was shown. */
+export const SPEED_HINT_KEY = 'cst3d:hint:speed';
+export const SPEED_HINT = 'Bấm 2x để một ngày còn 3,5 phút';
+/** Added once per run to the first "Khách bỏ đi" toast. */
+export const ANGRY_HINT = 'Chạm vào khách đang chờ, hoặc thuê pha chế.';
+
 /** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
   const c = globalThis.crypto;
@@ -58,9 +66,29 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const { root, storage, scene, screens } = base;
   let state: GameState | null = null;
   const toasts = new Toasts();
+  const serveHints = createServeHints(storage, options.locateHint);
+  let angryHinted = false;
 
   function dispatch(cmd: Command): boolean {
-    return state ? simDispatch(state, cmd) : false;
+    if (!state || !simDispatch(state, cmd)) return false;
+    serveHints.onCommand(cmd);
+    // The speed picked on the HUD (buttons or 1/2/3) is the next run's speed too.
+    if (cmd.type === 'set_speed' && SPEEDS.includes(cmd.speed as GameSpeed) && cmd.speed !== base.settings.gameSpeed) {
+      base.changeSettings({ gameSpeed: cmd.speed as GameSpeed });
+    }
+    return true;
+  }
+
+  // Day 2, once per browser: the day at 1x is long on a phone.
+  function hintSpeed(): void {
+    if (!state || state.day !== 2 || state.speed !== 1) return;
+    try {
+      if (storage.getItem(SPEED_HINT_KEY) !== null) return;
+      storage.setItem(SPEED_HINT_KEY, '1');
+    } catch {
+      return;
+    }
+    toasts.show({ level: 'info', icon: 'i-speed-2', title: SPEED_HINT });
   }
 
   // Anonymous play log (save/playlog.ts): one random id per run, and only the
@@ -145,7 +173,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // Under the screens, as when the whole shell was built at once: they share
   // a stacking level and the later element paints on top.
   const firstScreen = screens.get('menu')?.el ?? null;
-  for (const el of [hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
+  for (const el of [serveHints.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
@@ -169,6 +197,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     state.events = [];
     runId = newRunId();
     logPlay('run_start');
+    serveHints.start(state, from !== undefined);
+    angryHinted = false;
     hud.closePanel();
     toasts.clear();
     resetRegularToasts();
@@ -186,6 +216,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     logPlay('quit_to_menu', leavePhase());
     state = null;
     runId = null;
+    serveHints.stop();
     hud.closePanel();
     toasts.clear();
     hud.el.hidden = true;
@@ -317,13 +348,23 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     if (target instanceof Node && (hud.panelEl.contains(target) || report.el.contains(target))) return false;
     return screens.current === null || screens.current === 'pause';
   }
+  // A phone may drop a background tab without notice: save the run where it
+  // stands, mid-day too, under the same keepAutosave rule as the end of a day.
+  // A bankrupt run is not saved, so the slot keeps its last playable day.
+  function saveOnLeave(): void {
+    if (!state || state.bankrupt || screens.current === 'bankrupt') return;
+    runAutosave(state, state.day);
+  }
   function onVisibility(): void {
     logPlay(document.hidden ? 'hidden' : 'visible', leavePhase());
-    if (document.hidden && state && screens.current === null) openPause();
+    if (!document.hidden) return;
+    saveOnLeave();
+    if (state && screens.current === null) openPause();
   }
   // Closing the tab or navigating away may skip visibilitychange on some browsers.
   function onPageHide(): void {
     logPlay('hidden', leavePhase());
+    saveOnLeave();
   }
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);
@@ -349,15 +390,23 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     update() {
       if (state) hud.update(state);
       syncReport();
+      serveHints.update(state, screens.current !== null || report.visible);
     },
     handleEvents(events) {
       if (!state) return;
       for (const event of events) {
-        const toast = toastForEvent(event, state);
+        let toast = toastForEvent(event, state);
+        if (toast && event.type === 'angry' && !angryHinted) {
+          angryHinted = true;
+          toast = { ...toast, text: `${toast.text ?? ''} ${ANGRY_HINT}`.trim() };
+        }
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);
-        if (event.type === 'phase') logPlay('phase', event.phase);
+        if (event.type === 'phase') {
+          logPlay('phase', event.phase);
+          if (event.phase === 'opening') hintSpeed();
+        }
         else if (event.type === 'week_ended') logPlay('week_end');
         if (event.type === 'dayEnded') {
           logPlay('day_end');

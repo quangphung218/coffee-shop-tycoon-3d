@@ -1953,6 +1953,26 @@ legend {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
+
+/* Day-1 serving hint (serveHints.ts): a cream pill over what to tap next.
+   Taps go through to the scene. Anchored, its bottom centre sits on the
+   point; without one it waits under the HUD, centred. */
+#ui > .serve-hint {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  padding: var(--space-1) var(--space-3);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel-solid);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  box-shadow: var(--frame-shadow);
+}
 .icon-btn {
   min-width: var(--size-target);
   min-height: var(--size-target);

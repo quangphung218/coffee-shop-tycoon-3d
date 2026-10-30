@@ -3,6 +3,7 @@ import type { SaveSlot } from '../../save/slots';
 import { defaultStorage, type StorageLike } from '../../save/storage';
 import type { GameState } from '../../sim/types';
 import { SceneGate } from '../core/sceneGate';
+import type { LocateHint } from '../hud/serveHints';
 import { ScreenManager } from '../core/screens';
 import { trackScrollActivity } from '../core/scrollActivity';
 import { createMainMenu } from './mainMenu';
@@ -27,6 +28,8 @@ export interface ShellOptions {
   seed?(): number;
   /** "Chơi lại" on the week-end screen, called with the finished game before the new one starts. */
   onReplay?(finished: GameState): void;
+  /** Screen point over a serving hint's target (day-1 labels); without it the label waits mid-screen. */
+  locateHint?: LocateHint;
   /** Loading state of the 3D scene; the buttons that enter the shop wait for it. Always ready when omitted. */
   scene?: SceneGate;
 }
@@ -59,6 +62,8 @@ export interface MenuShell {
   /** True once attachGame was called. */
   readonly attached: boolean;
   openSettings(): void;
+  /** Saves a setting changed outside Settings, such as the speed picked on the HUD. */
+  changeSettings(patch: Partial<Settings>): void;
   /**
    * Plugs in the game part. "Ván mới" or "Tải game" pressed before this
    * opens its screen now, unless the player has left the menu since.
@@ -108,18 +113,16 @@ export function createMenuShell(options: ShellOptions): MenuShell {
       onSettings: () => openSettings(),
     }, scene),
   );
-  screens.add(
-    'settings',
-    createSettings(storage, settings, {
-      onChange: (next) => {
-        settings = next;
-        game?.onSettingsChange(next);
-        applyReducedMotion(next);
-        options.onSettingsChange?.(next);
-      },
-      onBack: () => screens.show(settingsReturn),
-    }),
-  );
+  const settingsScreen = createSettings(storage, settings, {
+    onChange: (next) => {
+      settings = next;
+      game?.onSettingsChange(next);
+      applyReducedMotion(next);
+      options.onSettingsChange?.(next);
+    },
+    onBack: () => screens.show(settingsReturn),
+  });
+  screens.add('settings', settingsScreen);
 
   function onKeyDown(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -152,6 +155,7 @@ export function createMenuShell(options: ShellOptions): MenuShell {
       return game !== null;
     },
     openSettings,
+    changeSettings: (patch) => settingsScreen.apply(patch),
     attachGame(next) {
       game = next;
       const open = pending;
