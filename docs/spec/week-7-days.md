@@ -74,29 +74,29 @@ Sáng mỗi ngày, thời tiết lấy theo lịch. Save cũ không có `week` v
 
 ## Mục tiêu tuần
 
-Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu bằng mức tuần 1 nhân hệ số trong `WEEK_GOAL_MULTS` (tuần 1, 2, 3, 4), làm tròn tới 100.000; từ tuần 5 giữ hệ số tuần 4. Mục tiêu sao giữ nguyên. Từ E-07 bảng hệ số thay công thức cộng 60% mỗi tuần (`WEEK_GOAL_GROWTH`, đã bỏ).
+Mục tiêu tuần N lấy từ `weekGoal(difficulty, N)` (`src/sim/data/week.ts`) và lưu ở `state.week.goal`. Tuần 1 là `WEEK_GOALS`; từ tuần 2 doanh thu bằng mức tuần 1 nhân hệ số trong `WEEK_GOAL_MULTS` (tuần 1, 2, 3, 4), làm tròn tới 100.000; từ tuần 5 hệ số tăng thêm `WEEK_GOAL_LATE_GROWTH` mỗi tuần (Dễ và Thường 0,15, Khó 0,10), không có trần. Mục tiêu sao giữ nguyên.
 
-| Độ khó | Sao | Hệ số tuần 1 / 2 / 3 / 4 | Tuần 1 | Tuần 2 | Tuần 3 | Từ tuần 4 |
-| --- | --- | --- | --- | --- | --- | --- |
-| Dễ | 3,8 | 1 / 1,9 / 3,6 / 3,6 | 35.000.000 | 66.500.000 | 126.000.000 | 126.000.000 |
-| Thường | 4,0 | 1 / 1,9 / 3,5 / 3,5 | 32.000.000 | 60.800.000 | 112.000.000 | 112.000.000 |
-| Khó | 4,2 | 1 / 1,9 / 2,9 / 3,55 | 33.000.000 | 62.700.000 | 95.700.000 | khoảng 117.200.000 |
+| Độ khó | Sao | Hệ số tuần 1 / 2 / 3 / 4 | Từ tuần 5 | Tuần 1 | Tuần 2 |
+| --- | --- | --- | --- | --- | --- |
+| Dễ | 3,8 | 1 / 1,7 / 2,4 / 2,9 | +0,15/tuần | 35.000.000 | 59.500.000 |
+| Thường | 4,0 | 1 / 1,7 / 2,3 / 2,8 | +0,15/tuần | 32.000.000 | 54.400.000 |
+| Khó | 4,2 | 1 / 1,65 / 2,3 / 2,8 | +0,10/tuần | 33.000.000 | 54.500.000 |
 
-Hệ số tuần 3 và 4 chọn để quán không mua gì (`a_basic`, doanh thu khoảng 1,1 lần mục tiêu tuần 1 mỗi tuần) còn giữ ít nhất 1 cúp tới hết tuần 4 và số cúp không tăng, còn quán chi tiền (`c_spend`, `e_marketing`) phải có tuần mạnh mới đạt 3 cúp ở tuần 3–4. Các hệ số này khớp với kinh tế hiện tại; sau khi đổi kinh tế phải đo lại bằng `p23-long-run.test.ts`. Số đo trước và sau: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-07).
+Đường cong chọn (E-11) để điểm tuần của quán chi tiền không tụt quá 10 điểm từ tuần 2→3 (tuần 1→2 vẫn có thể tụt tới 18 điểm ở Dễ), và quán không mua gì (`a_basic`) giảm dần nhưng giữ ít nhất 1 cúp. Hệ số tuần 2 của Khó (1,65) là lệch có chủ ý, review chấp nhận. Điểm trung bình `a_basic` tuần 1 → 8: Dễ 89 65 52 46 44 44 43 42, Thường 93 68 57 49 47 46 45 44, Khó 85 68 56 47 47 46 44 44. Các hệ số khớp với kinh tế hiện tại; sau khi đổi kinh tế phải đo lại bằng `p23-long-run.test.ts`. Số đo 8 tuần: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-11).
 
 Mục tiêu tuần 1 được chọn bằng các chiến lược sau (số đo dưới đây là của lần chọn mục tiêu tuần 1 đó, chơi có lịch sự kiện):
 
 | Chiến lược | Mỗi sáng | Test | Seed |
 | --- | --- | --- | --- |
 | Cơ bản | Nhập theo gợi ý, giữ menu ngày 1; tự phục vụ, không thuê, không nâng cấp | `a_basic` của `tests/integration/p22-strategies.test.ts`, 1 tuần | 1, 42, 777, 2024, 31337, 9001 |
-| Cơ bản bật món | Bật mọi món đã mở khoá, rồi làm như Cơ bản | `a_basic` của `tests/integration/p23-long-run.test.ts`, 4 tuần | 1, 42, 777 |
-| Nâng cấp | Như Cơ bản bật món, thêm thuê 1 barista ngày 1 và mua nâng cấp rẻ nhất khi còn đủ tiền | `c_spend` của `tests/integration/p23-long-run.test.ts`, 4 tuần | 1, 42, 777 |
+| Cơ bản bật món | Bật mọi món đã mở khoá, rồi làm như Cơ bản | `a_basic` của `tests/integration/p23-long-run.test.ts`, 8 tuần | 1, 42, 777 |
+| Nâng cấp | Như Cơ bản bật món, thêm thuê 1 barista ngày 1 và mua nâng cấp rẻ nhất khi còn đủ tiền | `c_spend` của `tests/integration/p23-long-run.test.ts`, 8 tuần | 1, 42, 777 |
 
 Kết quả:
 
 - Cơ bản đạt khoảng 80% mục tiêu tuần 1: trung bình Dễ 22,54 triệu (80,5%), Thường 21,07 triệu (79,5%), Khó 18,21 triệu (78,5%); từng seed 75,3–83,4%; 2 cúp (điểm 83–89).
-- Cơ bản bật món: 3 cúp ở tuần 1 (điểm 96–100), 2 cúp ở tuần 2 (84–87) và tuần 3 (72–75), 1 cúp ở tuần 4 (64–66).
-- Nâng cấp: 100 điểm, 3 cúp mọi tuần 1–4, mọi seed.
+- Cơ bản bật món (E-11, trung bình 3 seed, tuần 1 → 8): Dễ 89 65 52 46 44 44 43 42; Thường 93 68 57 49 47 46 45 44; Khó 85 68 56 47 47 46 44 44. Giữ ít nhất 1 cúp.
+- Nâng cấp (`c_spend`): 3 cúp tuần 5–8 ở 12/12 ván mỗi độ khó; điểm trung bình tuần 2 là 89–100. Chi tiết ở [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-11).
 
 Số đo từng seed ở [reports/p24-ui.md](../reports/p24-ui.md#mục-tiêu-tuần-sau-khi-sửa-gợi-ý-nhập).
 
@@ -122,13 +122,12 @@ Tối ngày 7, `closeDay` gọi `scoreWeek` (`src/sim/week.ts`) và lưu kết q
 
 Cách `weekUpgradeCharge` tính tiền nâng cấp trong lợi nhuận tuần:
 
-- Tuần 1 trừ toàn bộ tiền nâng cấp mua trong tuần, như trước.
-- Từ tuần 2, mỗi khoản nâng cấp chia đều `UPGRADE_AMORTIZE_WEEKS` = 2 tuần: tuần mua và tuần kế tiếp, mỗi tuần trừ một nửa. Đồ mua ở tuần 1 đã trừ hết trong tuần 1 nên không chuyển sang tuần 2.
+- Từ E-11, tuần 1 chia nhỏ như các tuần sau. Mỗi khoản nâng cấp chia đều trong N tuần (`upgradeAmortizeWeeks`, `UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY`): 2 tuần ở Dễ và Thường, 3 tuần ở Khó. Tuần mua và các tuần kế tiếp mỗi tuần trừ 1/N.
 - Chi quá sức vẫn làm tụt điểm lợi nhuận ở tuần mua và tuần sau.
 - Tuần đã chấm theo luật cũ (dòng `archive` không có `upgradeCharge`) không tính lại, và nâng cấp mua trong tuần đó không chuyển sang tuần sau. Không đổi `SAVE_VERSION`.
 - Màn Tổng kết tuần có khối **Lợi nhuận tuần** ghi lợi nhuận, mục tiêu và luật trên (`weekProfitRule` trong `src/ui/screens/weekEnd.ts`).
 
-Chọn 2 tuần vì chia dài hơn đẩy quán chi tiền lên điểm tối đa ở tuần 3–4 ở mọi mục tiêu mà quán không mua gì còn lấy được 1 cúp. Số đo: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-07).
+Chọn 2 tuần vì chia dài hơn đẩy quán chi tiền lên điểm tối đa sớm; Khó dùng 3 tuần vì không đường mục tiêu nào giữ `c_spend` Khó trong 10 điểm ở tuần 2→3 với 2 tuần. Số đo: [reports/p23-long-economy.md](../reports/p23-long-economy.md#đã-sửa-ở-e-11).
 
 ### Mục tiêu tuần hiện rõ (E-09)
 
@@ -179,7 +178,7 @@ Tới cấp 6 quán đã mở mọi món và mọi nâng cấp, trừ những th
 | 9 | Biểu tượng cà phê phố | 49.000 | Đèn trang trí, Máy xay sinh tố, Mở rộng diện tích |
 | 10 | Huyền thoại thành phố | 63.000 | Máy espresso cao cấp, Máy rửa ly |
 
-Số đo 4 tuần dùng để chọn ngưỡng: [reports/p23-long-economy.md](../reports/p23-long-economy.md).
+Số đo 8 tuần: [reports/p23-long-economy.md](../reports/p23-long-economy.md).
 
 ## Save cũ
 
