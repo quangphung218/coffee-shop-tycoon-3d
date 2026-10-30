@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadGame, saveGame } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
 import { HISTORY_DAYS } from '../../src/sim/clock';
-import { WEEK_GOALS, WEEK_LENGTH, weekGoal, weekGoalMaxMult } from '../../src/sim/data/week';
+import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
 import { dispatch } from '../../src/sim/index';
 import { createNewGame } from '../../src/sim/state';
 import type { GameEvent, GameState } from '../../src/sim/types';
@@ -16,7 +16,6 @@ import { playDay, unlockedIds } from './helpers';
 const SEED = 2323;
 const LAST_DAY = 3 * WEEK_LENGTH;
 const SAVE_DAY = 10;
-const GOAL_CAP = Math.round((WEEK_GOALS.normal.revenue * weekGoalMaxMult('normal')) / 100_000) * 100_000;
 
 interface DayLog {
   day: number;
@@ -80,16 +79,14 @@ describe('endless weeks: 21 days in a row', { timeout: 300_000 }, () => {
     expect(state.history.map((d) => d.day)).toEqual(Array.from({ length: LAST_DAY - 1 }, (_, i) => i + 1));
   });
 
-  it('raises the week goal each week, never past the cap', () => {
+  it('raises the week goal each week, with no cap (E-11)', () => {
     const goals = [1, 8, 15].map((d) => logs[d - 1]!.goalRevenue);
     expect(goals).toEqual([1, 2, 3].map((i) => weekGoal('normal', i).revenue));
     expect(goals[1]).toBeGreaterThan(goals[0]!);
     expect(goals[2]).toBeGreaterThan(goals[1]!);
     // Every day of a week keeps the goal it started with.
     for (const l of logs) expect(l.goalRevenue).toBe(goals[Math.floor((l.day - 1) / WEEK_LENGTH)]);
-    for (const g of goals) expect(g).toBeLessThanOrEqual(GOAL_CAP);
-    for (let i = 1; i <= 52; i++) expect(weekGoal('normal', i).revenue).toBeLessThanOrEqual(GOAL_CAP);
-    expect(weekGoal('normal', 52).revenue).toBe(GOAL_CAP);
+    for (let i = 2; i <= 52; i++) expect(weekGoal('normal', i).revenue).toBeGreaterThan(weekGoal('normal', i - 1).revenue);
   });
 
   it('never locks again what was already open', () => {
@@ -101,7 +98,7 @@ describe('endless weeks: 21 days in a row', { timeout: 300_000 }, () => {
     expect(unlockedIds(state).size).toBeGreaterThanOrEqual(logs[logs.length - 1]!.unlocked.size);
   });
 
-  it('opens week 4 with its own goal on next_day, at least week 3\'s', () => {
+  it('opens week 4 with its own goal on next_day, above week 3\'s', () => {
     const g = JSON.parse(JSON.stringify(state)) as GameState;
     expect(dispatch(g, { type: 'next_day' })).toBe(true);
     expect(g.day).toBe(LAST_DAY + 1);
@@ -109,9 +106,7 @@ describe('endless weeks: 21 days in a row', { timeout: 300_000 }, () => {
     expect(g.week!.startedDay).toBe(LAST_DAY + 1);
     expect(g.week!.result).toBeUndefined();
     expect(g.week!.goal).toEqual(weekGoal('normal', 4));
-    // Normal reaches its cap in week 3 (WEEK_GOAL_MULTS).
-    expect(g.week!.goal.revenue).toBeGreaterThanOrEqual(logs[14]!.goalRevenue);
-    expect(g.week!.goal.revenue).toBeLessThanOrEqual(GOAL_CAP);
+    expect(g.week!.goal.revenue).toBeGreaterThan(logs[14]!.goalRevenue);
   });
 });
 

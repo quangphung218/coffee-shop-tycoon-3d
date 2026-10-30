@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UPGRADE_AMORTIZE_WEEKS, WEEK_GOALS, WEEK_GOAL_MULTS, WEEK_LENGTH, weekGoal, weekGoalMaxMult, weekProfitTarget } from '../../src/sim/data/week';
+import { UPGRADE_AMORTIZE_WEEKS, WEEK_GOALS, WEEK_GOAL_LATE_GROWTH, WEEK_GOAL_MULTS, WEEK_LENGTH, upgradeAmortizeWeeks, weekGoal, weekGoalMult, weekProfitTarget } from '../../src/sim/data/week';
 import { profit } from '../../src/sim/economy';
 import { dispatch } from '../../src/sim/index';
 import { weekDay } from '../../src/sim/progression';
@@ -132,6 +132,7 @@ describe('end of the week', { timeout: 30_000 }, () => {
         stars: result.stars,
         score: result.score,
         cups: result.cups,
+        upgradeCharge: 0,
       },
     ]);
   });
@@ -153,20 +154,28 @@ describe('end of the week', { timeout: 30_000 }, () => {
 });
 
 describe('weekGoal', () => {
-  it('is WEEK_GOALS in week 1, then follows WEEK_GOAL_MULTS up to its last entry, stars unchanged', () => {
+  it('is WEEK_GOALS in week 1, then follows WEEK_GOAL_MULTS to week 4, stars unchanged', () => {
     for (const d of ['easy', 'normal', 'hard'] as const) {
       const at = (mult: number) => Math.round((WEEK_GOALS[d].revenue * mult) / 100_000) * 100_000;
       expect(weekGoal(d, 1)).toEqual(WEEK_GOALS[d]);
       expect(WEEK_GOAL_MULTS[d]).toHaveLength(4);
       WEEK_GOAL_MULTS[d].forEach((mult, i) => expect(weekGoal(d, i + 1).revenue, `${d} week ${i + 1}`).toBe(at(mult)));
-      expect(weekGoalMaxMult(d)).toBe(WEEK_GOAL_MULTS[d][3]);
-      expect(weekGoal(d, 5).revenue).toBe(at(weekGoalMaxMult(d)));
-      expect(weekGoal(d, 30).revenue).toBe(at(weekGoalMaxMult(d)));
-      // Week 3 asks for more than the old +60% a week did (2.2×), which the spenders maxed out.
-      expect(weekGoal(d, 3).revenue).toBeGreaterThan(at(2.2));
-      for (let i = 2; i <= 8; i++) {
-        expect(weekGoal(d, i).revenue).toBeGreaterThanOrEqual(weekGoal(d, i - 1).revenue);
-        expect(weekGoal(d, i).stars).toBe(WEEK_GOALS[d].stars);
+      for (let i = 2; i <= 8; i++) expect(weekGoal(d, i).stars).toBe(WEEK_GOALS[d].stars);
+    }
+  });
+
+  it('rises in steps no bigger than week 2 asks, then slowly from week 5 with no cap (E-11)', () => {
+    for (const d of ['easy', 'normal', 'hard'] as const) {
+      const steps = [2, 3, 4].map((i) => weekGoalMult(d, i) - weekGoalMult(d, i - 1));
+      for (const s of steps) {
+        expect(s, d).toBeGreaterThan(0);
+        expect(s, d).toBeLessThanOrEqual(steps[0]! + 1e-9);
+      }
+      expect(WEEK_GOAL_LATE_GROWTH[d]).toBeGreaterThanOrEqual(0.1);
+      expect(WEEK_GOAL_LATE_GROWTH[d]).toBeLessThanOrEqual(0.15);
+      for (let i = 5; i <= 520; i++) {
+        expect(weekGoalMult(d, i), `${d} week ${i}`).toBeCloseTo(WEEK_GOAL_MULTS[d][3]! + WEEK_GOAL_LATE_GROWTH[d] * (i - 4));
+        expect(weekGoal(d, i).revenue, `${d} week ${i}`).toBeGreaterThan(weekGoal(d, i - 1).revenue);
       }
     }
   });
@@ -199,20 +208,22 @@ describe('week score formula', () => {
     state.today = createDayStats(WEEK_LENGTH, 4);
     Object.assign(state.today, { revenue: 10_000_000, ingredientCost: 2_000_000, wages: 1_000_000, marketingCost: 500_000, upgradeCost: 1_500_000 });
     expect(weekProfit([state.today])).toBe(profit(state.today) - 1_500_000);
-    expect(scoreWeek(state)!.profit).toBe(5_000_000);
+    // The score pays half the upgrade in week 1, the rest next week (E-11).
+    expect(scoreWeek(state)!.profit).toBe(5_000_000 + 1_500_000 / 2);
   });
 
-  it('charges week 1 its upgrades in full, so the opening week scores as before', () => {
+  it('spreads week 1 upgrades like later weeks: half in week 1 (E-11)', () => {
     const state = atWeekEnd(1, { 3: 2_000_000, 7: 1_000_000 });
-    expect(weekUpgradeCharge(state)).toBe(3_000_000);
-    expect(scoreWeek(state)!.profit).toBe(weekProfit([...state.history, state.today]));
+    expect(weekUpgradeCharge(state)).toBe(1_500_000);
+    expect(scoreWeek(state)!.profit).toBe(weekProfit([...state.history, state.today], 1_500_000));
+    expect(scoreWeek(state)!.profit).toBe(weekProfit([...state.history, state.today]) + 1_500_000);
   });
 
-  it('spreads an upgrade bought from week 2 on over UPGRADE_AMORTIZE_WEEKS weeks', () => {
+  it('spreads an upgrade over UPGRADE_AMORTIZE_WEEKS weeks, week 1 included', () => {
     expect(UPGRADE_AMORTIZE_WEEKS).toBe(2);
     const buys = { 3: 2_000_000, 10: 4_000_000, 17: 6_000_000, 24: 1_000_000 };
-    // Week 1's purchase was charged in week 1; week 2 pays half of what it bought.
-    expect(weekUpgradeCharge(atWeekEnd(2, buys))).toBe(2_000_000);
+    // Week 2: the other half of week 1's, half of its own.
+    expect(weekUpgradeCharge(atWeekEnd(2, buys))).toBe(1_000_000 + 2_000_000);
     // Week 3: the other half of week 2's, half of its own.
     expect(weekUpgradeCharge(atWeekEnd(3, buys))).toBe(2_000_000 + 3_000_000);
     // Week 4: week 2's is paid off.
@@ -220,6 +231,20 @@ describe('week score formula', () => {
     const state = atWeekEnd(3, buys);
     const days = [...state.history, state.today].filter((d) => d.day >= 15);
     expect(scoreWeek(state)!.profit).toBe(days.reduce((s, d) => s + profit(d), 0) - 5_000_000);
+  });
+
+  it('spreads over three weeks on Hard, two on Easy and Normal (E-11)', () => {
+    expect([upgradeAmortizeWeeks('easy'), upgradeAmortizeWeeks('normal'), upgradeAmortizeWeeks('hard')]).toEqual([2, 2, 3]);
+    const hard = (index: number) => {
+      const state = atWeekEnd(index, { 3: 3_000_000, 10: 6_000_000 });
+      state.difficulty = 'hard';
+      return weekUpgradeCharge(state);
+    };
+    expect(hard(1)).toBe(1_000_000);
+    expect(hard(2)).toBe(1_000_000 + 2_000_000);
+    expect(hard(3)).toBe(1_000_000 + 2_000_000);
+    expect(hard(4)).toBe(2_000_000);
+    expect(hard(5)).toBe(0);
   });
 
   it('still scores spending beyond what the shop earns low, in the week bought and the next', () => {

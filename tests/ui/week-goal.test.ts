@@ -174,7 +174,8 @@ describe('Daily report weekStrip: live week goal', () => {
     const state = midWeek([day(1, 5_000_000, 4)]);
     state.today.upgradeCost = 2_000_000;
     const el = mountReport(onReport(state));
-    expect(q(el, '[data-goal="charge"]').textContent).toBe('Nâng cấp tuần này gánh: 2.000.000đ');
+    // Week 1 pays half, like later weeks (E-11).
+    expect(q(el, '[data-goal="charge"]').textContent).toBe('Nâng cấp tuần này gánh: 1.000.000đ');
   });
 
   it('heads for 3 cups when every target is met', () => {

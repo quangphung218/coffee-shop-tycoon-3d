@@ -125,8 +125,11 @@ describe('migrate v2 → v3', { timeout: 300_000 }, () => {
         cups: result.cups,
       },
     ]);
-    // The row matches what the endless sim itself archived for that week.
-    expect(g.week!.archive).toEqual(s.week!.archive);
+    // The row matches what the endless sim itself archived for that week, less
+    // the upgradeCharge the sim records from E-11: v2 paid week-1 upgrades in full.
+    const { upgradeCharge, ...simRow } = s.week!.archive![0]!;
+    expect(upgradeCharge).toBeDefined();
+    expect(g.week!.archive).toEqual([simRow]);
 
     expect(dispatch(g, { type: 'next_day' })).toBe(true);
     expect(g.day).toBe(WEEK_LENGTH + 1);
