@@ -122,9 +122,12 @@ describe('hiring', () => {
 describe('staff work', () => {
   it('a barista cuts the wait for drinks', () => {
     for (const seed of [11, 22, 33]) {
+      // Day 2, so both shops get the same crowd (day 1 alone is calmer, E-20).
       const alone = stockedGame(seed);
+      alone.day = 2;
       playDay(alone);
       const helped = stockedGame(seed);
+      helped.day = 2;
       hire(helped, 'barista');
       playDay(helped);
       expect(avgWait(helped.today), `seed ${seed}`).toBeLessThan(avgWait(alone.today));

@@ -95,10 +95,12 @@ describe('named regulars', () => {
 
   it('leaves day 2 money, customers and the RNG exactly as before regulars existed', () => {
     // Captured from the build before named regulars (commit 9f662fd); the
-    // money is less the rent of days 1 and 2, which came later (E-04).
+    // money is less the rent of days 1 and 2, which came later (E-04). Re-pinned
+    // for E-20: the calmer solo day 1 hands day 2 another RNG state and rating;
+    // the wiped-traces test below still checks day 2 against no regulars.
     const before = {
-      2024: { revenue: 2945000, served: 104, lost: 3, arrived: 107, rng: 3424022847, money: 5475000 },
-      777: { revenue: 2785000, served: 102, lost: 6, arrived: 108, rng: 328784447, money: 5150000 },
+      2024: { revenue: 3115000, served: 107, lost: 5, arrived: 112, rng: 1039715161, money: 6033750 },
+      777: { revenue: 3135000, served: 107, lost: 9, arrived: 116, rng: 4262833461, money: 6012500 },
     } as const;
     for (const seed of [2024, 777] as const) {
       const { state } = seed === 2024 ? run : playTwoDays(seed);
