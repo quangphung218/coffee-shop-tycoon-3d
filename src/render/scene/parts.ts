@@ -159,6 +159,19 @@ export function part(geo: BufferGeometry, color: number, x = 0, y = 0, z = 0, ry
   return g;
 }
 
+/**
+ * Rewrites the baked colour of vertices [start, start + count) in place, so a
+ * part changes colour without a new geometry, material or draw call (shop
+ * styles, E-17). `count` defaults to the rest of the geometry.
+ */
+export function recolor(geo: BufferGeometry, color: number, start = 0, count?: number): void {
+  const attr = geo.getAttribute('color') as BufferAttribute;
+  const end = count === undefined ? attr.count : Math.min(attr.count, start + count);
+  tmpColor.set(color);
+  for (let i = start; i < end; i++) attr.setXYZ(i, tmpColor.r, tmpColor.g, tmpColor.b);
+  attr.needsUpdate = true;
+}
+
 export function merge(parts: BufferGeometry[]): BufferGeometry {
   const merged = mergeGeometries(parts);
   for (const p of parts) p.dispose();
