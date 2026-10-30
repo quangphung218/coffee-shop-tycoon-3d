@@ -459,6 +459,12 @@ kbd {
   gap: var(--space-2) var(--space-4);
   justify-content: space-between;
 }
+/* A touch screen has no arrow keys or Enter to press: no key hint there. */
+@media (hover: none), (pointer: coarse) {
+  .menu-keys {
+    display: none;
+  }
+}
 
 /* Forms */
 .field {
@@ -2051,6 +2057,19 @@ legend {
   justify-content: center;
   align-items: center;
   gap: 0 var(--space-1);
+}
+/* "Ngày" over the run's day number, so 14 fits a 390 px column. */
+.wk-col-date {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: var(--line-height-tight);
+}
+.wk-col-date small {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
 }
 .wk-next {
   display: flex;

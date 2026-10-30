@@ -1066,8 +1066,9 @@
   .rpt-figs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  /* The profit takes the whole first row, the other three share two below. */
-  .rpt-fig.is-result {
+  /* Profit and revenue take a row each, Khách and Sao share the last one. */
+  .rpt-fig.is-result,
+  .rpt-fig[data-fig='revenue'] {
     grid-column: 1 / -1;
   }
   /* Label and bar on the first line, the numbers on the second. */
@@ -1107,6 +1108,20 @@
 /* A narrow phone: footer buttons stack full width, the main one on top, each
    with its icon and label (Xem đánh giá gets its words back). */
 @media (max-width: 480px) {
+  /* Tổng kết, Chỉ số and Đánh giá (n) stay on one row: the three share the
+     width with less padding and never wrap their label. */
+  .rpt-tabs {
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+  }
+  .rpt-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+    white-space: nowrap;
+  }
   .rpt-foot-actions,
   .wk-foot-actions {
     flex-direction: column;

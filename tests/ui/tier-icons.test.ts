@@ -273,22 +273,13 @@ describe('row icons', () => {
 });
 
 describe('tier meta', () => {
-  it('shows "Bậc n/top" once bought (top = highest tier reachable), with "mua để lên bậc n+1" only when the next level changes it', () => {
-    // tables: maxLevel 6, two levels per tier.
+  it('states only the level once bought: no "Bậc n/top", no "mua để lên bậc" (UX-014)', () => {
     expect(getUpgrade('tables').maxLevel).toBe(6);
     const body = open(game({ tables: 2, better_machine: 3, big_counter: 1 }));
-    expect(meta(body, 'tables')).toMatch(/^Giá [\d.]+đ · Cấp 2\/\d+ · Bậc 1\/3 · mua để lên bậc 2 · mỗi cấp \+\d+ chỗ ngồi$/);
-    expect(meta(body, 'better_machine')).toMatch(/ · Cấp 3\/\d+ · Bậc 3\/3 · cấp 4: /);
-    // big_counter: maxLevel 2, one level per tier, no shop-level bonus: tops out at tier 2.
-    expect(meta(body, 'big_counter')).toMatch(/ · Cấp 1\/\d+ · Bậc 1\/2 · mua để lên bậc 2 · mỗi cấp /);
-    expect(meta(body, 'fast_machine')).not.toContain('Bậc');
-  });
-
-  it('leaves out the hint when the next level stays in the tier, or at max level', () => {
-    expect(panel.tierText('tables', 1, true)).toBe('Bậc 1/3 · ');
-    expect(panel.tierText('tables', 2, true)).toBe('Bậc 1/3 · mua để lên bậc 2 · ');
-    expect(panel.tierText('tables', 2, false)).toBe('Bậc 1/3 · ');
-    expect(panel.tierText('tables', 0, true)).toBe('');
+    expect(meta(body, 'tables')).toMatch(/^Giá [\d.]+đ · Cấp 2\/\d+ · mỗi cấp \+\d+ chỗ ngồi$/);
+    expect(meta(body, 'better_machine')).toMatch(/ · Cấp 3\/\d+ · cấp 4: /);
+    expect(meta(body, 'big_counter')).toMatch(/ · Cấp 1\/\d+ · mỗi cấp /);
+    for (const id of ['tables', 'better_machine', 'big_counter', 'fast_machine'] as const) expect(meta(body, id)).not.toMatch(/Bậc|bậc/);
   });
 
   it('updates the icon and the meta when a level is bought', async () => {
@@ -303,8 +294,7 @@ describe('tier meta', () => {
     state.upgrades.tables = 3;
     handle.update!(state);
     expect(rowIcon(body, 'tables').dataset.icon).toBe('i-tables-t2');
-    expect(meta(body, 'tables')).toContain('Cấp 3/');
-    expect(meta(body, 'tables')).toContain('Bậc 2/3 · mỗi cấp');
+    expect(meta(body, 'tables')).toMatch(/Cấp 3\/\d+ · mỗi cấp/);
   });
 });
 

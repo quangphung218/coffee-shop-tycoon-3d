@@ -494,7 +494,7 @@ describe('upgrade level locks', () => {
     expect(grinder.textContent).toContain('Cần cấp quán 2');
     const buy = q<HTMLButtonElement>(grinder, '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
-    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toContain('Cần cấp quán 2 để mở khóa');
+    expect(q(document, `#${buy.getAttribute('aria-describedby')}`).textContent).toBe('Cần cấp quán 2');
     buy.click();
     expect(sent).toHaveLength(0);
     expect(grinder.querySelector('.confirm')).toBeNull();

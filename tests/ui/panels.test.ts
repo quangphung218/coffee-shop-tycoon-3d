@@ -633,7 +633,7 @@ describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', 
     top.shopLevel = MAX_SHOP_LEVEL;
     top.upgrades.plants = getUpgrade('plants').maxLevel + maxLevelBonus(MAX_SHOP_LEVEL, 'plants');
     const maxed = q(mount(renderUpgradesPanel, top).body, '[data-upgrade="plants"]');
-    expect(q(maxed, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · Bậc 3\/3 · mỗi cấp /);
+    expect(q(maxed, '.item-meta').textContent).toMatch(/^Cấp (\d+)\/\1 · mỗi cấp /);
     expect(q(maxed, '.item-status').textContent).toBe('Tối đa');
     expect(q(maxed, '[data-action="buy"]').hidden).toBe(true);
     expect(q(maxed, '[data-remove="plants"]').hidden).toBe(false);

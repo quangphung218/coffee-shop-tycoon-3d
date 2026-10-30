@@ -206,24 +206,24 @@ describe('P31 Nâng cấp: the cold brew tower row', () => {
     expect(q(row(), '.item-actions').textContent).toContain('Thiếu ');
   });
 
-  it('shows tier 1 then tier 2 as levels are bought, and "Tối đa" at the cap', () => {
+  it('shows the tier 1 icon and "Cấp n/2" as levels are bought, and "Tối đa" at the cap', () => {
     const state = level7();
     const { hud, row } = openUpgrades(state);
     expect(simDispatch(state, { type: 'buy_upgrade', upgradeId: 'cold_brew_tower' })).toBe(true);
     hud.update(state);
-    expect(meta(row())).toContain('Cấp 1/2 · Bậc 1/2 · mua để lên bậc 2');
+    expect(meta(row())).toContain('Cấp 1/2 · mỗi cấp');
     expect(row().querySelector('.item-icon [data-icon="i-cold-brew-tower"]')).not.toBeNull();
     expect(statusBadge(row()).hidden).toBe(true);
 
     expect(simDispatch(state, { type: 'buy_upgrade', upgradeId: 'cold_brew_tower' })).toBe(true);
     hud.update(state);
-    expect(meta(row())).toContain('Cấp 2/2 · Bậc 2/2');
+    expect(meta(row())).toContain('Cấp 2/2 · mỗi cấp');
     expect(statusBadge(row()).hidden).toBe(false);
     expect(statusBadge(row()).textContent).toBe('Tối đa');
     expect(buyBtn(row()).hidden).toBe(true);
   });
 
-  it('shows "Bậc 2/2" on both new tools at their cap, even at the top shop level', () => {
+  it('shows "Cấp 2/2" on both new tools at their cap, even at the top shop level', () => {
     const state = level7();
     state.shopLevel = MAX_SHOP_LEVEL;
     state.upgrades.cold_brew_tower = 2;
@@ -231,7 +231,7 @@ describe('P31 Nâng cấp: the cold brew tower row', () => {
     const { hud } = openUpgrades(state);
     for (const id of ['cold_brew_tower', 'oven']) {
       const row = q(hud.panelEl, `[data-upgrade="${id}"]`);
-      expect(meta(row), id).toContain('Cấp 2/2 · Bậc 2/2');
+      expect(meta(row), id).toContain('Cấp 2/2 · mỗi cấp');
       expect(statusBadge(row).textContent, id).toBe('Tối đa');
     }
   });
