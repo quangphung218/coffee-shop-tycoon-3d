@@ -251,7 +251,11 @@ function compareValue(id: StatId, v: number | null): string {
   return String(Math.round(v));
 }
 
-/** Signed change as the cells show it; for the abandon rate a drop is the good direction. */
+/**
+ * Signed change as the cells show it; for the abandon rate a drop is the good
+ * direction. The arrow and the colour both tell better (up, green) or worse
+ * (down, red); the sign of the number tells which way the figure moved.
+ */
 function compareDelta(id: StatId, delta: number): { dir: 'up' | 'down' | 'flat'; tone: 'up' | 'down' | 'flat'; text: string } {
   const shown = id === 'stars' ? Math.round(delta * 10) / 10 : Math.round(delta);
   if (shown === 0) return { dir: 'flat', tone: 'flat', text: '0' };
@@ -272,6 +276,12 @@ function compareDelta(id: StatId, delta: number): { dir: 'up' | 'down' | 'flat';
 
 const DELTA_ICON = { up: 'i-trend-up', down: 'i-trend-down', flat: 'i-equal' } as const satisfies Record<string, IconId>;
 
+/** "Giảm 3 điểm %, tốt hơn": the change read out with its meaning. */
+function deltaLabel(d: ReturnType<typeof compareDelta>): string {
+  if (d.dir === 'flat') return 'Không đổi';
+  return `${d.dir === 'up' ? 'Tăng' : 'Giảm'} ${d.text.slice(1)}, ${d.tone === 'up' ? 'tốt hơn' : 'kém hơn'}`;
+}
+
 /**
  * Each figure of this week next to last week's, with the change (arrow shape,
  * sign, then colour). Below 480 px each row becomes label, this week and the
@@ -283,7 +293,7 @@ function compareBlock(c: WeekCompare): HTMLElement {
     `So với tuần ${c.previous.index}`,
     h(
       'div',
-      { class: 'rpt-table-wrap wk-compare-wrap' },
+      { class: 'rpt-table-wrap wk-compare-wrap', attrs: { tabindex: '0', 'aria-label': `Bảng so với tuần ${c.previous.index}` } },
       h(
         'table',
         { class: 'rpt-margins wk-compare', attrs: { 'data-block': 'compare' } },
@@ -307,7 +317,7 @@ function compareBlock(c: WeekCompare): HTMLElement {
                 'td',
                 { class: 'is-num' },
                 d
-                  ? h('span', { class: `rpt-fig-delta wk-delta is-${d.tone}`, attrs: { 'data-delta': d.dir } }, icon(DELTA_ICON[d.dir], { size: 16 }), h('b', { text: d.text }))
+                  ? h('span', { class: `rpt-fig-delta wk-delta is-${d.tone}`, attrs: { 'data-delta': d.dir, 'data-tone': d.tone, 'aria-label': deltaLabel(d) } }, icon(DELTA_ICON[d.tone], { size: 16 }), h('b', { text: d.text }))
                   : h('span', { class: 'rpt-muted', text: '—' }),
               ),
             );
@@ -327,7 +337,7 @@ function shortMoney(dong: number): string {
 }
 
 /** One CSS column per week day, height by revenue, the best day marked; weather and event below. */
-function daysBlock(r: WeekResult, best: number | null): HTMLElement {
+function daysBlock(r: WeekResult, best: number | null, startDay = 1): HTMLElement {
   const max = Math.max(0, ...r.days.map((d) => d.revenue));
   return section(
     'i-chart',
@@ -337,9 +347,11 @@ function daysBlock(r: WeekResult, best: number | null): HTMLElement {
       { class: 'wk-chart', attrs: { 'data-block': 'days' } },
       ...r.days.map((d) => {
         const isBest = d.day === best;
+        // d.day counts 1–7 inside the week; the player knows the run's day (Ngày 8–14 in week 2).
+        const day = startDay + d.day - 1;
         const bar = h('span', { class: 'wk-bar' });
         bar.setAttribute('style', `height:${max > 0 ? Math.round((d.revenue / max) * 100) : 0}%`);
-        const label = [`Ngày ${d.day}`, WEATHER_LABELS[d.weather], d.event === 'none' ? null : DAY_EVENT_LABELS[d.event], formatMoney(d.revenue), `${d.customersServed} khách`, isBest ? 'ngày tốt nhất' : null]
+        const label = [`Ngày ${day}`, WEATHER_LABELS[d.weather], d.event === 'none' ? null : DAY_EVENT_LABELS[d.event], formatMoney(d.revenue), `${d.customersServed} khách`, isBest ? 'ngày tốt nhất' : null]
           .filter(Boolean)
           .join(' · ');
         return h(
@@ -352,7 +364,7 @@ function daysBlock(r: WeekResult, best: number | null): HTMLElement {
             { class: 'wk-col-day', attrs: { 'aria-hidden': 'true' } },
             icon(WEATHER_ICONS[d.weather], { size: 16 }),
             d.event === 'none' ? null : icon(DAY_EVENT_ICONS[d.event], { size: 16 }),
-            h('b', { text: `N${d.day}` }),
+            h('b', { class: 'wk-col-date' }, h('small', { text: 'Ngày' }), String(day)),
           ),
         );
       }),
@@ -458,7 +470,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
   const titleId = uid('week-t');
   const title = h('h3', { id: titleId, text: 'Tổng kết tuần' });
   const sub = h('p', { class: 'rpt-sub' });
-  const body = h('div', { class: 'rpt-body' });
+  const body = h('div', { class: 'rpt-body', attrs: { tabindex: '0', 'aria-label': 'Nội dung tổng kết tuần' } });
   const save = h('div', { class: 'rpt-save wk-save', attrs: { 'data-save': '' } });
   let saveStatus: SaveStatus | null = null;
   // The ok line only answers a "Thử lại"; the Daily Report already said it was saved.
@@ -568,7 +580,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
           scoreDetail(state, result),
           h('div', { class: 'rpt-grid wk-grid' }, revenueBlock(result), profitBlock(result, index), starsBlock(result)),
           compare && compare.current.index === index ? compareBlock(compare) : null,
-          daysBlock(result, bestDay(state)?.weekDay ?? null),
+          daysBlock(result, bestDay(state)?.weekDay ?? null, start),
           nextWeekBlock(state, index),
           weekOneBlock(state, result, index),
         );

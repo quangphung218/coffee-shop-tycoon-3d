@@ -179,7 +179,7 @@ function marginTable(ins: Insights): HTMLElement {
     ),
   );
   const table = h('table', { class: 'rpt-margins', attrs: { 'data-block': 'margins' } }, h('thead', {}, head), h('tbody', {}, ...body));
-  return section('i-coin', 'Biên lợi nhuận từng món', h('div', { class: 'rpt-table-wrap' }, table));
+  return section('i-coin', 'Biên lợi nhuận từng món', h('div', { class: 'rpt-table-wrap', attrs: { tabindex: '0', 'aria-label': 'Bảng biên lợi nhuận từng món' } }, table));
 }
 
 /** Action list from the flagged metrics; each row links to the panel that fixes it, unless onOpenPanel is null. */

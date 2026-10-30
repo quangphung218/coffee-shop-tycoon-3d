@@ -615,7 +615,7 @@ describe('report.css', () => {
     expect(src.match(/\.wk-goal-num\s*\{([^}]*)\}/)?.[1]).toMatch(/font-size:\s*var\(--font-size-value\)/);
     // The 32 px profit gets a wider column, and the whole first row on a phone.
     expect(src).toMatch(/\.rpt-figs\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.5fr\) repeat\(3, minmax\(0, 1fr\)\)/);
-    expect(src.slice(src.indexOf('@media (max-width: 640px)'))).toMatch(/\.rpt-fig\.is-result\s*\{[^}]*grid-column:\s*1 \/ -1/);
+    expect(src.slice(src.indexOf('@media (max-width: 640px)'))).toMatch(/\.rpt-fig\.is-result,\s*\.rpt-fig\[data-fig='revenue'\]\s*\{[^}]*grid-column:\s*1 \/ -1/);
     expect(src.match(/\.rpt-dialog\s*\{([^}]*)\}/)?.[1]).toMatch(/border:\s*var\(--size-frame-outline\) solid/);
     expect([...src.matchAll(/box-shadow:\s*([^;]+);/g)].map((m) => m[1]!.trim())).toEqual(['var(--shadow-card)', 'var(--shadow-sm)']);
     expect(src).toMatch(/\.rpt-foot \.btn\s*\{[^}]*min-height:\s*var\(--size-control-md\)/);
