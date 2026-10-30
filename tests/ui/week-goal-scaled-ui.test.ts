@@ -14,9 +14,10 @@ import { SCALED_GOAL_TEXT, weekGoalBlock, weekGoalView } from '../../src/ui/week
 
 const EMOJI = /\p{Extended_Pictographic}/u;
 const SEED = 1919;
-/** Recent weekly revenue well above weekGoal for week 12, so the scaled rule sets the target. */
+/** Recent weekly revenue well above weekGoal for week 8, so the scaled rule sets the target. */
 const BIG = 400_000_000;
-const INDEX = 12;
+/** Week 7: the next week is still before SIZE_GOAL_FIRST_WEEK, where the E-19 rule holds. */
+const INDEX = 7;
 
 function row(index: number): WeekSummary {
   return { index, startedDay: (index - 1) * WEEK_LENGTH + 1, revenue: BIG, profit: 0, customersServed: 0, stars: 4, score: 0, cups: 0, upgradeCharge: 0 };

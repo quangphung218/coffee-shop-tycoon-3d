@@ -1,5 +1,16 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, scaledWeekGoal, upgradeAmortizeWeeks, weekProfitTarget } from './data/week';
+import {
+  DAY_EVENTS,
+  SCALED_GOAL_MIN_LEVEL,
+  SIZE_GOAL_FIRST_WEEK,
+  WEEK_GOALS,
+  WEEK_LENGTH,
+  goalProfitTarget,
+  scaledWeekGoal,
+  sizeGoal,
+  upgradeAmortizeWeeks,
+  weekGoal,
+} from './data/week';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
@@ -215,8 +226,9 @@ export function isLastWeekDay(state: GameState): boolean {
 /**
  * Scores the week from today's and the earlier week days' stats: revenue and
  * profit (weekProfit) are sums over the week, stars the current rating to one
- * decimal. The profit target comes from the goal's revenue (weekProfitTarget),
- * so goals stored by older saves score the same way. Call once today's day is
+ * decimal. The profit target is the goal's own profit when set, else it comes
+ * from the goal's revenue (goalProfitTarget), so goals stored by older saves
+ * score the same way. Call once today's day is
  * settled. Null when the game has no week. A result already stored is never
  * scored again.
  */
@@ -225,7 +237,7 @@ export function scoreWeek(state: GameState): WeekResult | null {
   if (!week) return null;
   // Saves made before goals existed fall back to the difficulty's targets.
   const goal = week.goal ?? WEEK_GOALS[state.difficulty];
-  const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
+  const profitTarget = goalProfitTarget(state.difficulty, goal);
   const lastDay = week.startedDay + week.length - 1;
   const stats = [...state.history, state.today].filter(
     (d) => d.day >= week.startedDay && d.day <= lastDay,
@@ -294,13 +306,25 @@ export function dayIngredientPriceMult(state: GameState): number {
   return plan ? DAY_EVENTS[plan.event].ingredientPriceMult : 1;
 }
 
+/** Sum of the shop's upgrade levels (the SIZE_GOAL row). */
+export function totalUpgradeLevels(state: GameState): number {
+  return Object.values(state.upgrades).reduce<number>((s, l) => s + (typeof l === 'number' ? l : 0), 0);
+}
+
 /**
- * Targets of the week that follows the current one (scaledWeekGoal): from shop
- * level 10 they follow the revenue of the archived weeks. `scaled` is true when
- * that revenue set the target. Call before next_day to preview the next week.
+ * Targets of the week that follows the current one. From week
+ * SIZE_GOAL_FIRST_WEEK at shop level SCALED_GOAL_MIN_LEVEL they are the
+ * SIZE_GOAL row of the shop's total upgrade levels (revenue and profit; stars
+ * of weekGoal). Otherwise scaledWeekGoal: from shop level 10 they follow the
+ * revenue of the archived weeks, and `scaled` is true when that revenue set
+ * the target. Call before next_day to preview the next week.
  */
 export function nextWeekGoal(state: GameState): { goal: WeekGoal; scaled: boolean } {
   const index = weekIndex(state) + 1;
+  if (state.shopLevel >= SCALED_GOAL_MIN_LEVEL && index >= SIZE_GOAL_FIRST_WEEK) {
+    const row = sizeGoal(state.difficulty, totalUpgradeLevels(state));
+    return { goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit }, scaled: false };
+  }
   const past = (state.week?.archive ?? []).filter((w) => w.index < index).map((w) => w.revenue);
   return scaledWeekGoal(state.difficulty, index, state.shopLevel, past);
 }

@@ -698,6 +698,11 @@ export interface WeekSummary {
 export interface WeekGoal {
   revenue: number;
   stars: number;
+  /**
+   * Profit target over the 7 days (SIZE_GOAL weeks, E-21). Absent in older
+   * goals, which score against weekProfitTarget of their revenue.
+   */
+  profit?: number;
 }
 
 /** End-of-week scoring (scoreWeek in src/sim/week.ts). */
