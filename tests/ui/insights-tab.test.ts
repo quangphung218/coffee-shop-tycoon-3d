@@ -121,6 +121,18 @@ describe('Daily Report — Chỉ số tab', () => {
     expect(q(el, '[data-metric="food_cost"] .rpt-kpi-status .ic')).toBeTruthy();
   });
 
+  it('names Food cost / Prime cost in Vietnamese, the original term in the title (UX-015)', () => {
+    const { el } = mount(report());
+    const food = q(el, '[data-metric="food_cost"] .rpt-kpi-label');
+    const prime = q(el, '[data-metric="prime_cost"] .rpt-kpi-label');
+    expect(food.textContent).toBe('Chi phí nguyên liệu');
+    expect(food.getAttribute('title')).toBe('Food cost');
+    expect(prime.textContent).toBe('Chi phí chính');
+    expect(prime.getAttribute('title')).toBe('Prime cost');
+    expect(q(el, '[data-metric="labor_cost"] .rpt-kpi-label').hasAttribute('title')).toBe(false);
+    expect(q(el, '[data-block="kpis"]').textContent).not.toMatch(/Food cost|Prime cost/);
+  });
+
   it('draws the hourly chart 07–20 with the peak hour marked and a hidden table', () => {
     const { el } = mount(report());
     const bars = el.querySelectorAll('.rpt-chart-bars .rpt-hour');
