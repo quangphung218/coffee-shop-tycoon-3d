@@ -1,13 +1,13 @@
 import { rollWeekChallenge } from './challenges';
 import { rollWeather } from './customers';
-import { weekGoal, weekUnlockDay } from './data/week';
+import { weekUnlockDay } from './data/week';
 import { recordRevenue } from './economy';
 import { rollMissions, weekDay, weekIndex } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
 import { grantUpgradeLevel, upgradeLevel } from './upgrades';
 import type { GameState, Phase, WeekState } from './types';
-import { rollWeekPlan, todayPlan } from './week';
+import { nextWeekGoal, rollWeekPlan, todayPlan } from './week';
 
 /** Finished days kept in `state.history`; older weeks are summed up in `state.week.archive`. */
 export const HISTORY_DAYS = 28;
@@ -115,21 +115,24 @@ export function startNextDay(state: GameState): boolean {
 }
 
 /**
- * Replaces the scored week with the next one, starting today: plan and goal
- * come from the seed, the difficulty and the new index, and so does the side
+ * Replaces the scored week with the next one, starting today: plan comes from
+ * the seed and the new index, goal from nextWeekGoal (the difficulty, the index
+ * and, from shop level 10, the recent weeks' revenue), and so does the side
  * challenge from CHALLENGE_FIRST_WEEK; the archive carries over.
  */
 function startNextWeek(state: GameState, week: WeekState): void {
   const index = weekIndex(state) + 1;
+  const { goal, scaled } = nextWeekGoal(state);
   state.week = {
     length: week.length,
     index,
     startedDay: state.day,
     plan: rollWeekPlan(state.seed, index),
-    goal: weekGoal(state.difficulty, index),
+    goal,
+    ...(scaled ? { goalScaled: true as const } : {}),
     ...(week.archive ? { archive: week.archive } : {}),
   };
-  const challenge = rollWeekChallenge(state.seed, index);
+  const challenge = rollWeekChallenge(state.seed, index, state.history);
   if (challenge) state.week.challenge = challenge;
 }
 

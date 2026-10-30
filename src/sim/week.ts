@@ -1,9 +1,9 @@
 import { rollWeather } from './customers';
-import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, upgradeAmortizeWeeks, weekProfitTarget } from './data/week';
+import { DAY_EVENTS, WEEK_GOALS, WEEK_LENGTH, scaledWeekGoal, upgradeAmortizeWeeks, weekProfitTarget } from './data/week';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
-import type { DayEventId, DayPlan, DayStats, GameState, WeekResult, WeekSummary } from './types';
+import type { DayEventId, DayPlan, DayStats, GameState, WeekGoal, WeekResult, WeekSummary } from './types';
 
 /** Draw weights of the events on the rolled days; the grand opening is day 1 of week 1 only. */
 const EVENT_WEIGHTS: Readonly<Record<Exclude<DayEventId, 'grand_opening'>, number>> = {
@@ -292,4 +292,20 @@ export function summarizeWeek(state: GameState, result: WeekResult): WeekSummary
 export function dayIngredientPriceMult(state: GameState): number {
   const plan = todayPlan(state);
   return plan ? DAY_EVENTS[plan.event].ingredientPriceMult : 1;
+}
+
+/**
+ * Targets of the week that follows the current one (scaledWeekGoal): from shop
+ * level 10 they follow the revenue of the archived weeks. `scaled` is true when
+ * that revenue set the target. Call before next_day to preview the next week.
+ */
+export function nextWeekGoal(state: GameState): { goal: WeekGoal; scaled: boolean } {
+  const index = weekIndex(state) + 1;
+  const past = (state.week?.archive ?? []).filter((w) => w.index < index).map((w) => w.revenue);
+  return scaledWeekGoal(state.difficulty, index, state.shopLevel, past);
+}
+
+/** True when the running week's goal was scaled to the shop's recent revenue (the UI's "scaled" goal). */
+export function isWeekGoalScaled(state: GameState): boolean {
+  return state.week?.goalScaled === true;
 }

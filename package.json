@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "sim:long": "vitest run --configLoader runner --config tests/longsim/vitest.config.ts",
     "check": "tsc --noEmit && vitest run && vite build",
     "media": "npm run build && node scripts/capture-media.mjs",
     "media:p20": "npm run build && node scripts/capture-p20.mjs",

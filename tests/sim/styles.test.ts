@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, loadGame, saveGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
 import { endOfDayChallenge } from '../../src/sim/challenges';
-import { WEEK_CHALLENGES, WEEK_CHALLENGE_IDS } from '../../src/sim/data/challenges';
+import { CHALLENGE_STYLE_ORDER, WEEK_CHALLENGES, WEEK_CHALLENGE_IDS } from '../../src/sim/data/challenges';
 import { STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf } from '../../src/sim/data/styles';
 import { WEEK_LENGTH, weekGoal } from '../../src/sim/data/week';
 import { buyStyle, canAffordStyle, chosenStyles, dispatch, isStyleUnlocked, ownsStyle, styleOf } from '../../src/sim/index';
@@ -42,15 +42,12 @@ describe('style catalog (E-17)', () => {
     expect(new Set(STYLES.map((s) => s.id)).size).toBe(STYLES.length);
   });
 
-  it('gates styles by weekly challenge rewards, each gated style reachable from exactly one challenge', () => {
-    const unlocks = WEEK_CHALLENGE_IDS.flatMap((id) => (WEEK_CHALLENGES[id].reward.unlock ? [WEEK_CHALLENGES[id].reward.unlock!] : []));
-    expect(unlocks.length).toBeGreaterThan(0);
-    for (const u of unlocks) {
-      expect(u.kind).toBe('decor');
-      expect(styleById(u.id)?.challenge).toBe(true);
-    }
+  it('gates styles by weekly challenges in a fixed order holding every gated style once (E-19)', () => {
+    for (const id of WEEK_CHALLENGE_IDS) expect(WEEK_CHALLENGES[id].reward.unlock).toBeUndefined();
+    for (const id of CHALLENGE_STYLE_ORDER) expect(styleById(id)?.challenge).toBe(true);
     const gated = STYLES.filter((s) => s.challenge).map((s) => s.id);
-    expect(unlocks.map((u) => u.id).sort()).toEqual(gated.sort());
+    expect([...CHALLENGE_STYLE_ORDER].sort()).toEqual(gated.sort());
+    expect(new Set(CHALLENGE_STYLE_ORDER).size).toBe(CHALLENGE_STYLE_ORDER.length);
   });
 });
 
@@ -110,7 +107,7 @@ describe('style state and actions', () => {
     expect(money).toBeGreaterThan(0);
   });
 
-  it('a completed challenge unlocks its style, which can then be bought', () => {
+  it('a completed challenge unlocks the next style in order, which can then be bought', () => {
     const state = rich();
     state.day = 4 * WEEK_LENGTH + 1;
     state.today = createDayStats(state.day, state.rating);
@@ -119,11 +116,12 @@ describe('style state and actions', () => {
     const c: WeekChallenge = { id: def.id, target: 1, reward: { ...def.reward }, progress: 0, settledDay: 0, status: 'active' };
     state.week.challenge = c;
     state.today.regularsServed = 1;
-    const id = def.reward.unlock!.id;
+    const id = CHALLENGE_STYLE_ORDER[0]!;
     expect(isStyleUnlocked(state, id)).toBe(false);
     endOfDayChallenge(state, { missions: [] } as unknown as DailyReport);
     expect(c.status).toBe('completed');
     expect(isStyleUnlocked(state, id)).toBe(true);
+    expect(c.reward.unlock).toEqual({ kind: 'decor', id });
     expect(state.events.some((e) => e.type === 'style_unlocked' && e.styleId === id)).toBe(true);
     expect(dispatch(state, { type: 'buy_style', styleId: id })).toBe(true);
     expect(styleOf(state, styleById(id)!.slot).id).toBe(id);

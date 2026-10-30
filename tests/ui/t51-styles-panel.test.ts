@@ -137,7 +137,7 @@ describe('Phong cách quán panel', () => {
     expect(buy.getAttribute('aria-disabled')).toBe('true');
     const why = wood.querySelector<HTMLElement>('.reason')!;
     expect(why.hidden).toBe(false);
-    expect(why.textContent).toContain('Hoàn thành thử thách tuần "Khách quen ghé thăm" để mở kiểu này');
+    expect(why.textContent).toContain('Hoàn thành thêm 2 thử thách tuần bất kỳ để mở kiểu này');
     expect(buy.getAttribute('aria-describedby')).toContain(why.id);
     buy.click();
     expect(wood.querySelector('.confirm')).toBeNull();

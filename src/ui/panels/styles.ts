@@ -1,4 +1,5 @@
-import { WEEK_CHALLENGES, CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
+import { challengesToUnlock } from '../../sim/challenges';
+import { CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
 import { STYLE_SLOTS, stylesOf, styleById, type StyleDef } from '../../sim/data/styles';
 import { isStyleUnlocked, ownsStyle, styleBlockedReason, styleOf } from '../../sim/styles';
 import type { GameState, StyleSlot } from '../../sim/types';
@@ -17,22 +18,15 @@ export function stylePriceText(style: StyleDef): string {
   return style.tickets > 0 ? `${formatMoney(style.price)} + ${style.tickets} Tem` : formatMoney(style.price);
 }
 
-/** Name of the weekly challenge whose reward unlocks `id`, or null. */
-export function unlockChallengeName(id: string): string | null {
-  return Object.values(WEEK_CHALLENGES).find((c) => c.reward.unlock?.id === id)?.name ?? null;
-}
-
-/** What the player does to open a challenge-gated style. */
-export function lockedStyleText(id: string): string {
-  const name = unlockChallengeName(id);
-  return name
-    ? `Hoàn thành thử thách tuần "${name}" để mở kiểu này (thử thách có từ tuần ${CHALLENGE_FIRST_WEEK}).`
-    : `Hoàn thành thử thách tuần để mở kiểu này (có từ tuần ${CHALLENGE_FIRST_WEEK}).`;
+/** What the player does to open a challenge-gated style: how many more weekly challenges, any of them (CHALLENGE_STYLE_ORDER). */
+export function lockedStyleText(state: Pick<GameState, 'styles'>, id: string): string {
+  const n = Math.max(1, challengesToUnlock(state, id));
+  return `Hoàn thành thêm ${n} thử thách tuần bất kỳ để mở kiểu này (thử thách có từ tuần ${CHALLENGE_FIRST_WEEK}).`;
 }
 
 /** Why "Mua" is dimmed, as something the player can do; null when the style can be bought now. */
 export function styleBuyReason(state: GameState, style: StyleDef): string | null {
-  if (!isStyleUnlocked(state, style.id)) return lockedStyleText(style.id);
+  if (!isStyleUnlocked(state, style.id)) return lockedStyleText(state, style.id);
   if (state.money < style.price) return shortOfMoney(style.price, state.money, formatMoney);
   const have = state.retention?.tickets ?? 0;
   if (have < style.tickets) return `Thiếu ${style.tickets - have} Tem (cần ${style.tickets}, có ${have}) · nhận từ Quà hằng ngày.`;
