@@ -55,8 +55,8 @@ describe('panel side margins (P19 overflow root cause)', () => {
   const prepMargins = PANELS.filter((r) => r.selector.includes('.prep') && decl(r.body, 'margin-inline') !== undefined);
 
   it('insets the children of a panel with a foot by --space-4', () => {
-    expect(prepMargins.map((r) => r.selector)).toEqual(['.prep:has(> .panel-foot) > :not(.panel-foot)']);
-    expect(decl(prepMargins[0]!.body, 'margin-inline')).toBe('var(--space-4)');
+    expect(prepMargins.map((r) => r.selector)).toEqual(['.prep:has(> .panel-foot) > :not(.panel-foot)', '#ui .prep:has(> .panel-foot) > :is(h3, p)']);
+    for (const r of prepMargins) expect(decl(r.body, 'margin-inline')).toBe('var(--space-4)');
   });
 
   it('resets width: 100% on those children, so width plus margin never passes the panel', () => {
@@ -64,10 +64,11 @@ describe('panel side margins (P19 overflow root cause)', () => {
     // .btn-block (Auto-restock, Nhập hàng) and .input are the full-width classes a panel child can carry.
     expect(fullWidth).toContain('.btn-block');
     expect(fullWidth).toContain('.input');
-    for (const r of prepMargins) {
-      expect(decl(r.body, 'width'), r.selector).toBe('auto');
-      expect(decl(r.body, 'align-self'), r.selector).toBe('stretch');
-    }
+    // The h3 / p rule only restores the margin; the same children get width: auto from the first.
+    const [all] = prepMargins;
+    expect(decl(all!.body, 'width'), all!.selector).toBe('auto');
+    expect(decl(all!.body, 'align-self'), all!.selector).toBe('stretch');
+    for (const r of prepMargins) expect(decl(r.body, 'width'), r.selector).not.toBe('100%');
   });
 
   it('never gives a rule both width: 100% and a side margin', () => {

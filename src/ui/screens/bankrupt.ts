@@ -78,7 +78,7 @@ export function createBankrupt(actions: BankruptActions): Screen {
   const titleId = uid('bankrupt-t');
   const title = h('h3', { id: titleId, text: 'Quán đã phá sản' });
   const sub = h('p', { class: 'rpt-sub' });
-  const body = h('div', { class: 'rpt-body' });
+  const body = h('div', { class: 'rpt-body', attrs: { tabindex: '0', 'aria-label': 'Nội dung phá sản' } });
   const loadNote = h('p', { class: 'rpt-muted', attrs: { 'data-load-note': '' } });
   let latest: ReturnType<BankruptActions['latestSave']> = null;
   const restart = h(

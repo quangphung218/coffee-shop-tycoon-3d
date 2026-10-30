@@ -138,7 +138,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
       'div',
       { class: 'menu-foot' },
       h('span', { text: 'Lưu trên trình duyệt này' }),
-      h('span', {}, h('kbd', { text: '↑' }), ' ', h('kbd', { text: '↓' }), ' di chuyển · ', h('kbd', { text: 'Enter' }), ' chọn'),
+      h('span', { class: 'menu-keys' }, h('kbd', { text: '↑' }), ' ', h('kbd', { text: '↓' }), ' di chuyển · ', h('kbd', { text: 'Enter' }), ' chọn'),
       h('span', { class: 'app-version', text: VERSION_LABEL }),
     ),
   );
