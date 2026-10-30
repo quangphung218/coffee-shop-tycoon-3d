@@ -95,7 +95,7 @@ interface WeekRow {
   stars: number;
   score: number;
   cups: number;
-  /** Loyalty tickets ('Tem') held at the end of the week. */
+  /** Loyalty tickets ('Tem') held at the end of the week, less the challenge Tem set aside. */
   tickets: number;
   /** Tem spent on upgrades from day 1 to the end of the week (cumulative). */
   ticketsSpent: number;
@@ -116,6 +116,18 @@ function reserve(state: GameState): number {
   return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
+/**
+ * Tem the week challenges (E-16) paid this game. The strategies set them aside
+ * and spend only the Tem of the older sources, and the tickets column leaves
+ * them out, so the tables keep the numbers they had before the challenges.
+ */
+let challengeTem = 0;
+
+/** Tem the strategies may spend: the balance less the challenge Tem set aside. */
+function spendableTickets(state: GameState): number {
+  return (state.retention?.tickets ?? 0) - challengeTem;
+}
+
 /** Buys the cheapest open upgrade `pick` allows while `affordable(cost)` holds, again and again, at most `max` times. */
 function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean, pick: (id: UpgradeId) => boolean = () => true, max = 100): number {
   let ticketsSpent = 0;
@@ -126,7 +138,7 @@ function buyCheapest(state: GameState, track: () => void, affordable: (cost: num
       const cost = nextUpgradeCost(state, def.id);
       if (cost === null || !affordable(cost)) continue;
       // P27 furniture priced in tickets, or needing the side room first, waits until it can be bought.
-      if ((nextUpgradeTicketCost(state, def.id) ?? 0) > (state.retention?.tickets ?? 0) || upgradeBlockedReason(state, def.id)) continue;
+      if ((nextUpgradeTicketCost(state, def.id) ?? 0) > spendableTickets(state) || upgradeBlockedReason(state, def.id)) continue;
       if (best === null || cost < best.cost) best = { id: def.id, cost };
     }
     if (!best) return ticketsSpent;
@@ -169,11 +181,14 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
   };
   let spent = 0;
   let ticketsSpent = 0;
+  challengeTem = 0;
   for (let day = 1; day <= WEEKS * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
     ticketsSpent += morning(state, s, track);
-    playDay(state, { onMinute: track });
+    for (const e of playDay(state, { onMinute: track })) {
+      if (e.type === 'tickets_earned' && e.reason === 'challenge') challengeTem += e.amount;
+    }
     track();
     spent += state.today.upgradeCost;
     const result = state.week!.result;
@@ -197,7 +212,7 @@ function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[]
       stars: result.stars,
       score: result.score,
       cups: result.cups,
-      tickets: state.retention?.tickets ?? 0,
+      tickets: spendableTickets(state),
       ticketsSpent,
       bankrupt: state.bankrupt,
     });

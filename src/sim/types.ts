@@ -431,6 +431,8 @@ export interface DayStats {
   wasteCost?: number;
   /** Revenue per menu item sold, in đồng. Absent in old saves. */
   soldRevenue?: Partial<Record<MenuItemId, number>>;
+  /** Named regulars served today (the regular_visits challenge). Absent until the first one. */
+  regularsServed?: number;
 }
 
 export type SuggestionKind = 'restock' | 'hire_barista' | 'hire_server' | 'hire_cleaner' | 'marketing' | 'upgrade';
@@ -609,6 +611,45 @@ export interface WeekState {
   result?: WeekResult;
   /** One row per finished week, oldest first. */
   archive?: WeekSummary[];
+  /**
+   * Side challenge of the week (rollWeekChallenge), from CHALLENGE_FIRST_WEEK.
+   * Absent before it and in the week a save from before E-16 was loaded in.
+   */
+  challenge?: WeekChallenge;
+}
+
+/** Templates of the weekly side challenge (WEEK_CHALLENGES in src/sim/data/challenges.ts). */
+export type WeekChallengeId = 'regular_visits' | 'stars_week' | 'sell_item' | 'calm_day' | 'served_week' | 'perfect_days';
+
+/**
+ * Something a challenge unlocks besides Tem. No reward sets it yet; the
+ * shop-customization epic adds its kinds (wall, floor, sign…) to this union.
+ */
+export interface ChallengeUnlock {
+  kind: 'decor';
+  /** Id of the one-of-a-kind item, looked up by the epic that adds it. */
+  id: string;
+}
+
+/** What a challenge pays once on completion. Tem only, no new currency. */
+export interface ChallengeReward {
+  tickets: number;
+  unlock?: ChallengeUnlock;
+}
+
+/** The side challenge of a week: what to reach, how far it got, what it pays. */
+export interface WeekChallenge {
+  id: WeekChallengeId;
+  target: number;
+  /** sell_item: the menu item to sell. */
+  itemId?: MenuItemId;
+  reward: ChallengeReward;
+  /** Value reached over the days of the week closed so far. */
+  progress: number;
+  /** Last game day folded into `progress`; 0 before the first close. */
+  settledDay: number;
+  /** 'failed' only for stars_week once a day closes below the stars. */
+  status: 'active' | 'completed' | 'failed';
 }
 
 /** Totals of a finished week, kept in `WeekState.archive` for week-over-week stats. */
@@ -805,8 +846,10 @@ export type GameEvent =
   | { type: 'staff_promoted'; staffId: number; level: number }
   | { type: 'gift_claimed'; streak: number; money: number; tickets: number }
   /** Tickets were added; `total` is the balance after it. */
-  | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' }
+  | { type: 'tickets_earned'; amount: number; total: number; reason: 'gift' | 'achievement' | 'special_order' | 'vip' | 'challenge' }
   | { type: 'achievement_unlocked'; id: AchievementId; tier: number }
+  /** The week's side challenge reached its target at the close of a day; its Tem come in the 'tickets_earned' after it. */
+  | { type: 'challenge_completed'; challenge: WeekChallenge }
   | { type: 'special_order'; status: 'completed' | 'failed'; itemId: MenuItemId }
   | { type: 'vip_arrived'; customerId: number }
   /** A named regular came through the door; `visits` counts this one. Comes after 'doorbell'. */

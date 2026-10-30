@@ -1,4 +1,6 @@
+import { ensureWeekChallenge } from '../sim/challenges';
 import { HISTORY_DAYS } from '../sim/clock';
+import { WEEK_CHALLENGE_IDS } from '../sim/data/challenges';
 import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
 import { WEEK_LENGTH } from '../sim/data/week';
@@ -181,6 +183,9 @@ export function migrate(raw: unknown): Result<SaveFile> {
   if (!isValidState(file.state)) return fail('invalid', 'Save data is missing required game fields');
   addMissingMenuItems(file.state);
   dropUnknownItems(file.state);
+  dropUnknownChallenge(file.state);
+  // Saves from before E-16 get a challenge on a week's first morning; mid-week they wait for the next week.
+  ensureWeekChallenge(file.state);
   // Every copy of a run saved before runId existed shares its seed and name.
   if (typeof file.state.runId !== 'string') file.state.runId = `legacy:${file.state.seed}:${file.state.shopName}`;
   try {
@@ -244,6 +249,21 @@ function dropUnknownItems(state: GameState): void {
   }
   if (isObject(r.levelUp) && isObject(r.levelUp.unlocks)) r.levelUp.unlocks.menu = keepKnown(r.levelUp.unlocks.menu);
   if (isObject(r.specialOrder) && !known.has(r.specialOrder.itemId)) delete r.specialOrder;
+}
+
+/** Drops a week challenge the game cannot read (unknown template or item); the next week draws a new one. */
+function dropUnknownChallenge(state: GameState): void {
+  const week: unknown = state.week;
+  if (!isObject(week) || week.challenge === undefined) return;
+  const c = week.challenge;
+  const known =
+    isObject(c) &&
+    (WEEK_CHALLENGE_IDS as unknown[]).includes(c.id) &&
+    typeof c.target === 'number' &&
+    typeof c.progress === 'number' &&
+    isObject(c.reward) &&
+    (c.itemId === undefined || MENU.some((m) => m.id === c.itemId));
+  if (!known) delete week.challenge;
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {

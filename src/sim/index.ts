@@ -197,6 +197,7 @@ export {
   toggleMenuItem,
 } from './inventory';
 export { buildDailyReport, closeDay } from './report';
+export { challengeProgress, describeChallenge, rollWeekChallenge, type ChallengeProgress } from './challenges';
 export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
