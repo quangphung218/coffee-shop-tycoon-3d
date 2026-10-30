@@ -9,6 +9,8 @@ export interface PanelContext {
   close(): void;
   /** Shows style `id` on `slot` of the 3D shop without buying it; null shows the chosen style again. No-op without a scene. */
   previewStyle?(slot: StyleSlot, id: string | null): void;
+  /** Brings the 3D camera back to its home view of the shop. No-op without a scene. */
+  resetCamera?(): void;
 }
 
 /** Optional hooks a panel returns from its render function. */

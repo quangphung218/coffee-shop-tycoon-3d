@@ -962,6 +962,10 @@ function stylesSave(mods) {
  * open; then Mái hiên with the locked Mái hiên vàng nắng previewed. Each must
  * not overflow, must show those parts, and every button and slot tab must be
  * at least --size-target. No dialog may open.
+ *
+ * E-20 UX-201: at ≤ 480 px each preview collapses the panel into a bar over
+ * the dock; the first one (Ốp gỗ ấm) is checked (checkPreviewBar), then every
+ * preview opens the list again from the bar.
  */
 async function checkStylesPanel(browser, viewport, save, results) {
   const size = `${viewport.width}×${viewport.height}`;
@@ -985,8 +989,17 @@ async function checkStylesPanel(browser, viewport, save, results) {
     const missing = await page.evaluate((list) => list.filter((s) => ![...document.querySelectorAll(s)].some((e) => e.checkVisibility())), sels);
     return missing.map((s) => `${s} not shown`);
   };
+  const narrow = viewport.width <= PREVIEW_BAR_MAX;
+  let barChecked = false;
   const preview = async (page, id) => {
     await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"]`).click();
+    if (narrow) {
+      await page.locator(`${panel} .style-bar:not([hidden])`).waitFor();
+      if (!barChecked) await checkPreviewBar(page, results, size);
+      barChecked = true;
+      await page.locator(`${panel} .style-bar [data-action="reopen"]`).click();
+      await page.locator(`${panel} .style-list:not([hidden])`).waitFor();
+    }
     await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"][aria-pressed="true"]`).waitFor();
   };
   const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
@@ -1016,6 +1029,49 @@ async function checkStylesPanel(browser, viewport, save, results) {
   } finally {
     await context.close();
   }
+}
+
+/** Widest viewport where a style preview collapses into the bar (PREVIEW_BAR_MEDIA in src/ui/panels/styles.ts). */
+const PREVIEW_BAR_MAX = 480;
+
+/**
+ * E-20 UX-201, a style previewed at ≤ 480 px: the panel is only the preview
+ * bar (name, price, "Bỏ xem thử", "Mua"), with no head and no list, sits above
+ * the dock and takes at most PREVIEW_BAR_SHARE of the viewport height, so the
+ * shop stays in sight. It must not overflow, its buttons must be at least
+ * --size-target and no dialog may open.
+ */
+const PREVIEW_BAR_SHARE = 0.3;
+async function checkPreviewBar(page, results, size) {
+  const panel = '#ui > .panel:not([hidden])';
+  await checkScreen(page, results, size, 'Phong cách quán: thanh xem thử', PANEL_FRAME);
+  const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+  const small = await page.evaluate(smallButtons, { root: panel, target, eps: EPS });
+  const m = await page.evaluate(
+    ({ panel, share, eps }) => {
+      const fails = [];
+      const el = document.querySelector(panel);
+      const bar = el?.querySelector('.style-bar');
+      const dock = document.querySelector('.dock');
+      if (!el || !bar || !bar.checkVisibility()) return { fails: ['.style-bar not shown'], height: 0 };
+      const box = el.getBoundingClientRect();
+      const text = (sel) => (bar.querySelector(sel)?.textContent ?? '').trim();
+      if (!text('.item-title')) fails.push('no style name in the bar');
+      if (!/đ/.test(text('.item-meta'))) fails.push(`price "${text('.item-meta')}" has no đ`);
+      if (text('[data-action="unpreview"]') !== 'Bỏ xem thử') fails.push(`unpreview button reads "${text('[data-action="unpreview"]')}"`);
+      if (text('[data-action="buy"]') !== 'Mua') fails.push(`buy button reads "${text('[data-action="buy"]')}"`);
+      for (const sel of ['.panel-head', '.style-list']) if (el.querySelector(sel)?.checkVisibility()) fails.push(`${sel} still shown`);
+      if (dock && box.bottom > dock.getBoundingClientRect().top + eps) fails.push(`panel bottom ${box.bottom.toFixed(1)} below the dock top ${dock.getBoundingClientRect().top.toFixed(1)}`);
+      if (box.height > share * innerHeight + eps) fails.push(`panel ${box.height.toFixed(1)} px tall > ${Math.round(share * 100)}% of ${innerHeight}`);
+      const dialogs = [...document.querySelectorAll('dialog[open], [role="dialog"]:not([hidden]), [aria-modal="true"]')].filter((e) => e.checkVisibility()).length;
+      if (dialogs) fails.push(`${dialogs} dialog(s) open`);
+      if (/\p{Extended_Pictographic}/u.test(bar.textContent ?? '')) fails.push('emoji in the bar');
+      return { fails, height: box.height };
+    },
+    { panel, share: PREVIEW_BAR_SHARE, eps: EPS },
+  );
+  const fails = [...m.fails, ...small.out];
+  results.push({ viewport: size, screen: 'Phong cách quán: thanh xem thử, nút', pass: fails.length === 0, detail: `thanh cao ${m.height.toFixed(0)} px trên dock; ${small.count} nút ≥ ${target} px`, fails });
 }
 
 function printTable(title, rows) {
