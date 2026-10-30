@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { UPGRADES } from '../../src/sim/data/upgrades';
-import { WEEK_LENGTH, weekReward } from '../../src/sim/data/week';
+import { WEEK_LENGTH, dayUnlockDay, weekReward } from '../../src/sim/data/week';
 import { dailyRent, totalWages } from '../../src/sim/economy';
-import { MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
+import { LEVELS, MAX_SHOP_LEVEL, maxLevelBonus } from '../../src/sim/data/levels';
 import { dispatch, nextUpgradeCost } from '../../src/sim/index';
 import { nextUpgradeTicketCost, upgradeBlockedReason, upgradeLevel } from '../../src/sim/upgrades';
 import { autoRestockSuggestion } from '../../src/sim/inventory';
@@ -21,8 +21,10 @@ import { playDay } from './helpers';
  * week 1, goals on weekGoalMult): the spender scores at least the basic
  * strategy every week and never drops more than 10 points from one week to
  * the next, steady play (b_steady) takes 2 cups in most weeks, the basic
- * strategy keeps a cup through week 8, and both the spender and steady play
- * reach 3 cups in weeks 5–8. Read in docs/reports/p23-long-economy.md.
+ * strategy keeps a cup through week 8, and the spender reaches 3 cups in
+ * weeks 5–8. E-12 makes b_steady a relaxed player who spends at most half the
+ * spender and does not take 3 cups every week 5–8. Read in
+ * docs/reports/p23-long-economy.md.
  */
 
 const SEEDS = [1, 42, 777];
@@ -30,23 +32,42 @@ const WEEKS = 8;
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 
 interface Strategy {
-  /** Hire one barista on the morning of day 1. */
-  hire: boolean;
+  /** Morning of the day one barista is hired on; none when absent. */
+  hireDay?: number;
   /** Every morning buy the cheapest open upgrade or tool, again and again, while the money keeps tonight's wages and tomorrow's restock. */
   spend: boolean;
-  /** Every morning buy the cheapest open upgrade or tool, again and again, while the money is at least twice its price and keeps tonight's wages and tomorrow's restock. */
+  /** Every STEADY_VISIT_EVERY days open Nâng cấp once and buy at most one item: the cheapest steadyPick allows that keeps tonight's wages and tomorrow's restock. */
   steady: boolean;
+}
+
+/** b_steady opens Nâng cấp on days 3, 6, 9, … */
+const STEADY_VISIT_EVERY = 3;
+
+/** Effects that bring more customers, serve them faster or make them pay more; ice_maker (cost only) has none of them. */
+const REVENUE_EFFECTS = ['capacity', 'ratingBonus', 'appeal', 'brewSpeed', 'coffeeBrewSpeed', 'coldBrewSpeed', 'foodBrewSpeed', 'foodAppeal', 'priceBonus'] as const;
+
+const TOOLS = new Set<UpgradeId>(LEVELS.flatMap((l) => l.unlocks.tools));
+
+/** b_steady buys only items that affect revenue, and no tool the week-1 calendar does not open (cold_brew_tower, oven). */
+function steadyPick(id: UpgradeId): boolean {
+  if (TOOLS.has(id) && dayUnlockDay('upgrade', id) > WEEK_LENGTH) return false;
+  const def = UPGRADES.find((u) => u.id === id)!;
+  return REVENUE_EFFECTS.some((e) => (def.effectPerLevel[e] ?? 0) > 0);
 }
 
 /**
  * The P22 strategies a and c, with c spending on every upgrade (not only tools)
- * over the long run, and b_steady: the relaxed player with one barista who buys
- * only what costs at most half the money in hand. All keep the Standard price.
+ * over the long run, and b_steady: the relaxed player. b_steady hires one
+ * barista on day 2, keeps the Standard price, runs no marketing, and every 3
+ * days (days 3, 6, 9, …) makes one Nâng cấp visit buying at most one item: the
+ * cheapest open one that affects revenue (steadyPick: no ice_maker, no tool
+ * unlocked after day 7), if the money keeps tonight's wages and tomorrow's
+ * restock. All strategies keep the Standard price and run no marketing.
  */
 const STRATEGIES: Record<string, Strategy> = {
-  a_basic: { hire: false, spend: false, steady: false },
-  c_spend: { hire: true, spend: true, steady: false },
-  b_steady: { hire: true, spend: false, steady: true },
+  a_basic: { spend: false, steady: false },
+  c_spend: { hireDay: 1, spend: true, steady: false },
+  b_steady: { hireDay: 2, spend: false, steady: true },
 };
 
 interface WeekRow {
@@ -93,12 +114,12 @@ function reserve(state: GameState): number {
   return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
-/** Buys the cheapest open upgrade while `affordable(cost)` holds, again and again. */
-function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean): void {
-  for (let guard = 0; guard < 100; guard++) {
+/** Buys the cheapest open upgrade `pick` allows while `affordable(cost)` holds, again and again, at most `max` times. */
+function buyCheapest(state: GameState, track: () => void, affordable: (cost: number) => boolean, pick: (id: UpgradeId) => boolean = () => true, max = 100): void {
+  for (let guard = 0; guard < max; guard++) {
     let best: { id: UpgradeId; cost: number } | null = null;
     for (const def of UPGRADES) {
-      if (!isUnlocked(state, 'upgrade', def.id)) continue;
+      if (!pick(def.id) || !isUnlocked(state, 'upgrade', def.id)) continue;
       const cost = nextUpgradeCost(state, def.id);
       if (cost === null || !affordable(cost)) continue;
       // P27 furniture priced in tickets, or needing the side room first, waits until it can be bought.
@@ -123,12 +144,12 @@ function morning(state: GameState, s: Strategy, track: () => void): void {
   enableUnlocked(state);
   dispatch(state, { type: 'apply_restock' });
   track();
-  if (s.hire && state.day === 1) {
+  if (state.day === s.hireDay) {
     const pick = [...state.candidates].sort((a, b) => a.wagePerDay - b.wagePerDay || a.id - b.id)[0]!;
     expect(dispatch(state, { type: 'hire_staff', candidateId: pick.id, role: 'barista' })).toBe(true);
   }
   if (s.spend) buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost);
-  if (s.steady) buyCheapest(state, track, (cost) => state.money >= 2 * cost && state.money - reserve(state) >= cost);
+  if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, track, (cost) => state.money - reserve(state) >= cost, steadyPick, 1);
 }
 
 function playWeeks(difficulty: Difficulty, seed: number, s: Strategy): WeekRow[] {
@@ -324,13 +345,25 @@ describe('P23 long run: 56 days × 3 difficulties × strategies a/c/b_steady', {
     }
   });
 
-  it('lets the spender and steady play reach 3 cups in weeks 5–8 per difficulty (E-11)', () => {
+  it('keeps steady play’s upgrade spend over weeks 1–8 at most half the spender’s per difficulty (E-12)', () => {
+    const total = (key: string) => runs.get(key)!.flatMap((rows) => rows).reduce((s, r) => s + r.spent, 0);
+    for (const d of DIFFICULTIES) {
+      const steady = total(`${d}/b_steady`);
+      const spend = total(`${d}/c_spend`);
+      console.log(`${d}: b_steady spent ${k(steady)} = ${((100 * steady) / spend).toFixed(0)}% of c_spend ${k(spend)}`);
+      expect(steady, d).toBeLessThanOrEqual(0.5 * spend);
+    }
+  });
+
+  // 3 cups needs optimizing: the spender reaches them, steady play does not take them every week (E-12).
+  it('lets the spender reach 3 cups in weeks 5–8 and keeps steady play below 3 cups in some of them per difficulty (E-11, E-12)', () => {
     for (const d of DIFFICULTIES) {
       for (const name of ['c_spend', 'b_steady']) {
         const games = runs.get(`${d}/${name}`)!.flatMap((rows) => rows.slice(4, 8));
         const three = games.filter((r) => r.cups === 3).length;
         console.log(`${d}: ${name} 3 cups in ${three}/${games.length} week 5–8 games`);
-        expect(three, `${d}/${name}`).toBeGreaterThan(0);
+        if (name === 'c_spend') expect(three, `${d}/${name}`).toBeGreaterThan(0);
+        else expect(three, `${d}/${name}`).toBeLessThan(games.length);
       }
     }
   });
