@@ -37,6 +37,14 @@ export function weekProfitTarget(difficulty: Difficulty, revenueTarget: number):
 }
 
 /**
+ * Profit target of `goal`: its own `profit` when set (SIZE_GOAL weeks), else
+ * derived from its revenue (weekProfitTarget), as goals saved before E-21 are.
+ */
+export function goalProfitTarget(difficulty: Difficulty, goal: WeekGoal): number {
+  return typeof goal.profit === 'number' && Number.isFinite(goal.profit) ? goal.profit : weekProfitTarget(difficulty, goal.revenue);
+}
+
+/**
  * Weeks an upgrade is paid over in the week score on Easy and Normal, the week
  * it is bought included (weekUpgradeCharge in src/sim/week.ts); Hard uses
  * UPGRADE_AMORTIZE_WEEKS_BY_DIFFICULTY.
@@ -129,6 +137,50 @@ export function scaledWeekGoal(
   const revenue = Math.round((avg * SCALED_GOAL_RATIO) / 100_000) * 100_000;
   if (revenue <= goal.revenue) return { goal, scaled: false };
   return { goal: { revenue, stars: goal.stars }, scaled: true };
+}
+
+/** First week whose goal comes from SIZE_GOAL once the shop is at SCALED_GOAL_MIN_LEVEL. */
+export const SIZE_GOAL_FIRST_WEEK = 9;
+
+/** Highest total of upgrade levels SIZE_GOAL has a row for; larger totals use its last row. */
+export const SIZE_GOAL_MAX_LEVELS = 77;
+
+/** Revenue and profit targets of a SIZE_GOAL row. */
+export interface SizeGoalRow {
+  revenue: number;
+  profit: number;
+}
+
+/**
+ * Placeholder rows until the generator fills SIZE_GOAL from measured play:
+ * week 9's revenue target growing 2% per upgrade level, profit from
+ * weekProfitTarget.
+ */
+function placeholderSizeGoal(difficulty: Difficulty): readonly SizeGoalRow[] {
+  const base = weekGoal(difficulty, SIZE_GOAL_FIRST_WEEK).revenue;
+  return Array.from({ length: SIZE_GOAL_MAX_LEVELS + 1 }, (_, levels) => {
+    const revenue = Math.round((base * (1 + 0.02 * levels)) / 100_000) * 100_000;
+    return { revenue, profit: weekProfitTarget(difficulty, revenue) };
+  });
+}
+
+/**
+ * Week targets from week SIZE_GOAL_FIRST_WEEK at shop level
+ * SCALED_GOAL_MIN_LEVEL and up, by difficulty, indexed by the shop's total
+ * upgrade levels at the week's start (0..SIZE_GOAL_MAX_LEVELS). Revenue is
+ * meant at 1.0x and profit at 1.5x what a standard shop of that size makes.
+ */
+export const SIZE_GOAL: Readonly<Record<Difficulty, readonly SizeGoalRow[]>> = {
+  easy: placeholderSizeGoal('easy'),
+  normal: placeholderSizeGoal('normal'),
+  hard: placeholderSizeGoal('hard'),
+};
+
+/** SIZE_GOAL row for `totalLevels` upgrade levels, clamped to 0..SIZE_GOAL_MAX_LEVELS. */
+export function sizeGoal(difficulty: Difficulty, totalLevels: number): SizeGoalRow {
+  const rows = SIZE_GOAL[difficulty];
+  const i = Math.min(rows.length - 1, Math.max(0, Math.floor(Number.isFinite(totalLevels) ? totalLevels : 0)));
+  return rows[i]!;
 }
 
 /** Fewest cups a week needs to pay WEEK_REWARDS. */
