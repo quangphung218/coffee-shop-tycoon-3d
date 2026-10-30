@@ -1,9 +1,18 @@
-import { CHALLENGE_FIRST_WEEK, WEEK_CHALLENGES, WEEK_CHALLENGE_IDS } from './data/challenges';
+import {
+  CHALLENGE_FIRST_WEEK,
+  CHALLENGE_SCALE_FIRST_WEEK,
+  CHALLENGE_SCALE_WEEKS,
+  CHALLENGE_STYLE_ORDER,
+  WEEK_CHALLENGES,
+  WEEK_CHALLENGE_IDS,
+  isScaledChallenge,
+  scaledChallengeTarget,
+} from './data/challenges';
 import { getMenuItem, MENU } from './data/menu';
 import { WEEK_LENGTH, dayUnlockDay } from './data/week';
 import { weekDay, weekIndex } from './progression';
 import { addTickets } from './retention';
-import { unlockStyle } from './styles';
+import { isStyleUnlocked, unlockStyle } from './styles';
 import type { DailyReport, DayStats, GameState, MenuItemId, WeekChallenge } from './types';
 
 /** Keeps challenge draws apart from the week plans and daily missions, which hash the same seed. */
@@ -38,14 +47,17 @@ function templateIndex(seed: number, index: number): number {
  * Side challenge of week `index` (from 1): null before CHALLENGE_FIRST_WEEK,
  * then a template and, for sell_item, a menu item hashed from the seed and the
  * week, never drawn from `state.rngState`. Same seed, same sequence.
+ * `past` are the finished days before the week (oldest first): from
+ * CHALLENGE_SCALE_FIRST_WEEK a counting template's number follows their
+ * values (scaleChallenge); without them it keeps the template's.
  */
-export function rollWeekChallenge(seed: number, index: number): WeekChallenge | null {
+export function rollWeekChallenge(seed: number, index: number, past: readonly DayStats[] = []): WeekChallenge | null {
   if (index < CHALLENGE_FIRST_WEEK) return null;
   const def = WEEK_CHALLENGES[WEEK_CHALLENGE_IDS[templateIndex(seed, index)]!];
   const challenge: WeekChallenge = {
     id: def.id,
     target: def.target,
-    reward: def.reward.unlock ? { ...def.reward, unlock: { ...def.reward.unlock } } : { ...def.reward },
+    reward: { ...def.reward },
     progress: 0,
     settledDay: 0,
     status: 'active',
@@ -54,7 +66,29 @@ export function rollWeekChallenge(seed: number, index: number): WeekChallenge | 
     // Negative indices never collide with the template hashes above.
     challenge.itemId = SELL_ITEMS[challengeHash(seed, -index) % SELL_ITEMS.length]!;
   }
+  if (index >= CHALLENGE_SCALE_FIRST_WEEK) scaleChallenge(challenge, past);
   return challenge;
+}
+
+/**
+ * Raises a counting challenge's number to scaledChallengeTarget of the average
+ * over the last CHALLENGE_SCALE_WEEKS weeks of `past`: per week (days summed,
+ * times 7 over the days there are) for served_week, sell_item and
+ * regular_visits; per day of customers served for calm_day's minServed. Left
+ * as drawn without past days or below the template's number.
+ */
+function scaleChallenge(challenge: WeekChallenge, past: readonly DayStats[]): void {
+  const id = challenge.id;
+  if (!isScaledChallenge(id)) return;
+  const days = past.slice(-CHALLENGE_SCALE_WEEKS * WEEK_LENGTH);
+  if (days.length === 0) return;
+  if (id === 'calm_day') {
+    const minServed = scaledChallengeTarget(id, days.reduce((s, d) => s + d.customersServed, 0) / days.length);
+    if (minServed > (WEEK_CHALLENGES.calm_day.minServed ?? 0)) challenge.minServed = minServed;
+    return;
+  }
+  const total = days.reduce((s, d) => s + (dayAmount(challenge, d) ?? 0), 0);
+  challenge.target = scaledChallengeTarget(id, (total * WEEK_LENGTH) / days.length);
 }
 
 /**
@@ -65,7 +99,7 @@ export function rollWeekChallenge(seed: number, index: number): WeekChallenge | 
 export function ensureWeekChallenge(state: GameState): void {
   const week = state.week;
   if (!week || week.challenge || state.phase !== 'preparation' || weekDay(state) !== 1) return;
-  const challenge = rollWeekChallenge(state.seed, weekIndex(state));
+  const challenge = rollWeekChallenge(state.seed, weekIndex(state), state.history.filter((d) => d.day < week.startedDay));
   if (challenge) week.challenge = challenge;
 }
 
@@ -77,7 +111,7 @@ export function describeChallenge(challenge: WeekChallenge): { name: string; des
     .replace('{n}', String(challenge.target))
     .replace('{item}', item)
     .replace('{stars}', (def.minStars ?? 0).toLocaleString('vi-VN'))
-    .replace('{min}', String(def.minServed ?? 0));
+    .replace('{min}', String(challenge.minServed ?? def.minServed ?? 0));
   return { name: def.name, description };
 }
 
@@ -119,8 +153,9 @@ export function challengeProgress(state: GameState): ChallengeProgress | null {
 
 /**
  * Folds the day just closed into the week's challenge; called from closeDay
- * with the day's report. Reaching the target marks it completed, emits
- * 'challenge_completed', pays its Tem and unlocks its style, once. A day is never folded twice.
+ * with the day's report. Reaching the target marks it completed, pays its Tem,
+ * unlocks the next locked style of CHALLENGE_STYLE_ORDER (kept in
+ * `reward.unlock`) and emits 'challenge_completed', once. A day is never folded twice.
  */
 export function endOfDayChallenge(state: GameState, report: DailyReport): void {
   const challenge = state.week?.challenge;
@@ -136,14 +171,29 @@ export function endOfDayChallenge(state: GameState, report: DailyReport): void {
     if (Math.round(state.rating * 10) / 10 >= (def.minStars ?? 0)) challenge.progress += 1;
     else challenge.status = 'failed';
   } else if (challenge.id === 'calm_day') {
-    if (today.customersLost === 0 && today.customersServed >= (def.minServed ?? 0)) challenge.progress += 1;
+    if (today.customersLost === 0 && today.customersServed >= (challenge.minServed ?? def.minServed ?? 0)) challenge.progress += 1;
   } else if (challenge.id === 'perfect_days') {
     const missions = report.missions ?? [];
     if (missions.length > 0 && missions.every((m) => m.status === 'completed')) challenge.progress += 1;
   }
   if (challenge.status !== 'active' || challenge.progress < challenge.target) return;
   challenge.status = 'completed';
+  // Saves from before E-19 may hold a template's own style here; any challenge now opens the next in order.
+  const style = nextChallengeStyle(state);
+  if (style) challenge.reward.unlock = { kind: 'decor', id: style };
+  else delete challenge.reward.unlock;
   state.events.push({ type: 'challenge_completed', challenge: { ...challenge, reward: { ...challenge.reward } } });
   addTickets(state, challenge.reward.tickets, 'challenge');
-  if (challenge.reward.unlock?.kind === 'decor') unlockStyle(state, challenge.reward.unlock.id);
+  if (style) unlockStyle(state, style);
+}
+
+/** First style of CHALLENGE_STYLE_ORDER still locked, which the next completed challenge unlocks; null once all are open. */
+export function nextChallengeStyle(state: Pick<GameState, 'styles'>): string | null {
+  return CHALLENGE_STYLE_ORDER.find((id) => !isStyleUnlocked(state, id)) ?? null;
+}
+
+/** Completed challenges still needed to unlock challenge-gated style `id` (1 for the next one); 0 when open or not gated. */
+export function challengesToUnlock(state: Pick<GameState, 'styles'>, id: string): number {
+  if (!CHALLENGE_STYLE_ORDER.includes(id) || isStyleUnlocked(state, id)) return 0;
+  return CHALLENGE_STYLE_ORDER.slice(0, CHALLENGE_STYLE_ORDER.indexOf(id) + 1).filter((s) => !isStyleUnlocked(state, s)).length;
 }

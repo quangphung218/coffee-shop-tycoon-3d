@@ -132,7 +132,7 @@ function startNextWeek(state: GameState, week: WeekState): void {
     ...(scaled ? { goalScaled: true as const } : {}),
     ...(week.archive ? { archive: week.archive } : {}),
   };
-  const challenge = rollWeekChallenge(state.seed, index);
+  const challenge = rollWeekChallenge(state.seed, index, state.history);
   if (challenge) state.week.challenge = challenge;
 }
 
