@@ -659,6 +659,12 @@ export interface WeekChallenge {
   target: number;
   /** sell_item: the menu item to sell. */
   itemId?: MenuItemId;
+  /** calm_day: fewest customers served for the day to count, when scaled above the template's (E-19). */
+  minServed?: number;
+  /**
+   * Tem paid on completion; `unlock` is the style the completion opened
+   * (CHALLENGE_STYLE_ORDER), set when it completes.
+   */
   reward: ChallengeReward;
   /** Value reached over the days of the week closed so far. */
   progress: number;

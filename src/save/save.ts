@@ -264,6 +264,7 @@ function dropUnknownChallenge(state: GameState): void {
     typeof c.target === 'number' &&
     typeof c.progress === 'number' &&
     isObject(c.reward) &&
+    (c.minServed === undefined || typeof c.minServed === 'number') &&
     (c.itemId === undefined || MENU.some((m) => m.id === c.itemId));
   if (!known) delete week.challenge;
 }
