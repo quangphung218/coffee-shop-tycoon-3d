@@ -31,6 +31,7 @@ type Levels = Partial<Record<UpgradeId, number>>;
 function layoutWith(levels: Levels): ShopLayout {
   const s = createNewGame('Nav', 'normal', 1);
   s.money = 1e15;
+  ensureRetention(s).tickets = 1000;
   for (const [id, n] of Object.entries(levels) as [UpgradeId, number][]) {
     for (let i = 0; i < n; i++) expect(buyUpgrade(s, id).ok).toBe(true);
   }
@@ -150,6 +151,7 @@ describe('nav grid', () => {
   it('is built once per floor plan over a played day, not every tick', () => {
     const s = createNewGame('Nav', 'normal', 7);
     s.money = 1e15;
+    ensureRetention(s).tickets = 1000;
     expect(buyUpgrade(s, 'tables').ok).toBe(true);
     expect(dispatch(s, { type: 'start_day' })).toBe(true);
     const grids = new Set<NavGrid>();
@@ -432,6 +434,7 @@ function maxedLevels(shopLevel: number): Levels {
   const s = createNewGame('Nav', 'normal', 1);
   s.shopLevel = shopLevel;
   s.money = 1e15;
+  ensureRetention(s).tickets = 1000;
   // The P27 record player and sofa corner also cost tickets.
   ensureRetention(s).tickets = 1000;
   const levels: Levels = {};

@@ -7,10 +7,12 @@ import { createNewGame } from '../../src/sim/state';
 import { CHAIR_OFFSET, CHAIR_SIZE } from '../../src/sim/nav';
 import { INDOOR_AREA, buyUpgrade, getShopLayout, nextUpgradeCost, relayoutTables } from '../../src/sim/upgrades';
 import type { Customer, GameState, UpgradeId, Vec2 } from '../../src/sim/types';
+import { ensureRetention } from '../../src/sim/retention';
 
 function rich(): GameState {
   const s = createNewGame('A', 'normal', 1);
   s.money = 100_000_000;
+  ensureRetention(s).tickets = 1000;
   return s;
 }
 

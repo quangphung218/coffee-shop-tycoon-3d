@@ -17,12 +17,14 @@ import { DOOR_WIDTH, doorPlanters, wallSpans } from '../../src/sim/nav';
 import { createNewGame } from '../../src/sim/state';
 import { buyUpgrade, getShopLayout, nextUpgradeCost, type ShopLayout } from '../../src/sim/upgrades';
 import type { GameState, UpgradeId } from '../../src/sim/types';
+import { ensureRetention } from '../../src/sim/retention';
 
 const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 
 function rich(): GameState {
   const s = createNewGame('Quán Mây', 'normal', 1);
   s.money = 100_000_000;
+  ensureRetention(s).tickets = 1000;
   return s;
 }
 

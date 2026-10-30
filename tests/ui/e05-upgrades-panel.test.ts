@@ -100,19 +100,30 @@ describe('E-05 Nâng cấp: premium decor and extra levels', () => {
     expect(q(row, '.item-meta').textContent).toContain('Cấp 1/');
   });
 
-  it('waits on "Cần cấp quán 4" for better_machine L4, then prices it in money + Tem with its own effect', () => {
-    const def = getUpgrade('better_machine');
+  it('waits on "Cần cấp quán 4" for plants L4, then prices it in money + Tem with its own effect (E-13)', () => {
+    const def = getUpgrade('plants');
     const state = game(3);
-    state.upgrades.better_machine = def.maxLevel;
+    state.upgrades.plants = def.maxLevel;
     const { body, handle } = mount(state);
-    const row = q(body, '[data-upgrade="better_machine"]');
+    const row = q(body, '[data-upgrade="plants"]');
     expect(badgeOf(row).textContent).toBe('Cần cấp quán 4');
     expect(q(row, '[data-action="buy"]').hidden).toBe(true);
 
     state.shopLevel = 4;
     handle.update?.(state);
     expect(badgeOf(row).hidden).toBe(true);
-    expect(q(row, '.item-meta').textContent).toContain(`Giá 30.000.000đ + 150 Tem · Cấp ${def.maxLevel}/${def.maxLevel + 1}`);
-    expect(q(row, '.item-meta').textContent).toContain(`cấp ${def.maxLevel + 1}: +0,2 sao mỗi đơn`);
+    expect(q(row, '.item-meta').textContent).toContain(`Giá 3.000.000đ + 15 Tem · Cấp ${def.maxLevel}/${def.maxLevel + 1}`);
+    expect(q(row, '.item-meta').textContent).toContain(`cấp ${def.maxLevel + 1}: `);
+  });
+
+  it('prices better_machine L4 in money only, below its L5 (E-13)', () => {
+    const def = getUpgrade('better_machine');
+    const state = game(4);
+    state.upgrades.better_machine = def.maxLevel;
+    const { body } = mount(state);
+    const meta = q(q(body, '[data-upgrade="better_machine"]'), '.item-meta').textContent!;
+    expect(meta).toContain(`Giá 10.000.000đ · Cấp ${def.maxLevel}/${def.maxLevel + 1}`);
+    expect(meta).not.toContain('Tem');
+    expect(meta).toContain(`cấp ${def.maxLevel + 1}: +0,2 sao mỗi đơn`);
   });
 });

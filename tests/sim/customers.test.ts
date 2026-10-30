@@ -27,6 +27,7 @@ import { TASK_MINUTES, updatePlayerTasks } from '../../src/sim/orders';
 import { createNewGame } from '../../src/sim/state';
 import type { Customer, GameState, MenuItemId, UpgradeId, Vec2 } from '../../src/sim/types';
 import { buyUpgrade, getShopLayout, type ShopLayout } from '../../src/sim/upgrades';
+import { ensureRetention } from '../../src/sim/retention';
 
 /** An open shop serving only `item`, with random arrivals left out. */
 function openShopWith(item: MenuItemId): GameState {
@@ -214,6 +215,7 @@ describe('tables', () => {
 function gameWith(levels: Partial<Record<UpgradeId, number>>): GameState {
   const s = createNewGame('Quán Test', 'normal', 42);
   s.money = 1e15;
+  ensureRetention(s).tickets = 1000;
   for (const [id, n] of Object.entries(levels) as [UpgradeId, number][]) {
     for (let i = 0; i < n; i++) expect(buyUpgrade(s, id).ok).toBe(true);
   }
