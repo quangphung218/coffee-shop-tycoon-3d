@@ -230,7 +230,8 @@ describe('game-*.css loads before index-*.css', () => {
     expect(compare(specificity(layer!.selector), specificity(screen!.selector))).toBeGreaterThan(0);
   });
 
-  it('gives every panel and report rule the same winner as when game CSS came last', () => {
+  // Compares every rule pair: about 1 s alone, past the 5 s default under the full parallel run.
+  it('gives every panel and report rule the same winner as when game CSS came last', { timeout: 20_000 }, () => {
     expect(flipped()).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import type { Command, GameState } from '../../sim/types';
+import type { Command, GameState, StyleSlot } from '../../sim/types';
 import type { IconId } from '../core/icons';
 
 /** What a panel gets from the HUD. */
@@ -7,6 +7,8 @@ export interface PanelContext {
   /** Current game, or null on the main menu. */
   getState(): GameState | null;
   close(): void;
+  /** Shows style `id` on `slot` of the 3D shop without buying it; null shows the chosen style again. No-op without a scene. */
+  previewStyle?(slot: StyleSlot, id: string | null): void;
 }
 
 /** Optional hooks a panel returns from its render function. */

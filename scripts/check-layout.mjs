@@ -2,7 +2,7 @@
 // panel for layout shift, on the production build in headless Chromium.
 // Run through `npm run layout` (builds first). Needs Playwright with Chromium.
 //
-// For each viewport: a new game, the six dock panels in order, the shop opened
+// For each viewport: a new game, the seven dock panels in order, the shop opened
 // at 4x, then the Daily Report of day 1 and its Đánh giá tab from a save this
 // tree's sim played the same way (playFirstDay of scripts/lib/saves.mjs: two
 // hires, the Kho suggestion bought, the staff alone through the day) up to
@@ -41,7 +41,13 @@
 // the Đào tạo confirm open, Nâng cấp with the Tem-priced furniture. Each must
 // not overflow, must show those parts and every button must be at least
 // --size-target.
-// LAYOUT_ONLY (day, hud, event, p25, p27, comma-separated) runs those parts
+// T-51 Phong cách quán, at the same four sizes, from a save of this tree's
+// sim (a new game with money and Tem for the cheaper styles): on Tường a
+// locked style previewed (its challenge line shown), then a style previewed
+// with its in-place Mua confirm open, then Mái hiên with a locked style
+// previewed. Each must not overflow, must show those parts, and every button
+// and slot tab must be at least --size-target.
+// LAYOUT_ONLY (day, hud, event, p25, p27, styles, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
 // Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
@@ -81,6 +87,7 @@ const PANELS = [
   ['staff', 'Nhân viên'],
   ['marketing', 'Marketing'],
   ['upgrades', 'Nâng cấp'],
+  ['styles', 'Phong cách quán'],
 ];
 /** Staff hired in the Nhân viên panel so the day serves customers and the report has content. */
 const HIRES = 2;
@@ -937,6 +944,80 @@ async function checkP27Panels(browser, viewport, saves, results) {
   }
 }
 
+/**
+ * Autosave of a new Easy game on the morning of day 1 with money and Tem for
+ * the cheaper styles (wall_mint, awning_mint), written by this tree's sim;
+ * the challenge-gated styles stay locked.
+ */
+function stylesSave(mods) {
+  const state = mods.stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+  state.money = 20_000_000;
+  mods.retention.ensureRetention(state).tickets = 12;
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * T-51 Phong cách quán: on Tường the locked Ốp gỗ ấm previewed (its
+ * challenge line), then Tường bạc hà previewed with the in-place Mua confirm
+ * open; then Mái hiên with the locked Mái hiên vàng nắng previewed. Each must
+ * not overflow, must show those parts, and every button and slot tab must be
+ * at least --size-target. No dialog may open.
+ */
+async function checkStylesPanel(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const panel = '#ui > .panel:not([hidden])';
+  const targets = async (page, screen, extra) => {
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: panel, target, eps: EPS });
+    const tabs = await page.evaluate(
+      ({ root, target, eps }) =>
+        [...document.querySelectorAll(`${root} [data-seg="style-slot"] .seg-opt span`)].flatMap((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width < target - eps || r.height < target - eps ? [`tab ${el.textContent} ${r.width.toFixed(1)}×${r.height.toFixed(1)} < ${target} px`] : [];
+        }),
+      { root: panel, target, eps: EPS },
+    );
+    const dialogs = await page.evaluate(() => [...document.querySelectorAll('dialog[open], [role="dialog"]:not([hidden]), [aria-modal="true"]')].filter((e) => e.checkVisibility()).length);
+    const fails = [...small.out, ...tabs, ...extra.fails, ...(dialogs ? [`${dialogs} dialog(s) open`] : [])];
+    results.push({ viewport: size, screen, pass: fails.length === 0, detail: `${extra.detail}; ${small.count} nút + 4 tab ≥ ${target} px`, fails });
+  };
+  const needs = async (page, sels) => {
+    const missing = await page.evaluate((list) => list.filter((s) => ![...document.querySelectorAll(s)].some((e) => e.checkVisibility())), sels);
+    return missing.map((s) => `${s} not shown`);
+  };
+  const preview = async (page, id) => {
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"]`).click();
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"][aria-pressed="true"]`).waitFor();
+  };
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'styles');
+    await preview(page, 'wall_wood');
+    await checkScreen(page, results, size, 'Phong cách quán: Tường, kiểu khoá xem thử', PANEL_FRAME);
+    const locked = await needs(page, [`${panel} li[data-style="wall_wood"] .reason`, `${panel} li[data-style="wall_wood"] [data-action="buy"][aria-disabled="true"]`]);
+    const lockText = await page.locator(`${panel} li[data-style="wall_wood"] .reason`).textContent();
+    if (!/thử thách tuần/.test(lockText ?? '')) locked.push(`locked reason "${lockText}" does not name the challenge`);
+    await targets(page, 'Phong cách quán: Tường khoá, nút', { fails: locked, detail: 'lý do mở khoá hiện' });
+
+    await preview(page, 'wall_mint');
+    await page.locator(`${panel} li[data-style="wall_mint"] [data-action="buy"]`).click();
+    await page.locator(`${panel} li[data-style="wall_mint"] .confirm`).waitFor();
+    await checkScreen(page, results, size, 'Phong cách quán: xác nhận Mua tại chỗ', PANEL_FRAME);
+    const confirm = await needs(page, [`${panel} li[data-style="wall_mint"] .confirm [data-action="confirm"]`, `${panel} li[data-style="wall_mint"] .confirm [data-action="cancel"]`]);
+    await targets(page, 'Phong cách quán: xác nhận Mua, nút', { fails: confirm, detail: 'xác nhận Mua mở trong dòng' });
+    await page.locator(`${panel} li[data-style="wall_mint"] .confirm [data-action="cancel"]`).click();
+
+    await page.locator(`${panel} [data-seg="style-slot"] .seg-opt`).nth(3).click();
+    await page.locator(`${panel} ul[data-slot="awning"]:not([hidden])`).waitFor();
+    await preview(page, 'awning_gold');
+    await checkScreen(page, results, size, 'Phong cách quán: Mái hiên, kiểu khoá xem thử', PANEL_FRAME);
+    const awning = await needs(page, [`${panel} li[data-style="awning_gold"] .reason`]);
+    await targets(page, 'Phong cách quán: Mái hiên, nút', { fails: awning, detail: 'tab Mái hiên, lý do mở khoá hiện' });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -956,11 +1037,11 @@ async function main() {
   const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
-  // LAYOUT_ONLY=day,hud,event,p25,p27 runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  // LAYOUT_ONLY=day,hud,event,p25,p27,styles runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    const mods = part('day') || part('event') ? await loadTree() : null;
+    const mods = part('day') || part('event') || part('styles') ? await loadTree() : null;
     const report = part('day') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
@@ -1012,6 +1093,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'P27: Việc, Nhân viên, Nâng cấp', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const styles = part('styles') ? stylesSave(mods) : null;
+    for (const viewport of part('styles') ? P25_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkStylesPanel(browser, viewport, styles, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Phong cách quán', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
