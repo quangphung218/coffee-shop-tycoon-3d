@@ -933,6 +933,12 @@
 .week-goal-row.is-done .progress > span {
   background: var(--text-ok);
 }
+.week-goal-row.is-failed .progress > span {
+  background: var(--text-muted);
+}
+.week-challenge {
+  margin-top: var(--space-3);
+}
 .rpt-week.is-goal {
   display: flex;
   flex-direction: column;
