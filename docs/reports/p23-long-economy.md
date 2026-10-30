@@ -12,8 +12,8 @@ Test chạy khoảng 60–125 giây (giới hạn 3 phút; trước E-12 là 69 
 
 - Tiền không bao giờ âm, không phá sản.
 - Chơi lại cùng seed ra cùng số.
-- Điểm `c_spend` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó; `b_steady` không đạt 3 cúp ở tuần 5–8 (0/12); `a_basic` giữ ít nhất 1 cúp (từ E-12; trước đó cả `b_steady` cũng 12/12).
-- `b_steady` có ít nhất 2 cúp ở 21/21 ván tuần 2–8 mỗi độ khó.
+- Điểm `c_spend` đạt 3 cúp ở tuần 5–8 trong 12/12 ván mỗi độ khó; `b_steady` không đạt 3 cúp ở toàn bộ ván tuần 5–8 (assert: dưới 100%; đo được 0/12); `a_basic` giữ ít nhất 1 cúp (từ E-12; trước đó cả `b_steady` cũng 12/12).
+- `b_steady` có ít nhất 2 cúp ở ≥ 75% ván tuần 2–8 mỗi độ khó (đo được: Dễ 20/21, Thường 21/21, Khó 21/21).
 
 ## Chiến lược
 
@@ -125,7 +125,7 @@ Vấn đề: ở v0.22.0 `b_steady` (chiến lược "chơi thong thả") ra cù
 
 Đổi ở `src/sim/data/week.ts` và test p23:
 
-- `b_steady` viết lại: barista từ ngày 2, giá Chuẩn, mỗi 3 ngày một lần vào mục Nâng cấp mua tối đa 1 món rẻ nhất có ảnh hưởng doanh thu, không marketing, không mở thêm dụng cụ sau ngày 7. Có assert `b_steady` khác `c_spend` (chi tiêu, tiền cuối).
+- `b_steady` viết lại: barista từ ngày 2, giá Chuẩn, mỗi 3 ngày một lần vào mục Nâng cấp mua tối đa 1 món rẻ nhất có ảnh hưởng doanh thu, không marketing, không mở thêm dụng cụ sau ngày 7. Có assert tổng chi nâng cấp tuần 1–8 của `b_steady` ≤ 50% của `c_spend` ở mỗi độ khó (đo được 3% / 4% / 4%). Tiền cuối chỉ được đo, không có assert.
 - Đường mục tiêu mới (`WEEK_GOAL_MULTS`), sau tuần 4 cộng +0,1/tuần (`WEEK_GOAL_LATE_GROWTH`), mục tiêu không bao giờ giảm:
 
   | Độ khó | Tuần 1 / 2 / 3 / 4 | Từ tuần 5 |
