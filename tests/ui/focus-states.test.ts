@@ -90,7 +90,7 @@ describe('aria-pressed on dock and speed buttons', () => {
     try {
       hud.el.hidden = false;
       const dock = [...hud.el.querySelectorAll<HTMLButtonElement>('.dock button[data-panel]')];
-      expect(dock).toHaveLength(7);
+      expect(dock).toHaveLength(8);
       const pressed = (list: HTMLElement[]) => list.filter((b) => b.getAttribute('aria-pressed') === 'true');
       expect(dock.every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true);
 

@@ -468,7 +468,7 @@ describe('dock groups', () => {
     const offs = [registerPrepPanels(), registerReviewsPanel()];
     try {
       const order = [...hud.el.querySelectorAll('.dock > *')].map((el) => (el.classList.contains('dock-sep') ? '|' : (el as HTMLElement).dataset.panel));
-      expect(order).toEqual(['tasks', 'menu', 'inventory', 'staff', '|', 'marketing', 'upgrades', '|', 'reviews']);
+      expect(order).toEqual(['tasks', 'menu', 'inventory', 'staff', '|', 'marketing', 'upgrades', 'styles', '|', 'reviews']);
     } finally {
       offs.forEach((off) => off());
       hud.dispose();

@@ -82,7 +82,7 @@ afterEach(() => {
 });
 
 describe('no emoji in a whole game day', () => {
-  it('main menu, new game, all seven dock panels, the open day and the report', () => {
+  it('main menu, new game, all eight dock panels, the open day and the report', () => {
     offs.push(registerPrepPanels(), registerReviewsPanel());
     const root = document.createElement('div');
     document.body.append(root);
@@ -101,7 +101,7 @@ describe('no emoji in a whole game day', () => {
 
     const dock = q(s.hud.el, 'nav.dock');
     const ids = [...dock.querySelectorAll<HTMLButtonElement>('button[data-panel]')].map((b) => b.dataset.panel);
-    expect(ids).toEqual(['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades', 'reviews']);
+    expect(ids).toEqual(['tasks', 'menu', 'inventory', 'staff', 'marketing', 'upgrades', 'styles', 'reviews']);
     for (const id of ids) {
       q<HTMLButtonElement>(dock, `[data-panel="${id}"]`).click();
       expect(s.hud.openPanelId).toBe(id);

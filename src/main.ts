@@ -105,6 +105,7 @@ function start(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     },
     onResetCamera: () => world?.resetCamera(),
     locateHint: (target) => world?.screenPoint(target) ?? null,
+    previewStyle: (slot, id) => world?.setStylePreview(slot, id),
     onGameStart: () => {
       // "Mới" marks belong to the game that opened them.
       fresh.clear();
