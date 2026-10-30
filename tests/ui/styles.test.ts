@@ -220,27 +220,18 @@ describe('ui.css panel head (P24 type scale)', () => {
   });
 });
 
-describe('ui.css toasts on a phone with a panel open', () => {
+describe('ui.css toasts with a panel open (UX-109)', () => {
   const all = rules(uiCss);
-  const phone = all.find((r) => r.selector === "#ui:has(.dock-btn[aria-pressed='true']) > .toasts");
-  const panelTop = all.find((r) => r.selector === '#ui > .panel')!.body.match(/top:\s*calc\(([^;]+)\);/)?.[1];
 
-  it('sits inside the 640 px media query', () => {
-    const src = uiCss.replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toMatch(/@media \(max-width: 640px\) \{\s*#ui:has\(\.dock-btn\[aria-pressed='true'\]\) > \.toasts \{/);
+  it('keeps the stack above the dock: no rule moves it up under the HUD when a panel is open', () => {
+    expect(all.find((r) => r.selector === '#ui > .toasts')?.body).toMatch(/bottom:\s*calc\(var\(--dock-h, var\(--dock-space\)\) \+ var\(--space-2\)\)/);
+    const moved = all.filter((r) => r.selector.includes('.toasts') && r.selector.includes('aria-pressed'));
+    expect(moved).toEqual([]);
+    expect(all.filter((r) => /(^|,)\s*#ui[^,]*> \.toasts/.test(r.selector)).map((r) => r.body).join(';')).not.toMatch(/(^|[;\s])top:/);
   });
 
-  it('starts below the panel head, so the title and Đóng stay uncovered', () => {
-    expect(panelTop).toBe('var(--hud-h, 72px) + var(--space-2)');
-    const top = phone?.body.match(/(?:^|;)\s*top:\s*calc\(([^;]+)\);/)?.[1];
-    // Panel top + its top outline + the head, then a gap.
-    expect(top).toBe(`${panelTop} + var(--size-outline) + var(--panel-head-h) + var(--space-2)`);
-    expect(phone?.body).toMatch(/bottom:\s*auto/);
-  });
-
-  it('only moves the stack (absolute), so nothing else reflows', () => {
+  it('stays absolute, so nothing else reflows', () => {
     expect(all.find((r) => r.selector === '#ui > .toasts')?.body).toMatch(/position:\s*absolute/);
-    expect(phone?.body).not.toMatch(/position|margin|padding/);
   });
 });
 

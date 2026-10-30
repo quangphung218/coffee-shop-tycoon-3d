@@ -39,31 +39,34 @@ describe('E-13 Nâng cấp: Tem goal and price bonus lines', () => {
     const next = nextTicketUpgrade(state)!;
     expect(next).not.toBeNull();
     const { body, handle } = mount(state);
-    expect(line(body, 'tickets')).toBe(`Tem: 3/${next.tickets} → ${getUpgrade(next.id).name}`);
+    expect(line(body, 'tickets')).toBe(`Tem: 3/${next.tickets} → ${getUpgrade(next.id).name} · nhận từ Quà hằng ngày`);
 
     state.retention!.tickets = 9;
     handle.update?.(state);
-    expect(line(body, 'tickets')).toBe(`Tem: 9/${next.tickets} → ${getUpgrade(next.id).name}`);
+    expect(line(body, 'tickets')).toBe(`Tem: 9/${next.tickets} → ${getUpgrade(next.id).name} · nhận từ Quà hằng ngày`);
   });
 
   it('shows just "Tem: X" when no open level costs Tem', () => {
     const state = game(1);
     expect(nextTicketUpgrade(state)).toBeNull();
     const { body } = mount(state);
-    expect(line(body, 'tickets')).toBe(`Tem: ${state.retention?.tickets ?? 0}`);
+    expect(line(body, 'tickets')).toBe(`Tem: ${state.retention?.tickets ?? 0} · nhận từ Quà hằng ngày`);
   });
 
-  it('shows "Giá bán +X% nhờ nâng cấp" from the owned price bonus, updated after a buy', () => {
+  it('hides the price line at +0% (UX-104), then shows "Giá bán +X% nhờ nâng cấp" after a buy', () => {
     const state = game(7);
     const { body, handle } = mount(state);
     expect(ownedPriceBonus(state)).toBe(0);
-    expect(line(body, 'price')).toBe('Giá bán +0% nhờ nâng cấp');
+    const price = body.querySelector<HTMLElement>('[data-summary="price"]')!;
+    expect(price.hidden).toBe(true);
+    expect(body.textContent).not.toContain('Giá bán +0%');
 
     state.upgrades.chandelier = 1;
     const bonus = ownedPriceBonus(state);
     expect(bonus).toBeGreaterThan(0);
     handle.update?.(state);
     expect(line(body, 'price')).toBe(`Giá bán +${String(Math.round(bonus * 1000) / 10).replace('.', ',')}% nhờ nâng cấp`);
+    expect(price.hidden).toBe(false);
   });
 
   it('keeps both lines plain text in the panel: no emoji, no modal', () => {

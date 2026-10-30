@@ -1836,7 +1836,6 @@ legend {
 /* Head after the Kho mockup: icon tile, title, level-4 close button. */
 .panel-head {
   flex: none;
-  /* Fixed, so a phone toast can sit just below it (toasts rule). */
   height: var(--panel-head-h);
   display: flex;
   align-items: center;
@@ -1883,16 +1882,8 @@ legend {
   width: min(360px, calc(100% - var(--space-6)));
   pointer-events: none;
 }
-/* Phone, panel open (its dock button is pressed) across the whole width
-   between HUD and dock: the stack moves up under the HUD (design/p17-states,
-   WCAG 2.4.11), clear of the panel foot and just below the panel head, so it
-   never covers the title or the Đóng button. Position only, no layout shift. */
-@media (max-width: 640px) {
-  #ui:has(.dock-btn[aria-pressed='true']) > .toasts {
-    top: calc(var(--hud-h, 72px) + var(--space-2) + var(--size-outline) + var(--panel-head-h) + var(--space-2));
-    bottom: auto;
-  }
-}
+/* With a panel open, at every width, the stack stays where it always is,
+   just above the dock: never over the panel head, its title or Đóng. */
 /* Cream sticker card; the level shows in the icon chip colour, the icon
    itself and the title colour (not colour alone). */
 .toast {
@@ -2093,6 +2084,11 @@ legend {
 }
 .wk-next-label {
   white-space: nowrap;
+}
+/* The goal sentence wraps beside its trophy instead of dropping below it. */
+.wk-next p > span:last-child:not(.wk-next-label) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 /* Narrow: the comparison table becomes a list, one row per figure with its
    label, this week and the signed change; last week's column is dropped. */

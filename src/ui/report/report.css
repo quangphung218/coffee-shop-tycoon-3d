@@ -980,6 +980,10 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* Two short columns: kept narrow so Điểm sits next to its criterion on a wide dialog. */
+.rpt-margins.wk-points {
+  max-width: 360px;
+}
 .wk-points tfoot td {
   border-top: var(--size-outline-sm) solid var(--border-outline);
 }
@@ -989,6 +993,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+/* Title and shop line beside the trophy, wrapping inside their column, never under it. */
+.rpt-layer[data-screen='weekEnd'] .rpt-head {
+  flex-wrap: nowrap;
+}
+.rpt-layer[data-screen='weekEnd'] .rpt-head-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Tablet: two cards a row; an odd last card takes the whole row, never alone in half of it. */
+@media (max-width: 1023px) {
+  .rpt-grid.wk-grid > :last-child:nth-child(odd):not(:first-child) {
+    grid-column: 1 / -1;
+  }
 }
 /* Desktop: revenue, profit and stars side by side in a wider dialog. */
 @media (min-width: 1024px) {
@@ -1122,14 +1140,12 @@
     padding: 0 var(--space-2);
     white-space: nowrap;
   }
-  .rpt-foot-actions,
-  .wk-foot-actions {
+  .rpt-foot-actions {
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
   }
   .rpt-foot-actions > .btn,
-  .wk-foot-actions > .btn,
   .rpt-foot-actions > [data-action='reviews'] {
     flex: none;
     width: 100%;
@@ -1144,6 +1160,18 @@
   }
   .rpt-foot-actions > [data-action='reviews'] .rpt-btn-text {
     display: inline;
+  }
+  /* Week end: Sang tuần N takes the first row, Về menu and Chơi lại share the second. */
+  .rpt-foot-actions.wk-foot-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rpt-foot-actions.wk-foot-actions > .btn {
+    flex: 1 1 0;
+    width: auto;
+  }
+  .rpt-foot-actions.wk-foot-actions > .btn-primary {
+    flex-basis: 100%;
   }
 }
 

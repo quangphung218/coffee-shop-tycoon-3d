@@ -196,16 +196,16 @@ describe('week summary', () => {
     expect(el.querySelector('[data-block="days"]')!.textContent).not.toMatch(/\bN\d/);
   });
 
-  it('shows a drop in Khách bỏ đi with the arrow and colour both saying better', () => {
+  it('shows a drop in Khách bỏ đi with a down arrow and the colour saying better (UX-110)', () => {
     const el = openWeekEnd(atWeek2Report());
     const d = el.querySelector<HTMLElement>('tr[data-stat="abandonRate"] .wk-delta')!;
     // 20% → 5%: the figure went down, which is the good direction.
     expect(d.dataset.delta).toBe('down');
     expect(d.textContent).toBe('−15 điểm %');
     expect(d.classList.contains('is-up')).toBe(true);
-    expect(d.querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('i-trend-up');
+    expect(d.querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('i-trend-down');
     expect(d.getAttribute('aria-label')).toBe('Giảm 15 điểm %, tốt hơn');
-    // Elsewhere arrow, colour and direction still agree.
+    // Elsewhere arrow, colour and direction agree.
     const rev = el.querySelector<HTMLElement>('tr[data-stat="customersServed"] .wk-delta')!;
     expect(rev.classList.contains('is-up')).toBe(true);
     expect(rev.querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('i-trend-up');

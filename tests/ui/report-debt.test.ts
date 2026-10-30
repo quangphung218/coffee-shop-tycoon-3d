@@ -120,7 +120,7 @@ describe('report.css narrow footer', () => {
     const at = reportCss.indexOf('@media (max-width: 480px)');
     expect(at).toBeGreaterThan(0);
     const block = reportCss.slice(at);
-    expect(block).toMatch(/\.rpt-foot-actions,\s*\.wk-foot-actions \{[^}]*flex-direction: column;/);
+    expect(block).toMatch(/\.rpt-foot-actions \{[^}]*flex-direction: column;/);
     expect(block).toMatch(/\.rpt-foot-actions > \.btn,[^{]*\{[^}]*width: 100%;/);
     expect(block).toMatch(/\.rpt-foot-actions > \.btn-primary \{\s*order: -1;/);
   });

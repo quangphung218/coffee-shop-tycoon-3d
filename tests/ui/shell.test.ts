@@ -921,7 +921,7 @@ describe('no emoji on the screens', () => {
       q<HTMLButtonElement>(pause, '[data-save-slot="2"]').click();
       expect(pause.textContent).toContain('Đã lưu vào Slot 2');
       expect(pause.textContent).not.toMatch(EMOJI);
-      shell.handleEvents([{ type: 'dayEnded', day: 1 }]);
+      shell.toasts.show({ level: 'info', icon: 'i-save', title: 'Đã lưu' });
       expect(q(root, '.toasts .toast-icon .ic').dataset.icon).toBe('i-save');
       expect(q(root, '.toasts').textContent).not.toMatch(EMOJI);
     } finally {
@@ -1015,7 +1015,8 @@ describe('Shell', () => {
     const text = root.querySelector('.toasts')?.textContent ?? '';
     expect(text).toContain('Quán đã mở cửa!');
     expect(text).toContain('Sắp hết');
-    expect(text).toContain('Đã tự lưu ngày 1');
+    // UX-102: a good autosave is the report footer's line, not a toast.
+    expect(text).not.toContain('Đã tự lưu');
   });
 
   describe('a new run and the autosave of the last one', () => {
@@ -1179,7 +1180,6 @@ describe('Shell', () => {
           expect(day(storage, '1'), `S${d} slot 1`).toBe(d + 1);
           expect(day(storage, '2'), `S${d} slot 2`).toBeNull();
           expect(day(storage, '3'), `S${d} slot 3`).toBeNull();
-          expect(toasts).toContain(`Đã tự lưu ngày ${d}`);
           expect(toasts).not.toContain('Đã chép');
           expect(toasts).not.toContain('Chưa tự lưu');
         }

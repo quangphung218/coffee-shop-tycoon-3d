@@ -122,7 +122,7 @@ describe('Week-end next-week block (item 3)', () => {
     const goal = weekGoal('hard', 2);
     const text = q(el, '[data-next="goal"]')!.textContent!;
     expect(text).toBe(
-      `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×1,7 so tuần 1), ${formatMoney(weekProfitTarget('hard', goal.revenue))} lợi nhuận và 4,2 sao.`,
+      `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×1,7 mục tiêu tuần 1), ${formatMoney(weekProfitTarget('hard', goal.revenue))} lợi nhuận và 4,2 sao.`,
     );
     expect(text).not.toMatch(/\s\./);
     // The sentence is one flex item after the icon, so the line's gap cannot split "sao" from its period.
@@ -199,7 +199,7 @@ describe('Week 1 summary below 3 cups (item 5)', () => {
     scoreLastDay(state);
     const el = open(state);
     expect(q(el, '[data-block="week-one"]')).toBeNull();
-    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,1 so tuần 1');
+    expect(q(el, '[data-next="goal"]')!.textContent).toContain('×2,1 mục tiêu tuần 1');
   });
 });
 
