@@ -492,6 +492,7 @@ export function serveCustomer(state: GameState, customer: Customer, itemId: Menu
   state.today.customersServed += 1;
   state.today.sold[itemId] = (state.today.sold[itemId] ?? 0) + 1;
   if (customer.extraItem) state.today.sold[customer.extraItem] = (state.today.sold[customer.extraItem] ?? 0) + 1;
+  if (customer.regularId) state.today.regularsServed = (state.today.regularsServed ?? 0) + 1;
   recordWait(state, customer);
   state.events.push({ type: 'served', customerId: customer.id, itemId });
   onServed(state, itemId, customer.id);
