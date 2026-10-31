@@ -13,7 +13,7 @@ import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
 import { totalUpgradeLevels } from '../../src/sim/week';
-import type { Difficulty, GameState, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
+import type { Difficulty, GameEvent, GameState, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
 import { playDay } from '../integration/helpers';
 
 /**
@@ -112,7 +112,10 @@ export interface WeekRow {
 /** Weekly rows of a run; bankruptDay is set when the shop went bankrupt and the run stopped there. */
 export type WeekRows = WeekRow[] & { bankruptDay?: number };
 
-export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, weeks = WEEKS): WeekRows {
+/** Called after each played day with that day's events (E-22 reads the regular milestones). */
+export type DayHook = (state: GameState, events: GameEvent[]) => void;
+
+export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, weeks = WEEKS, onDay?: DayHook): WeekRows {
   const state = createNewGame('Quán E19', difficulty, seed);
   const rows: WeekRows = [];
   const narrowed = new Set<string>();
@@ -161,7 +164,8 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
     if (s.chase === 'eager' && active && (challenge.id === 'served_week' || challenge.id === 'regular_visits') && state.money - reserve(state) >= CHEAPEST_CAMPAIGN.cost) {
       dispatch(state, { type: 'start_campaign', campaignId: CHEAPEST_CAMPAIGN.id });
     }
-    playDay(state);
+    const events = playDay(state);
+    onDay?.(state, events);
     if (state.bankrupt) {
       rows.bankruptDay = state.day;
       break;

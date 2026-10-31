@@ -318,6 +318,12 @@ export interface RegularVisits {
   /** Game day of the first and the latest visit. */
   firstDay: number;
   lastDay: number;
+  /**
+   * Sổ khách quen milestones reached in E-18's book (10/40/100 visits for
+   * everyone), set when a save from before E-22 is loaded: shown as reached and
+   * never paid again. 0 for regulars counted since E-22; absent only before load.
+   */
+  keptMilestones?: number;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';

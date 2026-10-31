@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { upgradeUnlockLevel } from '../../src/sim/data/levels';
+import { regularBook } from '../../src/sim/data/regularMilestones';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { WEEK_LENGTH } from '../../src/sim/data/week';
 import { dailyRent, profit, totalWages } from '../../src/sim/economy';
@@ -42,6 +43,19 @@ function reserve(s: GameState): number {
   return totalWages(s) + dailyRent(s) + autoRestockSuggestion(d).totalCost;
 }
 
+/**
+ * Tem the regulars' milestones (E-18, E-22) paid this game, read from the book
+ * so it survives structuredClone. The spender sets it aside, as p23 and E-16 do,
+ * so the shop it reaches by day 21 does not hang on when milestones pay. E-22's
+ * staggered thresholds pay milestone Tem on other days than E-18's, which
+ * changed the Tem-priced levels the spender owned and put chandelier level 2
+ * at 2.28 weeks (1.72 with milestone Tem set aside). The 2.25-week bound and
+ * the upgrade prices are kept as they are.
+ */
+function milestoneTem(s: GameState): number {
+  return regularBook(s).reduce((n, p) => n + p.milestones.filter((m) => m.reached).reduce((t, m) => t + m.tickets, 0), 0);
+}
+
 /** The p23 spender: one barista, then the cheapest affordable upgrade every morning. */
 function morning(s: GameState, day: number, spend: boolean): void {
   if (day > 1) expect(dispatch(s, { type: 'next_day' })).toBe(true);
@@ -58,7 +72,7 @@ function morning(s: GameState, day: number, spend: boolean): void {
       if (!isUnlocked(s, 'upgrade', def.id)) continue;
       const cost = nextUpgradeCost(s, def.id);
       if (cost === null || s.money - reserve(s) < cost) continue;
-      if ((nextUpgradeTicketCost(s, def.id) ?? 0) > (s.retention?.tickets ?? 0) || upgradeBlockedReason(s, def.id)) continue;
+      if ((nextUpgradeTicketCost(s, def.id) ?? 0) > (s.retention?.tickets ?? 0) - milestoneTem(s) || upgradeBlockedReason(s, def.id)) continue;
       if (!best || cost < best.cost) best = { id: def.id, cost };
     }
     if (!best) break;
