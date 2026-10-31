@@ -381,7 +381,9 @@ function nextLevelLine(state: GameState): HTMLElement {
   const def = LEVELS[level]!;
   const names = unlockNames(unlocksBetween(level, level + 1));
   const bonus = Object.keys(def.maxLevelBonus ?? {}).map((id) => getUpgrade(id as UpgradeId).name).join(', ');
-  const opens = names ? `mở ${names}` : bonus ? `thêm 1 cấp cho ${bonus}` : 'quán lớn hơn';
+  // "mở Mở rộng diện tích" reads twice: a name that itself starts with "Mở" takes "có thêm" instead (UX-214).
+  const verb = /(^|, )Mở /.test(names) ? 'có thêm' : 'mở';
+  const opens = names ? `${verb} ${names}` : bonus ? `thêm 1 cấp cho ${bonus}` : 'quán lớn hơn';
   const xpLeft = Math.max(0, xpToReach(level + 1) - state.xp);
   return h(
     'p',

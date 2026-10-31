@@ -151,6 +151,11 @@ export function challengeProgress(state: GameState): ChallengeProgress | null {
   };
 }
 
+/** Raises the challenge's best day (WeekChallenge.best) to `value`. */
+function keepBest(challenge: WeekChallenge, value: number): void {
+  if (challenge.best === undefined || value > challenge.best) challenge.best = value;
+}
+
 /**
  * Folds the day just closed into the week's challenge; called from closeDay
  * with the day's report. Reaching the target marks it completed, pays its Tem,
@@ -168,12 +173,16 @@ export function endOfDayChallenge(state: GameState, report: DailyReport): void {
     challenge.progress += amount;
   } else if (challenge.id === 'stars_week') {
     // Rounded to one decimal like the shown rating.
-    if (Math.round(state.rating * 10) / 10 >= (def.minStars ?? 0)) challenge.progress += 1;
+    const stars = Math.round(state.rating * 10) / 10;
+    keepBest(challenge, stars);
+    if (stars >= (def.minStars ?? 0)) challenge.progress += 1;
     else challenge.status = 'failed';
   } else if (challenge.id === 'calm_day') {
+    if (today.customersLost === 0) keepBest(challenge, today.customersServed);
     if (today.customersLost === 0 && today.customersServed >= (challenge.minServed ?? def.minServed ?? 0)) challenge.progress += 1;
   } else if (challenge.id === 'perfect_days') {
     const missions = report.missions ?? [];
+    keepBest(challenge, missions.filter((m) => m.status === 'completed').length);
     if (missions.length > 0 && missions.every((m) => m.status === 'completed')) challenge.progress += 1;
   }
   if (challenge.status !== 'active' || challenge.progress < challenge.target) return;

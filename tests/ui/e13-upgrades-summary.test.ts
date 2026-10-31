@@ -7,6 +7,7 @@ import { nextTicketUpgrade, ownedPriceBonus } from '../../src/sim/upgrades';
 import type { Command, GameState } from '../../src/sim/types';
 import type { PanelContext, PanelHandle } from '../../src/ui/hud/panels';
 import { renderUpgradesPanel } from '../../src/ui/panels/upgrades';
+import { TEM_SOURCES_TEXT } from '../../src/ui/panels/widgets';
 
 function game(level: number): GameState {
   const s = createNewGame('Quán E13', 'normal', 5);
@@ -39,18 +40,18 @@ describe('E-13 Nâng cấp: Tem goal and price bonus lines', () => {
     const next = nextTicketUpgrade(state)!;
     expect(next).not.toBeNull();
     const { body, handle } = mount(state);
-    expect(line(body, 'tickets')).toBe(`Tem: 3/${next.tickets} → ${getUpgrade(next.id).name} · nhận từ Quà hằng ngày`);
+    expect(line(body, 'tickets')).toBe(`Tem: 3/${next.tickets} → ${getUpgrade(next.id).name} · ${TEM_SOURCES_TEXT}`);
 
     state.retention!.tickets = 9;
     handle.update?.(state);
-    expect(line(body, 'tickets')).toBe(`Tem: 9/${next.tickets} → ${getUpgrade(next.id).name} · nhận từ Quà hằng ngày`);
+    expect(line(body, 'tickets')).toBe(`Tem: 9/${next.tickets} → ${getUpgrade(next.id).name} · ${TEM_SOURCES_TEXT}`);
   });
 
   it('shows just "Tem: X" when no open level costs Tem', () => {
     const state = game(1);
     expect(nextTicketUpgrade(state)).toBeNull();
     const { body } = mount(state);
-    expect(line(body, 'tickets')).toBe(`Tem: ${state.retention?.tickets ?? 0} · nhận từ Quà hằng ngày`);
+    expect(line(body, 'tickets')).toBe(`Tem: ${state.retention?.tickets ?? 0} · ${TEM_SOURCES_TEXT}`);
   });
 
   it('hides the price line at +0% (UX-104), then shows "Giá bán +X% nhờ nâng cấp" after a buy', () => {

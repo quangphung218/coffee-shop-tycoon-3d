@@ -678,6 +678,13 @@ export interface WeekChallenge {
   settledDay: number;
   /** 'failed' only for stars_week once a day closes below the stars. */
   status: 'active' | 'completed' | 'failed';
+  /**
+   * Best closed day of the week so far, for the challenges counted per day:
+   * calm_day the most customers served on a day nobody walked out, stars_week
+   * the highest closing rating (one decimal), perfect_days the most daily
+   * missions completed. Shown only; absent before such a day and in older saves.
+   */
+  best?: number;
 }
 
 /** Totals of a finished week, kept in `WeekState.archive` for week-over-week stats. */
