@@ -6,7 +6,7 @@ import type { GameState, StyleSlot } from '../../sim/types';
 import { h, isAriaDisabled, setAriaDisabled, uid, Watcher } from '../core/dom';
 import { formatMoney } from '../core/format';
 import type { PanelContext, PanelHandle } from '../hud/panels';
-import { inlineConfirm, reasonLine, segmented, sender, setIconText, setReason, shortOfMoney } from './widgets';
+import { inlineConfirm, reasonLine, segmented, sender, setIconText, setReason, shortOfMoney, TEM_SOURCES_SENTENCE, TEM_SOURCES_TEXT } from './widgets';
 
 export const STYLES_PANEL_ID = 'styles';
 
@@ -30,9 +30,14 @@ export function lockedStyleText(state: Pick<GameState, 'styles'>, id: string): s
 /** Why "Mua" is dimmed, as something the player can do; null when the style can be bought now. */
 export function styleBuyReason(state: GameState, style: StyleDef): string | null {
   if (!isStyleUnlocked(state, style.id)) return lockedStyleText(state, style.id);
-  if (state.money < style.price) return shortOfMoney(style.price, state.money, formatMoney);
   const have = state.retention?.tickets ?? 0;
-  if (have < style.tickets) return `Thiếu ${style.tickets - have} Tem (cần ${style.tickets}, có ${have}) · nhận từ Quà hằng ngày.`;
+  const noMoney = state.money < style.price;
+  const noTem = have < style.tickets;
+  // Short of both: one line names both gaps, so buying more Tem alone is not mistaken for enough (UX-212).
+  if (noMoney && noTem)
+    return `Thiếu ${formatMoney(style.price - state.money)} và ${style.tickets - have} Tem (cần ${stylePriceText(style)}, có ${formatMoney(state.money)} + ${have} Tem). ${TEM_SOURCES_SENTENCE}`;
+  if (noMoney) return shortOfMoney(style.price, state.money, formatMoney);
+  if (noTem) return `Thiếu ${style.tickets - have} Tem (cần ${style.tickets}, có ${have}). ${TEM_SOURCES_SENTENCE}`;
   return styleBlockedReason(state, style.id);
 }
 
@@ -213,7 +218,7 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
   const tem = h('p', { attrs: { 'data-summary': 'tickets' } });
   w.watch(
     (s) => s.retention?.tickets ?? 0,
-    (n) => (tem.textContent = `Tem: ${n} · nhận từ Quà hằng ngày`),
+    (n) => (tem.textContent = `Tem: ${n} · ${TEM_SOURCES_TEXT}`),
   );
   const list = h(
     'div',

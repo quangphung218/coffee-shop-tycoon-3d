@@ -1,7 +1,8 @@
-import { listSlotSummaries, type SaveSlot, type SlotInfo } from '../../save/slots';
+import { listSlotSummaries, slotMoment, type SaveSlot, type SlotInfo } from '../../save/slots';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, isAriaDisabled, setAriaDisabled, uid } from '../core/dom';
+import { formatClock } from '../core/format';
 import { icon } from '../core/icons';
 import { SceneGate } from '../core/sceneGate';
 import { screenLayer, type Screen } from '../core/screens';
@@ -65,6 +66,19 @@ export function pendingGiftDay(slot: SlotInfo, today: string): number | null {
   if (Number.isNaN(last)) return 1;
   if (now <= last) return null;
   return now === last + 1 ? ((slot.giftStreak ?? 0) % GIFT_DAYS) + 1 : 1;
+}
+
+/** Phases with the doors open (clock.ts isOpen), kept here so the menu loads without the sim. */
+const OPEN_PHASES: ReadonlySet<string> = new Set(['opening', 'peak', 'closing']);
+
+/**
+ * Under "Tiếp tục": "Quán · Ngày 3", or "Quán · Ngày 3 · 12:30 · đang mở cửa"
+ * for a save made with the doors open, so the player knows they land mid-day (UX-215).
+ */
+export function continueDetailText(slot: Pick<SlotInfo, 'shopName' | 'day'>, moment: { phase: string; minute: number } | null = null): string {
+  const base = `${slot.shopName ?? ''} · Ngày ${slot.day ?? 1}`;
+  if (!moment || !OPEN_PHASES.has(moment.phase)) return base;
+  return `${base} · ${formatClock(moment.minute)} · đang mở cửa`;
 }
 
 /**
@@ -150,7 +164,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
     continueSlot = latest?.slot ?? null;
     continueBtn.hidden = !latest;
     continueRow.hidden = !latest;
-    continueDetail.textContent = latest ? `${latest.shopName} · Ngày ${latest.day}` : '';
+    continueDetail.textContent = latest ? continueDetailText(latest, slotMoment(latest.slot, storage)) : '';
     const gift = latest ? pendingGiftDay(latest, localDateKey()) : null;
     giftLine.textContent = gift === null ? '' : `Quà ngày ${gift} đang chờ`;
     giftLine.hidden = gift === null;

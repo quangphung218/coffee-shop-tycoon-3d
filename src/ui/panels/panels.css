@@ -501,13 +501,13 @@
     transition: none;
   }
 }
-/* Sổ khách quen (E-18): one .item-row per regular; its third line holds three
+/* Sổ khách quen (E-18, E-22): one .item-row per regular; its third line holds four
    milestone cells that share the width, so 390 px never scrolls sideways; each cell is a full tap
    target and opens the story line under the row in place. */
 .book-cells {
   flex: 1 1 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 .book-cell {
@@ -540,8 +540,75 @@
   flex-direction: column;
   gap: var(--space-1);
 }
-.book-detail[hidden] {
+.book-detail[hidden],
+.book-page[hidden] {
   display: none;
+}
+/* Khách quen merged with the book (UX-207): icon | name + meta | four dots.
+   The name is the disclosure button; its ::after covers the whole row, so a
+   tap anywhere on it opens the book page in place below (the page sits above
+   the overlay, so its cells take their own taps). */
+.regular-row {
+  position: relative;
+}
+/* The button itself is a full tap target (P27): at least --size-target tall
+   and wide, with negative block margins so the title line keeps its height. */
+.regular-head {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  margin-block: calc((1lh - var(--size-target)) / 2);
+  vertical-align: middle;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.regular-head::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  min-height: var(--size-target);
+  border-radius: var(--radius-lg);
+}
+.regular-head:focus-visible {
+  outline: none;
+}
+.regular-head:focus-visible::after {
+  outline: var(--size-focus-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--size-focus-width));
+}
+.book-dots {
+  display: inline-flex;
+  align-self: center;
+  gap: var(--space-1);
+}
+.book-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  border: var(--size-outline-sm) solid var(--border-outline);
+}
+.book-dot.is-reached {
+  background: var(--text-ok);
+}
+.regular-row > .book-page {
+  position: relative;
+  z-index: 1;
+}
+.book-progress {
+  flex: 1 1 100%;
+}
+/* Icon lines of the open page: a gap between the icon (lock, dish, Tem) and the text (UX-213). */
+.book-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /* Stepper: three separate controls in a group with a 4px gap, so each one
@@ -1044,9 +1111,21 @@
    actions ("Bỏ xem thử", "Mua"/"Dùng kiểu này", the in-place confirm) open
    under it only while it is previewed. Previewed (or worn, with no preview)
    gets the bold inner border, as the uniform picker. */
-.styles-panel .seg {
-  align-self: flex-start;
+/* The four slot tabs share one row at every width (UX-211): equal columns,
+   tighter side padding; a label too long for its column wraps inside it.
+   The repeated class beats the equal .set-row .seg in ui.css whatever the load order. */
+.styles-panel .seg.seg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-self: stretch;
   max-width: 100%;
+}
+.styles-panel .seg-opt span {
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  text-align: center;
 }
 .style-row {
   display: flex;

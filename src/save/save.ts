@@ -3,6 +3,7 @@ import { HISTORY_DAYS } from '../sim/clock';
 import { WEEK_CHALLENGE_IDS } from '../sim/data/challenges';
 import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
+import { e18MilestonesReached } from '../sim/data/regularMilestones';
 import { STYLE_SLOTS, styleById } from '../sim/data/styles';
 import { WEEK_LENGTH } from '../sim/data/week';
 import { settleActors } from '../sim/index';
@@ -186,6 +187,7 @@ export function migrate(raw: unknown): Result<SaveFile> {
   dropUnknownItems(file.state);
   dropUnknownChallenge(file.state);
   cleanStyles(file.state);
+  keepE18Milestones(file.state);
   // Saves from before E-16 get a challenge on a week's first morning; mid-week they wait for the next week.
   ensureWeekChallenge(file.state);
   // Every copy of a run saved before runId existed shares its seed and name.
@@ -290,6 +292,20 @@ function cleanStyles(state: GameState): void {
     }
   }
   state.styles = { chosen, owned: ids(raw.owned), unlocked: ids(raw.unlocked) };
+}
+
+/**
+ * Saves from before E-22 counted visits against E-18's book (10/40/100 for
+ * every regular). Each regular they counted keeps the milestones reached there
+ * (no version bump: regulars counted since E-22 carry keptMilestones 0), so
+ * nothing reached is lost and none of it is paid again.
+ */
+function keepE18Milestones(state: GameState): void {
+  const regulars: unknown = state.regulars;
+  if (!isObject(regulars)) return;
+  for (const seen of Object.values(regulars)) {
+    if (isObject(seen) && seen.keptMilestones === undefined && typeof seen.visits === 'number') seen.keptMilestones = e18MilestonesReached(seen.visits);
+  }
 }
 
 function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {

@@ -36,7 +36,7 @@ export const PREP_PANELS: readonly PanelDef[] = [
   { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, group: 'ops' },
   { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel, group: 'dev' },
   { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel, group: 'dev' },
-  { id: STYLES_PANEL_ID, label: 'Phong cách quán', icon: 'i-paintings', render: renderStylesPanel, group: 'dev' },
+  { id: STYLES_PANEL_ID, label: 'Phong cách', icon: 'i-paintings', render: renderStylesPanel, group: 'dev' },
 ];
 
 /** Panels need a running game; on the main menu they say so instead of failing. */

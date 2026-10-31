@@ -214,7 +214,8 @@ describe('UX-208 regular milestone toasts', () => {
     const state = gameInWeek(2, 4);
     state.regulars = {
       co_lan: { visits: 10, firstDay: 2, lastDay: state.day },
-      anh_minh: { visits: 40, firstDay: 2, lastDay: state.day },
+      // anh_minh's milestone 2 is at 65 visits (MILESTONE_VISITS).
+      anh_minh: { visits: 65, firstDay: 2, lastDay: state.day },
       // Came today but no milestone; reached one on an earlier day.
       chu_tuan: { visits: 11, firstDay: 2, lastDay: state.day },
       chi_hoa: { visits: 10, firstDay: 2, lastDay: state.day - 1 },
