@@ -5,6 +5,9 @@ import { LOADING_TIPS } from './src/ui/core/tips';
 
 type AssetList = [string, number][];
 
+/** Node's env without pulling @types/node into the app's tsconfig. */
+const hostEnv = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+
 /** Placeholders in the boot script of index.html. */
 const ASSETS_SLOT = '/*CST_ASSETS*/ { boot: [], scene: [] }';
 const TIPS_SLOT = '/*CST_TIPS*/ []';
@@ -95,5 +98,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // Default (cores - 1) workers peak at ~1.5 GB on the 16 GB dev Mac while
+    // several agents test at once; 4 workers peak ~0.9 GB for ~15% more time.
+    // VITEST_MAX_WORKERS (set by the agent host) still wins.
+    maxWorkers: Number(hostEnv.VITEST_MAX_WORKERS) || 4,
   },
 });
