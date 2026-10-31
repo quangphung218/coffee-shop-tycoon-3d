@@ -124,10 +124,10 @@ describe('saves with an E-19 goal at level 10+', () => {
     const levels = totalUpgradeLevels(s);
     expect(levels).toBe(9);
     const size = sizeGoal('normal', levels);
-    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit }, scaled: false });
+    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels }, scaled: false });
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
     expect(s.week!.index).toBe(13);
-    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit });
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels });
     expect(s.week!.goalScaled).toBeUndefined();
   });
 
