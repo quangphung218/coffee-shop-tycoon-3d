@@ -2,7 +2,7 @@ import { CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
 import { DIFFICULTIES } from '../../sim/data/difficulty';
 import { LEVELS, MAX_SHOP_LEVEL, unlocksBetween, xpToReach } from '../../sim/data/levels';
 import { getUpgrade, UPGRADES } from '../../sim/data/upgrades';
-import { upgradeAmortizeWeeks, WEEK_REWARD_MIN_CUPS, weekGoal, weekProfitTarget, weekReward } from '../../sim/data/week';
+import { goalProfitTarget, upgradeAmortizeWeeks, WEEK_REWARD_MIN_CUPS, weekGoal, weekReward } from '../../sim/data/week';
 import { profit as dayProfit } from '../../sim/economy';
 import { isUnlocked, weekIndex } from '../../sim/progression';
 import { bestDay, weekCompare, type StatId, type WeekCompare } from '../../sim/stats';
@@ -402,7 +402,7 @@ function factorText(x: number): string {
 export function nextWeekGoalText(state: GameState): string {
   const { goal } = nextWeekGoal(state);
   const base = weekGoal(state.difficulty, 1).revenue;
-  const profitTarget = weekProfitTarget(state.difficulty, goal.revenue);
+  const profitTarget = goalProfitTarget(state.difficulty, goal);
   return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} mục tiêu tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
 }
 

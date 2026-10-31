@@ -1,3 +1,3 @@
 import { longSim } from './suite';
 
-longSim('easy', 42);
+longSim('easy', { seeds: [1, 42], determinismSeed: 42 });

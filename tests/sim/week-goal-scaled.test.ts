@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, loadGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
-import { SCALED_GOAL_MIN_LEVEL, SCALED_GOAL_RATIO, SCALED_GOAL_WEEKS, WEEK_LENGTH, scaledWeekGoal, weekGoal } from '../../src/sim/data/week';
+import { SCALED_GOAL_MIN_LEVEL, SCALED_GOAL_RATIO, SCALED_GOAL_WEEKS, WEEK_LENGTH, scaledWeekGoal, sizeGoal, weekGoal } from '../../src/sim/data/week';
 import { dispatch } from '../../src/sim/index';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState, WeekSummary } from '../../src/sim/types';
-import { isWeekGoalScaled, nextWeekGoal, rollWeekPlan } from '../../src/sim/week';
+import { isWeekGoalScaled, nextWeekGoal, rollWeekPlan, totalUpgradeLevels } from '../../src/sim/week';
 
 const SEED = 1919;
 const round = (v: number) => Math.round(v / 100_000) * 100_000;
@@ -61,31 +61,31 @@ describe('scaledWeekGoal', () => {
   });
 });
 
-describe('next week at level 10+', () => {
+describe('next week at level 10+ before SIZE_GOAL_FIRST_WEEK', () => {
   const big = [150_000_000, 160_000_000, 170_000_000, 180_000_000];
   const scaledRevenue = round(((150_000_000 + 160_000_000 + 170_000_000 + 180_000_000) / 4) * SCALED_GOAL_RATIO);
 
   it('opens with the scaled goal and marks it for the UI; nextWeekGoal previews it', () => {
-    const s = atWeekReport(10, 10, big);
-    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: scaledRevenue, stars: weekGoal('normal', 11).stars }, scaled: true });
+    const s = atWeekReport(7, 10, big);
+    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: scaledRevenue, stars: weekGoal('normal', 8).stars }, scaled: true });
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
-    expect(s.week!.index).toBe(11);
+    expect(s.week!.index).toBe(8);
     expect(s.week!.goal.revenue).toBe(scaledRevenue);
     expect(isWeekGoalScaled(s)).toBe(true);
   });
 
   it('below level 10 opens with weekGoal, unmarked', () => {
-    const s = atWeekReport(10, 9, big);
+    const s = atWeekReport(7, 9, big);
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
-    expect(s.week!.goal).toEqual(weekGoal('normal', 11));
+    expect(s.week!.goal).toEqual(weekGoal('normal', 8));
     expect(s.week!.goalScaled).toBeUndefined();
     expect(isWeekGoalScaled(s)).toBe(false);
   });
 
   it('at level 10 with small revenue opens with weekGoal, unmarked', () => {
-    const s = atWeekReport(10, 12, [1_000_000]);
+    const s = atWeekReport(7, 12, [1_000_000]);
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
-    expect(s.week!.goal).toEqual(weekGoal('normal', 11));
+    expect(s.week!.goal).toEqual(weekGoal('normal', 8));
     expect(isWeekGoalScaled(s)).toBe(false);
   });
 });
@@ -99,7 +99,7 @@ describe('saves from before E-19 already at level 10', () => {
     return (r as { ok: true; value: GameState }).value;
   }
 
-  it('keep the running week goal, then the next week gets the new rule', () => {
+  it('keep the running week goal, then the next week gets the SIZE_GOAL row (E-21)', () => {
     const old = createNewGame('Quán Cũ E19', 'normal', SEED);
     old.shopLevel = 11;
     old.day = 9 * WEEK_LENGTH + 3;
@@ -124,7 +124,9 @@ describe('saves from before E-19 already at level 10', () => {
     s.week!.result = { revenue: 200_000_000, revenueTarget: 1, stars: 4, starsTarget: 4, score: 0, cups: 0, days: [] };
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
     expect(s.week!.index).toBe(11);
-    expect(s.week!.goal.revenue).toBe(round(200_000_000 * SCALED_GOAL_RATIO));
-    expect(isWeekGoalScaled(s)).toBe(true);
+    const levels = totalUpgradeLevels(s);
+    const size = sizeGoal('normal', levels);
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 11).stars, profit: size.profit, levels });
+    expect(isWeekGoalScaled(s)).toBe(false);
   });
 });
