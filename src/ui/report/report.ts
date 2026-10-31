@@ -87,7 +87,7 @@ export function reportMilestones(state: Pick<GameState, 'regulars'>, day: number
   const out: ReportMilestone[] = [];
   for (const [id, seen] of Object.entries(state.regulars ?? {})) {
     if (seen.lastDay !== day) continue;
-    const milestone = milestoneAt(seen.visits);
+    const milestone = milestoneAt(id, seen.visits, seen.keptMilestones);
     const def = milestone ? regularBookEntry(id)?.milestones[milestone - 1] : undefined;
     const name = regularById(id)?.name;
     if (def && name) out.push({ name, milestone, tickets: def.tickets });

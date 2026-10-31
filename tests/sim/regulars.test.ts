@@ -64,7 +64,7 @@ describe('named regulars', () => {
       }
       expect(pickRegular(2024, e.customerId).id).toBe(e.regularId);
       expect(e.visits).toBe(1);
-      expect(run.state.regulars![e.regularId]).toEqual({ visits: 1, firstDay: 2, lastDay: 2 });
+      expect(run.state.regulars![e.regularId]).toEqual({ visits: 1, firstDay: 2, lastDay: 2, keptMilestones: 0 });
     }
     expect(Object.keys(run.state.regulars!).sort()).toEqual(named.map((e) => e.regularId).sort());
   });
@@ -86,7 +86,7 @@ describe('named regulars', () => {
     const again = day3.find((e) => e.regularId === first.regularId);
     if (again) {
       expect(again.visits).toBe(2);
-      expect(s.regulars![first.regularId]).toEqual({ visits: 2, firstDay: 2, lastDay: 3 });
+      expect(s.regulars![first.regularId]).toEqual({ visits: 2, firstDay: 2, lastDay: 3, keptMilestones: 0 });
     } else {
       expect(s.regulars![first.regularId]!.lastDay).toBe(2);
     }

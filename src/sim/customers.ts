@@ -388,7 +388,7 @@ function admitRegular(state: GameState, id: number): { id: string; visits: numbe
   const regulars = (state.regulars ??= {});
   const seen = regulars[regular.id];
   if (seen && seen.lastDay === state.day) return null;
-  const entry = seen ?? { visits: 0, firstDay: state.day, lastDay: state.day };
+  const entry = seen ?? { visits: 0, firstDay: state.day, lastDay: state.day, keptMilestones: 0 };
   entry.visits += 1;
   entry.lastDay = state.day;
   regulars[regular.id] = entry;
@@ -397,11 +397,11 @@ function admitRegular(state: GameState, id: number): { id: string; visits: numbe
 
 /**
  * Fires 'regular_milestone' and pays its Tem when visit `visits` is exactly a
- * milestone of the regular's book. Older saves whose count is already past a
- * milestone keep it as reached without being paid for it again.
+ * milestone of the regular's book. A save from before E-22 keeps the
+ * milestones it reached in E-18's book and is not paid for them again.
  */
 function reachMilestone(state: GameState, regularId: string, visits: number): void {
-  const milestone = milestoneAt(visits);
+  const milestone = milestoneAt(regularId, visits, state.regulars?.[regularId]?.keptMilestones);
   const def = milestone ? regularBookEntry(regularId)?.milestones[milestone - 1] : undefined;
   if (!def) return;
   state.events.push({ type: 'regular_milestone', regularId, milestone, visits, tickets: def.tickets });

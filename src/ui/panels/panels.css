@@ -501,13 +501,13 @@
     transition: none;
   }
 }
-/* Sổ khách quen (E-18): one .item-row per regular; its third line holds three
+/* Sổ khách quen (E-18, E-22): one .item-row per regular; its third line holds four
    milestone cells that share the width, so 390 px never scrolls sideways; each cell is a full tap
    target and opens the story line under the row in place. */
 .book-cells {
   flex: 1 1 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 .book-cell {

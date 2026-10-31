@@ -37,7 +37,7 @@ describe('Sổ khách quen on the Khách quen card', () => {
     const { body } = mount(game());
     const btn = toggle(body);
     expect(btn.previousElementSibling).toBe(body.querySelector('ul[aria-label="Khách quen"]'));
-    expect(btn.textContent).toBe('Sổ khách quen · 0/24 mốc');
+    expect(btn.textContent).toBe('Sổ khách quen · 0/32 mốc');
     expect(book(body).hidden).toBe(true);
     btn.click();
     expect(btn.getAttribute('aria-expanded')).toBe('true');
@@ -45,19 +45,20 @@ describe('Sổ khách quen on the Khách quen card', () => {
     expect(document.querySelector('[role="dialog"], dialog')).toBeNull();
   });
 
-  it('draws 8 regulars x 3 milestone cells, locked or reached from visits', () => {
+  it('draws 8 regulars x 4 milestone cells, locked or reached from visits', () => {
     const state = game();
-    state.regulars = { co_lan: { visits: 45, firstDay: 2, lastDay: 50 }, anh_minh: { visits: 100, firstDay: 2, lastDay: 100 } };
+    // co_lan's milestones are at 10/90/195/245 visits, anh_minh's at 25/65/145/265 (MILESTONE_VISITS).
+    state.regulars = { co_lan: { visits: 100, firstDay: 2, lastDay: 101 }, anh_minh: { visits: 270, firstDay: 2, lastDay: 271 } };
     const { body } = mount(state);
     expect(body.querySelectorAll('[data-book]')).toHaveLength(8);
-    expect(body.querySelectorAll('.book-cell')).toHaveLength(24);
-    expect([1, 2, 3].map((m) => cell(body, 'co_lan', m).dataset.reached)).toEqual(['true', 'true', 'false']);
-    expect([1, 2, 3].map((m) => cell(body, 'anh_minh', m).dataset.reached)).toEqual(['true', 'true', 'true']);
-    expect([1, 2, 3].map((m) => cell(body, 'em_vy', m).dataset.reached)).toEqual(['false', 'false', 'false']);
+    expect(body.querySelectorAll('.book-cell')).toHaveLength(32);
+    expect([1, 2, 3, 4].map((m) => cell(body, 'co_lan', m).dataset.reached)).toEqual(['true', 'true', 'false', 'false']);
+    expect([1, 2, 3, 4].map((m) => cell(body, 'anh_minh', m).dataset.reached)).toEqual(['true', 'true', 'true', 'true']);
+    expect([1, 2, 3, 4].map((m) => cell(body, 'em_vy', m).dataset.reached)).toEqual(['false', 'false', 'false', 'false']);
     expect(cell(body, 'co_lan', 3).querySelector('.ic')!.getAttribute('data-icon')).toBe('i-lock');
-    expect(toggle(body).textContent).toBe('Sổ khách quen · 5/24 mốc');
-    expect(body.querySelector('[data-book="co_lan"] .item-meta')!.textContent).toBe('Ghé 45/100 lần tới mốc 3');
-    expect(body.querySelector('[data-book="anh_minh"] .item-meta')!.textContent).toBe('Ghé 100 lần · Đã mở cả 3 mốc');
+    expect(toggle(body).textContent).toBe('Sổ khách quen · 6/32 mốc');
+    expect(body.querySelector('[data-book="co_lan"] .item-meta')!.textContent).toBe('Ghé 100/195 lần tới mốc 3');
+    expect(body.querySelector('[data-book="anh_minh"] .item-meta')!.textContent).toBe('Ghé 270 lần · Đã mở cả 4 mốc');
     expect(body.querySelector('[data-book="em_vy"] .item-meta')!.textContent).toBe('Chưa ghé quán');
   });
 
@@ -77,18 +78,18 @@ describe('Sổ khách quen on the Khách quen card', () => {
     // A locked cell says only how it opens: no story, no dish.
     cell(body, 'co_lan', 2).click();
     expect(cell(body, 'co_lan', 1).getAttribute('aria-expanded')).toBe('false');
-    expect(detail(body, 'co_lan').textContent).toBe('Mở khi Cô Lan ghé đủ 40 lần (đang 12).');
+    expect(detail(body, 'co_lan').textContent).toBe('Mở khi Cô Lan ghé đủ 90 lần (đang 12).');
     cell(body, 'co_lan', 2).click();
     expect(detail(body, 'co_lan').hidden).toBe(true);
   });
 
   it('keeps the open cell across a redraw and unlocks it when the visit lands', () => {
     const state = game();
-    state.regulars = { chi_hoa: { visits: 9, firstDay: 2, lastDay: 10 } };
+    state.regulars = { chi_hoa: { visits: 14, firstDay: 2, lastDay: 15 } };
     const { body, handle } = mount(state);
     cell(body, 'chi_hoa', 1).click();
-    expect(detail(body, 'chi_hoa').textContent).toContain('ghé đủ 10 lần');
-    state.regulars.chi_hoa!.visits = 10;
+    expect(detail(body, 'chi_hoa').textContent).toContain('ghé đủ 15 lần');
+    state.regulars.chi_hoa!.visits = 15;
     handle.update!(state);
     expect(cell(body, 'chi_hoa', 1).dataset.reached).toBe('true');
     expect(cell(body, 'chi_hoa', 1).getAttribute('aria-expanded')).toBe('true');
@@ -97,19 +98,19 @@ describe('Sổ khách quen on the Khách quen card', () => {
 
   it('uses no emoji', () => {
     const state = game();
-    state.regulars = { co_lan: { visits: 100, firstDay: 2, lastDay: 100 } };
+    state.regulars = { co_lan: { visits: 250, firstDay: 2, lastDay: 251 } };
     const { body } = mount(state);
     toggle(body).click();
-    [1, 2, 3].forEach((m) => {
+    [1, 2, 3, 4].forEach((m) => {
       cell(body, 'co_lan', m).click();
       expect(body.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     });
   });
 
-  it('keeps each cell a 44 px tap target and fits 390 px (three cells share the row)', () => {
+  it('keeps each cell a 44 px tap target and fits 390 px (four cells share the row)', () => {
     expect(rule('.book-cell')).toContain('min-height: var(--size-target)');
     expect(readFileSync('src/ui/styles/tokens.css', 'utf8')).toContain('--size-target: 44px;');
-    expect(rule('.book-cells')).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
+    expect(rule('.book-cells')).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
     expect(rule('.book-cell')).not.toMatch(/(^|[^-])width:/);
   });
 

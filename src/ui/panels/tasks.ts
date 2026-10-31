@@ -299,14 +299,14 @@ function regularCard(r: RegularRow): HTMLElement {
   );
 }
 
-/** Open cell of the Sổ khách quen: regular id and milestone index (0–2). */
+/** Open cell of the Sổ khách quen: regular id and milestone index (0–3). */
 export interface BookOpen {
   regularId: string;
   index: number;
 }
 
 /**
- * One page of the Sổ khách quen: name + visits, three milestone cells
+ * One page of the Sổ khách quen: name + visits, four milestone cells
  * (locked or reached), and the line under them that the open cell fills in
  * place: story and favourite dish once reached, the visits still needed if not.
  */
@@ -314,7 +314,7 @@ function regularBookRow(page: RegularBookPage, open: BookOpen | null, toggle: (i
   const name = page.regular.name;
   const detailId = uid('book');
   const openIndex = open?.regularId === page.regular.id ? open.index : -1;
-  const meta = page.visits === 0 ? 'Chưa ghé quán' : page.nextVisits === null ? `Ghé ${page.visits} lần · Đã mở cả 3 mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
+  const meta = page.visits === 0 ? 'Chưa ghé quán' : page.nextVisits === null ? `Ghé ${page.visits} lần · Đã mở cả ${page.milestones.length} mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
   const cells = page.milestones.map((m, i) =>
     h(
       'button',
@@ -607,7 +607,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   let bookOpen: BookOpen | null = null;
   const drawBook = (pages: RegularBookPage[]): void => {
     const reached = pages.reduce((n, p) => n + p.reached, 0);
-    bookLabel.textContent = `Sổ khách quen · ${reached}/${pages.length * 3} mốc`;
+    bookLabel.textContent = `Sổ khách quen · ${reached}/${pages.reduce((n, p) => n + p.milestones.length, 0)} mốc`;
     setChildren(
       bookList,
       ...pages.map((p) =>
