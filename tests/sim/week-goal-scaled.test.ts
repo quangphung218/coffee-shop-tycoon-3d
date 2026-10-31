@@ -124,8 +124,9 @@ describe('saves from before E-19 already at level 10', () => {
     s.week!.result = { revenue: 200_000_000, revenueTarget: 1, stars: 4, starsTarget: 4, score: 0, cups: 0, days: [] };
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
     expect(s.week!.index).toBe(11);
-    const size = sizeGoal('normal', totalUpgradeLevels(s));
-    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 11).stars, profit: size.profit });
+    const levels = totalUpgradeLevels(s);
+    const size = sizeGoal('normal', levels);
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 11).stars, profit: size.profit, levels });
     expect(isWeekGoalScaled(s)).toBe(false);
   });
 });

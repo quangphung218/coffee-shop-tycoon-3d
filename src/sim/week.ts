@@ -322,8 +322,9 @@ export function totalUpgradeLevels(state: GameState): number {
 export function nextWeekGoal(state: GameState): { goal: WeekGoal; scaled: boolean } {
   const index = weekIndex(state) + 1;
   if (state.shopLevel >= SCALED_GOAL_MIN_LEVEL && index >= SIZE_GOAL_FIRST_WEEK) {
-    const row = sizeGoal(state.difficulty, totalUpgradeLevels(state));
-    return { goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit }, scaled: false };
+    const levels = totalUpgradeLevels(state);
+    const row = sizeGoal(state.difficulty, levels);
+    return { goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit, levels }, scaled: false };
   }
   const past = (state.week?.archive ?? []).filter((w) => w.index < index).map((w) => w.revenue);
   return scaledWeekGoal(state.difficulty, index, state.shopLevel, past);

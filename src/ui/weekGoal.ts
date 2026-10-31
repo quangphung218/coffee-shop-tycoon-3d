@@ -2,7 +2,7 @@ import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim
 import { styleById } from '../sim/data/styles';
 import type { GameState } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
-import { isWeekGoalScaled, scoreWeek, weekCups, weekUpgradeCharge } from '../sim/week';
+import { isWeekGoalScaled, scoreWeek, totalUpgradeLevels, weekCups, weekUpgradeCharge } from '../sim/week';
 import { h } from './core/dom';
 import { formatMoney, formatRating } from './core/format';
 import { icon, type IconId } from './core/icons';
@@ -28,10 +28,22 @@ export interface WeekGoalView {
   upgradeCharge: number;
   /** True when the week's goal follows the shop's recent revenue (isWeekGoalScaled, shop level 10+). */
   scaled?: boolean;
+  /** Set when the week's goal is a SIZE_GOAL row (goal.profit, E-21): its total upgrade levels and profit target. */
+  size?: { levels: number; profit: number };
 }
 
 /** Shown under the bars when the week's goal is scaled. */
 export const SCALED_GOAL_TEXT = 'Quán đã lớn: mục tiêu theo 4 tuần gần nhất';
+
+/** Shown under the bars, in place of SCALED_GOAL_TEXT, when the goal is a SIZE_GOAL row. */
+export function sizeGoalText(levels: number): string {
+  return `Mục tiêu theo cỡ quán (${levels} cấp nâng cấp)`;
+}
+
+/** The one-sentence hint under sizeGoalText. */
+export function sizeGoalHint(profit: number): string {
+  return `Quán cỡ này thường lãi ${formatMoney(profit)}. Thuê người thứ hai, chỉnh giá để vượt.`;
+}
 
 const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = {
   revenue: { label: 'Doanh thu', icon: 'i-coin' },
@@ -54,6 +66,11 @@ export function weekGoalView(state: GameState): WeekGoalView | null {
   if (!r) return null;
   const profitTarget = r.profitTarget ?? 0;
   const profit = r.profit ?? 0;
+  const goal = state.week?.goal;
+  const size =
+    goal && typeof goal.profit === 'number' && Number.isFinite(goal.profit)
+      ? { levels: goal.levels ?? totalUpgradeLevels(state), profit: goal.profit }
+      : undefined;
   return {
     bars: [
       { id: 'revenue', label: BAR_META.revenue.label, value: r.revenue, target: r.revenueTarget, pct: percent(r.revenue, r.revenueTarget) },
@@ -64,6 +81,7 @@ export function weekGoalView(state: GameState): WeekGoalView | null {
     cups: r.cups,
     upgradeCharge: weekUpgradeCharge(state),
     scaled: isWeekGoalScaled(state),
+    ...(size ? { size } : {}),
   };
 }
 
@@ -89,7 +107,8 @@ export function cupsLineText(v: Pick<WeekGoalView, 'score' | 'cups'>): string {
 
 /**
  * Three bars (revenue, profit, stars), "Hiện X điểm · cần Y để N cúp", the
- * scaled-goal note from shop level 10 and, after an upgrade, what it costs this week.
+ * goal note (SIZE_GOAL line and hint, else the E-19 scaled note from shop
+ * level 10) and, after an upgrade, what it costs this week.
  */
 export function weekGoalBlock(v: WeekGoalView): HTMLElement {
   return h(
@@ -114,7 +133,9 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
       );
     }),
     h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
-    v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
+    v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, sizeGoalText(v.size.levels)) : null,
+    v.size ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } }, sizeGoalHint(v.size.profit)) : null,
+    !v.size && v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)
       : null,
