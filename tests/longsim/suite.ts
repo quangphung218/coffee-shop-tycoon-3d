@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import { weekIndex } from '../../src/sim/progression';
 import type { Difficulty } from '../../src/sim/types';
-import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, summary, type StrategyName, type WeekRow, type WeekRows } from './run';
+import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, summary, type DayHook, type StrategyName, type WeekRow, type WeekRows } from './run';
 
 /**
  * E-19 40-week sim for one difficulty and some seeds: 1 and 42 in
@@ -12,7 +13,9 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * Asserted (not on Hard): the E-16 bots never go bankrupt, b_steady opens
  * every challenge-gated style before week 30 on seeds 1 and 42,
  * `determinismSeed` replayed gives the same challenges and goals, and the
- * E-21 promise on every seed (assertPromise).
+ * E-21 promise on every seed (assertPromise). E-22: b_steady2's regular
+ * milestones spread over the weeks on every seed (assertMilestones), and
+ * replayed come in the same order.
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -49,6 +52,41 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
   expect(share(manage, (r) => r.cups === 3), `${label} d_manage 3 cups`).toBeGreaterThanOrEqual(MANAGE_THREE_CUPS_MIN);
   expect(avgScore(manage) - avgScore(steady), `${label} d_manage lead over b_steady2`).toBeGreaterThanOrEqual(MANAGE_SCORE_LEAD);
 }
+
+/** E-22 Sổ khách quen spread for b_steady2: a milestone in at least 60% of weeks 5-40, never more than 3 in one week. */
+const MILESTONE_FROM_WEEK = 5;
+const MILESTONE_WEEKS_MIN = 0.6;
+const MILESTONES_PER_WEEK_MAX = 3;
+
+/** One 'regular_milestone' of a run: `week:regularId:milestone`. */
+type Milestones = string[];
+
+/** Day hook that records the run's regular milestones. */
+const recordMilestones =
+  (into: Milestones): DayHook =>
+  (state, events) => {
+    for (const e of events) if (e.type === 'regular_milestone') into.push(`${weekIndex(state)}:${e.regularId}:${e.milestone}`);
+  };
+
+/** Milestones per week 1..WEEKS. */
+const milestonesPerWeek = (milestones: Milestones) => {
+  const counts = Array<number>(WEEKS).fill(0);
+  for (const m of milestones) counts[Number(m.split(':')[0]) - 1]! += 1;
+  return counts;
+};
+
+function milestoneLine(label: string, milestones: Milestones): string {
+  const counts = milestonesPerWeek(milestones);
+  const late = counts.slice(MILESTONE_FROM_WEEK - 1);
+  return `${label} milestones w${MILESTONE_FROM_WEEK}-${WEEKS} ${late.filter((n) => n > 0).length}/${late.length} | max/week ${Math.max(...counts)} | per week ${counts.join('')}`;
+}
+
+function assertMilestones(label: string, milestones: Milestones): void {
+  const counts = milestonesPerWeek(milestones);
+  const late = counts.slice(MILESTONE_FROM_WEEK - 1);
+  expect(late.filter((n) => n > 0).length / late.length, `${label} b_steady2 weeks with a milestone`).toBeGreaterThanOrEqual(MILESTONE_WEEKS_MIN);
+  expect(Math.max(...counts), `${label} b_steady2 milestones in one week`).toBeLessThanOrEqual(MILESTONES_PER_WEEK_MAX);
+}
 const TIMEOUT = 1_200_000;
 
 /** What must repeat for a seed: each week's challenge with its target, and the goal. */
@@ -67,11 +105,15 @@ export const hardEnabled = () => process.env.LONGSIM_HARD === '1';
 
 export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measureOnly = false }: LongSimOptions): void {
   const runs = new Map<string, WeekRows>();
+  /** b_steady2's regular milestones per seed. */
+  const milestones = new Map<number, Milestones>();
   const run = (seed: number, name: StrategyName): WeekRows => {
     const key = `${seed}/${name}`;
     let rows = runs.get(key);
     if (!rows) {
-      rows = playWeeks(difficulty, seed, STRATEGIES[name]);
+      const reached: Milestones = [];
+      rows = playWeeks(difficulty, seed, STRATEGIES[name], WEEKS, name === 'b_steady2' ? recordMilestones(reached) : undefined);
+      if (name === 'b_steady2') milestones.set(seed, reached);
       runs.set(key, rows);
     }
     return rows;
@@ -80,6 +122,7 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
   describe(`E-19 40 weeks, ${difficulty}`, () => {
     afterAll(() => {
       const lines = [...runs].map(([key, rows]) => summary(`${difficulty} s${key.replace('/', ' ')}`, rows));
+      for (const [seed, reached] of milestones) lines.push(milestoneLine(`${difficulty} s${seed} b_steady2`, reached));
       process.stdout.write(`\n${lines.join('\n')}\n\n`);
     });
 
@@ -89,6 +132,7 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
         if (measureOnly) return;
         for (const name of BASELINE) expect(run(seed, name).bankruptDay, `${difficulty} seed ${seed} ${name} bankrupt`).toBeUndefined();
         assertPromise(`${difficulty} seed ${seed}`, (name) => run(seed, name));
+        assertMilestones(`${difficulty} seed ${seed}`, milestones.get(seed)!);
         if (!STYLE_SEEDS.includes(seed)) return;
         const week = allStylesWeek(run(seed, 'b_steady'));
         expect(week, `${difficulty} seed ${seed} b_steady all styles`).not.toBeNull();
@@ -100,6 +144,14 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
       it(`seed ${determinismSeed}: same seed, same challenges and goals`, { timeout: TIMEOUT }, () => {
         const again = playWeeks(difficulty, determinismSeed, STRATEGIES.b_steady);
         expect(sequence(again)).toEqual(sequence(run(determinismSeed, 'b_steady')));
+      });
+
+      it(`seed ${determinismSeed}: same seed, same regular milestones in the same order`, { timeout: TIMEOUT }, () => {
+        run(determinismSeed, 'b_steady2');
+        const again: Milestones = [];
+        playWeeks(difficulty, determinismSeed, STRATEGIES.b_steady2, WEEKS, recordMilestones(again));
+        expect(again.length, `${difficulty} seed ${determinismSeed} b_steady2 milestones`).toBeGreaterThan(0);
+        expect(again).toEqual(milestones.get(determinismSeed));
       });
     }
   });
