@@ -18,26 +18,28 @@ function mount(state: GameState): { body: HTMLElement; handle: PanelHandle } {
   return { body, handle: renderTasksPanel(body, ctx) as PanelHandle };
 }
 
+/** "Name | meta" of each row's head, met regulars only (unmet rows read "Chưa ghé quán"). */
 const rowTexts = (body: HTMLElement): string[] =>
-  [...body.querySelectorAll('[data-regular]')].map((li) => [...li.querySelectorAll('p')].map((p) => p.textContent).join(' | '));
+  [...body.querySelectorAll('[data-regular]')]
+    .map((li) => `${li.querySelector('.regular-head')!.firstChild!.textContent} | ${li.querySelector(':scope > .item-text > .item-meta')!.textContent}`)
+    .filter((t) => !t.endsWith('Chưa ghé quán'));
+const sum = (body: HTMLElement): string => body.querySelector('[data-book-sum]')!.textContent!;
 
 afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('Khách quen card', () => {
-  it('shows the empty line when no regular has come in, also on saves without the field', () => {
+describe('Khách quen card (merged with the book, UX-207)', () => {
+  it('says no regular has come in yet, also on saves without the field; every row is still a locked page', () => {
     const state = game();
     delete state.regulars;
     const { body } = mount(state);
-    const empty = body.querySelector<HTMLElement>('[data-regular-empty]')!;
-    expect(empty.hidden).toBe(false);
-    expect(empty.textContent).toBe('Chưa có khách quen nào ghé');
-    expect(body.querySelector<HTMLElement>('ul[aria-label="Khách quen"]')!.hidden).toBe(true);
+    expect(sum(body)).toBe('Chưa có khách quen nào ghé · Sổ 0/32 mốc');
     expect(rowTexts(body)).toEqual([]);
+    expect(body.querySelectorAll('[data-regular]')).toHaveLength(8);
   });
 
-  it('lists regulars met with visits and favorite drink, latest visit first', () => {
+  it('lists regulars met with visits and favorite drink, latest visit first, then the rest', () => {
     const state = game();
     state.regulars = {
       co_lan: { visits: 3, firstDay: 2, lastDay: 4 },
@@ -46,8 +48,9 @@ describe('Khách quen card', () => {
       gone_id: { visits: 9, firstDay: 2, lastDay: 9 },
     };
     const { body } = mount(state);
-    expect(body.querySelector<HTMLElement>('[data-regular-empty]')!.hidden).toBe(true);
+    expect(sum(body)).toBe('Đã gặp 3/8 khách quen · Sổ 0/32 mốc');
     expect(rowTexts(body)).toEqual(['Anh Minh | Ghé 1 lần · Hay gọi Americano', 'Cô Lan | Ghé 3 lần · Hay gọi Latte', 'Chị Hoa | Ghé 2 lần · Hay gọi Cappuccino']);
+    expect([...body.querySelectorAll<HTMLElement>('[data-regular]')].slice(0, 3).map((li) => li.dataset.regular)).toEqual(['anh_minh', 'co_lan', 'chi_hoa']);
     expect(body.querySelector<HTMLElement>('[data-regular="co_lan"] .item-icon .ic')!.dataset.icon).toBe('i-latte');
   });
 
@@ -59,7 +62,7 @@ describe('Khách quen card', () => {
     handle.update!(state);
     expect(regularRows(state).map((r) => r.id)).toEqual(['em_vy']);
     expect(rowTexts(body)).toHaveLength(1);
-    expect(body.querySelector<HTMLElement>('[data-regular-empty]')!.hidden).toBe(true);
+    expect(body.querySelector<HTMLElement>('[data-regular]')!.dataset.regular).toBe('em_vy');
   });
 });
 

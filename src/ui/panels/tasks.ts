@@ -289,16 +289,6 @@ export function regularRows(state: GameState): RegularRow[] {
   }).sort((a, b) => b.lastDay - a.lastDay);
 }
 
-/** Regular row: favorite drink | name + "Ghé 3 lần · Hay gọi Latte". */
-function regularCard(r: RegularRow): HTMLElement {
-  return h(
-    'li',
-    { class: 'item item-row', attrs: { 'data-regular': r.id } },
-    h('span', { class: 'item-icon' }, icon(MENU_ICONS[r.favorite], { size: 32 })),
-    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: r.name }), h('p', { class: 'item-meta', text: `Ghé ${r.visits} lần · Hay gọi ${getMenuItem(r.favorite).name}` })),
-  );
-}
-
 /** Open cell of the Sổ khách quen: regular id and milestone index (0–3). */
 export interface BookOpen {
   regularId: string;
@@ -306,15 +296,40 @@ export interface BookOpen {
 }
 
 /**
- * One page of the Sổ khách quen: name + visits, four milestone cells
- * (locked or reached), and the line under them that the open cell fills in
- * place: story and favourite dish once reached, the visits still needed if not.
+ * Khách quen list order (UX-207): regulars met so far, latest visit first (same
+ * day keeps the REGULARS order), then the ones not met yet in REGULARS order.
  */
-function regularBookRow(page: RegularBookPage, open: BookOpen | null, toggle: (index: number) => void): HTMLElement {
+export function regularListPages(state: GameState): RegularBookPage[] {
+  const seen = state.regulars ?? {};
+  const pages = regularBook(state);
+  const met = pages.filter((p) => p.visits > 0).sort((a, b) => (seen[b.regular.id]?.lastDay ?? 0) - (seen[a.regular.id]?.lastDay ?? 0));
+  return [...met, ...pages.filter((p) => p.visits === 0)];
+}
+
+/**
+ * One row of the merged Khách quen list (UX-207/213): favourite drink | name +
+ * "Ghé 3 lần · Hay gọi Latte" | four milestone dots. The row is a disclosure;
+ * tapping it opens the regular's book page in place under it (no modal): the
+ * progress line, four milestone cells and the line the open cell fills in:
+ * story and favourite dish once reached, the visits still needed if not.
+ */
+function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | null, onPage: () => void, toggle: (index: number) => void): HTMLElement {
   const name = page.regular.name;
+  const pageId = uid('book');
   const detailId = uid('book');
   const openIndex = open?.regularId === page.regular.id ? open.index : -1;
-  const meta = page.visits === 0 ? 'Chưa ghé quán' : page.nextVisits === null ? `Ghé ${page.visits} lần · Đã mở cả ${page.milestones.length} mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
+  const total = page.milestones.length;
+  const meta = page.visits === 0 ? 'Chưa ghé quán' : `Ghé ${page.visits} lần · Hay gọi ${getMenuItem(page.regular.favorite).name}`;
+  const progress =
+    page.visits === 0 ? `Mốc 1 mở khi ghé đủ ${page.milestones[0]?.visits ?? 0} lần` : page.nextVisits === null ? `Đã mở cả ${total} mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
+  // The name is the disclosure; its ::after stretches over the row so the whole row is the tap target.
+  const head = h(
+    'button',
+    { class: 'regular-head', attrs: { type: 'button', 'data-action': 'regular-page', 'aria-expanded': String(pageOpen), 'aria-controls': pageId } },
+    name,
+    h('span', { class: 'sr-only', text: `, sổ ${page.reached}/${total} mốc` }),
+  );
+  head.addEventListener('click', onPage);
   const cells = page.milestones.map((m, i) =>
     h(
       'button',
@@ -339,16 +354,28 @@ function regularBookRow(page: RegularBookPage, open: BookOpen | null, toggle: (i
     'div',
     { id: detailId, class: 'book-detail', hidden: !m, attrs: { 'data-book-detail': '' } },
     m?.reached ? h('p', { class: 'item-meta', text: m.story }) : null,
-    m?.reached ? h('p', { class: 'item-meta book-dish' }, ...withIcon('i-cup-hot', `Món yêu thích: ${page.favoriteDish}`)) : null,
-    m && !m.reached ? h('p', { class: 'item-meta' }, ...withIcon('i-lock', `Mở khi ${name} ghé đủ ${m.visits} lần (đang ${page.visits}).`)) : null,
-    m?.reached ? h('p', { class: 'item-meta' }, ...withIcon('i-coin', `Đã nhận +${m.tickets} Tem`)) : null,
+    m?.reached ? h('p', { class: 'item-meta book-line book-dish' }, ...withIcon('i-cup-hot', `Món ruột ngoài quán: ${page.favoriteDish}`)) : null,
+    m && !m.reached ? h('p', { class: 'item-meta book-line' }, ...withIcon('i-lock', `Mở khi ${name} ghé đủ ${m.visits} lần (đang ${page.visits}).`)) : null,
+    // Tem uses the HUD's Tem icon (i-sparkle), not the money coin.
+    m?.reached ? h('p', { class: 'item-meta book-line' }, ...withIcon('i-sparkle', `Đã nhận +${m.tickets} Tem`)) : null,
   );
   return h(
     'li',
-    { class: 'item item-row', attrs: { 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
+    { class: 'item item-row regular-row', attrs: { 'data-regular': page.regular.id, 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
     h('span', { class: 'item-icon' }, icon(MENU_ICONS[page.regular.favorite], { size: 32 })),
-    h('div', { class: 'item-text' }, h('p', { class: 'item-title', text: name }), h('p', { class: 'item-meta', text: meta })),
-    h('div', { class: 'item-actions' }, h('div', { class: 'book-cells', attrs: { role: 'group', 'aria-label': `Mốc của ${name}` } }, ...cells), detail),
+    h('div', { class: 'item-text' }, h('p', { class: 'item-title' }, head), h('p', { class: 'item-meta', text: meta })),
+    h(
+      'span',
+      { class: 'item-status book-dots', attrs: { 'aria-hidden': 'true', 'data-book-dots': '' } },
+      ...page.milestones.map((m) => h('span', { class: `book-dot${m.reached ? ' is-reached' : ''}`, attrs: { 'data-reached': String(m.reached) } })),
+    ),
+    h(
+      'div',
+      { id: pageId, class: 'item-actions book-page', hidden: !pageOpen, attrs: { 'data-book-page': '' } },
+      h('p', { class: 'item-meta book-progress', text: progress }),
+      h('div', { class: 'book-cells', attrs: { role: 'group', 'aria-label': `Mốc của ${name}` } }, ...cells),
+      detail,
+    ),
   );
 }
 
@@ -576,53 +603,41 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   );
 
   const regularTitle = h('h3', { class: 'section-title' }, ...withIcon('i-face-happy', 'Khách quen', 24));
+  // Khách quen and Sổ khách quen in one list (UX-207): each row opens its book page in place, no modal.
+  const regularSum = h('span');
+  const regularIntro = h('p', { class: 'intro intro-icon', attrs: { 'data-book-sum': '' } }, icon('i-info', { size: 16 }), regularSum);
   const regularList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Khách quen' } });
-  const regularEmpty = h('p', { class: 'intro intro-icon', attrs: { 'data-regular-empty': '' } }, icon('i-info', { size: 16 }), h('span', { text: 'Chưa có khách quen nào ghé' }));
-  w.watch(
-    (s) => JSON.stringify(regularRows(s)),
-    (key) => {
-      const rows = JSON.parse(key) as RegularRow[];
-      regularEmpty.hidden = rows.length > 0;
-      regularList.hidden = rows.length === 0;
-      setChildren(regularList, ...rows.map(regularCard));
-    },
-  );
-
-  // Sổ khách quen (E-18): a disclosure like Thành tựu; cells open in place, no modal.
-  const bookListId = uid('book');
-  const bookLabel = h('span');
-  const bookBtn = h(
-    'button',
-    { class: 'btn btn-secondary btn-block ach-toggle', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': bookListId, 'data-action': 'regular-book' } },
-    icon('i-face-happy'),
-    bookLabel,
-    icon('i-chevron-down', { size: 16, class: 'ach-chevron' }),
-  );
-  const bookList = h('ul', { id: bookListId, class: 'stack', hidden: true, attrs: { 'aria-label': 'Sổ khách quen' } });
-  bookBtn.addEventListener('click', () => {
-    const open = bookBtn.getAttribute('aria-expanded') !== 'true';
-    bookBtn.setAttribute('aria-expanded', String(open));
-    bookList.hidden = !open;
-  });
+  let pageOpen: string | null = null;
   let bookOpen: BookOpen | null = null;
-  const drawBook = (pages: RegularBookPage[]): void => {
+  const drawRegulars = (pages: RegularBookPage[], focus?: string): void => {
     const reached = pages.reduce((n, p) => n + p.reached, 0);
-    bookLabel.textContent = `Sổ khách quen · ${reached}/${pages.reduce((n, p) => n + p.milestones.length, 0)} mốc`;
+    const total = pages.reduce((n, p) => n + p.milestones.length, 0);
+    const met = pages.filter((p) => p.visits > 0).length;
+    regularSum.textContent = `${met === 0 ? 'Chưa có khách quen nào ghé' : `Đã gặp ${met}/${pages.length} khách quen`} · Sổ ${reached}/${total} mốc`;
     setChildren(
-      bookList,
+      regularList,
       ...pages.map((p) =>
-        regularBookRow(p, bookOpen, (index) => {
-          const same = bookOpen?.regularId === p.regular.id && bookOpen.index === index;
-          bookOpen = same ? null : { regularId: p.regular.id, index };
-          drawBook(pages);
-          bookList.querySelector<HTMLElement>(`[data-book="${p.regular.id}"] [data-milestone="${index + 1}"]`)?.focus();
-        }),
+        regularRow(
+          p,
+          pageOpen === p.regular.id,
+          bookOpen,
+          () => {
+            pageOpen = pageOpen === p.regular.id ? null : p.regular.id;
+            drawRegulars(pages, `[data-book="${p.regular.id}"] [data-action="regular-page"]`);
+          },
+          (index) => {
+            const same = bookOpen?.regularId === p.regular.id && bookOpen.index === index;
+            bookOpen = same ? null : { regularId: p.regular.id, index };
+            drawRegulars(pages, `[data-book="${p.regular.id}"] [data-milestone="${index + 1}"]`);
+          },
+        ),
       ),
     );
+    if (focus) regularList.querySelector<HTMLElement>(focus)?.focus();
   };
   w.watch(
-    (s) => JSON.stringify(regularBook(s).map((p) => p.visits)),
-    (_, s) => drawBook(regularBook(s)),
+    (s) => JSON.stringify(regularListPages(s).map((p) => [p.regular.id, p.visits, p.reached])),
+    (_, s) => drawRegulars(regularListPages(s)),
   );
 
   const achListId = uid('ach');
@@ -692,10 +707,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     vipLine,
     orderList,
     regularTitle,
-    regularEmpty,
+    regularIntro,
     regularList,
-    bookBtn,
-    bookList,
     achBtn,
     achList,
     sugTitle,
