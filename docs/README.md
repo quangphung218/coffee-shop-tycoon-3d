@@ -10,6 +10,7 @@
 ## Báo cáo
 
 - [reports/e18-regulars-book.md](reports/e18-regulars-book.md): E-18, Sổ khách quen: bảng mốc 10/40/100 lượt và Tem 1/2/3, mô phỏng seed 1 và 42, p22/p23 không đổi, save cũ không migration, UI 390 px, kết quả check, phần chưa kiểm chứng, kịch bản media e17.
+- [reports/e22-regulars-spread-and-ux.md](reports/e22-regulars-spread-and-ux.md): E-22, mốc khách quen 8 × 4 trải đều (mốc 4 ở 235–270 lượt, Tem 1/2/3/3), bảng mốc mỗi tuần trước/sau, p22/p23 không đổi, mục UX, kết quả test, layout chưa kiểm chứng trên máy thật.
 - [reports/layout-saves.md](reports/layout-saves.md): `npm run layout` nạp save ngày 1 do sim chơi (tick cuối trước báo cáo) thay vì chờ một ngày 4x mỗi khổ: thời gian trước/sau, 98 kiểm tra giữ nguyên, cùng FAIL khi cố làm hỏng CSS báo cáo.
 - [reports/verify-infra-capture-gpu.md](reports/verify-infra-capture-gpu.md): hạ tầng verify: mọi script chụp/kiểm mở Chrome trên GPU thay vì headless shell SwiftShader (`media:p30` 348 s → dưới 1 phút, CPU 1486 s → dưới 60 s), lockfile cho `perf:frames`/`measure-startup`, chụp theo kịch bản `scripts/capture.mjs` với P29/P30 đã chuyển và so ảnh.
 - [reports/hud-390-overlap.md](reports/hud-390-overlap.md): HUD 390 px, cụm Tiến độ đè Điều khiển lúc chuẩn bị với số liệu cuối game; ba phương án sửa có ảnh mô phỏng và số đo; kết quả sửa theo phương án A (tiền gọn ở ≤ 480 px) với ảnh trước/sau.
