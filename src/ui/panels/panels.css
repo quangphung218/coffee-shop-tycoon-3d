@@ -551,7 +551,15 @@
 .regular-row {
   position: relative;
 }
+/* The button itself is a full tap target (P27): at least --size-target tall
+   and wide, with negative block margins so the title line keeps its height. */
 .regular-head {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  margin-block: calc((1lh - var(--size-target)) / 2);
+  vertical-align: middle;
   padding: 0;
   font: inherit;
   color: inherit;
