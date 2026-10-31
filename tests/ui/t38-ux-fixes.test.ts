@@ -202,7 +202,7 @@ describe('UX-104 Nâng cấp summary lines', () => {
     const price = body.querySelector<HTMLElement>('[data-summary="price"]')!;
     expect(price.hidden).toBe(true);
     expect(price.textContent).toBe('');
-    expect(body.querySelector('[data-summary="tickets"]')!.textContent).toMatch(/^Tem: \d+.* · nhận từ Quà hằng ngày$/);
+    expect(body.querySelector('[data-summary="tickets"]')!.textContent).toMatch(/^Tem: \d+.* · kiếm Tem từ thử thách tuần/);
   });
 });
 

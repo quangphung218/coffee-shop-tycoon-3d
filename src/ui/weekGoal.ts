@@ -1,6 +1,8 @@
 import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim/challenges';
+import { WEEK_CHALLENGES } from '../sim/data/challenges';
 import { styleById } from '../sim/data/styles';
-import type { GameState } from '../sim/types';
+import { MISSIONS_PER_DAY } from '../sim/progression';
+import type { GameState, WeekChallenge } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
 import { isWeekGoalScaled, scoreWeek, totalUpgradeLevels, weekCups, weekUpgradeCharge } from '../sim/week';
 import { h } from './core/dom';
@@ -154,6 +156,24 @@ export interface ChallengeView {
   tickets: number;
   /** Shop style it opens: the one it unlocked once done, else the next challenge-gated one; null once all are open. */
   style: string | null;
+  /** "Ngày tốt nhất: …" for the challenges counted per day (calm_day, stars_week, perfect_days); null for the others. */
+  best: string | null;
+}
+
+/** The challenges whose progress counts whole days, where a value like 0/1 says little on its own. */
+const PER_DAY_CHALLENGES: ReadonlySet<WeekChallenge['id']> = new Set(['calm_day', 'stars_week', 'perfect_days']);
+
+/** "Ngày tốt nhất: 245/300 khách, không ai bỏ về", "… 4,8 sao", "… 2/3 nhiệm vụ"; null for additive challenges. */
+export function challengeBestText(challenge: WeekChallenge): string | null {
+  if (!PER_DAY_CHALLENGES.has(challenge.id)) return null;
+  const best = challenge.best;
+  if (challenge.id === 'calm_day') {
+    const min = challenge.minServed ?? WEEK_CHALLENGES.calm_day.minServed ?? 0;
+    return best === undefined ? 'Ngày tốt nhất: chưa có ngày nào không ai bỏ về' : `Ngày tốt nhất: ${best}/${min} khách, không ai bỏ về`;
+  }
+  if (best === undefined) return 'Ngày tốt nhất: chưa có ngày nào khép lại';
+  if (challenge.id === 'stars_week') return `Ngày tốt nhất: ${formatRating(best)} sao`;
+  return `Ngày tốt nhất: ${best}/${MISSIONS_PER_DAY} nhiệm vụ`;
 }
 
 /** The week's side challenge and its progress so far; null before CHALLENGE_FIRST_WEEK or without one, so its block hides. */
@@ -164,7 +184,8 @@ export function challengeView(state: GameState): ChallengeView | null {
   const { name, description } = describeChallenge(challenge);
   const styleId = p.done ? challenge.reward.unlock?.id : nextChallengeStyle(state);
   const style = (styleId && styleById(styleId)?.name) || null;
-  return { name, description, value: p.value, target: p.target, done: p.done, failed: p.failed, tickets: challenge.reward.tickets, style };
+  const best = challengeBestText(challenge);
+  return { name, description, value: p.value, target: p.target, done: p.done, failed: p.failed, tickets: challenge.reward.tickets, style, best };
 }
 
 /** "Mở kiểu Biển neon" while it can still be won, "Đã mở kiểu Biển neon" once done; null when failed or with no style left. */
@@ -177,6 +198,13 @@ function challengeStatus(v: ChallengeView): string {
   if (v.done) return 'Đã xong';
   if (v.failed) return 'Đã hụt';
   return `Thưởng +${v.tickets} Tem`;
+}
+
+/** "3/7 ngày" for a per-day challenge, "Đạt"/"Chưa đạt" for a one-day one (not "0/1"), else "value/target". */
+function challengeValueText(v: ChallengeView): string {
+  if (!v.best) return `${v.value}/${v.target}`;
+  if (v.target === 1) return v.done ? 'Đạt' : 'Chưa đạt';
+  return `${v.value}/${v.target} ngày`;
 }
 
 /** "Thử thách: name", what to do, one bar with "value/target" and the reward, or done/failed in its place, then the style it opens. */
@@ -193,7 +221,7 @@ export function challengeBlock(v: ChallengeView): HTMLElement {
     h(
       'div',
       { class: `week-goal-row${v.done ? ' is-done' : ''}${v.failed ? ' is-failed' : ''}`, attrs: { 'data-challenge': 'bar' } },
-      h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'value' }, text: `${v.value}/${v.target}` }),
+      h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'value' }, text: challengeValueText(v) }),
       h(
         'span',
         {
@@ -204,6 +232,7 @@ export function challengeBlock(v: ChallengeView): HTMLElement {
       ),
       h('span', { class: 'week-goal-num', attrs: { 'data-challenge': 'reward' }, text: challengeStatus(v) }),
     ),
+    v.best ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-challenge': 'best' }, text: v.best }) : null,
     style ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-challenge': 'style' }, text: style }) : null,
   );
 }

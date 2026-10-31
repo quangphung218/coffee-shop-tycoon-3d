@@ -19,6 +19,7 @@ export interface SlotInfo {
   giftLastDate?: string;
   /** Daily gift streak day last claimed (retention.login.streak). */
   giftStreak?: number;
+
   /** Set when the slot holds data that cannot be loaded. */
   error?: SaveErrorKind;
 }
@@ -119,6 +120,24 @@ function summarize(slot: SaveSlot, storage: StorageLike): SlotInfo {
     if (typeof login.streak === 'number') info.giftStreak = login.streak;
   }
   return info;
+}
+
+/**
+ * Phase and clock minute a slot was saved at, read without loading the game
+ * code (Main Menu "Tiếp tục", UX-215); null when the slot holds no readable
+ * save or lacks either field. Kept off SlotInfo so it stays equal to listSlots.
+ */
+export function slotMoment(slot: SaveSlot, storage: StorageLike = defaultStorage()): { phase: string; minute: number } | null {
+  try {
+    const text = storage.getItem(saveKey(slot));
+    if (text === null) return null;
+    const file: unknown = JSON.parse(text);
+    if (!isObject(file)) return null;
+    const state = isObject(file.state) ? file.state : file;
+    return typeof state.phase === 'string' && typeof state.minute === 'number' ? { phase: state.phase, minute: state.minute } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -21,7 +21,7 @@ import { UPGRADE_ICONS } from '../core/iconMap';
 import { type IconId, loadTierAtlas, tierIcon } from '../core/icons';
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { freshBadge, setFresh, unlockHint } from './menu';
-import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, withIcon } from './widgets';
+import { inlineConfirm, keepFocus, reasonLine, sender, setIconText, setReason, shortOfMoney, TEM_SOURCES_TEXT, withIcon } from './widgets';
 
 /** Heading per upgrade `category` (design/p20 §4): equipment / space / decor. */
 const GROUP_ORDER: readonly { title: string; icon: IconId; category: UpgradeDef['category'] }[] = [
@@ -90,11 +90,11 @@ function priceText(cost: number, tickets: number): string {
   return tickets > 0 ? `${formatMoney(cost)} + ${tickets} Tem` : formatMoney(cost);
 }
 
-/** "Tem: 3/15 → Cây xanh · nhận từ Quà hằng ngày" toward the next level that costs Tem, or "Tem: 3 · …" when none does. */
+/** "Tem: 3/15 → Cây xanh · kiếm Tem từ …" (TEM_SOURCES_TEXT) toward the next level that costs Tem, or "Tem: 3 · …" when none does. */
 export function ticketGoalText(state: GameState): string {
   const have = state.retention?.tickets ?? 0;
   const next = nextTicketUpgrade(state);
-  return `${next ? `Tem: ${have}/${next.tickets} → ${getUpgrade(next.id).name}` : `Tem: ${have}`} · nhận từ Quà hằng ngày`;
+  return `${next ? `Tem: ${have}/${next.tickets} → ${getUpgrade(next.id).name}` : `Tem: ${have}`} · ${TEM_SOURCES_TEXT}`;
 }
 
 /** "Giá bán +6,5% nhờ nâng cấp": the sell-price bonus of every owned level; empty (line hidden) while it is 0. */

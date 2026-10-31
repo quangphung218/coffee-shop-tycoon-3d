@@ -412,6 +412,12 @@ export function linkBtn(text: string, panel: string): HTMLButtonElement {
 }
 
 /** "Thiếu 110.000đ (cần 1.850.000đ, có 1.740.000đ)." */
+/** Where Tem comes from, every source that pays it (addTickets callers): said wherever Tem is short or counted. */
+export const TEM_SOURCES_TEXT = 'kiếm Tem từ thử thách tuần, mốc khách quen, đơn đặc biệt, khách VIP và thành tích';
+
+/** TEM_SOURCES_TEXT as a sentence after a reason. */
+export const TEM_SOURCES_SENTENCE = `${TEM_SOURCES_TEXT.charAt(0).toUpperCase()}${TEM_SOURCES_TEXT.slice(1)}.`;
+
 export function shortOfMoney(need: number, have: number, fmt: (n: number) => string): string {
   return `Thiếu ${fmt(need - have)} (cần ${fmt(need)}, có ${fmt(have)}).`;
 }

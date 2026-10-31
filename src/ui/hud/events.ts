@@ -127,6 +127,9 @@ function regularToast(event: Extract<GameEvent, { type: 'regular_arrived' }>, no
   };
 }
 
+/** Text of endOfDay's notify (src/sim/clock.ts). */
+const DAY_END_NOTIFY = /^Kết thúc ngày \d+$/;
+
 /**
  * Toast for a sim event, or null for events that only make a sound or move
  * actors. `now` is real time in ms, used only to space out regular toasts.
@@ -138,6 +141,9 @@ export function toastForEvent(event: GameEvent, state: GameState, now = performa
     case 'regular_milestone':
       return milestoneToast(event, state);
     case 'notify':
+      // endOfDay's "Kết thúc ngày N" lands with the Daily Report, whose heading says "Hết ngày N" already;
+      // as a toast it only sat over the report's week strip on a phone (UX-102).
+      if (state.phase === 'report' && DAY_END_NOTIFY.test(event.text)) return null;
       return { level: event.level, title: event.text };
     case 'angry':
       return { level: 'error', icon: 'i-face-angry', title: 'Khách bỏ đi', text: 'Chờ quá lâu hoặc món đã hết. Đánh giá sẽ giảm.', key: 'angry' };

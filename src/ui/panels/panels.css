@@ -1103,9 +1103,21 @@
    actions ("Bỏ xem thử", "Mua"/"Dùng kiểu này", the in-place confirm) open
    under it only while it is previewed. Previewed (or worn, with no preview)
    gets the bold inner border, as the uniform picker. */
-.styles-panel .seg {
-  align-self: flex-start;
+/* The four slot tabs share one row at every width (UX-211): equal columns,
+   tighter side padding; a label too long for its column wraps inside it.
+   The repeated class beats the equal .set-row .seg in ui.css whatever the load order. */
+.styles-panel .seg.seg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-self: stretch;
   max-width: 100%;
+}
+.styles-panel .seg-opt span {
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  text-align: center;
 }
 .style-row {
   display: flex;

@@ -53,9 +53,9 @@ afterEach(() => {
 });
 
 describe('Phong cách quán panel', () => {
-  it('is a dock panel named "Phong cách quán" in the Phát triển group', () => {
+  it('is a dock panel named "Phong cách" in the Phát triển group', () => {
     const def = PREP_PANELS.find((p) => p.id === STYLES_PANEL_ID);
-    expect(def?.label).toBe('Phong cách quán');
+    expect(def?.label).toBe('Phong cách');
     expect(def?.group).toBe('dev');
   });
 
