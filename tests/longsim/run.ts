@@ -12,6 +12,7 @@ import { isUnlocked, weekDay, weekIndex } from '../../src/sim/progression';
 import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
+import { totalUpgradeLevels } from '../../src/sim/week';
 import type { Difficulty, GameState, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
 import { playDay } from '../integration/helpers';
 
@@ -102,6 +103,10 @@ export interface WeekRow {
   completed: boolean;
   /** Every challenge-gated style is open at the end of the week. */
   allStyles: boolean;
+  /** Total upgrade levels at the week's start, before its first purchase (the SIZE_GOAL row). */
+  startLevels: number;
+  /** The goal came from SIZE_GOAL (it carries its own profit target). */
+  sized: boolean;
 }
 
 /** Weekly rows of a run; bankruptDay is set when the shop went bankrupt and the run stopped there. */
@@ -125,10 +130,14 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       narrowed.add(m.id);
     }
   };
+  let startLevels = 0;
   for (let day = 1; day <= weeks * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
-    if (weekDay(state) === 1) narrowed.clear();
+    if (weekDay(state) === 1) {
+      narrowed.clear();
+      startLevels = totalUpgradeLevels(state);
+    }
     enableUnlocked();
     const challenge = state.week?.challenge;
     const active = challenge && challenge.status === 'active';
@@ -174,6 +183,8 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       challengeGoal: c ? `${c.target}/${c.itemId ?? '-'}/${c.minServed ?? '-'}` : '',
       completed: c?.status === 'completed',
       allStyles: nextChallengeStyle(state) === null,
+      startLevels,
+      sized: week.goal.profit !== undefined,
     });
   }
   return rows;
@@ -198,7 +209,10 @@ export function summary(name: string, rows: WeekRows): string {
   return [
     name,
     `2+cups ${pct(share(late, (r) => r.cups >= 2))}`,
+    `=2cups ${pct(share(late, (r) => r.cups === 2))}`,
     `3cups ${pct(share(late, (r) => r.cups === 3))}`,
+    `<2cups ${pct(share(late, (r) => r.cups < 2))}`,
+    `avg21-40 ${avgScore(late).toFixed(1)}`,
     `ch5-20 ${pct(done(5, 20))}`,
     `ch21-40 ${pct(done(21, 40))}`,
     `styles@w${allStylesWeek(rows) ?? '-'}`,

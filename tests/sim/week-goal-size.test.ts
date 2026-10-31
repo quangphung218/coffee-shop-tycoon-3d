@@ -59,6 +59,22 @@ describe('SIZE_GOAL', () => {
     }
   });
 
+  it('generated rows: positive, rounded to 100.000 đồng and non-decreasing in levels', () => {
+    for (const d of DIFFS) {
+      SIZE_GOAL[d].forEach((r, i) => {
+        expect(r.profit, `${d} ${i}`).toBeGreaterThan(0);
+        expect(r.revenue % 100_000, `${d} ${i}`).toBe(0);
+        expect(r.profit % 100_000, `${d} ${i}`).toBe(0);
+        const prev = SIZE_GOAL[d][i - 1];
+        if (!prev) return;
+        expect(r.revenue, `${d} revenue ${i}`).toBeGreaterThanOrEqual(prev.revenue);
+        expect(r.profit, `${d} profit ${i}`).toBeGreaterThanOrEqual(prev.profit);
+      });
+      // A full shop asks for well more than an empty one.
+      expect(sizeGoal(d, SIZE_GOAL_MAX_LEVELS).revenue).toBeGreaterThan(5 * sizeGoal(d, 0).revenue);
+    }
+  });
+
   it('sizeGoal clamps the index', () => {
     for (const d of DIFFS) {
       expect(sizeGoal(d, -3)).toBe(SIZE_GOAL[d][0]);
