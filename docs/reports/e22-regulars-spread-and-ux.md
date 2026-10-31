@@ -36,7 +36,7 @@ Chiến lược `b_steady2`, 40 tuần.
   - Easy s7 `d_manage`, 3 ly: 70% → 85%.
   - Easy s2026 `c_spend`, 2+ ly: 10% → 5%.
   - Normal s2026 `c_spend`: 80% → 85%.
-  - Normal s42: 75% → 80%.
+  - Normal s42 `c_spend`: 75% → 80%.
 - Các dòng còn lại đổi điểm trung bình ≤ 0,2.
 - Các dòng tóm tắt này không có assert.
 
@@ -48,14 +48,14 @@ Bot `e05-payback` nay bỏ Tem từ mốc khỏi phép tính. Ngưỡng 2,25 gi�
 
 | Mã | Nội dung |
 | --- | --- |
-| UX-207 | Danh sách gộp: 8 hàng × 4 chấm mốc, icon Tem `i-sparkle`, nhãn "Món ruột ngoài quán". |
-| UX-210 | Nhãn "Ngày tốt nhất". |
-| UX-211 | Phong cách: lưới 4 tab. |
-| UX-212 | `TEM_SOURCES_TEXT`; lý do hiện cả tiền và Tem. |
-| UX-213 | Sửa chữ "có thêm"; dock ghi "Phong cách". |
-| UX-214 | Nút Tiếp tục ghi "Quán · Ngày 3 · 12:30 · đang mở cửa" ở pha mở cửa, cao điểm, đóng cửa. |
-| UX-215 | Toast "Kết thúc ngày N" bị chặn khi đang ở pha báo cáo. |
-| UX-102 | Mục UX-102 đi cùng đợt T-76. |
+| UX-207 | Danh sách khách quen gộp (T-75): 8 hàng, mỗi hàng 4 chấm mốc, chạm mở trang sổ. |
+| UX-213 | Sổ gọn lại (T-75): icon Tem `i-sparkle`, có gap sau icon khoá, nhãn "Món ruột ngoài quán". |
+| UX-210 | Thử thách hiện "Ngày tốt nhất" thay cho 0/1. |
+| UX-211 | Phong cách quán: 4 tab trên một hàng. |
+| UX-212 | Dòng Tem ghi cách kiếm Tem (`TEM_SOURCES_TEXT`); lý do không mua được nêu cả thiếu tiền và thiếu Tem. |
+| UX-214 | Sửa chữ "có thêm" (hết lặp "mở Mở rộng diện tích"); nhãn dock "Phong cách". |
+| UX-215 | Nút Tiếp tục ghi "Ngày N · HH:MM · đang mở cửa", hiện thành "Quán · Ngày 3 · 12:30 · đang mở cửa" ở pha mở cửa, cao điểm, đóng cửa. |
+| UX-102 | Toast "Kết thúc ngày N" bị chặn khi đang ở pha báo cáo, không đè dải tuần ở 390. |
 
 Mỗi mục có test trong `tests/ui`.
 
@@ -69,7 +69,8 @@ Mỗi mục có test trong `tests/ui`.
 - vitest đầy đủ: 2311 passed tại T-76.
 - `tsc`: sạch.
 - Test `css-order` không flake trong các lần chạy.
-- `npm run check` **không chạy thành một lệnh**; các bước chạy riêng: tsc, vitest, vite build.
+- `npm run check` (= `tsc --noEmit && vitest run && vite build`) đã chạy thành một lệnh tại T-76 và xanh (vitest 2311, vite build ok).
+- Sau T-78 chưa chạy lại `npm run check` thành một lệnh; chỉ chạy riêng `tsc`, `tests/ui` (843) và layout (135/135).
 
 ## Layout
 
