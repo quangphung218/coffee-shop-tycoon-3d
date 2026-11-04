@@ -128,29 +128,29 @@ describe('Phong cách quán: preview bar at ≤ 480 px (UX-201)', () => {
     expect(list(body).hidden).toBe(false);
   });
 
-  it('"Mua" in the bar opens the in-place confirm in the list, then buys', async () => {
+  it('"Mua" in the bar opens the in-place confirm in the bar, then buys', async () => {
     stubWidth(390);
     const state = rich();
     const { body, sent } = mount(state);
     tap(body, 'wall_mint');
     q<HTMLButtonElement>(bar(body), '[data-action="buy"]').click();
-    expect(list(body).hidden).toBe(false);
-    const confirm = q(body, 'li[data-style="wall_mint"] .confirm');
+    expect(list(body).hidden).toBe(true);
+    const confirm = q(bar(body), '.confirm');
     await flush();
     q<HTMLButtonElement>(confirm, '[data-action="confirm"]').click();
     expect(sent).toContainEqual({ type: 'buy_style', styleId: 'wall_mint' });
   });
 
-  it('a locked style keeps "Mua" dimmed in the bar; tapping it shows the reason in the list', () => {
+  it('a locked style keeps "Mua" dimmed in the bar with the reason in the bar', () => {
     stubWidth(390);
     const { body, sent } = mount(rich());
     tap(body, 'wall_wood');
     const buy = q<HTMLButtonElement>(bar(body), '[data-action="buy"]');
     expect(buy.getAttribute('aria-disabled')).toBe('true');
+    expect(q(bar(body), '.reason').hidden).toBe(false);
     buy.click();
     expect(sent).toEqual([]);
-    expect(list(body).hidden).toBe(false);
-    expect(q(body, 'li[data-style="wall_wood"] .reason').hidden).toBe(false);
+    expect(list(body).hidden).toBe(true);
   });
 
   it('above 480 px the preview stays in the list; crossing the width collapses or opens it', () => {
