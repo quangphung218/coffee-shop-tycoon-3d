@@ -1,19 +1,23 @@
 import {
   CHALLENGE_FIRST_WEEK,
+  CHALLENGE_ANCHOR_FIRST_WEEK,
   CHALLENGE_SCALE_FIRST_WEEK,
   CHALLENGE_SCALE_WEEKS,
   CHALLENGE_STYLE_ORDER,
   WEEK_CHALLENGES,
   WEEK_CHALLENGE_IDS,
+  anchoredChallengeTarget,
+  challengeStandard,
   isScaledChallenge,
   scaledChallengeTarget,
 } from './data/challenges';
 import { getMenuItem, MENU } from './data/menu';
-import { WEEK_LENGTH, dayUnlockDay } from './data/week';
+import { WEEK_LENGTH, dayUnlockDay, sizeGoalRowIndex } from './data/week';
 import { weekDay, weekIndex } from './progression';
 import { addTickets } from './retention';
 import { isStyleUnlocked, unlockStyle } from './styles';
-import type { DailyReport, DayStats, GameState, MenuItemId, WeekChallenge } from './types';
+import type { DailyReport, DayStats, Difficulty, GameState, MenuItemId, WeekChallenge } from './types';
+import { totalUpgradeLevels } from './week';
 
 /** Keeps challenge draws apart from the week plans and daily missions, which hash the same seed. */
 const CHALLENGE_SALT = 0x27d4eb2f;
@@ -43,15 +47,23 @@ function templateIndex(seed: number, index: number): number {
   return t;
 }
 
+/** Where a week's scaled challenge reads its standard: the difficulty and the week's SIZE_GOAL row (sizeGoalRowIndex). */
+export interface ChallengeSize {
+  difficulty: Difficulty;
+  row: number;
+}
+
 /**
  * Side challenge of week `index` (from 1): null before CHALLENGE_FIRST_WEEK,
  * then a template and, for sell_item, a menu item hashed from the seed and the
  * week, never drawn from `state.rngState`. Same seed, same sequence.
- * `past` are the finished days before the week (oldest first): from
- * CHALLENGE_SCALE_FIRST_WEEK a counting template's number follows their
- * values (scaleChallenge); without them it keeps the template's.
+ * From CHALLENGE_SCALE_FIRST_WEEK a counting template's number scales: before
+ * CHALLENGE_ANCHOR_FIRST_WEEK with `past`, the finished days before the week
+ * (oldest first; scaleChallenge), from it with `size`, the CHALLENGE_STANDARD
+ * row of the week's SIZE_GOAL row (anchorChallenge). Without them it keeps
+ * the template's.
  */
-export function rollWeekChallenge(seed: number, index: number, past: readonly DayStats[] = []): WeekChallenge | null {
+export function rollWeekChallenge(seed: number, index: number, past: readonly DayStats[] = [], size?: ChallengeSize): WeekChallenge | null {
   if (index < CHALLENGE_FIRST_WEEK) return null;
   const def = WEEK_CHALLENGES[WEEK_CHALLENGE_IDS[templateIndex(seed, index)]!];
   const challenge: WeekChallenge = {
@@ -66,12 +78,15 @@ export function rollWeekChallenge(seed: number, index: number, past: readonly Da
     // Negative indices never collide with the template hashes above.
     challenge.itemId = SELL_ITEMS[challengeHash(seed, -index) % SELL_ITEMS.length]!;
   }
-  if (index >= CHALLENGE_SCALE_FIRST_WEEK) scaleChallenge(challenge, past);
+  if (index >= CHALLENGE_ANCHOR_FIRST_WEEK) {
+    if (size) anchorChallenge(challenge, size);
+  } else if (index >= CHALLENGE_SCALE_FIRST_WEEK) scaleChallenge(challenge, past);
   return challenge;
 }
 
 /**
- * Raises a counting challenge's number to scaledChallengeTarget of the average
+ * Weeks CHALLENGE_SCALE_FIRST_WEEK..CHALLENGE_ANCHOR_FIRST_WEEK - 1 (E-19):
+ * raises a counting challenge's number to scaledChallengeTarget of the average
  * over the last CHALLENGE_SCALE_WEEKS weeks of `past`: per week (days summed,
  * times 7 over the days there are) for served_week, sell_item and
  * regular_visits; per day of customers served for calm_day's minServed. Left
@@ -92,6 +107,31 @@ function scaleChallenge(challenge: WeekChallenge, past: readonly DayStats[]): vo
 }
 
 /**
+ * From CHALLENGE_ANCHOR_FIRST_WEEK (E-24): raises a counting challenge's
+ * number to anchoredChallengeTarget of its CHALLENGE_STANDARD value at the
+ * week's SIZE_GOAL row: per week for served_week (customers), sell_item (cups
+ * of the drawn item) and regular_visits; customers per day (the week's /
+ * WEEK_LENGTH) for calm_day's minServed. Never below the template's number.
+ */
+function anchorChallenge(challenge: WeekChallenge, size: ChallengeSize): void {
+  const id = challenge.id;
+  if (!isScaledChallenge(id)) return;
+  const standard = challengeStandard(size.difficulty, size.row);
+  if (id === 'calm_day') {
+    const minServed = anchoredChallengeTarget(id, standard.served / WEEK_LENGTH);
+    if (minServed > (WEEK_CHALLENGES.calm_day.minServed ?? 0)) challenge.minServed = minServed;
+    return;
+  }
+  const value = id === 'served_week' ? standard.served : id === 'regular_visits' ? standard.regulars : (standard.sold[challenge.itemId!] ?? 0);
+  challenge.target = anchoredChallengeTarget(id, value);
+}
+
+/** ChallengeSize of week `index` for a shop with `state`'s upgrades now (the row its week goal reads, sizeGoalRowIndex). */
+export function challengeSize(state: GameState, index: number): ChallengeSize {
+  return { difficulty: state.difficulty, row: sizeGoalRowIndex(state.difficulty, index, totalUpgradeLevels(state)) };
+}
+
+/**
  * Gives the current week its challenge when a save from before E-16 is loaded
  * on the morning of a week's first day, before anything was sold. A week
  * already under way keeps none; the next week draws its own (startNextWeek).
@@ -99,7 +139,9 @@ function scaleChallenge(challenge: WeekChallenge, past: readonly DayStats[]): vo
 export function ensureWeekChallenge(state: GameState): void {
   const week = state.week;
   if (!week || week.challenge || state.phase !== 'preparation' || weekDay(state) !== 1) return;
-  const challenge = rollWeekChallenge(state.seed, weekIndex(state), state.history.filter((d) => d.day < week.startedDay));
+  const index = weekIndex(state);
+  const past = state.history.filter((d) => d.day < week.startedDay);
+  const challenge = rollWeekChallenge(state.seed, index, past, challengeSize(state, index));
   if (challenge) week.challenge = challenge;
 }
 

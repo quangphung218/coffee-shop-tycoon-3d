@@ -13,7 +13,7 @@ import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
 import { totalUpgradeLevels } from '../../src/sim/week';
-import type { Difficulty, GameEvent, GameState, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
+import type { Difficulty, GameEvent, GameState, MenuItemId, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
 import { playDay } from '../integration/helpers';
 
 /**
@@ -106,12 +106,20 @@ export interface WeekRow {
   /** The challenge's target, item and calm-day floor, for the determinism check. */
   challengeGoal: string;
   completed: boolean;
+  /** The challenge's best day (WeekChallenge.best: calm_day's most customers on a day without walkouts); null without one. */
+  challengeBest: number | null;
   /** Every challenge-gated style is open at the end of the week. */
   allStyles: boolean;
   /** Total upgrade levels at the week's start, before its first purchase (the SIZE_GOAL row). */
   startLevels: number;
   /** The goal came from SIZE_GOAL (it carries its own profit target). */
   sized: boolean;
+  /** Customers served over the week's days (E-24 challenge standard). */
+  served: number;
+  /** Regulars served over the week's days. */
+  regulars: number;
+  /** Cups sold per menu item over the week's days. */
+  sold: Partial<Record<MenuItemId, number>>;
 }
 
 /** Weekly rows of a run; bankruptDay is set when the shop went bankrupt and the run stopped there. */
@@ -179,6 +187,9 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
     const result = week.result;
     if (!result) continue;
     const c = week.challenge;
+    const days = [...state.history.filter((d) => d.day >= week.startedDay), state.today];
+    const sold: Partial<Record<MenuItemId, number>> = {};
+    for (const d of days) for (const [id, n] of Object.entries(d.sold)) sold[id as MenuItemId] = (sold[id as MenuItemId] ?? 0) + (n ?? 0);
     rows.push({
       week: weekIndex(state),
       level: state.shopLevel,
@@ -191,9 +202,13 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       challenge: c?.id ?? null,
       challengeGoal: c ? `${c.target}/${c.itemId ?? '-'}/${c.minServed ?? '-'}` : '',
       completed: c?.status === 'completed',
+      challengeBest: c?.best ?? null,
       allStyles: nextChallengeStyle(state) === null,
       startLevels,
       sized: week.goal.profit !== undefined,
+      served: days.reduce((sum, d) => sum + d.customersServed, 0),
+      regulars: days.reduce((sum, d) => sum + (d.regularsServed ?? 0), 0),
+      sold,
     });
   }
   return rows;
