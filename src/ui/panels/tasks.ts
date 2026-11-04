@@ -7,8 +7,7 @@ import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { missionProgress } from '../../sim/progression';
 import { achievementProgress, giftPreview, parseDateKey, type AchievementProgress } from '../../sim/retention';
 import { isVipDay, SPECIAL_ORDER_FROM_DAY } from '../../sim/specialOrders';
-import { REGULARS } from '../../sim/data/regulars';
-import { regularBook, type RegularBookPage } from '../../sim/data/regularMilestones';
+import { bookRegulars, regularBook, type RegularBookPage } from '../../sim/data/regularMilestones';
 import type { GameState, MenuItemId, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
@@ -278,12 +277,12 @@ export interface RegularRow {
 
 /**
  * The "Khách quen" card: named regulars met so far (state.regulars), latest
- * visit first; same day keeps the REGULARS order. Ids no longer in REGULARS
+ * visit first; same day keeps the book order (REGULARS, then season 2). Unknown ids
  * are skipped. Empty before the first regular comes in and on older saves.
  */
 export function regularRows(state: GameState): RegularRow[] {
   const seen = state.regulars ?? {};
-  return REGULARS.flatMap((r) => {
+  return bookRegulars(state).flatMap((r) => {
     const v = seen[r.id];
     return v && v.visits > 0 ? [{ id: r.id, name: r.name, visits: v.visits, favorite: r.favorite, lastDay: v.lastDay }] : [];
   }).sort((a, b) => b.lastDay - a.lastDay);
@@ -297,7 +296,7 @@ export interface BookOpen {
 
 /**
  * Khách quen list order (UX-207): regulars met so far, latest visit first (same
- * day keeps the REGULARS order), then the ones not met yet in REGULARS order.
+ * day keeps the book order), then the ones not met yet in book order.
  */
 export function regularListPages(state: GameState): RegularBookPage[] {
   const seen = state.regulars ?? {};
