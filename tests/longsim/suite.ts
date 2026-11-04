@@ -106,7 +106,7 @@ const TIMEOUT = 1_200_000;
 /** E-26: seasonal styles drain the Tem that piles up after the upgrades are done (Normal). */
 const STYLES_TEM_END_MAX = 150;
 const STYLES_SEASONS_MIN = 2;
-const TEM_TABLE: readonly StrategyName[] = ['b_steady2', 'b2_styles'];
+const TEM_TABLE: readonly StrategyName[] = ['b_steady2', 'd_manage', 'b2_styles'];
 
 function assertStyles(label: string, rows: WeekRows): void {
   expect(rows, `${label} b2_styles weeks`).toHaveLength(WEEKS);
