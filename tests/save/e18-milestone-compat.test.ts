@@ -14,7 +14,7 @@ import { playDay } from '../integration/helpers';
  * from `state.regulars[id].visits`, which saves have kept since P30. E-22 gives
  * each regular thresholds of their own and a 4th milestone; a save from before
  * it keeps what it reached in E-18's book (10/40/100 for everyone) through
- * `keptMilestones`, filled on load, so the save stays at version 6. Kept
+ * `keptMilestones`, filled on load, so E-18/E-22 needed no version bump (7 is E-23). Kept
  * milestones show reached and are never paid again; the next new one pays once.
  */
 
@@ -53,8 +53,8 @@ function load(text: string): GameState {
 }
 
 describe('E-18/E-22 milestone save compatibility', { timeout: 120_000 }, () => {
-  it('keeps SAVE_VERSION 6: kept milestones are filled on load', () => {
-    expect(SAVE_VERSION).toBe(6);
+  it('keeps SAVE_VERSION 7 (E-23 only adds analytics consent): kept milestones are filled on load', () => {
+    expect(SAVE_VERSION).toBe(7);
   });
 
   it('keeps the milestones an old save reached in E-18’s book, paying nothing on load', () => {

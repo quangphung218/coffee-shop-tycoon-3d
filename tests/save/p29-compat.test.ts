@@ -101,7 +101,7 @@ describe('P29 save compatibility', { timeout: 60_000 }, () => {
   const saved = duskGame('rainy');
 
   it('starts from a mid-day rainy save at dusk', () => {
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBe(7);
     expect(['preparation', 'report']).not.toContain(saved.phase);
     expect(saved.minute).toBe(DUSK);
     expect(saved.weather).toBe('rainy');

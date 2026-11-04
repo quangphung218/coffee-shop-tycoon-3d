@@ -39,7 +39,7 @@ function load(state: GameState): GameState {
 
 describe('saves from before the E-16 week challenges', () => {
   it('keep the save version', () => {
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBe(7);
   });
 
   it('get no challenge mid-week, then the next week opens with its draw', () => {

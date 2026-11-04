@@ -33,7 +33,7 @@ function load(state: GameState): GameState {
 
 describe('saves from before the E-13 Tem prices', () => {
   it('keep the Tem balance and every level bought, without a new save version', () => {
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBe(7);
     const s = load(oldShop());
     expect(s.retention!.tickets).toBe(47);
     expect(s.upgrades).toMatchObject({ better_machine: 4, plants: 3, paintings: 2, lights: 2 });
