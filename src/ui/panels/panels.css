@@ -551,6 +551,29 @@
 .regular-row {
   position: relative;
 }
+/* Closed (UX-304): one grid row only, so the empty control and page rows add
+   no row gaps (an empty strip under the dots); open adds the page row. */
+.item.item-row.regular-row {
+  grid-template-areas: 'icon text status';
+}
+.item.item-row.regular-row.is-open {
+  grid-template-areas:
+    'icon text status'
+    '. more more';
+}
+.regular-chevron {
+  flex: none;
+  margin-left: var(--space-1);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+.regular-head[aria-expanded='true'] .regular-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .regular-chevron {
+    transition: none;
+  }
+}
 /* The button itself is a full tap target (P27): at least --size-target tall
    and wide, with negative block margins so the title line keeps its height. */
 .regular-head {
@@ -1112,7 +1135,8 @@
    under it only while it is previewed. Previewed (or worn, with no preview)
    gets the bold inner border, as the uniform picker. */
 /* The four slot tabs share one row at every width (UX-211): equal columns,
-   tighter side padding; a label too long for its column wraps inside it.
+   tighter side padding; a label never wraps (UX-308, scripts/check-layout.mjs
+   checks it at every width).
    The repeated class beats the equal .set-row .seg in ui.css whatever the load order. */
 .styles-panel .seg.seg {
   display: grid;
@@ -1126,6 +1150,19 @@
   min-width: 0;
   padding: 0 var(--space-1);
   text-align: center;
+  white-space: nowrap;
+  position: relative;
+  /* The panel is ~290 px wide beside the shop from 768 px: a 62 px column. */
+  font-size: var(--font-size-sm);
+}
+/* The checked tick sits in the tab's top-right corner, out of the label's
+   line, so "Biển hiệu" and "Mái hiên" fit their column on one line (UX-308). */
+.styles-panel .seg-opt input:checked + span::before {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 10px;
+  height: 10px;
 }
 .style-row {
   display: flex;
@@ -1164,9 +1201,12 @@
   outline: var(--size-focus-width) solid var(--focus-ring);
   outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
 }
-/* "Mở bằng thử thách (từ tuần 5)" wraps in two lines rather than squeeze the name. */
+/* "Từ tuần 5" / "Còn 2 thử thách" (UX-305): wraps rather than squeeze the
+   name, never past two lines. */
 .style-opt > .badge {
   max-width: 10em;
+  max-height: calc(2em * var(--line-height-tight) + var(--space-1));
+  overflow: hidden;
   padding-block: calc(var(--space-1) / 2);
   white-space: normal;
   line-height: var(--line-height-tight);

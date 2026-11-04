@@ -306,6 +306,21 @@ export function regularListPages(state: GameState): RegularBookPage[] {
   return [...met, ...pages.filter((p) => p.visits === 0)];
 }
 
+/** Regular whose book page the next Việc panel render opens (UX-310); taken by that render. */
+let pendingRegular: string | null = null;
+
+/** The next render of the Việc panel opens this regular's page in the Khách quen list. */
+export function revealRegular(regularId: string | null): void {
+  pendingRegular = regularId;
+}
+
+/** Focuses (and so scrolls to) a regular's row head in a rendered Việc panel; false when it is not there. */
+export function focusRegular(container: ParentNode, regularId: string): boolean {
+  const head = container.querySelector<HTMLElement>(`[data-book="${regularId}"] .regular-head`);
+  head?.focus();
+  return head !== null;
+}
+
 /**
  * One row of the merged Khách quen list (UX-207/213): favourite drink | name +
  * "Ghé 3 lần · Hay gọi Latte" | four milestone dots. The row is a disclosure;
@@ -328,6 +343,8 @@ function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | n
     { class: 'regular-head', attrs: { type: 'button', 'data-action': 'regular-page', 'aria-expanded': String(pageOpen), 'aria-controls': pageId } },
     name,
     h('span', { class: 'sr-only', text: `, sổ ${page.reached}/${total} mốc` }),
+    // Turns up with aria-expanded (UX-304), like the Thành tựu toggle.
+    icon('i-chevron-down', { size: 16, class: 'regular-chevron' }),
   );
   head.addEventListener('click', onPage);
   const cells = page.milestones.map((m, i) =>
@@ -361,7 +378,7 @@ function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | n
   );
   return h(
     'li',
-    { class: 'item item-row regular-row', attrs: { 'data-regular': page.regular.id, 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
+    { class: `item item-row regular-row${pageOpen ? ' is-open' : ''}`, attrs: { 'data-regular': page.regular.id, 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
     h('span', { class: 'item-icon' }, icon(MENU_ICONS[page.regular.favorite], { size: 32 })),
     h('div', { class: 'item-text' }, h('p', { class: 'item-title' }, head), h('p', { class: 'item-meta', text: meta })),
     h(
@@ -607,7 +624,9 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const regularSum = h('span');
   const regularIntro = h('p', { class: 'intro intro-icon', attrs: { 'data-book-sum': '' } }, icon('i-info', { size: 16 }), regularSum);
   const regularList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Khách quen' } });
-  let pageOpen: string | null = null;
+  // A milestone toast's "Xem chuyện" (UX-310) opens the panel with that regular's page open.
+  let pageOpen: string | null = pendingRegular;
+  pendingRegular = null;
   let bookOpen: BookOpen | null = null;
   const drawRegulars = (pages: RegularBookPage[], focus?: string): void => {
     const reached = pages.reduce((n, p) => n + p.reached, 0);

@@ -68,6 +68,11 @@ export function pendingGiftDay(slot: SlotInfo, today: string): number | null {
   return now === last + 1 ? ((slot.giftStreak ?? 0) % GIFT_DAYS) + 1 : 1;
 }
 
+/** A Main Menu button label: one line at every width (UX-309), the detail beside it wraps instead. */
+function menuLabel(text: string): HTMLElement {
+  return h('span', { class: 'btn-label', text });
+}
+
 /** Phases with the doors open (clock.ts isOpen), kept here so the menu loads without the sim. */
 const OPEN_PHASES: ReadonlySet<string> = new Set(['opening', 'peak', 'closing']);
 
@@ -100,7 +105,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
       on: { click: () => continueSlot && !isAriaDisabled(continueBtn) && actions.onContinue(continueSlot) },
     },
     icon('i-speed-1'),
-    'Tiếp tục',
+    menuLabel('Tiếp tục'),
     continueDetail,
   );
   // Continuing drops straight into the shop, so it waits for the 3D scene.
@@ -108,7 +113,7 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
   const giftId = uid('r-gift');
   const giftLine = h('p', { class: 'card-sub', id: giftId, attrs: { 'data-menu-line': 'gift' } });
   const continueRow = h('div', {}, continueBtn, giftLine);
-  const newBtn = h('button', { class: 'btn btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => actions.onNewGame() } }, icon('i-sparkle'), 'Ván mới');
+  const newBtn = h('button', { class: 'btn btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => actions.onNewGame() } }, icon('i-sparkle'), menuLabel('Ván mới'));
   const loadBtn = h(
     'button',
     {
@@ -117,14 +122,14 @@ export function createMainMenu(storage: StorageLike, actions: MainMenuActions, s
       on: { click: () => !isAriaDisabled(loadBtn) && actions.onLoad() },
     },
     icon('i-load'),
-    'Tải game',
+    menuLabel('Tải game'),
   );
   const loadReason = h('p', { class: 'reason', id: reasonId }, icon('i-lock', { size: 16 }), 'Chưa có bản lưu nào. Chơi hết ngày 1 để game tự lưu.');
   const settingsBtn = h(
     'button',
     { class: 'btn btn-secondary btn-lg btn-block', attrs: { type: 'button' }, on: { click: () => actions.onSettings() } },
     icon('i-settings'),
-    'Cài đặt',
+    menuLabel('Cài đặt'),
   );
 
   const list = h('div', { class: 'menu-list' }, continueRow, newBtn, h('div', {}, loadBtn, loadReason), settingsBtn);

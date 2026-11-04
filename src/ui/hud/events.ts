@@ -3,6 +3,7 @@ import { getIngredient } from '../../sim/data/ingredients';
 import { levelDef } from '../../sim/data/levels';
 import { getMenuItem } from '../../sim/data/menu';
 import { styleById } from '../../sim/data/styles';
+import { milestoneVisits, milestonesReached } from '../../sim/data/regularMilestones';
 import { regularById } from '../../sim/data/regulars';
 import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { UNIFORMS } from '../../sim/data/uniforms';
@@ -113,16 +114,34 @@ export function weekChallengeToast(state: GameState): ToastInput | null {
   };
 }
 
-/** "Khách quen mới: Cô Lan" or "Cô Lan ghé quán (lần 3)", at most one per REGULAR_TOAST_GAP_MS of real time. */
-function regularToast(event: Extract<GameEvent, { type: 'regular_arrived' }>, now: number): ToastInput | null {
+/** A later visit gets a toast only this close to the next milestone (UX-307). */
+export const REGULAR_NEAR_MILESTONE = 2;
+
+/** Visits left to, and number (1–4) of, the regular's next milestone after `visits`; null once all are reached. */
+export function nextMilestone(regularId: string, visits: number, kept = 0): { left: number; milestone: number } | null {
+  const reached = milestonesReached(regularId, visits, kept);
+  const at = milestoneVisits(regularId)[reached];
+  return at === undefined ? null : { left: at - visits, milestone: reached + 1 };
+}
+
+/**
+ * "Khách quen mới: Cô Lan" on a first visit; a later visit only when the next
+ * milestone is at most REGULAR_NEAR_MILESTONE visits away ("Anh Minh: còn 1 lần
+ * tới mốc 3", UX-307). At most one per REGULAR_TOAST_GAP_MS of real time.
+ */
+function regularToast(event: Extract<GameEvent, { type: 'regular_arrived' }>, state: GameState, now: number): ToastInput | null {
   const name = regularById(event.regularId)?.name;
   if (!name) return null;
+  const first = event.visits <= 1;
+  const next = first ? null : nextMilestone(event.regularId, event.visits, state.regulars?.[event.regularId]?.keptMilestones);
+  if (!first && (!next || next.left <= 0 || next.left > REGULAR_NEAR_MILESTONE)) return null;
   if (lastRegularToastAt !== null && now >= lastRegularToastAt && now - lastRegularToastAt < REGULAR_TOAST_GAP_MS) return null;
   lastRegularToastAt = now;
   return {
     level: 'info',
     icon: 'i-face-happy',
-    title: event.visits <= 1 ? `Khách quen mới: ${name}` : `${name} ghé quán (lần ${event.visits})`,
+    title: next ? `${name}: còn ${next.left} lần tới mốc ${next.milestone}` : `Khách quen mới: ${name}`,
+    text: next ? `${name} ghé quán (lần ${event.visits})` : undefined,
     key: 'regular',
   };
 }
@@ -137,7 +156,7 @@ const DAY_END_NOTIFY = /^Kết thúc ngày \d+$/;
 export function toastForEvent(event: GameEvent, state: GameState, now = performance.now()): ToastInput | null {
   switch (event.type) {
     case 'regular_arrived':
-      return regularToast(event, now);
+      return regularToast(event, state, now);
     case 'regular_milestone':
       return milestoneToast(event, state);
     case 'notify':

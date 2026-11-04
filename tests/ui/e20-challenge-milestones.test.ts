@@ -9,7 +9,7 @@ import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { DailyReport, GameEvent, GameState } from '../../src/sim/types';
 import { rollWeekPlan, scoreWeek } from '../../src/sim/week';
 import { mergedMilestoneTitle, resetRegularToasts, toastForEvent, weekChallengeToast } from '../../src/ui/hud/events';
-import { LOCKED_STYLE_BADGE } from '../../src/ui/panels/styles';
+import { lockedStyleBadge } from '../../src/ui/panels/styles';
 import { renderSummary, reportMilestones } from '../../src/ui/report/report';
 import { SPEED_HINT, SPEED_HINT_ACTION } from '../../src/ui/screens/game';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
@@ -105,8 +105,9 @@ describe('UX-205/206 challenge surfacing', () => {
     expect(weekChallengeToast(servedWeek(0, 'active', 2))).toBeNull();
   });
 
-  it('the lock badge says challenges open it from week 5', () => {
-    expect(LOCKED_STYLE_BADGE).toBe('Mở bằng thử thách (từ tuần 5)');
+  it('the lock badge says the week before week 5, then the challenges left', () => {
+    expect(lockedStyleBadge(gameInWeek(CHALLENGE_FIRST_WEEK - 1, 1), 'wall_wood')).toBe('Từ tuần 5');
+    expect(lockedStyleBadge(gameInWeek(CHALLENGE_FIRST_WEEK, 1), 'wall_wood')).toBe('Còn 2 thử thách');
   });
 
   it('the daily report shows the challenge on one line under the week strip', () => {
@@ -167,8 +168,8 @@ describe('UX-208 regular milestone toasts', () => {
   it('still toasts an arrival without a milestone', () => {
     const { root, shell: s } = boot();
     s.startGame(gameInWeek(2, 4));
-    s.handleEvents([{ type: 'regular_arrived', customerId: 1, regularId: 'co_lan', visits: 3 }]);
-    expect(titles(root)).toEqual(['Cô Lan ghé quán (lần 3)']);
+    s.handleEvents([{ type: 'regular_arrived', customerId: 1, regularId: 'co_lan', visits: 8 }]);
+    expect(titles(root)).toEqual(['Cô Lan: còn 2 lần tới mốc 1']);
   });
 
   it('merges the day\'s 2nd milestone on into one "N khách quen lên mốc · +N Tem" toast', () => {

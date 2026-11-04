@@ -77,16 +77,17 @@ describe('regular_arrived toast', () => {
     expect(t.icon).toBe('i-face-happy');
   });
 
-  it('counts later visits', () => {
-    expect(toastForEvent(arrived('chu_tuan', 4), game(), 1000)!.title).toBe('Chú Tuấn ghé quán (lần 4)');
+  it('a later visit toasts only near the next milestone (UX-307)', () => {
+    expect(toastForEvent(arrived('chu_tuan', 4), game(), 1000)).toBeNull();
+    expect(toastForEvent(arrived('chu_tuan', 43), game(), 1000)!.title).toBe('Chú Tuấn: còn 2 lần tới mốc 1');
   });
 
   it('shows at most one regular toast per 20 s of real time', () => {
     const state = game();
-    expect(toastForEvent(arrived('co_lan', 2), state, 0)).not.toBeNull();
+    expect(toastForEvent(arrived('co_lan', 1), state, 0)).not.toBeNull();
     expect(toastForEvent(arrived('anh_minh', 1), state, 5000)).toBeNull();
-    expect(toastForEvent(arrived('chi_hoa', 3), state, REGULAR_TOAST_GAP_MS - 1)).toBeNull();
-    expect(toastForEvent(arrived('chi_hoa', 3), state, REGULAR_TOAST_GAP_MS)!.title).toBe('Chị Hoa ghé quán (lần 3)');
+    expect(toastForEvent(arrived('chi_hoa', 14), state, REGULAR_TOAST_GAP_MS - 1)).toBeNull();
+    expect(toastForEvent(arrived('chi_hoa', 14), state, REGULAR_TOAST_GAP_MS)!.title).toBe('Chị Hoa: còn 1 lần tới mốc 1');
     // Other toasts are not held back by the gap.
     expect(toastForEvent({ type: 'vip_arrived', customerId: 2 }, state, REGULAR_TOAST_GAP_MS + 1)).not.toBeNull();
   });
@@ -104,11 +105,11 @@ describe('regular_arrived toast', () => {
     const titles = () => [...root.querySelectorAll('.toast-title')].map((p) => p.textContent);
     try {
       shell.startGame(game());
-      shell.handleEvents([arrived('co_lan', 2)]);
-      expect(titles()).toEqual(['Cô Lan ghé quán (lần 2)']);
+      shell.handleEvents([arrived('co_lan', 9)]);
+      expect(titles()).toEqual(['Cô Lan: còn 1 lần tới mốc 1']);
       // Same game, a moment later: held back by the gap.
       shell.handleEvents([arrived('anh_minh', 1)]);
-      expect(titles()).toEqual(['Cô Lan ghé quán (lần 2)']);
+      expect(titles()).toEqual(['Cô Lan: còn 1 lần tới mốc 1']);
       // Ván mới, Chơi lại and loading a save all go through startGame, which starts the gap over.
       shell.startGame(game());
       shell.handleEvents([arrived('anh_minh', 1)]);
