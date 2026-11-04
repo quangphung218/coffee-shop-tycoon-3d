@@ -1,0 +1,56 @@
+normal s1 c_spend | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 74.5 | ch5-20 88% | ch21-40 100% | styles@w11 | lvl 10 | avg score 80.8 | cups 3333333333222222222222222222222222222222
+normal s1 b_steady | 2+cups 20% | =2cups 20% | 3cups 0% | <2cups 80% | avg21-40 68.8 | ch5-20 63% | ch21-40 100% | styles@w13 | lvl 10 | avg score 73.7 | cups 3322222222222222221122121111111111121111
+normal s1 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 96.6 | ch5-20 88% | ch21-40 100% | styles@w9 | lvl 10 | avg score 97.3 | cups 3333333332333333333333333333333333333333
+normal s1 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 82.7 | ch5-20 81% | ch21-40 95% | styles@w11 | lvl 10 | avg score 84.8 | cups 3322232322233222222222222222222222222222
+normal s1 a2 | 2+cups 100% | =2cups 10% | 3cups 90% | <2cups 0% | avg21-40 94.4 | ch5-20 19% | ch21-40 30% | styles@w30 | lvl 10 | avg score 85.3 | cups 3322221111111113333333233333233333333333
+normal s1 a_manage | 2+cups 100% | =2cups 5% | 3cups 95% | <2cups 0% | avg21-40 98.3 | ch5-20 13% | ch21-40 20% | styles@w30 | lvl 10 | avg score 89.6 | cups 3322221221112122333333233333333333333333
+normal s42 c_spend | 2+cups 80% | =2cups 80% | 3cups 0% | <2cups 20% | avg21-40 69.8 | ch5-20 81% | ch21-40 85% | styles@w11 | lvl 10 | avg score 77.9 | cups 3333333333312222221221212222222222121222
+normal s42 b_steady | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 64.0 | ch5-20 63% | ch21-40 95% | styles@w12 | lvl 10 | avg score 70.0 | cups 3322222222222111111111111111111111111111
+normal s42 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 92.0 | ch5-20 100% | ch21-40 95% | styles@w9 | lvl 10 | avg score 93.9 | cups 3333333333333333333333333333333333333333
+normal s42 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 81.3 | ch5-20 81% | ch21-40 100% | styles@w11 | lvl 10 | avg score 83.8 | cups 3332322223332222222222222222222222222222
+normal s42 a2 | 2+cups 100% | =2cups 20% | 3cups 80% | <2cups 0% | avg21-40 93.2 | ch5-20 31% | ch21-40 45% | styles@w16 | lvl 10 | avg score 84.4 | cups 3322211111111113332332333333333233232333
+normal s42 a_manage | 2+cups 100% | =2cups 10% | 3cups 90% | <2cups 0% | avg21-40 98.0 | ch5-20 31% | ch21-40 30% | styles@w19 | lvl 10 | avg score 90.6 | cups 3332221212211113332332333333333333233333
+normal s1 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010101101010101121120
+normal s42 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010101101010101121210
+easy s1 c_spend | 2+cups 95% | =2cups 95% | 3cups 0% | <2cups 5% | avg21-40 73.1 | ch5-20 81% | ch21-40 100% | styles@w11 | lvl 10 | avg score 78.3 | cups 3333333322222222222222122222222222222222
+easy s1 b_steady | 2+cups 5% | =2cups 5% | 3cups 0% | <2cups 95% | avg21-40 68.3 | ch5-20 81% | ch21-40 100% | styles@w11 | lvl 10 | avg score 72.4 | cups 3322221222222222112111121111111111111111
+easy s1 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 94.4 | ch5-20 94% | ch21-40 100% | styles@w9 | lvl 10 | avg score 95.6 | cups 3333333333333333333333333333333333333333
+easy s1 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 82.8 | ch5-20 88% | ch21-40 100% | styles@w10 | lvl 10 | avg score 84.5 | cups 3323232322222222222222222222222222222222
+easy s1 a2 | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 97.9 | ch5-20 25% | ch21-40 35% | styles@w23 | lvl 10 | avg score 91.8 | cups 3322221211133333333333333333333333333333
+easy s1 a_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 99.5 | ch5-20 25% | ch21-40 20% | styles@w23 | lvl 10 | avg score 94.3 | cups 3333321221213333333333333333333333333333
+easy s42 c_spend | 2+cups 15% | =2cups 15% | 3cups 0% | <2cups 85% | avg21-40 68.4 | ch5-20 88% | ch21-40 85% | styles@w10 | lvl 10 | avg score 75.5 | cups 3333333331121122121121111111211111111121
+easy s42 b_steady | 2+cups 5% | =2cups 5% | 3cups 0% | <2cups 95% | avg21-40 65.5 | ch5-20 75% | ch21-40 95% | styles@w11 | lvl 10 | avg score 70.2 | cups 3322222222222122111111211111111111111111
+easy s42 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 91.6 | ch5-20 100% | ch21-40 100% | styles@w9 | lvl 10 | avg score 93.3 | cups 3333333333333333333333333333333333333333
+easy s42 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 81.5 | ch5-20 94% | ch21-40 95% | styles@w10 | lvl 10 | avg score 83.7 | cups 3332222223222222222222222222222222222222
+easy s42 a2 | 2+cups 100% | =2cups 5% | 3cups 95% | <2cups 0% | avg21-40 97.0 | ch5-20 38% | ch21-40 50% | styles@w14 | lvl 10 | avg score 91.3 | cups 3322221111133333333333333333333333233333
+easy s42 a_manage | 2+cups 100% | =2cups 5% | 3cups 95% | <2cups 0% | avg21-40 99.2 | ch5-20 31% | ch21-40 35% | styles@w19 | lvl 10 | avg score 95.3 | cups 3332222212233333333333333333333333233333
+easy s1 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010101101010101121210
+easy s42 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010101101010101121210
+normal s7 c_spend | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 66.3 | ch5-20 75% | ch21-40 70% | styles@w11 | lvl 10 | avg score 75.0 | cups 3233333333311111111111111111111111111111
+normal s7 b_steady | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 63.5 | ch5-20 56% | ch21-40 75% | styles@w13 | lvl 10 | avg score 69.1 | cups 3322122222212211111111111111111111111111
+normal s7 d_manage | 2+cups 100% | =2cups 10% | 3cups 90% | <2cups 0% | avg21-40 90.8 | ch5-20 100% | ch21-40 100% | styles@w9 | lvl 10 | avg score 92.8 | cups 3333333332323332333333333333323233333333
+normal s7 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 81.3 | ch5-20 69% | ch21-40 95% | styles@w12 | lvl 10 | avg score 83.3 | cups 3332222323222222222222222222222222222222
+normal s7 a2 | 2+cups 100% | =2cups 15% | 3cups 85% | <2cups 0% | avg21-40 93.5 | ch5-20 38% | ch21-40 30% | styles@w16 | lvl 10 | avg score 84.8 | cups 3322121211111112333333233333333323323333
+normal s7 a_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 99.5 | ch5-20 25% | ch21-40 15% | styles@w30 | lvl 10 | avg score 90.5 | cups 3332122222111212333333333333333333333333
+normal s2026 c_spend | 2+cups 85% | =2cups 85% | 3cups 0% | <2cups 15% | avg21-40 70.0 | ch5-20 88% | ch21-40 95% | styles@w10 | lvl 10 | avg score 78.0 | cups 3333333333312221222212222222222122222221
+normal s2026 b_steady | 2+cups 5% | =2cups 5% | 3cups 0% | <2cups 95% | avg21-40 66.8 | ch5-20 63% | ch21-40 80% | styles@w12 | lvl 10 | avg score 72.1 | cups 3322222222222211112111211111111111111111
+normal s2026 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 92.5 | ch5-20 94% | ch21-40 100% | styles@w9 | lvl 10 | avg score 94.3 | cups 3333333333333333333333333333333333333333
+normal s2026 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 81.2 | ch5-20 63% | ch21-40 90% | styles@w13 | lvl 10 | avg score 83.9 | cups 3332222223332222222222222222222222222222
+normal s2026 a2 | 2+cups 100% | =2cups 20% | 3cups 80% | <2cups 0% | avg21-40 93.3 | ch5-20 38% | ch21-40 20% | styles@w13 | lvl 10 | avg score 85.3 | cups 3322121111111113333323333333332233333332
+normal s2026 a_manage | 2+cups 100% | =2cups 5% | 3cups 95% | <2cups 0% | avg21-40 98.0 | ch5-20 19% | ch21-40 10% | styles@w40 | lvl 10 | avg score 90.9 | cups 3332222122212213333323333333333333333333
+normal s7 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111001101101010101121120
+normal s2026 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010011101010101121210
+easy s7 c_spend | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 65.2 | ch5-20 75% | ch21-40 70% | styles@w11 | lvl 10 | avg score 72.4 | cups 3233333331111111111111111111111111111111
+easy s7 b_steady | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 61.6 | ch5-20 63% | ch21-40 75% | styles@w12 | lvl 10 | avg score 66.3 | cups 3322122222211111111111111111111111111111
+easy s7 d_manage | 2+cups 100% | =2cups 15% | 3cups 85% | <2cups 0% | avg21-40 89.8 | ch5-20 100% | ch21-40 100% | styles@w9 | lvl 10 | avg score 91.7 | cups 3333333323322332333333333233323233333333
+easy s7 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 81.5 | ch5-20 81% | ch21-40 100% | styles@w12 | lvl 10 | avg score 82.8 | cups 3332222222222222222222222222222222222222
+easy s7 a2 | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 97.0 | ch5-20 38% | ch21-40 30% | styles@w16 | lvl 10 | avg score 90.8 | cups 3322121211123333333333333333333333333333
+easy s7 a_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 99.8 | ch5-20 31% | ch21-40 15% | styles@w16 | lvl 10 | avg score 94.5 | cups 3332122222133332333333333333333333333333
+easy s2026 c_spend | 2+cups 5% | =2cups 5% | 3cups 0% | <2cups 95% | avg21-40 68.8 | ch5-20 94% | ch21-40 90% | styles@w10 | lvl 10 | avg score 74.7 | cups 3233333311121111211111111111111111111121
+easy s2026 b_steady | 2+cups 0% | =2cups 0% | 3cups 0% | <2cups 100% | avg21-40 60.6 | ch5-20 56% | ch21-40 70% | styles@w12 | lvl 10 | avg score 65.6 | cups 3322222122211111111111111111111111111111
+easy s2026 d_manage | 2+cups 100% | =2cups 0% | 3cups 100% | <2cups 0% | avg21-40 90.9 | ch5-20 100% | ch21-40 100% | styles@w9 | lvl 10 | avg score 92.8 | cups 3333333333333333333333333333333333333333
+easy s2026 b_steady2 | 2+cups 100% | =2cups 100% | 3cups 0% | <2cups 0% | avg21-40 74.7 | ch5-20 75% | ch21-40 95% | styles@w12 | lvl 10 | avg score 78.1 | cups 3322222222222222222222222222222222222222
+easy s2026 a2 | 2+cups 100% | =2cups 10% | 3cups 90% | <2cups 0% | avg21-40 95.7 | ch5-20 38% | ch21-40 25% | styles@w13 | lvl 10 | avg score 90.3 | cups 3322221111133333333323333333333233333333
+easy s2026 a_manage | 2+cups 100% | =2cups 5% | 3cups 95% | <2cups 0% | avg21-40 99.5 | ch5-20 19% | ch21-40 20% | styles@w32 | lvl 10 | avg score 95.7 | cups 3333222122233333333323333333333333333333
+easy s7 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111111011111010011101010101121210
+easy s2026 b_steady2 milestones w5-40 27/36 | max/week 2 | per week 0111111111110111111010101100110101121210
