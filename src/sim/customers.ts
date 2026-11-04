@@ -1,8 +1,8 @@
 import { DIFFICULTIES } from './data/difficulty';
 import { getMenuItem } from './data/menu';
 import { PERSONAS, addOnPick, addOnRoll, pickPersona, type Persona } from './data/personas';
-import { milestoneAt, regularBookEntry } from './data/regularMilestones';
-import { REGULARS_FROM_DAY, pickRegular, regularById } from './data/regulars';
+import { MILESTONE_COUNT, milestoneAt, milestonesReached, regularBookEntry } from './data/regularMilestones';
+import { REGULARS_FROM_DAY, newRegularOrder, pickRegular, regularById } from './data/regulars';
 import { totalUpgradeEffect } from './data/upgrades';
 import { hourOf, recordRevenue } from './economy';
 import { canMake, consume, servingCost } from './inventory';
@@ -384,15 +384,39 @@ export function spawnCustomer(state: GameState): Customer | null {
  */
 function admitRegular(state: GameState, id: number): { id: string; visits: number } | null {
   if (state.day < REGULARS_FROM_DAY) return null;
-  const regular = pickRegular(state.seed, id);
   const regulars = (state.regulars ??= {});
-  const seen = regulars[regular.id];
+  let regularId = pickRegular(state.seed, id).id;
+  let seen = regulars[regularId];
   if (seen && seen.lastDay === state.day) return null;
+  // E-27: once a first-eight regular has completed milestone 4 (and not come
+  // today), a season-2 regular takes their place. The once-a-day check above
+  // already ran on the old regular, who stops coming, so the same customers
+  // are named on the same days as before.
+  const successor = seen ? (seen.succeededBy ?? moveIn(state, regularId)) : undefined;
+  if (seen && successor) {
+    seen.succeededBy = successor;
+    regularId = successor;
+    seen = regulars[regularId];
+    if (seen && seen.lastDay === state.day) return null;
+  }
   const entry = seen ?? { visits: 0, firstDay: state.day, lastDay: state.day, keptMilestones: 0 };
   entry.visits += 1;
   entry.lastDay = state.day;
-  regulars[regular.id] = entry;
-  return { id: regular.id, visits: entry.visits };
+  regulars[regularId] = entry;
+  return { id: regularId, visits: entry.visits };
+}
+
+/**
+ * The season-2 regular who moves in for `regularId` (a first-eight regular)
+ * now, or undefined while they have milestones left. The k-th to move in is
+ * newRegularOrder(seed)[k]; a save from before E-27 whose regular passed
+ * milestone 4 gets one on that regular's next visit.
+ */
+function moveIn(state: GameState, regularId: string): string | undefined {
+  const seen = state.regulars?.[regularId];
+  if (!seen || milestonesReached(regularId, seen.visits, seen.keptMilestones) < MILESTONE_COUNT) return undefined;
+  const taken = new Set(Object.values(state.regulars ?? {}).flatMap((v) => (v.succeededBy ? [v.succeededBy] : [])));
+  return newRegularOrder(state.seed).find((next) => !taken.has(next));
 }
 
 /**

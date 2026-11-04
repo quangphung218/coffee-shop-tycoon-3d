@@ -1,5 +1,5 @@
 import type { GameState } from '../types';
-import { REGULARS, type Regular } from './regulars';
+import { REGULARS, newRegularOrder, regularById, type Regular } from './regulars';
 
 /**
  * Sổ khách quen (E-18, E-22): each named regular has four visit milestones at
@@ -53,6 +53,29 @@ export const MILESTONE_VISITS: Readonly<Record<string, Four<number>>> = {
   bac_hung: [60, 75, 180, 240],
   chi_thao: [40, 120, 160, 260],
   anh_khoa: [50, 100, 205, 250],
+  // Season 2 (E-27, NEW_REGULARS): a new regular moves in once one of the
+  // first eight reaches milestone 4. Measured for b_steady2 Normal (seeds 1,
+  // 42, 7, 2026): the move-ins land on fixed slot days about 5 days apart
+  // (237, 242, ..., 273), only who fills each slot is shuffled by seed, and a
+  // new regular then comes every day, so visit v falls on day moveIn + v - 1.
+  // Rule (T-97, one re-stagger): visits = 50 + 40·m + OFFSETS[(i + 3·m) % 8]
+  // for milestone m = 0..3 of the i-th NEW_REGULARS entry, OFFSETS =
+  // [1, 2, 3, 4, 6, 7, 8, 9]. Near-equal thresholds per milestone let the
+  // 5-day slot gaps space the milestones whatever the shuffle; 40 visits per
+  // milestone is one slot cycle, so milestone m+1 starts after milestone m of
+  // the last slot; the rotation stops a clash in one milestone repeating in the
+  // next. At most 3 a week for every one of the 8! move-in orders. Milestone 1
+  // (51+ visits, day 287+) never falls in weeks 1–40. Offsets are never 0 or 5
+  // and 50 and 40 are multiples of 5, so no threshold is a multiple of 5 and
+  // none is shared with each other or with the first eight.
+  co_mai: [51, 94, 138, 172],
+  anh_duc: [52, 96, 139, 173],
+  chi_ngoc: [53, 97, 131, 174],
+  chu_bay: [54, 98, 132, 176],
+  em_nam: [56, 99, 133, 177],
+  ba_tu: [57, 91, 134, 178],
+  anh_phong: [58, 92, 136, 179],
+  chi_linh: [59, 93, 137, 171],
 };
 
 function entry(regularId: string, favoriteDish: string, stories: Four<string>): RegularBookEntry {
@@ -112,8 +135,63 @@ export const REGULAR_BOOK: readonly RegularBookEntry[] = [
   ]),
 ];
 
+/** Book of the season-2 regulars (E-27), in NEW_REGULARS order. */
+export const NEW_REGULAR_BOOK: readonly RegularBookEntry[] = [
+  entry('co_mai', 'Bánh quy yến mạch', [
+    'Cô Mai là thủ thư ở thư viện quận, vừa chuyển về căn nhà đầu hẻm. Cô gọi ly cold brew rồi ngồi đọc sách tới khi tan nắng.',
+    'Cô bảo quán yên tĩnh y như phòng đọc của cô. Cô để lại trên kệ vài cuốn sách cũ cho khách mượn đọc.',
+    'Kệ sách nhỏ của cô Mai giờ đã kín ba ngăn. Khách mượn một cuốn thì để lại một cuốn khác, cô gọi đó là thư viện cà phê.',
+    'Cô Mai tổ chức buổi đọc truyện cho trẻ con trong xóm mỗi chiều thứ Bảy. Bọn nhỏ nghe xong thì xếp hàng chờ cô ký tên vào cuốn sổ mượn sách.',
+  ]),
+  entry('anh_duc', 'Bánh mì phô mai', [
+    'Anh Đức là kiến trúc sư, mới thuê văn phòng ở tầng trên tiệm may gần quán. Anh gọi cappuccino và phác thảo lên khăn giấy.',
+    'Anh khen trần quán cao nên ánh sáng vào đều. Anh hỏi mượn cây bút chì của quầy và quên trả tới tận hôm sau.',
+    'Anh Đức vẽ tặng quán bản phác thảo mặt tiền lúc mới mở cửa. Anh dặn treo cạnh quầy để khách thấy quán đã đổi khác bao nhiêu.',
+    'Công trình đầu tiên anh Đức tự thiết kế vừa khánh thành. Anh bảo ý tưởng ô cửa sổ lớn là lấy từ chỗ ngồi quen của anh ở quán.',
+  ]),
+  entry('chi_ngoc', 'Bánh bông lan cam', [
+    'Chị Ngọc dạy đàn piano cho trẻ con trong khu phố. Giữa hai buổi học, chị ghé uống ly nước cam cho mát giọng.',
+    'Chị kể có cậu học trò nhỏ tập mãi một bài mà chưa thuộc. Chị bảo dạy đàn cũng như pha cà phê, phải kiên nhẫn từng chút.',
+    'Cậu học trò ấy vừa đàn trọn bài trong buổi biểu diễn của lớp. Chị Ngọc mua bánh cho cả lớp và mang tới quán ăn mừng.',
+    'Chị Ngọc mở lớp nhạc riêng ngay con phố này. Buổi khai giảng, chị dẫn học trò ghé quán đàn một bài tặng đội pha chế.',
+  ]),
+  entry('chu_bay', 'Bánh bao nhân thịt', [
+    'Chú Bảy mở tiệm sửa xe đạp ở góc chợ, tay lúc nào cũng dính dầu. Chú uống americano đen, không đường, đứng ngay quầy.',
+    'Chú kể đã sửa xe cho ba thế hệ trong xóm. Chú bảo cái chuông xe đạp kêu trong là chú nghe ra ngay xe của ai.',
+    'Chú Bảy sửa lại chiếc xe đạp cũ dựng trước cửa quán làm chỗ treo chậu cây. Khách đi ngang ai cũng dừng lại chụp ảnh.',
+    'Chú Bảy truyền nghề cho đứa cháu và chỉ ghé tiệm buổi sáng. Chú nói sáng nào không có ly americano ở đây thì tay chú không vững.',
+  ]),
+  entry('em_nam', 'Bánh sừng bò sô cô la', [
+    'Em Nam vừa đi học vừa chạy giao hàng buổi tối. Em gọi đá xay và ngồi tranh thủ làm bài tập trước giờ nhận đơn.',
+    'Em bảo quán có ổ cắm sạc điện thoại là cứu em mỗi ngày. Em còn thuộc tên món của quán hơn cả tên các môn học.',
+    'Em Nam mua được chiếc xe máy mới bằng tiền tự để dành. Em chở ly đá xay đầu tiên của ngày về tặng mẹ.',
+    'Em Nam ra trường và nhận việc ở một công ty giao vận. Ngày đầu đi làm, em ghé quán mua cà phê cho cả phòng mới.',
+  ]),
+  entry('ba_tu', 'Xôi lá dứa', [
+    'Bà Tư bán xôi ở đầu hẻm đã hơn hai mươi năm. Dọn hàng xong, bà ghé quán gọi ly latte thật nóng.',
+    'Bà bảo trước giờ chỉ uống cà phê phin, giờ mới biết thêm vị latte. Bà hay mang theo một gói xôi nhỏ để mời người pha.',
+    'Bà Tư gửi quán công thức xôi lá dứa của bà. Bà dặn món ngon thì phải làm bằng cái tâm, như ly cà phê bà uống mỗi sáng.',
+    'Con cháu bà Tư tổ chức mừng thọ bà ngay tại quán. Bà cắt bánh xong thì bảo quán này giờ cũng như một góc nhà của bà.',
+  ]),
+  entry('anh_phong', 'Bánh brownie', [
+    'Anh Phong là đầu bếp ở nhà hàng hai dãy phố. Trước ca chiều, anh ghé uống ly mocha và hỏi chuyện về hạt cà phê.',
+    'Anh bảo vị sô cô la trong ly mocha ở đây vừa tới. Anh nói nấu ăn hay pha chế thì cũng cần đúng lửa và đúng lúc.',
+    'Anh Phong mời đội pha chế tới nếm thử thực đơn mới của nhà hàng. Món tráng miệng anh làm có chút cà phê của quán.',
+    'Anh Phong mở được nhà hàng riêng, ngay trên con phố này. Anh đặt cà phê của quán cho món tráng miệng cuối bữa.',
+  ]),
+  entry('chi_linh', 'Bánh tart trứng', [
+    'Chị Linh làm ở ngân hàng, vừa được chuyển về chi nhánh gần quán. Chị gọi trà chanh mang đi và luôn đi vội.',
+    'Chị kể giờ nghỉ trưa ngắn nên chị chỉ kịp uống một ly. Chị bảo ly trà chanh ở đây là phần thưởng sau buổi sáng đếm tiền.',
+    'Chị Linh rủ cả phòng ghé quán vào chiều thứ Sáu. Từ đó cuối tuần nào cũng có một bàn đông người mặc áo sơ mi trắng.',
+    'Chị Linh lên làm trưởng chi nhánh. Ngày nhận chức, chị đặt trà chanh cho cả chi nhánh và ghé quán cảm ơn.',
+  ]),
+];
+
+/** Every regular's book entry, the first eight then season 2. */
+const ALL_BOOK: readonly RegularBookEntry[] = [...REGULAR_BOOK, ...NEW_REGULAR_BOOK];
+
 export function regularBookEntry(regularId: string): RegularBookEntry | undefined {
-  return REGULAR_BOOK.find((e) => e.regularId === regularId);
+  return ALL_BOOK.find((e) => e.regularId === regularId);
 }
 
 /** Visits of milestones 1–4 of a regular; empty for an id the book does not know. */
@@ -153,9 +231,24 @@ export interface RegularBookPage {
   milestones: readonly (RegularMilestone & { reached: boolean })[];
 }
 
-/** Every regular's page in REGULARS order, derived from `state.regulars` (older saves included). */
+/**
+ * Season-2 regulars (NEW_REGULARS) that have moved in, in the order they did:
+ * each is the `succeededBy` of one of the first eight in `state.regulars`.
+ */
+export function movedInRegulars(state: GameState): Regular[] {
+  const seen = state.regulars ?? {};
+  const ids = new Set(REGULARS.flatMap((r) => (seen[r.id]?.succeededBy ? [seen[r.id]!.succeededBy!] : [])));
+  return newRegularOrder(state.seed).filter((id) => ids.has(id)).map((id) => regularById(id)!);
+}
+
+/** Regulars the book shows: the first eight, then the season-2 ones that moved in. */
+export function bookRegulars(state: GameState): Regular[] {
+  return [...REGULARS, ...movedInRegulars(state)];
+}
+
+/** Every regular's page, REGULARS order then season 2 as they moved in, derived from `state.regulars` (older saves included). */
 export function regularBook(state: GameState): RegularBookPage[] {
-  return REGULARS.map((regular) => {
+  return bookRegulars(state).map((regular) => {
     const book = regularBookEntry(regular.id)!;
     const seen = state.regulars?.[regular.id];
     const visits = seen?.visits ?? 0;
