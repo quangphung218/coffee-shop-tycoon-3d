@@ -8,6 +8,7 @@ import {
   goalProfitTarget,
   scaledWeekGoal,
   sizeGoal,
+  sizeGoalRowIndex,
   upgradeAmortizeWeeks,
   weekGoal,
 } from './data/week';
@@ -314,8 +315,8 @@ export function totalUpgradeLevels(state: GameState): number {
 /**
  * Targets of the week that follows the current one. From week
  * SIZE_GOAL_FIRST_WEEK at shop level SCALED_GOAL_MIN_LEVEL they are the
- * SIZE_GOAL row of the shop's total upgrade levels (revenue and profit; stars
- * of weekGoal). Otherwise scaledWeekGoal: from shop level 10 they follow the
+ * SIZE_GOAL row sizeGoalRowIndex picks from the shop's total upgrade levels
+ * and the week (revenue and profit; stars of weekGoal). Otherwise scaledWeekGoal: from shop level 10 they follow the
  * revenue of the archived weeks, and `scaled` is true when that revenue set
  * the target. Call before next_day to preview the next week.
  */
@@ -323,8 +324,12 @@ export function nextWeekGoal(state: GameState): { goal: WeekGoal; scaled: boolea
   const index = weekIndex(state) + 1;
   if (state.shopLevel >= SCALED_GOAL_MIN_LEVEL && index >= SIZE_GOAL_FIRST_WEEK) {
     const levels = totalUpgradeLevels(state);
-    const row = sizeGoal(state.difficulty, levels);
-    return { goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit, levels }, scaled: false };
+    const rowIndex = sizeGoalRowIndex(state.difficulty, index, levels);
+    const row = sizeGoal(state.difficulty, rowIndex);
+    return {
+      goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit, levels, row: rowIndex },
+      scaled: false,
+    };
   }
   const past = (state.week?.archive ?? []).filter((w) => w.index < index).map((w) => w.revenue);
   return scaledWeekGoal(state.difficulty, index, state.shopLevel, past);

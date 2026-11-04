@@ -15,7 +15,8 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * `determinismSeed` replayed gives the same challenges and goals, and the
  * E-21 promise on every seed (assertPromise). E-22: b_steady2's regular
  * milestones spread over the weeks on every seed (assertMilestones), and
- * replayed come in the same order.
+ * replayed come in the same order. E-24: a2 and a_manage (no upgrades) get
+ * 3 cups in at most 10% of weeks 21-40.
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -33,6 +34,9 @@ const STEADY_BELOW_TWO_MAX = 0.1;
 /** Managed play: weeks 21-40 mostly 3 cups, and well above b_steady2's average score. */
 const MANAGE_THREE_CUPS_MIN = 0.7;
 const MANAGE_SCORE_LEAD = 8;
+/** E-24: shops that never upgrade (a2, a_manage) get 3 cups in at most 10% of weeks 21-40 (level floor). */
+const NO_UPGRADE: readonly StrategyName[] = ['a2', 'a_manage'];
+const NO_UPGRADE_THREE_CUPS_MAX = 0.1;
 
 /**
  * E-21 promise on weeks 21-40 of one seed, with the SIZE_GOAL table:
@@ -51,6 +55,11 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
   expect(manage, `${label} d_manage weeks 21-40`).toHaveLength(20);
   expect(share(manage, (r) => r.cups === 3), `${label} d_manage 3 cups`).toBeGreaterThanOrEqual(MANAGE_THREE_CUPS_MIN);
   expect(avgScore(manage) - avgScore(steady), `${label} d_manage lead over b_steady2`).toBeGreaterThanOrEqual(MANAGE_SCORE_LEAD);
+  for (const name of NO_UPGRADE) {
+    const rows = late(name);
+    expect(rows, `${label} ${name} weeks 21-40`).toHaveLength(20);
+    expect(share(rows, (r) => r.cups === 3), `${label} ${name} 3 cups`).toBeLessThanOrEqual(NO_UPGRADE_THREE_CUPS_MAX);
+  }
 }
 
 /** E-22 Sổ khách quen spread for b_steady2: a milestone in at least 60% of weeks 5-40, never more than 3 in one week. */
