@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { weekIndex } from '../../src/sim/progression';
 import type { Difficulty } from '../../src/sim/types';
-import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, summary, type DayHook, type StrategyName, type WeekRow, type WeekRows } from './run';
+import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, styleSeasons, summary, type DayHook, type StrategyName, type WeekRow, type WeekRows } from './run';
 
 /**
  * E-19 40-week sim for one difficulty and some seeds: 1 and 42 in
@@ -18,7 +18,10 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * replayed come in the same order. E-24: a2 and a_manage (no upgrades) get
  * 3 cups in at most 10% of weeks 21-40; challenges-normal.sim.ts and
  * challenges-easy.sim.ts hold the mean challenge completion of weeks 21-40
- * over the 4 seeds to CHALLENGE_BANDS (challengeBands).
+ * over the 4 seeds to CHALLENGE_BANDS (challengeBands). E-26, Normal only:
+ * b2_styles ends week 40 with at most STYLES_TEM_END_MAX Tem and bought
+ * styles in at least STYLES_SEASONS_MIN seasons (assertStyles); the Tem held
+ * each week by b_steady2 and b2_styles is printed.
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -100,6 +103,21 @@ function assertMilestones(label: string, milestones: Milestones): void {
 }
 const TIMEOUT = 1_200_000;
 
+/** E-26: seasonal styles drain the Tem that piles up after the upgrades are done (Normal). */
+const STYLES_TEM_END_MAX = 150;
+const STYLES_SEASONS_MIN = 2;
+const TEM_TABLE: readonly StrategyName[] = ['b_steady2', 'd_manage', 'b2_styles'];
+
+function assertStyles(label: string, rows: WeekRows): void {
+  expect(rows, `${label} b2_styles weeks`).toHaveLength(WEEKS);
+  expect(rows.at(-1)!.tem, `${label} b2_styles Tem at week ${WEEKS}`).toBeLessThanOrEqual(STYLES_TEM_END_MAX);
+  expect(styleSeasons(rows).length, `${label} b2_styles seasons with a style bought`).toBeGreaterThanOrEqual(STYLES_SEASONS_MIN);
+}
+
+/** Tem held at the end of each week, and the seasons styles were bought in. */
+const temLine = (label: string, rows: WeekRows) =>
+  `${label} Tem by week ${rows.map((r) => r.tem).join(' ')} | styles bought ${rows.reduce((n, r) => n + r.stylesBought, 0)} in seasons [${styleSeasons(rows).join(',')}]`;
+
 /**
  * E-24 part B: challenge completion over weeks 21-40, its mean over `seeds`
  * per bot. Single seeds may fall outside; only the mean is held to the band.
@@ -169,6 +187,7 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
     afterAll(() => {
       const lines = [...runs].map(([key, rows]) => summary(`${difficulty} s${key.replace('/', ' ')}`, rows));
       for (const [seed, reached] of milestones) lines.push(milestoneLine(`${difficulty} s${seed} b_steady2`, reached));
+      for (const [key, rows] of runs) if (TEM_TABLE.some((name) => key.endsWith(`/${name}`))) lines.push(temLine(`${difficulty} s${key.replace('/', ' ')}`, rows));
       process.stdout.write(`\n${lines.join('\n')}\n\n`);
     });
 
@@ -179,6 +198,7 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
         for (const name of BASELINE) expect(run(seed, name).bankruptDay, `${difficulty} seed ${seed} ${name} bankrupt`).toBeUndefined();
         assertPromise(`${difficulty} seed ${seed}`, (name) => run(seed, name));
         assertMilestones(`${difficulty} seed ${seed}`, milestones.get(seed)!);
+        if (difficulty === 'normal') assertStyles(`${difficulty} seed ${seed}`, run(seed, 'b2_styles'));
         if (!STYLE_SEEDS.includes(seed)) return;
         const week = allStylesWeek(run(seed, 'b_steady'));
         expect(week, `${difficulty} seed ${seed} b_steady all styles`).not.toBeNull();
