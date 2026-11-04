@@ -551,6 +551,29 @@
 .regular-row {
   position: relative;
 }
+/* Closed (UX-304): one grid row only, so the empty control and page rows add
+   no row gaps (an empty strip under the dots); open adds the page row. */
+.item.item-row.regular-row {
+  grid-template-areas: 'icon text status';
+}
+.item.item-row.regular-row.is-open {
+  grid-template-areas:
+    'icon text status'
+    '. more more';
+}
+.regular-chevron {
+  flex: none;
+  margin-left: var(--space-1);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+.regular-head[aria-expanded='true'] .regular-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .regular-chevron {
+    transition: none;
+  }
+}
 /* The button itself is a full tap target (P27): at least --size-target tall
    and wide, with negative block margins so the title line keeps its height. */
 .regular-head {

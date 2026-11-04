@@ -23,6 +23,8 @@ export interface ToastInput {
   replace?: boolean;
   /** One button in the toast ("Chuyển 2x"): runs `run`, then closes the toast. */
   action?: ToastAction;
+  /** Hides after this many ms, at any level (an error too); default TOAST_VISIBLE_MS for info and success only. */
+  visibleMs?: number;
 }
 
 export interface ToastAction {
@@ -59,6 +61,7 @@ interface Live {
   timer: ReturnType<typeof setTimeout> | null;
   hold: boolean;
   level: NotifyLevel;
+  visibleMs?: number;
 }
 
 /** "Đã nhập Cam, Bột bánh" and "−819.375đ · Còn 19.062.724đ". */
@@ -152,7 +155,7 @@ export class Toasts {
       body,
       close,
     );
-    const toast: Live = { el, title, text, key, base: lines.title, count: 1, merged, timer: null, hold: false, level: input.level };
+    const toast: Live = { el, title, text, key, base: lines.title, count: 1, merged, timer: null, hold: false, level: input.level, visibleMs: input.visibleMs };
     close.addEventListener('click', () => this.close(toast));
     action?.addEventListener('click', () => {
       input.action!.run();
@@ -175,11 +178,17 @@ export class Toasts {
     for (const t of [...this.live]) this.close(t);
   }
 
+  /** Closes the live toast with this key, if any. */
+  dismiss(key: string): void {
+    const t = this.live.find((x) => x.key === key);
+    if (t) this.close(t);
+  }
+
   private arm(t: Live): void {
     if (t.timer) clearTimeout(t.timer);
     t.timer = null;
-    if (t.hold || t.level === 'warning' || t.level === 'error') return;
-    t.timer = setTimeout(() => this.close(t), TOAST_VISIBLE_MS);
+    if (t.hold || (t.visibleMs === undefined && (t.level === 'warning' || t.level === 'error'))) return;
+    t.timer = setTimeout(() => this.close(t), t.visibleMs ?? TOAST_VISIBLE_MS);
   }
 
   private close(t: Live): void {
