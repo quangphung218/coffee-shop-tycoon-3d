@@ -54,18 +54,28 @@ export const MILESTONE_VISITS: Readonly<Record<string, Four<number>>> = {
   chi_thao: [40, 120, 160, 260],
   anh_khoa: [50, 100, 205, 250],
   // Season 2 (E-27, NEW_REGULARS): a new regular moves in once one of the
-  // first eight reaches milestone 4 (235+ visits, week 34 at the earliest)
-  // and comes at most once a day, so milestone 1 at 47+ visits never falls in
-  // weeks 1–40. 32 thresholds of their own, none a multiple of 5, so none is
-  // shared with each other or with the first eight.
-  co_mai: [48, 121, 187, 248],
-  anh_duc: [71, 103, 214, 262],
-  chi_ngoc: [53, 142, 171, 276],
-  chu_bay: [82, 109, 196, 233],
-  em_nam: [64, 133, 208, 257],
-  ba_tu: [47, 117, 163, 241],
-  anh_phong: [76, 98, 223, 269],
-  chi_linh: [58, 127, 179, 252],
+  // first eight reaches milestone 4. Measured for b_steady2 Normal (seeds 1,
+  // 42, 7, 2026): the move-ins land on fixed slot days about 5 days apart
+  // (237, 242, ..., 273), only who fills each slot is shuffled by seed, and a
+  // new regular then comes every day, so visit v falls on day moveIn + v - 1.
+  // Rule (T-97, one re-stagger): visits = 50 + 40·m + OFFSETS[(i + 3·m) % 8]
+  // for milestone m = 0..3 of the i-th NEW_REGULARS entry, OFFSETS =
+  // [1, 2, 3, 4, 6, 7, 8, 9]. Near-equal thresholds per milestone let the
+  // 5-day slot gaps space the milestones whatever the shuffle; 40 visits per
+  // milestone is one slot cycle, so milestone m+1 starts after milestone m of
+  // the last slot; the rotation stops a clash in one milestone repeating in the
+  // next. At most 3 a week for every one of the 8! move-in orders. Milestone 1
+  // (51+ visits, day 287+) never falls in weeks 1–40. Offsets are never 0 or 5
+  // and 50 and 40 are multiples of 5, so no threshold is a multiple of 5 and
+  // none is shared with each other or with the first eight.
+  co_mai: [51, 94, 138, 172],
+  anh_duc: [52, 96, 139, 173],
+  chi_ngoc: [53, 97, 131, 174],
+  chu_bay: [54, 98, 132, 176],
+  em_nam: [56, 99, 133, 177],
+  ba_tu: [57, 91, 134, 178],
+  anh_phong: [58, 92, 136, 179],
+  chi_linh: [59, 93, 137, 171],
 };
 
 function entry(regularId: string, favoriteDish: string, stories: Four<string>): RegularBookEntry {
