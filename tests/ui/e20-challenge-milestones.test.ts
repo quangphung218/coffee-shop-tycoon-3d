@@ -167,8 +167,8 @@ describe('UX-208 regular milestone toasts', () => {
   it('still toasts an arrival without a milestone', () => {
     const { root, shell: s } = boot();
     s.startGame(gameInWeek(2, 4));
-    s.handleEvents([{ type: 'regular_arrived', customerId: 1, regularId: 'co_lan', visits: 3 }]);
-    expect(titles(root)).toEqual(['Cô Lan ghé quán (lần 3)']);
+    s.handleEvents([{ type: 'regular_arrived', customerId: 1, regularId: 'co_lan', visits: 8 }]);
+    expect(titles(root)).toEqual(['Cô Lan: còn 2 lần tới mốc 1']);
   });
 
   it('merges the day\'s 2nd milestone on into one "N khách quen lên mốc · +N Tem" toast', () => {

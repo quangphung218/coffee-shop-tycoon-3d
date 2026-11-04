@@ -11,6 +11,7 @@ import { MAX_TOASTS, Toasts } from '../core/toast';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast, weekChallengeToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { createServeHints } from '../hud/serveHints';
+import { focusRegular, revealRegular } from '../panels/tasks';
 import { openOtherPanel } from '../panels/widgets';
 import { createDailyReport, type DailyReportView, type SaveStatus } from '../report';
 import { createBankrupt, latestPlayableSave } from './bankrupt';
@@ -51,6 +52,10 @@ export const SPEED_HINT = 'Bấm 2x để một ngày còn 3,5 phút';
 export const SPEED_HINT_ACTION = 'Chuyển 2x';
 /** Added once per run to the first "Khách bỏ đi" toast. */
 export const ANGRY_HINT = 'Chạm vào khách đang chờ, hoặc thuê pha chế.';
+/** Day 1: the "Khách bỏ đi" toast hides by itself after this long (UX-306). */
+export const DAY1_WALKOUT_TOAST_MS = 6000;
+/** The regular milestone toast's button (UX-310). */
+export const MILESTONE_ACTION = 'Xem chuyện';
 
 /** Random id for a play-log run and, separately, a game run (state.runId); never tied to the player. */
 function newRunId(): string {
@@ -99,6 +104,14 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       return;
     }
     toasts.show({ level: 'info', icon: 'i-speed-2', title: SPEED_HINT, action: { label: SPEED_HINT_ACTION, run: () => dispatch({ type: 'set_speed', speed: 2 }) } });
+  }
+
+  // UX-310: Việc panel with the regular's book page open, focus on its row (which scrolls it into view).
+  function showRegular(regularId: string): void {
+    revealRegular(regularId);
+    hud.openPanel('tasks');
+    if (hud.openPanelId === 'tasks') focusRegular(hud.panelEl, regularId);
+    else revealRegular(null);
   }
 
   // Anonymous play log (save/playlog.ts): one random id per run, and only the
@@ -434,11 +447,21 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       const milestone = events.some((e) => e.type === 'regular_milestone');
       for (const event of events) {
         let toast = event.type === 'regular_arrived' && milestone ? null : toastForEvent(event, state);
-        // Day 1: one toast, then the walkouts only count up next to the HUD.
-        if (toast && event.type === 'angry' && !serveHints.onWalkout(state)) toast = null;
+        // Day 1: one toast that hides by itself, then the walkouts only count up next to the HUD;
+        // the toast closes as the counter shows, so the two never say it twice (UX-306).
+        if (toast && event.type === 'angry' && !serveHints.onWalkout(state)) {
+          toast = null;
+          toasts.dismiss('angry');
+        }
+        if (toast && event.type === 'angry' && state.day === 1) toast = { ...toast, visibleMs: DAY1_WALKOUT_TOAST_MS };
         if (toast && event.type === 'angry' && !angryHinted) {
           angryHinted = true;
           toast = { ...toast, text: `${toast.text ?? ''} ${ANGRY_HINT}`.trim() };
+        }
+        // UX-310: the milestone toast opens the Việc panel at that regular's row.
+        if (toast && event.type === 'regular_milestone') {
+          const regularId = event.regularId;
+          toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId) } };
         }
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
