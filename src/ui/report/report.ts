@@ -43,7 +43,21 @@ export interface DailyReportOptions {
   onOpenPanel?(panel: InsightPanel): void;
   /** The week is scored (state.week.result): the main button opens the week-end screen instead of next_day. */
   onWeekEnd?(): void;
+  /** Anonymous counts (E-23): the day-1 report asks once, in its footer, while `ask()` is true. */
+  consent?: ReportConsent;
 }
+
+/** The consent strip's hooks: whether to ask now, and the player's answer (applied and saved by the caller). */
+export interface ReportConsent {
+  ask(): boolean;
+  choose(consent: 'yes' | 'no'): void;
+}
+
+/** The report day whose footer holds the consent strip. */
+export const CONSENT_DAY = 1;
+export const CONSENT_QUESTION = 'Gửi số liệu ẩn danh để cải thiện game?';
+export const CONSENT_YES = 'Đồng ý';
+export const CONSENT_NO = 'Không';
 
 export interface DailyReportView {
   /** Full-screen overlay; append it to the #ui root. */
@@ -574,6 +588,28 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   const toggleBtn = h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'reviews' } });
   const nextBtn = h('button', { class: 'btn btn-primary btn-lg', attrs: { type: 'button', 'data-action': 'next-day' } });
   footLabel(nextBtn, 'i-next-day', 'Ngày tiếp theo');
+  // E-23 consent strip: a row in the footer, not a dialog; "Ngày tiếp theo" works without an answer.
+  const consentQuestionId = 'rpt-consent-q';
+  const chooseConsent = (c: 'yes' | 'no'): void => {
+    options.consent?.choose(c);
+    consentStrip.hidden = true;
+    nextBtn.focus();
+  };
+  const consentStrip = h(
+    'div',
+    { class: 'rpt-consent', hidden: true, attrs: { role: 'group', 'aria-labelledby': consentQuestionId, 'data-consent': '' } },
+    h('p', { class: 'rpt-consent-q', id: consentQuestionId, text: CONSENT_QUESTION }),
+    h(
+      'div',
+      { class: 'rpt-consent-actions' },
+      h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'consent-yes' }, on: { click: () => chooseConsent('yes') } }, CONSENT_YES),
+      h('button', { class: 'btn btn-secondary', attrs: { type: 'button', 'data-action': 'consent-no' }, on: { click: () => chooseConsent('no') } }, CONSENT_NO),
+    ),
+  );
+  function syncConsent(): void {
+    const want = shown && day === CONSENT_DAY && (options.consent?.ask() ?? false);
+    if (consentStrip.hidden === want) consentStrip.hidden = !want;
+  }
   const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') } }, ...labelled('i-chart', 'Về Tổng kết'));
 
   summaryTab.addEventListener('click', () => showTab('summary'));
@@ -598,7 +634,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     summary,
     insights,
     reviews,
-    h('div', { class: 'rpt-foot' }, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
+    h('div', { class: 'rpt-foot' }, consentStrip, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
   );
   dialog.addEventListener('keydown', (e) => trapFocus(dialog, e));
   const el = h('div', { class: 'ui-screen is-scrim rpt-layer', hidden: true, attrs: { 'data-screen': 'report' } }, dialog);
@@ -751,6 +787,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
         else endConfetti();
       }
       if (visible && state) celebrate(state.lastReport ?? null);
+      syncConsent();
     },
     setSaveStatus(status) {
       saveStatus = status;

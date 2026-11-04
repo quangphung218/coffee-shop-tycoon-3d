@@ -138,7 +138,7 @@ describe('save compat (E-17 styles)', () => {
   }
 
   it('keeps the save version', () => {
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBe(7);
   });
 
   it('loads a save from before E-17 with every slot on its default, and styles can be bought after', () => {

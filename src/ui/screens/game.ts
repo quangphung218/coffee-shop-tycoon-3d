@@ -1,9 +1,10 @@
 import { appendPlayLog, type PlayLogKind, type PlayLogPhase } from '../../save/playlog';
-import { autosave, autosaveAtRisk, keepAutosave, loadGame, saveGame, type SaveSlot } from '../../save/save';
+import { autosaveAtRisk, keepAutosave, loadGame, saveGame, slotConsent, type SaveSlot } from '../../save/save';
 import type { GameSpeed, Settings } from '../../save/settings';
 import { dispatch as simDispatch } from '../../sim';
 import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
+import { setAnalyticsConsent, wireAnalytics } from '../analyticsEvents';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
@@ -70,9 +71,16 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const toasts = new Toasts();
   const serveHints = createServeHints(storage, options.locateHint);
   let angryHinted = false;
+  // Anonymous counts (E-23): consent comes from the save; until the player
+  // chose this session, the autosave slot's choice applies.
+  const tracking = wireAnalytics(options.analytics);
+  if (tracking.analytics.consent() === 'unasked') tracking.setConsent(slotConsent('auto', storage));
+  // Set once the player answered this session (report strip, Settings): a loaded slot no longer overrides it.
+  let consentChosen = false;
 
   function dispatch(cmd: Command): boolean {
     if (!state || !simDispatch(state, cmd)) return false;
+    tracking.onCommand(cmd, state);
     serveHints.onCommand(cmd);
     // The speed picked on the HUD (buttons or 1/2/3) is the next run's speed too.
     if (cmd.type === 'set_speed' && SPEEDS.includes(cmd.speed as GameSpeed) && cmd.speed !== base.settings.gameSpeed) {
@@ -136,7 +144,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       }
       if (autosaveHeld) return { day, ok: false };
     }
-    const r = autosave(game, storage);
+    const r = saveGame(game, 'auto', storage, Date.now(), tracking.saveConsent());
     if (r.ok) ownsAutosave = true;
     return r.ok ? { day, ok: true, savedAt: r.value.savedAt } : { day, ok: false };
   }
@@ -145,7 +153,25 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   function retryAutosave(): SaveStatus {
     return state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false };
   }
+  // The player's answer applies now and is written at once into the running
+  // game's autosave (a bankrupt run is not saved); on the menu it is written
+  // at the next save.
+  function chooseConsent(consent: 'yes' | 'no'): void {
+    consentChosen = true;
+    setAnalyticsConsent(consent, tracking.analytics);
+    if (!state || state.bankrupt) return;
+    const inReport = state.phase === 'report';
+    const r = runAutosave(state, inReport ? (state.lastReport?.day ?? state.day) : state.day);
+    if (inReport) {
+      report.setSaveStatus(r);
+      weekEnd.setSaveStatus(r);
+    }
+  }
   const report = createDailyReport({
+    consent: {
+      ask: () => !consentChosen && tracking.analytics.consent() === 'unasked',
+      choose: chooseConsent,
+    },
     dispatch: (cmd) => {
       const ok = dispatch(cmd);
       if (state) hud.update(state);
@@ -193,6 +219,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     state = next;
     // A new run (Ván mới, Chơi lại) gets its id here; a loaded one keeps its own.
     state.runId ??= newRunId();
+    // A loaded slot brings its choice; a slot never asked keeps this session's.
+    const consent = from && !consentChosen ? slotConsent(from, storage) : 'unasked';
+    tracking.setConsent(consent === 'unasked' ? tracking.analytics.consent() : consent);
     ownsAutosave = from === 'auto';
     mayReplaceAutosave = true;
     state.speed = base.settings.gameSpeed;
@@ -264,7 +293,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       onResume: resume,
       onSave: (slot: SaveSlot) => {
         if (!state) return 'Chưa có ván nào đang chơi';
-        const r = saveGame(state, slot, storage);
+        const r = saveGame(state, slot, storage, Date.now(), tracking.saveConsent());
         return r.ok ? null : 'Không lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn';
       },
       onSettings: () => base.openSettings(),
@@ -363,6 +392,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   function onVisibility(): void {
     logPlay(document.hidden ? 'hidden' : 'visible', leavePhase());
     if (!document.hidden) return;
+    tracking.onHidden(state);
     saveOnLeave();
     if (state && screens.current === null) openPause();
   }
@@ -399,6 +429,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     },
     handleEvents(events) {
       if (!state) return;
+      tracking.onEvents(events, state);
       // A regular who reaches a milestone gets that toast, not a second "ghé quán" one.
       const milestone = events.some((e) => e.type === 'regular_milestone');
       for (const event of events) {
@@ -457,6 +488,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       simDispatch(state, { type: 'set_paused', paused: true });
       return 'pause';
     },
+    setConsent: chooseConsent,
     onSettingsChange(next) {
       if (state) state.speed = next.gameSpeed;
     },

@@ -9,6 +9,7 @@ import {
   type Settings,
 } from '../../save/settings';
 import { clearPlayLog, exportPlayLog, readPlayLogStatus, type PlayLogPhase } from '../../save/playlog';
+import type { AnalyticsConsent } from '../../save/save';
 import type { StorageLike } from '../../save/storage';
 import { VERSION_LABEL } from '../../version';
 import { h, setChildren, uid } from '../core/dom';
@@ -21,6 +22,11 @@ export interface SettingsActions {
   /** Called after every change, already saved; apply it to audio, renderer and game. */
   onChange(settings: Settings): void;
   onBack(): void;
+  /** Anonymous counts (E-23): the current choice and a change made here (applied and saved by the caller). */
+  consent?: {
+    get(): AnalyticsConsent;
+    set(consent: 'yes' | 'no'): void;
+  };
 }
 
 export interface SettingsScreen extends Screen {
@@ -49,6 +55,13 @@ const MOTION_OPTIONS: readonly { value: ReducedMotion; label: string }[] = [
   { value: 'system', label: 'Theo máy' },
   { value: 'reduce', label: 'Luôn giảm' },
 ];
+const CONSENT_OPTIONS: readonly { value: 'yes' | 'no'; label: string }[] = [
+  { value: 'yes', label: 'Gửi' },
+  { value: 'no', label: 'Không gửi' },
+];
+/** The Settings row for anonymous counts (E-23). */
+export const CONSENT_LABEL = 'Số liệu ẩn danh';
+export const CONSENT_HINT = 'Chọn Gửi để gửi số liệu chơi ẩn danh giúp cải thiện game. Đổi lại lúc nào cũng được.';
 const CAMERA_KEY_OPTIONS: readonly { value: CameraKeys; label: string }[] = [
   { value: 'qe-wasd', label: 'WASD di chuyển · Q/E xoay' },
   { value: 'qa-arrows', label: 'Mũi tên di chuyển · Q/A xoay' },
@@ -196,6 +209,20 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     (s) => commit({ gameSpeed: s }),
   );
 
+  // Neither option is checked until the player answers (consent 'unasked').
+  const consentActions = actions.consent;
+  const consent = consentActions
+    ? seg(
+        'i-chart',
+        CONSENT_LABEL,
+        CONSENT_HINT,
+        'analyticsConsent',
+        CONSENT_OPTIONS,
+        () => consentActions.get() as 'yes' | 'no',
+        (c) => consentActions.set(c),
+      )
+    : null;
+
   const keysList = h('div', { class: 'keys' });
 
   function syncKeys(): void {
@@ -218,6 +245,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     cameraKeys.sync();
     rotate.sync();
     speed.sync();
+    consent?.sync();
     syncKeys();
   }
 
@@ -370,7 +398,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
         rotate.row,
         h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
       ),
-      group('Trò chơi', speed.row),
+      group('Trò chơi', speed.row, ...(consent ? [consent.row] : [])),
       playLogGroup,
       h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
     ),

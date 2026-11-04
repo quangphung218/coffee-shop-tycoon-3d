@@ -2,6 +2,8 @@ import { loadSettings, type Settings } from '../../save/settings';
 import type { SaveSlot } from '../../save/slots';
 import { defaultStorage, type StorageLike } from '../../save/storage';
 import type { GameState, StyleSlot } from '../../sim/types';
+import { analytics as sharedAnalytics, type Analytics } from '../analytics';
+import { setAnalyticsConsent } from '../analyticsEvents';
 import { SceneGate } from '../core/sceneGate';
 import type { LocateHint } from '../hud/serveHints';
 import { ScreenManager } from '../core/screens';
@@ -34,6 +36,8 @@ export interface ShellOptions {
   previewStyle?(slot: StyleSlot, id: string | null): void;
   /** Loading state of the 3D scene; the buttons that enter the shop wait for it. Always ready when omitted. */
   scene?: SceneGate;
+  /** Anonymous counts (E-23); the shared instance in ui/analytics.ts when omitted. */
+  analytics?: Analytics;
 }
 
 /** What the game part (game.ts) hands to the menu shell when it is attached. */
@@ -44,6 +48,8 @@ export interface GameMount {
   beforeSettings(): ShellScreen;
   /** A changed setting, before it is applied outside the UI. */
   onSettingsChange(settings: Settings): void;
+  /** The player chose in Settings whether to send anonymous counts (E-23); applies and saves it. */
+  setConsent(consent: 'yes' | 'no'): void;
   /** Keys the menu shell did not handle (every key except an Esc a screen took). */
   onKeyDown(e: KeyboardEvent): void;
   onKeyUp(e: KeyboardEvent): void;
@@ -123,6 +129,11 @@ export function createMenuShell(options: ShellOptions): MenuShell {
       options.onSettingsChange?.(next);
     },
     onBack: () => screens.show(settingsReturn),
+    // Before the game part is in, the choice applies to this session and is saved with the next save.
+    consent: {
+      get: () => (options.analytics ?? sharedAnalytics).consent(),
+      set: (c) => (game ? game.setConsent(c) : setAnalyticsConsent(c, options.analytics ?? sharedAnalytics)),
+    },
   });
   screens.add('settings', settingsScreen);
 
