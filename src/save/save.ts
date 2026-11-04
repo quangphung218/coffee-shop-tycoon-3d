@@ -17,10 +17,22 @@ import { defaultStorage, type StorageLike } from './storage';
 export { SAVE_KEY_PREFIX, SAVE_SLOTS, SAVE_VERSION, saveKey } from './slots';
 export type { SaveErrorKind, SaveSlot, SlotInfo } from './slots';
 
+/**
+ * Whether the player agreed to anonymous usage analytics (E-23). Kept on the
+ * save wrapper, outside GameState, so the sim never sees it.
+ */
+export type AnalyticsConsent = 'unasked' | 'yes' | 'no';
+export const ANALYTICS_CONSENTS: readonly AnalyticsConsent[] = ['unasked', 'yes', 'no'];
+
+function consentOf(v: unknown): AnalyticsConsent {
+  return ANALYTICS_CONSENTS.includes(v as AnalyticsConsent) ? (v as AnalyticsConsent) : 'unasked';
+}
+
 export interface SaveFile {
   version: number;
   /** Epoch milliseconds. */
   savedAt: number;
+  analyticsConsent: AnalyticsConsent;
   state: GameState;
 }
 
@@ -140,6 +152,11 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     const state: Raw = isObject(file.state) ? { ...file.state } : {};
     return { version: 6, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state };
   },
+  // E-23: analytics consent on the wrapper. Older saves were never asked.
+  6: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    return { version: 7, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, analyticsConsent: 'unasked', state };
+  },
 };
 
 function num(v: unknown): number {
@@ -202,7 +219,10 @@ export function migrate(raw: unknown): Result<SaveFile> {
   } catch {
     // Positions are only where people stand; a layout that cannot be read leaves them as saved.
   }
-  return { ok: true, value: { version, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, state: file.state } };
+  return {
+    ok: true,
+    value: { version, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, analyticsConsent: consentOf(file.analyticsConsent), state: file.state },
+  };
 }
 
 /**
@@ -325,20 +345,32 @@ function readSlot(slot: SaveSlot, storage: StorageLike): Result<SaveFile> {
   return migrate(parsed);
 }
 
-/** Writes the state to a slot. Transient events are not saved. */
+/**
+ * Writes the state to a slot. Transient events are not saved. Without
+ * `analyticsConsent` the slot keeps the consent it already holds ('unasked'
+ * when empty or unreadable).
+ */
 export function saveGame(
   state: GameState,
   slot: SaveSlot,
   storage: StorageLike = defaultStorage(),
   now: number = Date.now(),
+  analyticsConsent?: AnalyticsConsent,
 ): Result<SaveFile> {
-  const file: SaveFile = { version: SAVE_VERSION, savedAt: now, state: { ...state, events: [] } };
+  const consent = analyticsConsent ?? slotConsent(slot, storage);
+  const file: SaveFile = { version: SAVE_VERSION, savedAt: now, analyticsConsent: consent, state: { ...state, events: [] } };
   try {
     storage.setItem(saveKey(slot), JSON.stringify(file));
   } catch (e) {
     return fail('storage', `Cannot write storage: ${String(e)}`);
   }
   return { ok: true, value: file };
+}
+
+/** Analytics consent stored in a slot; 'unasked' when it is empty or does not load. */
+export function slotConsent(slot: SaveSlot, storage: StorageLike = defaultStorage()): AnalyticsConsent {
+  const r = readSlot(slot, storage);
+  return r.ok ? r.value.analyticsConsent : 'unasked';
 }
 
 /** Saves into the 'auto' slot; called at the end of every day. */

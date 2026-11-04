@@ -35,14 +35,14 @@ function load(text: string): GameState {
 }
 
 describe('migrate v5 → v6 (E-05 late-game upgrade levels)', { timeout: 120_000 }, () => {
-  it('loads a played week at SAVE_VERSION 6 without recomputing money, days, the week or its archive', () => {
-    expect(SAVE_VERSION).toBe(6);
+  it('loads a played week at SAVE_VERSION 7 without recomputing money, days, the week or its archive', () => {
+    expect(SAVE_VERSION).toBe(7);
     const s = played(7, WEEK_LENGTH);
     const raw = JSON.parse(v5Save(s)) as { state: GameState };
     const r = migrate(JSON.parse(v5Save(s)));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.value.version).toBe(6);
+    expect(r.value.version).toBe(7);
     const g = r.value.state;
     expect(g.money).toBe(raw.state.money);
     expect(g.upgrades).toEqual(raw.state.upgrades);
@@ -71,12 +71,12 @@ describe('migrate v5 → v6 (E-05 late-game upgrade levels)', { timeout: 120_000
     expect(upgradeLevel(g, 'chandelier')).toBe(1);
   });
 
-  it('plays on after loading and saves back at version 6', () => {
+  it('plays on after loading and saves back at version 7', () => {
     const g = load(v5Save(played(11, 2)));
     expect(dispatch(g, { type: 'next_day' })).toBe(true);
     playDay(g);
     const storage = createMemoryStorage();
     expect(saveGame(g, 'auto', storage).ok).toBe(true);
-    expect(JSON.parse(storage.getItem(saveKey('auto'))!).version).toBe(6);
+    expect(JSON.parse(storage.getItem(saveKey('auto'))!).version).toBe(7);
   });
 });
