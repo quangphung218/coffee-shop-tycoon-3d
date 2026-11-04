@@ -22,7 +22,9 @@ import { playDay } from '../integration/helpers';
  * for 40 weeks. One row per week: cups, the goal and the week's challenge.
  * E-21 adds d_manage (c_spend with a full team of 4 and high prices from
  * week 9) and b_steady2 (b_steady with a second hire); the E-16 bots leave
- * the new fields unset and play exactly as before.
+ * the new fields unset and play exactly as before. E-24 adds two bots that
+ * never buy an upgrade: a2 (2 staff, standard prices) and a_manage (4 staff,
+ * high prices from week 1), measured only.
  * suite.ts (the *.sim.ts files) prints the table and asserts the style unlock and determinism;
  * it runs with `npm run sim:long`, not in `npm run check`.
  */
@@ -42,13 +44,16 @@ interface Strategy {
   highPriceFromWeek?: number;
 }
 
-export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2';
+export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage';
 
 export const STRATEGIES: Record<StrategyName, Strategy> = {
   c_spend: { hireDay: 1, spend: true, steady: false, chase: 'eager' },
   b_steady: { hireDay: 2, spend: false, steady: true, chase: 'relaxed' },
   d_manage: { hireDay: 1, spend: true, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 9 },
   b_steady2: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2 },
+  /** E-24: no upgrades at all (spend and steady off). */
+  a2: { hireDay: 2, spend: false, steady: false, chase: 'relaxed', staff: 2 },
+  a_manage: { hireDay: 1, spend: false, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 1 },
 };
 
 /** Roles of the team in hiring order: the first hire is the barista. */
