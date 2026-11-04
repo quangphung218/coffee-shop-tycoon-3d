@@ -1187,9 +1187,12 @@
   outline: var(--size-focus-width) solid var(--focus-ring);
   outline-offset: calc(-1 * (var(--bw) + var(--size-focus-width)));
 }
-/* "Mở bằng thử thách (từ tuần 5)" wraps in two lines rather than squeeze the name. */
+/* "Từ tuần 5" / "Còn 2 thử thách" (UX-305): wraps rather than squeeze the
+   name, never past two lines. */
 .style-opt > .badge {
   max-width: 10em;
+  max-height: calc(2em * var(--line-height-tight) + var(--space-1));
+  overflow: hidden;
   padding-block: calc(var(--space-1) / 2);
   white-space: normal;
   line-height: var(--line-height-tight);
