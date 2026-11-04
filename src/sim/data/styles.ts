@@ -1,4 +1,5 @@
 import type { StyleSlot } from '../types';
+import { SEASONAL_STYLES } from './seasons';
 
 /**
  * A look for one part of the shop (wall, floor, sign, awning). Styles change
@@ -21,6 +22,8 @@ export interface StyleDef {
   tickets: number;
   /** Set when a weekly challenge reward ({kind:'decor', id}) must unlock it before it can be bought. */
   challenge?: true;
+  /** Set for a seasonal style (E-26): the SEASON_SETS index whose season sells it (src/sim/data/seasons.ts). */
+  season?: number;
 }
 
 export const STYLE_SLOTS: readonly StyleSlot[] = ['wall', 'floor', 'sign', 'awning'];
@@ -52,11 +55,15 @@ export const STYLES: readonly StyleDef[] = [
   { id: 'awning_royal', slot: 'awning', name: 'Mái hiên nhung đỏ', color: 0x9b2335, accent: 0xf2c14e, price: 400_000_000, tickets: 100 },
 ];
 
+/** Base and seasonal styles; ids are unique over both. */
+export const ALL_STYLES: readonly StyleDef[] = [...STYLES, ...SEASONAL_STYLES];
+
+/** A base or seasonal style by id. */
 export function styleById(id: string): StyleDef | undefined {
-  return STYLES.find((s) => s.id === id);
+  return ALL_STYLES.find((s) => s.id === id);
 }
 
-/** Styles of a slot, cheapest first. */
+/** Base styles of a slot, cheapest first (seasonal ones: seasonalStylesFor in ./seasons). */
 export function stylesOf(slot: StyleSlot): StyleDef[] {
   return STYLES.filter((s) => s.slot === slot);
 }

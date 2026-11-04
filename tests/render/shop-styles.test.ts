@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_FACADE_COLORS, facadeColors } from '../../src/render/scene/facade';
 import { PALETTE } from '../../src/render/scene/palette';
 import { ShopView } from '../../src/render/scene/shop';
-import { STYLE_SLOTS, defaultStyle, styleById, stylesOf } from '../../src/sim/data/styles';
+import { SEASONAL_STYLES } from '../../src/sim/data/seasons';
+import { ALL_STYLES, STYLE_SLOTS, defaultStyle, styleById } from '../../src/sim/data/styles';
 import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
 import { buyStyle, ensureStyles } from '../../src/sim/styles';
@@ -103,13 +104,14 @@ describe('shop styles in the scene (E-17)', () => {
     expect(colors(shop.root)).toEqual(before);
   });
 
-  it('adds no mesh, material or vertex for any style on any quality', () => {
+  it('adds no mesh, material or vertex for any style (base and seasonal, E-26) on any quality', () => {
+    expect(SEASONAL_STYLES.every((st) => ALL_STYLES.includes(st))).toBe(true);
     for (const quality of ['low', 'medium', 'high'] as const) {
       const s = game();
       const shop = view(s, quality);
       const base = drawList(shop.root);
       for (const slot of STYLE_SLOTS) {
-        for (const style of stylesOf(slot)) {
+        for (const style of ALL_STYLES.filter((st) => st.slot === slot)) {
           shop.setStylePreview(slot, style.id);
           shop.update(s, 1, 0.016, 0);
           const now = drawList(shop.root);
@@ -143,6 +145,22 @@ describe('shop styles in the scene (E-17)', () => {
     shop.setStylePreview('awning', null);
     shop.update(s, 2, 0.016, 0);
     expect(colors(shop.root)).toEqual(before);
+  });
+
+  it('a seasonal style recolours its part through the same path (E-26)', () => {
+    const s = game();
+    s.week!.index = 40;
+    const shop = view(s);
+    const base = drawList(shop.root);
+    wear(s, ['wall_maple', 'floor_walnut', 'sign_lantern', 'awning_harvest']);
+    shop.update(s, 1, 0.016, 0);
+    expect(hasColor(shop.root, styleById('wall_maple')!.color)).toBe(true);
+    expect(hasColor(shop.root, styleById('floor_walnut')!.color)).toBe(true);
+    expect(shop.facade.currentColors.awning).toBe(styleById('awning_harvest')!.color);
+    expect(shop.facade.currentColors.signInk).toBe(styleById('sign_lantern')!.accent);
+    const now = drawList(shop.root);
+    expect(now.meshes).toBe(base.meshes);
+    expect([...now.materials]).toEqual([...base.materials]);
   });
 
   it('a layout rebuild keeps the worn awning and sign colours', () => {
