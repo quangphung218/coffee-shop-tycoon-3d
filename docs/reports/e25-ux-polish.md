@@ -12,14 +12,14 @@ UI-only epic. UX-301/302/303 were E-24, not this one.
 | 310 | Milestone toast "Xem chuyện" action | `src/ui/screens/game.ts`, `src/ui/panels/tasks.ts` | `tests/ui/t88-regulars-toasts.test.ts` |
 | 305 | Style lock badge | `src/ui/panels/styles.ts`, `src/ui/panels/panels.css` | `tests/ui/t89-style-lock-bar.test.ts` |
 | 312 | Preview bar confirm | `src/ui/panels/styles.ts`, `src/ui/panels/panels.css` | `tests/ui/t89-style-lock-bar.test.ts` |
-| 308 | No-wrap labels, plus a layout-check rule | `src/ui/styles/ui.css`, `src/ui/panels/panels.css`, `scripts/check-layout.mjs` | layout check (`scripts/check-layout.mjs`) |
+| 308 | No-wrap labels, plus a layout-check rule | `src/ui/styles/ui.css`, `src/ui/panels/panels.css`, `scripts/check-layout.mjs` | `tests/ui/t90-nowrap-level-icon.test.ts` (`describe('UX-308 Phong cách quán slot tabs on one line')`, line 42), plus the no-wrap rule in `scripts/check-layout.mjs` |
 | 309 | Main menu "Tiếp tục" on one line | `src/ui/screens/mainMenu.ts` (also `src/ui/styles/ui.css`, `scripts/check-layout.mjs`) | `tests/ui/t90-nowrap-level-icon.test.ts` |
 | 311 | Week-end level icon stays 16 px at max level | `src/ui/screens/weekEnd.ts` (`ic-sm` size 16; CSS in `src/ui/styles/ui.css`) | `tests/ui/t90-nowrap-level-icon.test.ts` |
 
 ## Results
 
 - `npm run check` green: 190 files, 2380 tests.
-- No change under `src/sim`. p22/p23 economy results are unchanged by construction (no sim change); their tables were not re-run.
+- No change under `src/sim`. `tests/integration/p22-strategies.test.ts` and `tests/integration/p23-long-run.test.ts` were re-run and match main row by row. Command: `npx vitest run --configLoader runner tests/integration/p22-strategies.test.ts tests/integration/p23-long-run.test.ts`. Result: 29 tests pass on both this branch and main (`git archive`); 480 table rows are identical, and only 4 run-time (ms) lines differ.
 - Draw calls not measured: there is no 3D change.
 
 ## Not verified
