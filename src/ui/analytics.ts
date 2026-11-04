@@ -24,6 +24,13 @@ export interface Analytics {
   consent(): AnalyticsConsent;
   /** Counts `path` once per session, only when consent is 'yes'. Never throws. */
   track(path: string, title: string): void;
+  /**
+   * For a page that is going away (tab hidden): counts `path` right now
+   * through count.js (which sends with navigator.sendBeacon) when consent is
+   * 'yes' and the script is already loaded; otherwise does nothing, and never
+   * inserts the script or queues. Same once-per-session rule as track.
+   */
+  beacon(path: string, title: string): void;
 }
 
 function browserEnv(): AnalyticsEnv | null {
@@ -96,6 +103,17 @@ export function createAnalytics(env: () => AnalyticsEnv | null = browserEnv, ini
         } else {
           pending.push({ path, title });
         }
+      } catch {
+        // Analytics must never break the game.
+      }
+    },
+    beacon(path, title) {
+      if (consent !== 'yes' || failed || sent.has(path)) return;
+      try {
+        const e = env();
+        if (!e || typeof e.window.goatcounter?.count !== 'function') return;
+        sent.add(path);
+        send(e, path, title);
       } catch {
         // Analytics must never break the game.
       }

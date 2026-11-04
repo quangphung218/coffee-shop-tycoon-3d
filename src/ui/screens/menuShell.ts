@@ -2,6 +2,7 @@ import { loadSettings, type Settings } from '../../save/settings';
 import type { SaveSlot } from '../../save/slots';
 import { defaultStorage, type StorageLike } from '../../save/storage';
 import type { GameState, StyleSlot } from '../../sim/types';
+import type { Analytics } from '../analytics';
 import { SceneGate } from '../core/sceneGate';
 import type { LocateHint } from '../hud/serveHints';
 import { ScreenManager } from '../core/screens';
@@ -34,6 +35,8 @@ export interface ShellOptions {
   previewStyle?(slot: StyleSlot, id: string | null): void;
   /** Loading state of the 3D scene; the buttons that enter the shop wait for it. Always ready when omitted. */
   scene?: SceneGate;
+  /** Anonymous counts (E-23); the shared instance in ui/analytics.ts when omitted. */
+  analytics?: Analytics;
 }
 
 /** What the game part (game.ts) hands to the menu shell when it is attached. */
