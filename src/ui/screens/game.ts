@@ -4,7 +4,7 @@ import type { GameSpeed, Settings } from '../../save/settings';
 import { dispatch as simDispatch } from '../../sim';
 import { createNewGame as createGameState } from '../../sim/state';
 import type { Command, GameEvent, GameState } from '../../sim/types';
-import { wireAnalytics } from '../analyticsEvents';
+import { setAnalyticsConsent, wireAnalytics } from '../analyticsEvents';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
@@ -75,6 +75,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // chose this session, the autosave slot's choice applies.
   const tracking = wireAnalytics(options.analytics);
   if (tracking.analytics.consent() === 'unasked') tracking.setConsent(slotConsent('auto', storage));
+  // Set once the player answered this session (report strip, Settings): a loaded slot no longer overrides it.
+  let consentChosen = false;
 
   function dispatch(cmd: Command): boolean {
     if (!state || !simDispatch(state, cmd)) return false;
@@ -151,7 +153,25 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   function retryAutosave(): SaveStatus {
     return state ? runAutosave(state, state.lastReport?.day ?? state.day) : { day: 0, ok: false };
   }
+  // The player's answer applies now and is written at once into the running
+  // game's autosave (a bankrupt run is not saved); on the menu it is written
+  // at the next save.
+  function chooseConsent(consent: 'yes' | 'no'): void {
+    consentChosen = true;
+    setAnalyticsConsent(consent, tracking.analytics);
+    if (!state || state.bankrupt) return;
+    const inReport = state.phase === 'report';
+    const r = runAutosave(state, inReport ? (state.lastReport?.day ?? state.day) : state.day);
+    if (inReport) {
+      report.setSaveStatus(r);
+      weekEnd.setSaveStatus(r);
+    }
+  }
   const report = createDailyReport({
+    consent: {
+      ask: () => !consentChosen && tracking.analytics.consent() === 'unasked',
+      choose: chooseConsent,
+    },
     dispatch: (cmd) => {
       const ok = dispatch(cmd);
       if (state) hud.update(state);
@@ -200,7 +220,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     // A new run (Ván mới, Chơi lại) gets its id here; a loaded one keeps its own.
     state.runId ??= newRunId();
     // A loaded slot brings its choice; a slot never asked keeps this session's.
-    const consent = from ? slotConsent(from, storage) : 'unasked';
+    const consent = from && !consentChosen ? slotConsent(from, storage) : 'unasked';
     tracking.setConsent(consent === 'unasked' ? tracking.analytics.consent() : consent);
     ownsAutosave = from === 'auto';
     mayReplaceAutosave = true;
@@ -468,6 +488,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       simDispatch(state, { type: 'set_paused', paused: true });
       return 'pause';
     },
+    setConsent: chooseConsent,
     onSettingsChange(next) {
       if (state) state.speed = next.gameSpeed;
     },
