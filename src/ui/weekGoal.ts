@@ -37,12 +37,10 @@ export interface WeekGoalView {
 /** Shown under the bars when the week's goal is scaled. */
 export const SCALED_GOAL_TEXT = 'Quán đã lớn: mục tiêu theo 4 tuần gần nhất';
 
-/** Shown under the bars, in place of SCALED_GOAL_TEXT, when the goal is a SIZE_GOAL row. */
-export function sizeGoalText(levels: number): string {
-  return `Mục tiêu theo cỡ quán (${levels} cấp nâng cấp)`;
-}
+/** Shown under the bars, in place of SCALED_GOAL_TEXT, when the goal is a SIZE_GOAL row (no level count, E-24 UX-302). */
+export const SIZE_GOAL_TEXT = 'Mục tiêu theo cỡ quán';
 
-/** The one-sentence hint under sizeGoalText. */
+/** The one-sentence hint under SIZE_GOAL_TEXT. */
 export function sizeGoalHint(profit: number): string {
   return `Quán cỡ này thường lãi ${formatMoney(profit)}. Thuê người thứ hai, chỉnh giá để vượt.`;
 }
@@ -135,7 +133,7 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
       );
     }),
     h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
-    v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, sizeGoalText(v.size.levels)) : null,
+    v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, SIZE_GOAL_TEXT) : null,
     v.size ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } }, sizeGoalHint(v.size.profit)) : null,
     !v.size && v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
     v.upgradeCharge > 0

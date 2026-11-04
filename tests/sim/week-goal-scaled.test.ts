@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SAVE_VERSION, loadGame, saveKey } from '../../src/save/save';
 import { createMemoryStorage } from '../../src/save/storage';
-import { SCALED_GOAL_MIN_LEVEL, SCALED_GOAL_RATIO, SCALED_GOAL_WEEKS, WEEK_LENGTH, scaledWeekGoal, sizeGoal, weekGoal } from '../../src/sim/data/week';
+import { SCALED_GOAL_MIN_LEVEL, SCALED_GOAL_RATIO, SCALED_GOAL_WEEKS, WEEK_LENGTH, scaledWeekGoal, sizeGoal, sizeGoalRowIndex, weekGoal } from '../../src/sim/data/week';
 import { dispatch } from '../../src/sim/index';
 import { createDayStats, createNewGame } from '../../src/sim/state';
 import type { GameState, WeekSummary } from '../../src/sim/types';
@@ -125,8 +125,9 @@ describe('saves from before E-19 already at level 10', () => {
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
     expect(s.week!.index).toBe(11);
     const levels = totalUpgradeLevels(s);
-    const size = sizeGoal('normal', levels);
-    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 11).stars, profit: size.profit, levels });
+    const rowIndex = sizeGoalRowIndex('normal', 11, levels);
+    const size = sizeGoal('normal', rowIndex);
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 11).stars, profit: size.profit, levels, row: rowIndex });
     expect(isWeekGoalScaled(s)).toBe(false);
   });
 });
