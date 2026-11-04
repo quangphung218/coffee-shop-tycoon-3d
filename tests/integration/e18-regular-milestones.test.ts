@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MILESTONE_COUNT, MILESTONE_VISITS, REGULAR_BOOK } from '../../src/sim/data/regularMilestones';
+import { MILESTONE_COUNT, MILESTONE_VISITS, REGULAR_BOOK, movedInRegulars } from '../../src/sim/data/regularMilestones';
+import { newRegularOrder } from '../../src/sim/data/regulars';
 import { weekIndex } from '../../src/sim/progression';
 import { STRATEGIES, WEEKS, playWeeks } from '../longsim/run';
 
@@ -27,17 +28,20 @@ interface Reached {
 
 interface Run {
   reached: Reached[];
+  /** E-27: season-2 regulars moved in by the end of week 40, in order. */
+  movedIn: string[];
   /** Tem paid by 'tickets_earned' with reason 'regular_milestone'. */
   tem: number;
 }
 
 function play(seed: number): Run {
-  const run: Run = { reached: [], tem: 0 };
+  const run: Run = { reached: [], movedIn: [], tem: 0 };
   const rows = playWeeks('normal', seed, STRATEGIES.b_steady2, WEEKS, (state, events) => {
     for (const e of events) {
       if (e.type === 'regular_milestone') run.reached.push({ regularId: e.regularId, milestone: e.milestone, day: state.day, week: weekIndex(state), tickets: e.tickets });
       if (e.type === 'tickets_earned' && e.reason === 'regular_milestone') run.tem += e.amount;
     }
+    run.movedIn = movedInRegulars(state).map((r) => r.id);
   });
   expect(rows.bankruptDay, `seed ${seed} bankrupt`).toBeUndefined();
   return run;
@@ -79,6 +83,15 @@ describe('E-22 regular milestones: 40 weeks, Normal, b_steady2, seeds 1 and 42',
         expect(mine, `seed ${SEEDS[i]} ${e.regularId}`).toEqual(Array.from({ length: mine.length }, (_, k) => k + 1));
         expect(mine.length, `seed ${SEEDS[i]} ${e.regularId}`).toBeGreaterThanOrEqual(MILESTONE_COUNT - 1);
       }
+    }
+  });
+
+  it('E-27: moves season-2 regulars in by week 40, in seed order, with no milestone of theirs before week 41', () => {
+    for (const [i, run] of runs.entries()) {
+      console.log(`seed ${SEEDS[i]} moved in by week ${WEEKS}: ${run.movedIn.join(', ')}`);
+      expect(run.movedIn.length, `seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(4);
+      expect(run.movedIn).toEqual(newRegularOrder(SEEDS[i]!).slice(0, run.movedIn.length));
+      expect(run.reached.filter((r) => run.movedIn.includes(r.regularId)), `seed ${SEEDS[i]}`).toEqual([]);
     }
   });
 

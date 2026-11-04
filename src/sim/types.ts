@@ -324,6 +324,11 @@ export interface RegularVisits {
    * never paid again. 0 for regulars counted since E-22; absent only before load.
    */
   keptMilestones?: number;
+  /**
+   * E-27: the season-2 regular (NEW_REGULARS id) who came in this regular's
+   * place once they completed milestone 4. Absent until then and in older saves.
+   */
+  succeededBy?: string;
 }
 
 export type StaffRole = 'barista' | 'server' | 'cleaner' | 'marketer' | 'none';
