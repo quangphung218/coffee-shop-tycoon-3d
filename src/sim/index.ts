@@ -202,7 +202,20 @@ export {
   type RegularBookPage,
   type RegularMilestone,
 } from './data/regularMilestones';
-export { STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf, type StyleDef } from './data/styles';
+export { ALL_STYLES, STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf, type StyleDef } from './data/styles';
+export {
+  SEASONAL_STYLES,
+  SEASON_FIRST_WEEK,
+  SEASON_SETS,
+  SEASON_WEEKS,
+  isSeasonalStyle,
+  nextSeasonWeek,
+  seasonFor,
+  seasonalStylesFor,
+  styleOnSale,
+  type Season,
+  type SeasonSet,
+} from './data/seasons';
 export {
   buyStyle,
   canAffordStyle,
