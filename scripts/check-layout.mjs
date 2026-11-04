@@ -50,7 +50,12 @@
 // E-20 UX-202 Việc on the morning of week 5 (the first with a side
 // challenge), at the same four sizes: the challenge block must not overflow,
 // its bar must be at least CHALLENGE_BAR_MIN wide and it names its style.
-// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, comma-separated) runs those parts
+// E-23 T-81 consent strip, at 390×844, on the day-1 report from the same save
+// as the day runs (a fresh browser, so consent is unasked): the strip must
+// show both buttons, stay inside the report card, not overflow, every button
+// at least --size-target, and its box must not overlap any HUD cluster or
+// the dock.
+// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
 // Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
@@ -715,6 +720,57 @@ async function runViewport(browser, viewport, overflow, shift, report) {
   }
 }
 
+/** Viewports of the consent strip check (E-23 T-81). */
+const CONSENT_VIEWPORTS = [{ width: 390, height: 844 }];
+
+/**
+ * E-23 T-81: the day-1 report's consent strip must not overlap the HUD
+ * (clusters, dock) and must fit the report card with full-size buttons.
+ */
+async function checkConsentStrip(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.rpt-layer:not([hidden]) [data-consent]:not([hidden])');
+  try {
+    await settle(page);
+    await checkScreen(page, results, size, 'Daily Report: hỏi số liệu ẩn danh', REPORT_FRAME);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: '.rpt-layer:not([hidden]) [data-consent]', target, eps: EPS });
+    const m = await page.evaluate(({ eps }) => {
+      const fails = [];
+      const strip = document.querySelector('.rpt-layer:not([hidden]) [data-consent]:not([hidden])');
+      if (!strip) return { fails: ['consent strip not shown'], hud: 0 };
+      const s = strip.getBoundingClientRect();
+      if (s.width <= 1 || s.height <= 1) fails.push('consent strip has no box');
+      for (const a of ['consent-yes', 'consent-no']) {
+        const b = strip.querySelector(`[data-action="${a}"]`)?.getBoundingClientRect();
+        if (!b || b.width <= 1 || b.height <= 1) fails.push(`${a} not shown`);
+        else if (b.bottom > innerHeight + eps || b.top < -eps) fails.push(`${a} ${b.top.toFixed(1)}..${b.bottom.toFixed(1)} outside 0..${innerHeight}`);
+      }
+      const hud = [...document.querySelectorAll('.hud > .hud-cluster, .dock')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden';
+      });
+      for (const el of hud) {
+        const r = el.getBoundingClientRect();
+        if (s.left < r.right - eps && r.left < s.right - eps && s.top < r.bottom - eps && r.top < s.bottom - eps) {
+          fails.push(`strip ${s.top.toFixed(1)}..${s.bottom.toFixed(1)} overlaps ${el.dataset.cluster ?? el.className} ${r.top.toFixed(1)}..${r.bottom.toFixed(1)}`);
+        }
+      }
+      return { fails, hud: hud.length, top: s.top, bottom: s.bottom };
+    }, { eps: EPS });
+    const fails = [...m.fails, ...small.out];
+    results.push({
+      viewport: size,
+      screen: 'Dải hỏi số liệu ẩn danh vs HUD',
+      pass: fails.length === 0,
+      detail: `dải ${m.top?.toFixed(0) ?? '?'}..${m.bottom?.toFixed(0) ?? '?'} px, ${m.hud} khối HUD đo; ${small.count} nút, ${small.out.length} nút nhỏ`,
+      fails,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
 /** Viewports of the P25 checks: the four widths, 1280 at 720 px high for the level-up report. */
 const P25_VIEWPORTS = [
   { width: 390, height: 844 },
@@ -1159,12 +1215,12 @@ async function main() {
   const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
-  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge,consent runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    const mods = part('day') || part('event') || part('styles') || part('challenge') ? await loadTree() : null;
-    const report = part('day') ? firstDaySave(mods) : null;
+    const mods = part('day') || part('event') || part('styles') || part('challenge') || part('consent') ? await loadTree() : null;
+    const report = part('day') || part('consent') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
       const t0 = Date.now();
@@ -1235,6 +1291,15 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Việc: thử thách tuần', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    for (const viewport of part('consent') ? CONSENT_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkConsentStrip(browser, viewport, report, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Dải hỏi số liệu ẩn danh', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
