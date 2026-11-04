@@ -1250,6 +1250,28 @@
 .style-act[hidden] {
   display: none;
 }
+/* E-26 Mùa này: the season's styles above the slot tabs. */
+.style-season {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.style-season[hidden],
+.style-season li[hidden] {
+  display: none;
+}
+.style-season-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.style-season-head .section-title {
+  margin: 0;
+}
 .style-list {
   display: flex;
   flex-direction: column;
