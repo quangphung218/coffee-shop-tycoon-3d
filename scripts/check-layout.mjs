@@ -55,7 +55,12 @@
 // show both buttons, stay inside the report card, not overflow, every button
 // at least --size-target, and its box must not overlap any HUD cluster or
 // the dock.
-// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, comma-separated) runs those parts
+// UX-308/309 no-wrap: on Phong cách quán every .seg label (the slot tabs)
+// must stay on one line inside its tab; on the Main Menu at 390×844 and
+// 1280×720, with a save of a 24-character shop name made with the doors
+// open, every button label ("Tiếp tục" beside its detail, Ván mới, Tải game,
+// Cài đặt) must stay on one line.
+// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, menu, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
 // Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
@@ -827,6 +832,28 @@ function menuTextCut() {
   return { out, count };
 }
 
+/**
+ * Runs in the page: each shown element of `sel` whose text takes more than
+ * one line (its text boxes sit on more than one top) or sticks out of it
+ * (scrollWidth > clientWidth). UX-308/309: the Phong cách quán slot tabs and
+ * the Main Menu button labels stay on one line.
+ */
+function wrappedText({ sel, eps }) {
+  const out = [];
+  let count = 0;
+  for (const el of document.querySelectorAll(sel)) {
+    if (!el.checkVisibility()) continue;
+    count++;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top / (2 * eps))));
+    const text = (el.textContent ?? '').trim();
+    if (tops.size > 1) out.push(`"${text}" wraps onto ${tops.size} lines`);
+    if (el.scrollWidth > el.clientWidth + eps) out.push(`"${text}" scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+  }
+  return { out, count };
+}
+
 /** Morning save of day 3 (Nước cam opens, no Cam) and the report of the first level-up, from scripts/capture-p25.mjs. */
 async function p25Saves() {
   const { playSaves } = await import('./capture-p25.mjs');
@@ -1047,9 +1074,10 @@ async function checkStylesPanel(browser, viewport, save, results) {
         }),
       { root: panel, target, eps: EPS },
     );
+    const wrapped = await page.evaluate(wrappedText, { sel: `${panel} .seg-opt span`, eps: EPS });
     const dialogs = await page.evaluate(() => [...document.querySelectorAll('dialog[open], [role="dialog"]:not([hidden]), [aria-modal="true"]')].filter((e) => e.checkVisibility()).length);
-    const fails = [...small.out, ...tabs, ...extra.fails, ...(dialogs ? [`${dialogs} dialog(s) open`] : [])];
-    results.push({ viewport: size, screen, pass: fails.length === 0, detail: `${extra.detail}; ${small.count} nút + 4 tab ≥ ${target} px`, fails });
+    const fails = [...small.out, ...tabs, ...wrapped.out, ...extra.fails, ...(dialogs ? [`${dialogs} dialog(s) open`] : [])];
+    results.push({ viewport: size, screen, pass: fails.length === 0, detail: `${extra.detail}; ${small.count} nút + 4 tab ≥ ${target} px; ${wrapped.count} nhãn .seg một dòng`, fails });
   };
   const needs = async (page, sels) => {
     const missing = await page.evaluate((list) => list.filter((s) => ![...document.querySelectorAll(s)].some((e) => e.checkVisibility())), sels);
@@ -1196,6 +1224,59 @@ async function checkChallengeBar(browser, viewport, save, results) {
   }
 }
 
+/** Widths of the no-wrap check on the Main Menu (UX-309). */
+const MENU_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 1280, height: 720 },
+];
+
+/**
+ * Autosave of a shop with a name of SHOP_NAME_MAX (24) characters saved at
+ * 12:30 with the doors open, so "Tiếp tục" has its longest detail beside it.
+ */
+function menuSave(mods) {
+  const state = mods.stateMod.createNewGame('Cà Phê Gió Mùa Sài Gòn 1', 'easy', FIXED_NOW >>> 0);
+  state.phase = 'peak';
+  state.minute = 12 * 60 + 30;
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * UX-309, the Main Menu with a save: every button label ("Tiếp tục" beside
+ * its detail, Ván mới, Tải game, Cài đặt) on one line, the card must not
+ * overflow and every button must be at least --size-target.
+ */
+async function checkMainMenu(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  await context.addInitScript(
+    ({ now, save }) => {
+      Date.now = () => now;
+      localStorage.setItem(save.key, save.text);
+    },
+    { now: FIXED_NOW, save },
+  );
+  try {
+    const page = await context.newPage();
+    await page.goto(URL_BASE);
+    await page.locator('#boot').waitFor({ state: 'detached' });
+    await page.getByRole('button', { name: /^Tiếp tục/ }).waitFor();
+    await settle(page);
+    const root = 'nav.w-menu';
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root, target, eps: EPS });
+    const wrapped = await page.evaluate(wrappedText, { sel: `${root} .menu-list .btn-label`, eps: EPS });
+    const fails = [...small.out, ...wrapped.out];
+    if (wrapped.count < 4) fails.push(`${wrapped.count} menu button labels shown, expected 4`);
+    const detail = await page.locator(`${root} .menu-list .btn-sm-text`).first().textContent();
+    if (!/đang mở cửa/.test(detail ?? '')) fails.push(`"Tiếp tục" detail "${detail}" is not the open-door one`);
+    results.push({ viewport: size, screen: 'Menu chính: nhãn nút một dòng', pass: fails.length === 0, detail: `${wrapped.count} nhãn một dòng; ${small.count} nút ≥ ${target} px`, fails });
+    await checkScreen(page, results, size, 'Menu chính', { frame: root, scrollers: [root] });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -1215,11 +1296,11 @@ async function main() {
   const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
-  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge,consent runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge,consent,menu runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    const mods = part('day') || part('event') || part('styles') || part('challenge') || part('consent') ? await loadTree() : null;
+    const mods = part('day') || part('event') || part('styles') || part('challenge') || part('consent') || part('menu') ? await loadTree() : null;
     const report = part('day') || part('consent') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
@@ -1291,6 +1372,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Việc: thử thách tuần', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const menu = part('menu') ? menuSave(mods) : null;
+    for (const viewport of part('menu') ? MENU_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkMainMenu(browser, viewport, menu, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Menu chính', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
     for (const viewport of part('consent') ? CONSENT_VIEWPORTS : []) {
