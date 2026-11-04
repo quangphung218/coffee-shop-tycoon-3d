@@ -34,7 +34,26 @@ function browserEnv(): AnalyticsEnv | null {
 export function createAnalytics(env: () => AnalyticsEnv | null = browserEnv, initial: AnalyticsConsent = 'unasked'): Analytics {
   let consent: AnalyticsConsent = initial;
   let inserted = false;
+  let failed = false;
   const sent = new Set<string>();
+  // Events tracked before count.js has loaded; flushed on the script's onload.
+  let pending: { path: string; title: string }[] = [];
+
+  function send(e: AnalyticsEnv, path: string, title: string): void {
+    try {
+      const gc = e.window.goatcounter;
+      if (typeof gc?.count === 'function') gc.count({ path, title, event: true });
+    } catch {
+      // Analytics must never break the game.
+    }
+  }
+
+  function flush(e: AnalyticsEnv): void {
+    const queued = pending;
+    pending = [];
+    if (consent !== 'yes') return;
+    for (const q of queued) send(e, q.path, q.title);
+  }
 
   function insertScript(e: AnalyticsEnv): void {
     if (inserted) return;
@@ -43,6 +62,12 @@ export function createAnalytics(env: () => AnalyticsEnv | null = browserEnv, ini
     s.src = GOATCOUNTER_SCRIPT;
     s.setAttribute('data-goatcounter', GOATCOUNTER_ENDPOINT);
     s.setAttribute('data-goatcounter-settings', GOATCOUNTER_SETTINGS);
+    s.onload = () => flush(e);
+    s.onerror = () => {
+      // Blocked or offline: drop the queue silently and stop queueing.
+      failed = true;
+      pending = [];
+    };
     e.document.head.appendChild(s);
     inserted = true;
   }
@@ -50,20 +75,27 @@ export function createAnalytics(env: () => AnalyticsEnv | null = browserEnv, ini
   return {
     setConsent(c) {
       consent = c;
+      if (c !== 'yes') {
+        // A revoke drops queued events; a later yes may count those paths again.
+        for (const q of pending) sent.delete(q.path);
+        pending = [];
+      }
     },
     consent: () => consent,
     track(path, title) {
-      if (consent !== 'yes') return;
+      if (consent !== 'yes' || failed) return;
       try {
         const e = env();
         if (!e) return;
         insertScript(e);
         if (sent.has(path)) return;
-        // Until count.js has loaded there is nothing to call; the path stays unsent so a later call can count it.
-        const count = e.window.goatcounter?.count;
-        if (typeof count !== 'function') return;
         sent.add(path);
-        count.call(e.window.goatcounter, { path, title, event: true });
+        if (typeof e.window.goatcounter?.count === 'function') {
+          if (pending.length > 0) flush(e);
+          send(e, path, title);
+        } else {
+          pending.push({ path, title });
+        }
       } catch {
         // Analytics must never break the game.
       }

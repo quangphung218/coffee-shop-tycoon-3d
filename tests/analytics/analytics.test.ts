@@ -8,6 +8,8 @@ interface FakeScript {
   src: string;
   async: boolean;
   attrs: Record<string, string>;
+  onload?: () => void;
+  onerror?: () => void;
   setAttribute(k: string, v: string): void;
 }
 
@@ -101,6 +103,43 @@ describe('analytics track (E-23)', () => {
       throw new Error('no dom');
     };
     expect(() => createAnalytics(broken, 'yes').track('/x', 'X')).not.toThrow();
+  });
+
+  it('an event tracked before count.js loads is counted exactly once after onload', () => {
+    const f = fakeEnv(false);
+    const a = createAnalytics(() => f.env, 'yes');
+    a.track('/session-start', 'Session start');
+    a.track('/session-start', 'Session start');
+    expect(f.count).not.toHaveBeenCalled();
+    f.env.window.goatcounter = { count: f.count };
+    f.scripts[0]!.onload!();
+    expect(f.count).toHaveBeenCalledTimes(1);
+    expect(f.count).toHaveBeenCalledWith({ path: '/session-start', title: 'Session start', event: true });
+    a.track('/session-start', 'Session start');
+    a.track('/day/1', 'Day 1');
+    expect(f.count).toHaveBeenCalledTimes(2);
+    expect(f.scripts).toHaveLength(1);
+  });
+
+  it('consent off before onload sends nothing', () => {
+    const f = fakeEnv(false);
+    const a = createAnalytics(() => f.env, 'yes');
+    a.track('/session-start', 'Session start');
+    a.setConsent('no');
+    f.env.window.goatcounter = { count: f.count };
+    f.scripts[0]!.onload!();
+    expect(f.count).not.toHaveBeenCalled();
+  });
+
+  it('script onerror drops the queue silently', () => {
+    const f = fakeEnv(false);
+    const a = createAnalytics(() => f.env, 'yes');
+    a.track('/session-start', 'Session start');
+    expect(() => f.scripts[0]!.onerror!()).not.toThrow();
+    f.env.window.goatcounter = { count: f.count };
+    f.scripts[0]!.onload?.();
+    a.track('/day/1', 'Day 1');
+    expect(f.count).not.toHaveBeenCalled();
   });
 
   it('returns synchronously (nothing to await)', () => {
