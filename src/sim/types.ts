@@ -716,8 +716,14 @@ export interface WeekGoal {
    * goals, which score against weekProfitTarget of their revenue.
    */
   profit?: number;
-  /** Total upgrade levels the SIZE_GOAL row was read at (week start); set with `profit`. */
+  /** Total upgrade levels the shop had at the week's start; set with `profit`. */
   levels?: number;
+  /**
+   * SIZE_GOAL row the targets were read at (sizeGoalRowIndex: at least the
+   * week's level floor, E-24). Absent in goals set before E-24, whose row was
+   * `levels`.
+   */
+  row?: number;
 }
 
 /** End-of-week scoring (scoreWeek in src/sim/week.ts). */

@@ -1,6 +1,7 @@
 import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim/challenges';
 import { WEEK_CHALLENGES } from '../sim/data/challenges';
 import { styleById } from '../sim/data/styles';
+import { policyLevel } from '../sim/policies';
 import { MISSIONS_PER_DAY } from '../sim/progression';
 import type { GameState, WeekChallenge } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
@@ -30,21 +31,57 @@ export interface WeekGoalView {
   upgradeCharge: number;
   /** True when the week's goal follows the shop's recent revenue (isWeekGoalScaled, shop level 10+). */
   scaled?: boolean;
-  /** Set when the week's goal is a SIZE_GOAL row (goal.profit, E-21): its total upgrade levels and profit target. */
-  size?: { levels: number; profit: number };
+  /** Set when the week's goal is a SIZE_GOAL row (goal.profit, E-21): its total upgrade levels, profit target and the shop's hint (sizeGoalHint; null when nothing is left to change). */
+  size?: { levels: number; profit: number; hint: string | null };
 }
 
 /** Shown under the bars when the week's goal is scaled. */
 export const SCALED_GOAL_TEXT = 'Quán đã lớn: mục tiêu theo 4 tuần gần nhất';
 
-/** Shown under the bars, in place of SCALED_GOAL_TEXT, when the goal is a SIZE_GOAL row. */
-export function sizeGoalText(levels: number): string {
-  return `Mục tiêu theo cỡ quán (${levels} cấp nâng cấp)`;
+/** Shown under the bars, in place of SCALED_GOAL_TEXT, when the goal is a SIZE_GOAL row (no level count, E-24 UX-302). */
+export const SIZE_GOAL_TEXT = 'Mục tiêu theo cỡ quán';
+
+/**
+ * A SIZE_GOAL row's profit target over what standard play (two staff,
+ * standard prices) makes at that size: PROFIT_RATIO in scripts/gen-size-goal.mjs.
+ * Rows clamped to PROFIT_CAP x revenue ask a little less, so the usual level
+ * read back from it is "khoảng" (about).
+ */
+const SIZE_GOAL_PROFIT_RATIO = 1.5;
+
+/** Staff a shop needs before sizeGoalHint stops asking for hires. */
+export const SIZE_GOAL_FULL_STAFF = 4;
+
+/** What a shop of this size usually makes in a week, read back from its profit target, rounded to 100.000 đồng. */
+export function sizeGoalUsualProfit(profit: number): number {
+  return Math.round(profit / SIZE_GOAL_PROFIT_RATIO / 100_000) * 100_000;
 }
 
-/** The one-sentence hint under sizeGoalText. */
-export function sizeGoalHint(profit: number): string {
-  return `Quán cỡ này thường lãi ${formatMoney(profit)}. Thuê người thứ hai, chỉnh giá để vượt.`;
+/** "Mục tiêu lãi X, quán cỡ này thường đạt khoảng Y.": X is the goal, Y the usual level (the goal is never called "thường lãi"). */
+export function sizeGoalNumberText(profit: number): string {
+  return `Mục tiêu lãi ${formatMoney(profit)}, quán cỡ này thường đạt khoảng ${formatMoney(sizeGoalUsualProfit(profit))}.`;
+}
+
+/** The week-end line: "Mục tiêu theo cỡ quán: lãi X, quán cỡ này thường đạt khoảng Y." */
+export function sizeGoalLineText(profit: number): string {
+  return `${SIZE_GOAL_TEXT}: lãi ${formatMoney(profit)}, quán cỡ này thường đạt khoảng ${formatMoney(sizeGoalUsualProfit(profit))}.`;
+}
+
+/**
+ * What to change to beat a size goal, read from the shop: under 2 staff
+ * "Thuê thêm người", 2-3 "Thuê đủ 4 người", and "đặt giá Cao" while the price
+ * policy is not Cao, as one sentence. Null once the shop has
+ * SIZE_GOAL_FULL_STAFF staff and the Cao price, so no hint shows.
+ */
+export function sizeGoalHint(state: GameState): string | null {
+  const parts: string[] = [];
+  const staff = state.staff.length;
+  if (staff < 2) parts.push('thuê thêm người');
+  else if (staff < SIZE_GOAL_FULL_STAFF) parts.push(`thuê đủ ${SIZE_GOAL_FULL_STAFF} người`);
+  if (policyLevel(state, 'price') !== 'high') parts.push('đặt giá Cao');
+  if (parts.length === 0) return null;
+  const text = parts.join(', ');
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)} để vượt mục tiêu.`;
 }
 
 const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = {
@@ -71,7 +108,7 @@ export function weekGoalView(state: GameState): WeekGoalView | null {
   const goal = state.week?.goal;
   const size =
     goal && typeof goal.profit === 'number' && Number.isFinite(goal.profit)
-      ? { levels: goal.levels ?? totalUpgradeLevels(state), profit: goal.profit }
+      ? { levels: goal.levels ?? totalUpgradeLevels(state), profit: goal.profit, hint: sizeGoalHint(state) }
       : undefined;
   return {
     bars: [
@@ -109,7 +146,7 @@ export function cupsLineText(v: Pick<WeekGoalView, 'score' | 'cups'>): string {
 
 /**
  * Three bars (revenue, profit, stars), "Hiện X điểm · cần Y để N cúp", the
- * goal note (SIZE_GOAL line and hint, else the E-19 scaled note from shop
+ * goal note (SIZE_GOAL line, its number and the shop's hint, else the E-19 scaled note from shop
  * level 10) and, after an upgrade, what it costs this week.
  */
 export function weekGoalBlock(v: WeekGoalView): HTMLElement {
@@ -135,8 +172,9 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
       );
     }),
     h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
-    v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, sizeGoalText(v.size.levels)) : null,
-    v.size ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } }, sizeGoalHint(v.size.profit)) : null,
+    v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, SIZE_GOAL_TEXT) : null,
+    v.size ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-num' } }, sizeGoalNumberText(v.size.profit)) : null,
+    v.size?.hint ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } }, v.size.hint) : null,
     !v.size && v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)

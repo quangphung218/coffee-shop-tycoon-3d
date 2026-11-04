@@ -1,4 +1,5 @@
 import { it } from 'vitest';
+import { sizeGoalRowIndex } from '../../src/sim/data/week';
 import type { Difficulty } from '../../src/sim/types';
 import { STRATEGIES, playWeeks, type StrategyName } from './run';
 
@@ -6,7 +7,10 @@ import { STRATEGIES, playWeeks, type StrategyName } from './run';
  * Sampler of scripts/gen-size-goal.mjs: plays b_steady2 (or GEN_BOT) for 40
  * weeks on GEN_DIFFICULTY and GEN_SEED and prints one SIZE_GOAL_ROWS line of
  * JSON, [week, upgrade levels at the week's start, revenue, score profit,
- * revenue target, profit target, score] per week.
+ * revenue target, profit target, score, SIZE_GOAL row index (sizeGoalRowIndex),
+ * customers served, regulars served, cups sold per item, challenge id,
+ * challenge completed, challenge target/item/minServed, challenge best day] per week. scripts/gen-challenge-standard.mjs reads the
+ * row index and the counts with GEN_BOT=d_manage.
  * The *.gen.ts name keeps it out of `npm run check` and `npm run sim:long`.
  */
 
@@ -18,6 +22,7 @@ it('samples a bot (GEN_BOT, default b_steady2)', { timeout: 1_200_000 }, () => {
   const seed = Number(process.env.GEN_SEED ?? 1);
   const bot = (process.env.GEN_BOT ?? 'b_steady2') as StrategyName;
   const rows = playWeeks(difficulty, seed, STRATEGIES[bot]);
-  const out = rows.map((r) => [r.week, r.startLevels, r.revenue, r.profit, r.revenueTarget, r.profitTarget, r.score]);
+  const out = rows.map((r) => [r.week, r.startLevels, r.revenue, r.profit, r.revenueTarget, r.profitTarget, r.score,
+    sizeGoalRowIndex(difficulty, r.week, r.startLevels), r.served, r.regulars, r.sold, r.challenge, r.completed, r.challengeGoal, r.challengeBest]);
   process.stdout.write(`\nSIZE_GOAL_ROWS ${JSON.stringify({ difficulty, seed, bankruptDay: rows.bankruptDay ?? null, rows: out })}\n`);
 });

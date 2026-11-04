@@ -18,7 +18,7 @@ import { challengeStyleName, unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS } from '../hud/hud';
 import type { SaveStatus } from '../report';
 import { starsEl } from '../report/reviews';
-import { challengeBlock, challengeView } from '../weekGoal';
+import { challengeBlock, challengeView, sizeGoalHint, sizeGoalLineText } from '../weekGoal';
 
 export interface WeekEndActions {
   /** Game whose finished week is shown; read each time the screen opens. */
@@ -408,6 +408,22 @@ export function nextWeekGoalText(state: GameState): string {
   return `Mục tiêu: ${formatMoney(goal.revenue)} doanh thu (×${factorText(base > 0 ? goal.revenue / base : 1)} mục tiêu tuần 1), ${formatMoney(profitTarget)} lợi nhuận và ${formatRating(goal.stars)} sao.`;
 }
 
+/**
+ * Under "Mục tiêu:" when next week's goal is a SIZE_GOAL row: the shop-size
+ * line (the goal and the usual level) and, unless the shop already has
+ * SIZE_GOAL_FULL_STAFF staff and the Cao price, what to change (sizeGoalHint).
+ * Each sentence is the last span of its line, so it wraps beside the icon.
+ */
+function nextSizeGoalLines(state: GameState): HTMLElement[] {
+  const { goal } = nextWeekGoal(state);
+  if (typeof goal.profit !== 'number' || !Number.isFinite(goal.profit)) return [];
+  const hint = sizeGoalHint(state);
+  return [
+    h('p', { attrs: { 'data-next': 'size' } }, icon('i-chart', { size: 16 }), h('span', { text: sizeGoalLineText(goal.profit) })),
+    ...(hint ? [h('p', { class: 'item-meta', attrs: { 'data-next': 'size-hint' } }, icon('i-forward', { size: 16 }), h('span', { text: hint }))] : []),
+  ];
+}
+
 function nextWeekBlock(state: GameState, index: number): HTMLElement {
   return section(
     'i-forward',
@@ -417,6 +433,7 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
       { class: 'wk-next', attrs: { 'data-block': 'next-week' } },
       // One text node, so the line's flex gap never puts a space before the period.
       h('p', { attrs: { 'data-next': 'goal' } }, icon('i-trophy', { size: 16 }), h('span', { text: nextWeekGoalText(state) })),
+      ...nextSizeGoalLines(state),
       nextLevelLine(state),
       nextChallengeLine(state, index + 1),
     ),

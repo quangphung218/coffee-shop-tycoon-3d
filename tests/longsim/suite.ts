@@ -15,7 +15,10 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * `determinismSeed` replayed gives the same challenges and goals, and the
  * E-21 promise on every seed (assertPromise). E-22: b_steady2's regular
  * milestones spread over the weeks on every seed (assertMilestones), and
- * replayed come in the same order.
+ * replayed come in the same order. E-24: a2 and a_manage (no upgrades) get
+ * 3 cups in at most 10% of weeks 21-40; challenges-normal.sim.ts and
+ * challenges-easy.sim.ts hold the mean challenge completion of weeks 21-40
+ * over the 4 seeds to CHALLENGE_BANDS (challengeBands).
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -33,6 +36,9 @@ const STEADY_BELOW_TWO_MAX = 0.1;
 /** Managed play: weeks 21-40 mostly 3 cups, and well above b_steady2's average score. */
 const MANAGE_THREE_CUPS_MIN = 0.7;
 const MANAGE_SCORE_LEAD = 8;
+/** E-24: shops that never upgrade (a2, a_manage) get 3 cups in at most 10% of weeks 21-40 (level floor). */
+const NO_UPGRADE: readonly StrategyName[] = ['a2', 'a_manage'];
+const NO_UPGRADE_THREE_CUPS_MAX = 0.1;
 
 /**
  * E-21 promise on weeks 21-40 of one seed, with the SIZE_GOAL table:
@@ -51,6 +57,11 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
   expect(manage, `${label} d_manage weeks 21-40`).toHaveLength(20);
   expect(share(manage, (r) => r.cups === 3), `${label} d_manage 3 cups`).toBeGreaterThanOrEqual(MANAGE_THREE_CUPS_MIN);
   expect(avgScore(manage) - avgScore(steady), `${label} d_manage lead over b_steady2`).toBeGreaterThanOrEqual(MANAGE_SCORE_LEAD);
+  for (const name of NO_UPGRADE) {
+    const rows = late(name);
+    expect(rows, `${label} ${name} weeks 21-40`).toHaveLength(20);
+    expect(share(rows, (r) => r.cups === 3), `${label} ${name} 3 cups`).toBeLessThanOrEqual(NO_UPGRADE_THREE_CUPS_MAX);
+  }
 }
 
 /** E-22 Sổ khách quen spread for b_steady2: a milestone in at least 60% of weeks 5-40, never more than 3 in one week. */
@@ -88,6 +99,41 @@ function assertMilestones(label: string, milestones: Milestones): void {
   expect(Math.max(...counts), `${label} b_steady2 milestones in one week`).toBeLessThanOrEqual(MILESTONES_PER_WEEK_MAX);
 }
 const TIMEOUT = 1_200_000;
+
+/**
+ * E-24 part B: challenge completion over weeks 21-40, its mean over `seeds`
+ * per bot. Single seeds may fall outside; only the mean is held to the band.
+ */
+const CHALLENGE_BANDS: Readonly<Partial<Record<StrategyName, readonly [number, number]>>> = {
+  b_steady2: [0.4, 0.7],
+  d_manage: [0.7, 0.95],
+};
+
+/**
+ * Plays b_steady2 and d_manage on all of `seeds` (the seeds are split over
+ * two files in longSim, so the 4-seed mean needs its own file) and asserts
+ * each bot's mean challenge completion over weeks 21-40 is in CHALLENGE_BANDS.
+ * Prints the per-seed rates.
+ */
+export function challengeBands(difficulty: Difficulty, seeds: number[]): void {
+  describe(`E-24 challenges weeks 21-40, ${difficulty}`, () => {
+    for (const [name, [min, max]] of Object.entries(CHALLENGE_BANDS) as [StrategyName, readonly [number, number]][]) {
+      it(`${name}: mean completion over seeds ${seeds.join(', ')} in ${min * 100}-${max * 100}%`, { timeout: TIMEOUT }, () => {
+        const rates = seeds.map((seed) => {
+          const late = inWeeks(playWeeks(difficulty, seed, STRATEGIES[name], WEEKS), 21, 40).filter((r) => r.challenge);
+          expect(late, `${difficulty} s${seed} ${name} challenges weeks 21-40`).toHaveLength(20);
+          return share(late, (r) => r.completed);
+        });
+        const mean = rates.reduce((s, r) => s + r, 0) / rates.length;
+        process.stdout.write(
+          `\n${difficulty} ${name} ch21-40 ${seeds.map((s, i) => `s${s} ${Math.round(rates[i]! * 100)}%`).join(' ')} | mean ${Math.round(mean * 100)}%\n`,
+        );
+        expect(mean, `${difficulty} ${name} mean challenge completion weeks 21-40`).toBeGreaterThanOrEqual(min);
+        expect(mean, `${difficulty} ${name} mean challenge completion weeks 21-40`).toBeLessThanOrEqual(max);
+      });
+    }
+  });
+}
 
 /** What must repeat for a seed: each week's challenge with its target, and the goal. */
 const sequence = (rows: WeekRow[]) => rows.map((r) => [r.week, r.challenge, r.challengeGoal, r.revenueTarget, r.profitTarget]);

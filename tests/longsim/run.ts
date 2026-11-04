@@ -13,7 +13,7 @@ import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
 import { totalUpgradeLevels } from '../../src/sim/week';
-import type { Difficulty, GameEvent, GameState, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
+import type { Difficulty, GameEvent, GameState, MenuItemId, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
 import { playDay } from '../integration/helpers';
 
 /**
@@ -22,7 +22,9 @@ import { playDay } from '../integration/helpers';
  * for 40 weeks. One row per week: cups, the goal and the week's challenge.
  * E-21 adds d_manage (c_spend with a full team of 4 and high prices from
  * week 9) and b_steady2 (b_steady with a second hire); the E-16 bots leave
- * the new fields unset and play exactly as before.
+ * the new fields unset and play exactly as before. E-24 adds two bots that
+ * never buy an upgrade: a2 (2 staff, standard prices) and a_manage (4 staff,
+ * high prices from week 1), measured only.
  * suite.ts (the *.sim.ts files) prints the table and asserts the style unlock and determinism;
  * it runs with `npm run sim:long`, not in `npm run check`.
  */
@@ -42,13 +44,16 @@ interface Strategy {
   highPriceFromWeek?: number;
 }
 
-export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2';
+export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage';
 
 export const STRATEGIES: Record<StrategyName, Strategy> = {
   c_spend: { hireDay: 1, spend: true, steady: false, chase: 'eager' },
   b_steady: { hireDay: 2, spend: false, steady: true, chase: 'relaxed' },
   d_manage: { hireDay: 1, spend: true, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 9 },
   b_steady2: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2 },
+  /** E-24: no upgrades at all (spend and steady off). */
+  a2: { hireDay: 2, spend: false, steady: false, chase: 'relaxed', staff: 2 },
+  a_manage: { hireDay: 1, spend: false, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 1 },
 };
 
 /** Roles of the team in hiring order: the first hire is the barista. */
@@ -101,12 +106,20 @@ export interface WeekRow {
   /** The challenge's target, item and calm-day floor, for the determinism check. */
   challengeGoal: string;
   completed: boolean;
+  /** The challenge's best day (WeekChallenge.best: calm_day's most customers on a day without walkouts); null without one. */
+  challengeBest: number | null;
   /** Every challenge-gated style is open at the end of the week. */
   allStyles: boolean;
   /** Total upgrade levels at the week's start, before its first purchase (the SIZE_GOAL row). */
   startLevels: number;
   /** The goal came from SIZE_GOAL (it carries its own profit target). */
   sized: boolean;
+  /** Customers served over the week's days (E-24 challenge standard). */
+  served: number;
+  /** Regulars served over the week's days. */
+  regulars: number;
+  /** Cups sold per menu item over the week's days. */
+  sold: Partial<Record<MenuItemId, number>>;
 }
 
 /** Weekly rows of a run; bankruptDay is set when the shop went bankrupt and the run stopped there. */
@@ -174,6 +187,9 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
     const result = week.result;
     if (!result) continue;
     const c = week.challenge;
+    const days = [...state.history.filter((d) => d.day >= week.startedDay), state.today];
+    const sold: Partial<Record<MenuItemId, number>> = {};
+    for (const d of days) for (const [id, n] of Object.entries(d.sold)) sold[id as MenuItemId] = (sold[id as MenuItemId] ?? 0) + (n ?? 0);
     rows.push({
       week: weekIndex(state),
       level: state.shopLevel,
@@ -186,9 +202,13 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       challenge: c?.id ?? null,
       challengeGoal: c ? `${c.target}/${c.itemId ?? '-'}/${c.minServed ?? '-'}` : '',
       completed: c?.status === 'completed',
+      challengeBest: c?.best ?? null,
       allStyles: nextChallengeStyle(state) === null,
       startLevels,
       sized: week.goal.profit !== undefined,
+      served: days.reduce((sum, d) => sum + d.customersServed, 0),
+      regulars: days.reduce((sum, d) => sum + (d.regularsServed ?? 0), 0),
+      sold,
     });
   }
   return rows;

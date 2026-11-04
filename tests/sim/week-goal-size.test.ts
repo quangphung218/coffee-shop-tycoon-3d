@@ -10,6 +10,9 @@ import {
   goalProfitTarget,
   scaledWeekGoal,
   sizeGoal,
+  sizeGoalRowIndex,
+  LEVEL_CURVE,
+  LEVEL_FLOOR_SHARE,
   weekGoal,
   weekProfitTarget,
 } from '../../src/sim/data/week';
@@ -75,6 +78,43 @@ describe('SIZE_GOAL', () => {
     }
   });
 
+  it('profit < revenue on every row (profit at most 0.85x revenue, E-24 UX-302)', () => {
+    for (const d of DIFFS) {
+      SIZE_GOAL[d].forEach((r, i) => {
+        expect(r.profit, `${d} ${i}`).toBeLessThan(r.revenue);
+        expect(r.profit, `${d} ${i}`).toBeLessThanOrEqual(0.85 * r.revenue);
+      });
+    }
+  });
+
+  it('LEVEL_CURVE has weeks 1..40, starts at 0 and never falls', () => {
+    for (const d of DIFFS) {
+      expect(LEVEL_CURVE[d]).toHaveLength(40);
+      expect(LEVEL_CURVE[d][0]).toBe(0);
+      LEVEL_CURVE[d].forEach((l, i) => {
+        expect(Number.isInteger(l)).toBe(true);
+        if (i > 0) expect(l, `${d} week ${i + 1}`).toBeGreaterThanOrEqual(LEVEL_CURVE[d][i - 1]!);
+      });
+    }
+  });
+
+  it('sizeGoalRowIndex is max(levels, floor(0.85 x LEVEL_CURVE[week]))', () => {
+    expect(LEVEL_FLOOR_SHARE).toBe(0.85);
+    for (const d of DIFFS) {
+      for (const week of [9, 15, 21, 30, 40]) {
+        const floor = Math.floor(0.85 * LEVEL_CURVE[d][week - 1]!);
+        expect(floor).toBeGreaterThan(0);
+        expect(sizeGoalRowIndex(d, week, 0)).toBe(floor);
+        expect(sizeGoalRowIndex(d, week, floor - 1)).toBe(floor);
+        expect(sizeGoalRowIndex(d, week, floor + 3)).toBe(floor + 3);
+      }
+      // Past week 40 the last week's floor holds; the index stays a SIZE_GOAL row.
+      expect(sizeGoalRowIndex(d, 90, 0)).toBe(Math.floor(0.85 * LEVEL_CURVE[d][39]!));
+      expect(sizeGoalRowIndex(d, 20, 500)).toBe(SIZE_GOAL_MAX_LEVELS);
+      expect(sizeGoalRowIndex(d, 20, Number.NaN)).toBe(Math.floor(0.85 * LEVEL_CURVE[d][19]!));
+    }
+  });
+
   it('sizeGoal clamps the index', () => {
     for (const d of DIFFS) {
       expect(sizeGoal(d, -3)).toBe(SIZE_GOAL[d][0]);
@@ -123,11 +163,13 @@ describe('saves with an E-19 goal at level 10+', () => {
     s.week!.archive!.push(row(12, r.revenue));
     const levels = totalUpgradeLevels(s);
     expect(levels).toBe(9);
-    const size = sizeGoal('normal', levels);
-    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels }, scaled: false });
+    const rowIndex = sizeGoalRowIndex('normal', 13, levels);
+    expect(rowIndex).toBe(Math.max(levels, Math.floor(LEVEL_FLOOR_SHARE * LEVEL_CURVE.normal[12]!)));
+    const size = sizeGoal('normal', rowIndex);
+    expect(nextWeekGoal(s)).toEqual({ goal: { revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels, row: rowIndex }, scaled: false });
     expect(dispatch(s, { type: 'next_day' })).toBe(true);
     expect(s.week!.index).toBe(13);
-    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels });
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 13).stars, profit: size.profit, levels, row: rowIndex });
     expect(s.week!.goalScaled).toBeUndefined();
   });
 
@@ -138,6 +180,37 @@ describe('saves with an E-19 goal at level 10+', () => {
     old.today = createDayStats(old.day, old.rating);
     old.phase = 'opening';
     expect(load(old).week!.goal).toEqual(goal);
+  });
+});
+
+describe('saves with an E-21 goal (before the level floor, E-24)', () => {
+  it('the running week keeps its old goal; the next week gets the floored row', () => {
+    // An E-21 goal read at the shop's own levels, no `row`: lower than the floor of week 20.
+    const levels = 9;
+    const oldRow = sizeGoal('normal', levels);
+    const e21Goal = { revenue: oldRow.revenue, stars: 4, profit: oldRow.profit, levels };
+    expect(sizeGoalRowIndex('normal', 21, levels)).toBeGreaterThan(levels);
+
+    const midWeek = lastDayOf(20, 12, e21Goal);
+    midWeek.day -= 3;
+    midWeek.today = createDayStats(midWeek.day, midWeek.rating);
+    midWeek.phase = 'opening';
+    expect(load(midWeek).week!.goal).toEqual(e21Goal);
+
+    const s = load(lastDayOf(20, 12, e21Goal));
+    expect(totalUpgradeLevels(s)).toBe(levels);
+    expect(s.week!.goal).toEqual(e21Goal);
+    const r = scoreWeek(s)!;
+    expect(r.revenueTarget).toBe(oldRow.revenue);
+    expect(r.profitTarget).toBe(oldRow.profit);
+
+    s.week!.result = r;
+    s.week!.archive!.push(row(20, r.revenue));
+    expect(dispatch(s, { type: 'next_day' })).toBe(true);
+    expect(s.week!.index).toBe(21);
+    const rowIndex = sizeGoalRowIndex('normal', 21, levels);
+    const size = sizeGoal('normal', rowIndex);
+    expect(s.week!.goal).toEqual({ revenue: size.revenue, stars: weekGoal('normal', 21).stars, profit: size.profit, levels, row: rowIndex });
   });
 });
 
@@ -165,6 +238,8 @@ describe('weeks 1-8 and shops below level 10', () => {
 
   it('from week 9 at level 10 the goal is the SIZE_GOAL row', () => {
     const s = lastDayOf(SIZE_GOAL_FIRST_WEEK - 1, SCALED_GOAL_MIN_LEVEL, weekGoal('normal', 8));
-    expect(nextWeekGoal(s).goal.profit).toBe(sizeGoal('normal', totalUpgradeLevels(s)).profit);
+    const rowIndex = sizeGoalRowIndex('normal', SIZE_GOAL_FIRST_WEEK, totalUpgradeLevels(s));
+    expect(nextWeekGoal(s).goal.row).toBe(rowIndex);
+    expect(nextWeekGoal(s).goal.profit).toBe(sizeGoal('normal', rowIndex).profit);
   });
 });
