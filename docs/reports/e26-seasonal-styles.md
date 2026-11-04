@@ -45,8 +45,7 @@ Tem cuối tuần 40:
 - `b2_styles` giống hệt `b_steady2` trong 23 tuần đầu (trước mùa đầu tiên).
 - `d_manage` không bao giờ mua. Tem cuối seed 1 là 1001, seed 42 là 990.
 
-Tem theo tuần, `b_steady2` (trước) và `b2_styles` (sau), seed 1 và 42 (dòng "normal sN <bot> Tem by week" của longsim, qua báo cáo reviewer). `b_steady2` giống hệt `b2_styles` đến hết tuần 23, nên các tuần đó ghi một số chung. Tuần 24-39 của `b_steady2` không có trong báo cáo, chỉ có tuần 40 (945 / 955).
-
+Tem theo tuần, `b_steady2` (trước) và `b2_styles` (sau), seed 1 và 42 (dòng "normal sN <bot> Tem by week" của longsim, qua báo cáo reviewer). `b_steady2` giống hệt `b2_styles` đến hết tuần 23, nên các tuần đó ghi một số chung.
 | Tuần | s1 `b_steady2` | s1 `b2_styles` | s42 `b_steady2` | s42 `b2_styles` |
 | --- | --- | --- | --- | --- |
 | 1 | 34 | 34 | 35 | 35 |
@@ -72,22 +71,22 @@ Tem theo tuần, `b_steady2` (trước) và `b2_styles` (sau), seed 1 và 42 (d�
 | 21 | 475 | 475 | 442 | 442 |
 | 22 | 483 | 483 | 471 | 471 |
 | 23 | 512 | 512 | 498 | 498 |
-| 24 | n/a | 213 | n/a | 210 |
-| 25 | n/a | 239 | n/a | 220 |
-| 26 | n/a | 241 | n/a | 252 |
-| 27 | n/a | 267 | n/a | 280 |
-| 28 | n/a | 301 | n/a | 309 |
-| 29 | n/a | 317 | n/a | 337 |
-| 30 | n/a | 341 | n/a | 358 |
-| 31 | n/a | 370 | n/a | 373 |
-| 32 | n/a | 82 | n/a | 83 |
-| 33 | n/a | 101 | n/a | 109 |
-| 34 | n/a | 131 | n/a | 136 |
-| 35 | n/a | 157 | n/a | 165 |
-| 36 | n/a | 188 | n/a | 200 |
-| 37 | n/a | 214 | n/a | 232 |
-| 38 | n/a | 249 | n/a | 269 |
-| 39 | n/a | 278 | n/a | 295 |
+| 24 | 533 | 213 | 530 | 210 |
+| 25 | 559 | 239 | 540 | 220 |
+| 26 | 561 | 241 | 572 | 252 |
+| 27 | 587 | 267 | 600 | 280 |
+| 28 | 621 | 301 | 629 | 309 |
+| 29 | 637 | 317 | 657 | 337 |
+| 30 | 661 | 341 | 678 | 358 |
+| 31 | 690 | 370 | 693 | 373 |
+| 32 | 722 | 82 | 723 | 83 |
+| 33 | 741 | 101 | 749 | 109 |
+| 34 | 771 | 131 | 776 | 136 |
+| 35 | 797 | 157 | 805 | 165 |
+| 36 | 828 | 188 | 840 | 200 |
+| 37 | 854 | 214 | 872 | 232 |
+| 38 | 889 | 249 | 909 | 269 |
+| 39 | 918 | 278 | 935 | 295 |
 | 40 | 945 | 65 | 955 | 75 |
 
 Tem `d_manage` theo tuần (tham chiếu thứ hai, số từ báo cáo của builder):
