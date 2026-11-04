@@ -33,7 +33,7 @@ Tổng 11 phong cách theo mùa.
 
 ## Tem theo tuần, trước và sau
 
-Chiến lược `d_manage` (trước) không bao giờ mua phong cách, nên Tem chỉ tích lũy. Chiến lược `b2_styles` (sau, mới ở T-93) mua phong cách theo mùa. Độ khó Normal, 40 tuần, seed 1/42/7/2026.
+Đường cơ sở (trước) là `b_steady2`: không bao giờ mua phong cách, nên Tem chỉ tích lũy. `b2_styles` (sau, mới ở T-93) được dựng từ `b_steady2` và mua phong cách theo mùa. `d_manage` chỉ là tham chiếu thứ hai (cũng không mua). Độ khó Normal, 40 tuần, seed 1/42/7/2026.
 
 Tem cuối tuần 40:
 
@@ -45,7 +45,52 @@ Tem cuối tuần 40:
 - `b2_styles` giống hệt `b_steady2` trong 23 tuần đầu (trước mùa đầu tiên).
 - `d_manage` không bao giờ mua. Tem cuối seed 1 là 1001, seed 42 là 990.
 
-Tem `d_manage` theo tuần (số từ báo cáo của builder):
+Tem theo tuần, `b_steady2` (trước) và `b2_styles` (sau), seed 1 và 42 (dòng "normal sN <bot> Tem by week" của longsim, qua báo cáo reviewer). `b_steady2` giống hệt `b2_styles` đến hết tuần 23, nên các tuần đó ghi một số chung. Tuần 24-39 của `b_steady2` không có trong báo cáo, chỉ có tuần 40 (945 / 955).
+
+| Tuần | s1 `b_steady2` | s1 `b2_styles` | s42 `b_steady2` | s42 `b2_styles` |
+| --- | --- | --- | --- | --- |
+| 1 | 34 | 34 | 35 | 35 |
+| 2 | 67 | 67 | 68 | 68 |
+| 3 | 77 | 77 | 82 | 82 |
+| 4 | 86 | 86 | 87 | 87 |
+| 5 | 118 | 118 | 107 | 107 |
+| 6 | 134 | 134 | 118 | 118 |
+| 7 | 149 | 149 | 131 | 131 |
+| 8 | 158 | 158 | 144 | 144 |
+| 9 | 180 | 180 | 168 | 168 |
+| 10 | 205 | 205 | 193 | 193 |
+| 11 | 231 | 231 | 222 | 222 |
+| 12 | 259 | 259 | 240 | 240 |
+| 13 | 285 | 285 | 262 | 262 |
+| 14 | 307 | 307 | 288 | 288 |
+| 15 | 343 | 343 | 314 | 314 |
+| 16 | 383 | 383 | 340 | 340 |
+| 17 | 401 | 401 | 350 | 350 |
+| 18 | 414 | 414 | 382 | 382 |
+| 19 | 431 | 431 | 411 | 411 |
+| 20 | 449 | 449 | 439 | 439 |
+| 21 | 475 | 475 | 442 | 442 |
+| 22 | 483 | 483 | 471 | 471 |
+| 23 | 512 | 512 | 498 | 498 |
+| 24 | n/a | 213 | n/a | 210 |
+| 25 | n/a | 239 | n/a | 220 |
+| 26 | n/a | 241 | n/a | 252 |
+| 27 | n/a | 267 | n/a | 280 |
+| 28 | n/a | 301 | n/a | 309 |
+| 29 | n/a | 317 | n/a | 337 |
+| 30 | n/a | 341 | n/a | 358 |
+| 31 | n/a | 370 | n/a | 373 |
+| 32 | n/a | 82 | n/a | 83 |
+| 33 | n/a | 101 | n/a | 109 |
+| 34 | n/a | 131 | n/a | 136 |
+| 35 | n/a | 157 | n/a | 165 |
+| 36 | n/a | 188 | n/a | 200 |
+| 37 | n/a | 214 | n/a | 232 |
+| 38 | n/a | 249 | n/a | 269 |
+| 39 | n/a | 278 | n/a | 295 |
+| 40 | 945 | 65 | 955 | 75 |
+
+Tem `d_manage` theo tuần (tham chiếu thứ hai, số từ báo cáo của builder):
 
 | Tuần | Seed 1 | Seed 42 | Tuần | Seed 1 | Seed 42 |
 | --- | --- | --- | --- | --- | --- |
@@ -70,13 +115,11 @@ Tem `d_manage` theo tuần (số từ báo cáo của builder):
 | 19 | 409 | 412 | 39 | 968 | 966 |
 | 20 | 427 | 434 | 40 | 1001 | 990 |
 
-Báo cáo của builder không có Tem theo từng tuần của `b2_styles`, chỉ có giá trị cuối tuần 40 ở trên.
-
 ## Longsim trước và sau
 
 - Chạy Normal, 4 seed (1/42/7/2026), 40 tuần.
-- Dòng tóm tắt của `b_steady2` và `d_manage` giống hệt đường cơ sở v0.36.0+T-92 (so 28 dòng).
-- Lời hứa E-21: 6/6 assert đạt.
+- Dòng tóm tắt của `b_steady2` và `d_manage` giống hệt đường cơ sở v0.36.0+T-92: 28 dòng tóm tắt/mốc giống hệt (báo cáo reviewer T-93).
+- Lời hứa E-21: 6/6 assert đạt trên Normal, 4 seed (báo cáo reviewer T-93).
 - `b2_styles` (T-93) chạy cả ở Easy và Hard (7 bot thay vì 6, thêm khoảng 1/6 thời gian mô phỏng), nhưng chỉ được assert ở Normal. Thời gian Easy/Hard chưa đo.
 - Thời gian chạy Normal 4 seed: đường cơ sở 582s so với task 490s. Số đo nhiễu, không dùng để kết luận về tốc độ.
 
