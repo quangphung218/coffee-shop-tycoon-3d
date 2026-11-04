@@ -481,10 +481,9 @@ async function capture(page, vp, name, extra = {}) {
   }
 }
 
-/** Runs in the page: the HUD clock, e.g. '11:05' (the pill labelled "Giờ"; the level chip has a <b> too). */
+/** Runs in the page: the HUD clock, e.g. '11:05'. */
 function hudClock() {
-  const pill = [...document.querySelectorAll('.hud .hud-stat')].find((p) => p.querySelector('small')?.textContent === 'Giờ');
-  return pill?.querySelector('b')?.textContent ?? '';
+  return document.querySelector('.hud [data-stat="clock"]')?.textContent ?? '';
 }
 
 function clockText(page) {
@@ -496,7 +495,7 @@ async function waitClock(page, vp, hhmm, ms) {
   await page.setViewportSize(IDLE);
   try {
     await page.waitForFunction(
-      (t) => ([...document.querySelectorAll('.hud .hud-stat')].find((p) => p.querySelector('small')?.textContent === 'Giờ')?.querySelector('b')?.textContent ?? '') >= t,
+      (t) => (document.querySelector('.hud [data-stat="clock"]')?.textContent ?? '') >= t,
       hhmm,
       { timeout: ms, polling: 250 },
     );

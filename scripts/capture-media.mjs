@@ -78,7 +78,7 @@ const SETTINGS_UNCLIP = `
   .ui-screen.is-sheet { overflow: auto !important; }
 `;
 /** A 4x day lasts about 2 minutes with a fast renderer; software WebGL is slower. */
-const DAY_TIMEOUT_MS = 8 * 60_000;
+const DAY_TIMEOUT_MS = Number(process.env.MEDIA_DAY_TIMEOUT_MS) || 8 * 60_000;
 /** Commit of the P18 build and screenshots the P19 boards compare against (git archive, git show). */
 const P18_COMMIT = 'd643d89';
 /** Kho at open hours: staff hired, then the day runs at 4x to this clock with the starting stock. */
@@ -117,21 +117,38 @@ function sizeMb(path) {
   return statSync(path).size / 1024 / 1024;
 }
 
-/** Waits until the HUD clock reads `hhmm` or later. */
-function clockAt(page, hhmm) {
-  return page.waitForFunction(
-    (t) => {
-      const clock = document.querySelectorAll('.hud .hud-stat b')[1]?.textContent ?? '';
-      return clock >= t;
-    },
-    hhmm,
-    { timeout: DAY_TIMEOUT_MS },
-  );
+/** Clicks "Mở cửa"; with an empty Kho or no staff it asks first (UX-004), so confirm. */
+async function openShop(page) {
+  await page.locator('[data-action="open"]').click();
+  const confirm = page.getByRole('button', { name: 'Vẫn mở cửa', exact: true });
+  if (await confirm.waitFor({ timeout: 1500 }).then(() => true, () => false)) await confirm.click();
+}
+
+/** Waits until the HUD clock (`data-stat` today; the P18 build only has the second `.hud-stat b`) reads `hhmm` or later. */
+async function clockAt(page, hhmm) {
+  try {
+    return await page.waitForFunction(
+      (t) => {
+        const clock = (document.querySelector('.hud [data-stat="clock"]') ?? document.querySelectorAll('.hud .hud-stat b')[1])?.textContent ?? '';
+        return clock >= t;
+      },
+      hhmm,
+      { timeout: DAY_TIMEOUT_MS },
+    );
+  } catch (err) {
+    // Say what the screen showed, so a stalled day is not just a bare timeout.
+    const seen = await page.evaluate(() => ({
+      hud: document.querySelector('.hud')?.innerText.replace(/\s+/g, ' ').slice(0, 200) ?? null,
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].filter((d) => d.checkVisibility()).map((d) => d.innerText.replace(/\s+/g, ' ').slice(0, 120)),
+    }));
+    console.error(`waiting for clock ${hhmm}; screen: ${JSON.stringify(seen)}`);
+    throw err;
+  }
 }
 
 /** HUD clock text, e.g. '19:32'. */
 function clockText(page) {
-  return page.evaluate(() => document.querySelectorAll('.hud .hud-stat b')[1]?.textContent ?? '');
+  return page.evaluate(() => (document.querySelector('.hud [data-stat="clock"]') ?? document.querySelectorAll('.hud .hud-stat b')[1])?.textContent ?? '');
 }
 
 /** Home resets the camera (smoothly); then zoom in by `wheel` around the middle of the view. */
@@ -350,7 +367,7 @@ async function playDay(page, videoStart) {
   await sleep(INTRO_S * 1000);
 
   const openAt = at() - INTRO_S;
-  await page.locator('[data-action="open"]').click();
+  await openShop(page);
   await page.locator('[data-speed="4"]').click();
 
   // Mid-morning sun on the awning, sign and door.
@@ -546,7 +563,7 @@ async function khoSession(browser, url, focus) {
       await sleep(300);
     }
     await page.locator('.dock [data-panel="staff"]').click();
-    await page.locator('[data-action="open"]').click();
+    await openShop(page);
     await page.locator('[data-speed="4"]').click();
     await clockAt(page, KHO_OPEN_AT);
     await openKho();
