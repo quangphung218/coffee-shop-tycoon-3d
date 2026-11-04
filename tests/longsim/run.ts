@@ -2,6 +2,7 @@ import { expect } from 'vitest';
 import { nextChallengeStyle } from '../../src/sim/challenges';
 import { LEVELS } from '../../src/sim/data/levels';
 import { MARKETING } from '../../src/sim/data/marketing';
+import { seasonFor, seasonalStylesFor } from '../../src/sim/data/seasons';
 import { getMenuItem } from '../../src/sim/data/menu';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { WEEK_LENGTH, dayUnlockDay } from '../../src/sim/data/week';
@@ -11,6 +12,7 @@ import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { isUnlocked, weekDay, weekIndex } from '../../src/sim/progression';
 import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
+import { canAffordStyle } from '../../src/sim/styles';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
 import { totalUpgradeLevels } from '../../src/sim/week';
 import type { Difficulty, GameEvent, GameState, MenuItemId, StaffRole, UpgradeId, WeekChallengeId } from '../../src/sim/types';
@@ -24,7 +26,10 @@ import { playDay } from '../integration/helpers';
  * week 9) and b_steady2 (b_steady with a second hire); the E-16 bots leave
  * the new fields unset and play exactly as before. E-24 adds two bots that
  * never buy an upgrade: a2 (2 staff, standard prices) and a_manage (4 staff,
- * high prices from week 1), measured only.
+ * high prices from week 1), measured only. E-26 adds b2_styles: b_steady2
+ * that also buys the active season's styles (buy_style) whenever its Tem
+ * covers one, after its upgrades; a sign style is bought only when the money
+ * left above the reserve covers its price. The other bots never buy a style.
  * suite.ts (the *.sim.ts files) prints the table and asserts the style unlock and determinism;
  * it runs with `npm run sim:long`, not in `npm run check`.
  */
@@ -42,9 +47,11 @@ interface Strategy {
   staff?: number;
   /** Week from which the price policy is high; unset keeps standard prices. */
   highPriceFromWeek?: number;
+  /** E-26: buy the active season's styles when the Tem (and, for a sign, the spare money) covers them. */
+  styles?: boolean;
 }
 
-export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage';
+export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage' | 'b2_styles';
 
 export const STRATEGIES: Record<StrategyName, Strategy> = {
   c_spend: { hireDay: 1, spend: true, steady: false, chase: 'eager' },
@@ -54,6 +61,8 @@ export const STRATEGIES: Record<StrategyName, Strategy> = {
   /** E-24: no upgrades at all (spend and steady off). */
   a2: { hireDay: 2, spend: false, steady: false, chase: 'relaxed', staff: 2 },
   a_manage: { hireDay: 1, spend: false, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 1 },
+  /** E-26: b_steady2 plus seasonal styles. */
+  b2_styles: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, styles: true },
 };
 
 /** Roles of the team in hiring order: the first hire is the barista. */
@@ -76,6 +85,17 @@ function reserve(state: GameState): number {
   const drained = structuredClone(state);
   for (const item of drained.inventory) item.qty = 0;
   return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
+}
+
+/** Buys every style of the week's season the Tem covers (a priced one only from money above the reserve); returns the number bought. */
+function buySeasonStyles(state: GameState): number {
+  let bought = 0;
+  for (const style of seasonalStylesFor(weekIndex(state))) {
+    if (!canAffordStyle(state, style.id) || state.money - reserve(state) < style.price) continue;
+    expect(dispatch(state, { type: 'buy_style', styleId: style.id })).toBe(true);
+    bought++;
+  }
+  return bought;
 }
 
 function buyCheapest(state: GameState, pick: (id: UpgradeId) => boolean, max: number): void {
@@ -120,10 +140,17 @@ export interface WeekRow {
   regulars: number;
   /** Cups sold per menu item over the week's days. */
   sold: Partial<Record<MenuItemId, number>>;
+  /** Tem held at the end of the week. */
+  tem: number;
+  /** Styles bought over the week (E-26 b2_styles). */
+  stylesBought: number;
 }
 
 /** Weekly rows of a run; bankruptDay is set when the shop went bankrupt and the run stopped there. */
 export type WeekRows = WeekRow[] & { bankruptDay?: number };
+
+/** Season indices (seasonFor().index) in which a run bought at least one style. */
+export const styleSeasons = (rows: WeekRow[]) => [...new Set(rows.filter((r) => r.stylesBought > 0).map((r) => seasonFor(r.week)!.index))];
 
 /** Called after each played day with that day's events (E-22 reads the regular milestones). */
 export type DayHook = (state: GameState, events: GameEvent[]) => void;
@@ -147,12 +174,14 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
     }
   };
   let startLevels = 0;
+  let stylesBought = 0;
   for (let day = 1; day <= weeks * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
     if (weekDay(state) === 1) {
       narrowed.clear();
       startLevels = totalUpgradeLevels(state);
+      stylesBought = 0;
     }
     enableUnlocked();
     const challenge = state.week?.challenge;
@@ -174,6 +203,7 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
     }
     if (s.spend) buyCheapest(state, () => true, 100);
     if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, steadyPick, 1);
+    if (s.styles) stylesBought += buySeasonStyles(state);
     if (s.chase === 'eager' && active && (challenge.id === 'served_week' || challenge.id === 'regular_visits') && state.money - reserve(state) >= CHEAPEST_CAMPAIGN.cost) {
       dispatch(state, { type: 'start_campaign', campaignId: CHEAPEST_CAMPAIGN.id });
     }
@@ -209,6 +239,8 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       served: days.reduce((sum, d) => sum + d.customersServed, 0),
       regulars: days.reduce((sum, d) => sum + (d.regularsServed ?? 0), 0),
       sold,
+      tem: state.retention?.tickets ?? 0,
+      stylesBought,
     });
   }
   return rows;

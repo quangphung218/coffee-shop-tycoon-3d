@@ -1049,6 +1049,54 @@ function stylesSave(mods) {
   return saveText(mods.save, state, FIXED_NOW);
 }
 
+/** A new Easy game in week 25 (E-26 T-94): the first season (Mùa xuân) on sale, money and Tem enough to buy Tường hoa đào. */
+function seasonSave(mods) {
+  const state = mods.stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+  state.money = 20_000_000;
+  mods.retention.ensureRetention(state).tickets = 75;
+  state.week.index = 25;
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * T-94 Mùa này: the season block shows its title, "Còn N tuần để mua" and the
+ * season's rows; then a season style previewed with its Mua confirm open (at
+ * ≤ 480 px through the bar, then the list opened again). Must not overflow,
+ * no dialog, every button at least --size-target.
+ */
+async function checkSeasonBlock(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const panel = '#ui > .panel:not([hidden])';
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'styles');
+    await page.locator(`${panel} [data-block="season"]:not([hidden])`).waitFor();
+    await checkScreen(page, results, size, 'Phong cách quán: Mùa này', PANEL_FRAME);
+    const fails = [];
+    const left = await page.locator(`${panel} [data-summary="season-weeks"]`).textContent();
+    if (!/^Còn \d+ tuần để mua$/.test(left ?? '')) fails.push(`weeks left "${left}"`);
+    const rows = await page.locator(`${panel} [data-block="season"] li[data-style]:not([hidden])`).count();
+    if (rows < 3) fails.push(`${rows} season rows shown`);
+    const id = 'wall_peach';
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"]`).click();
+    if (viewport.width <= PREVIEW_BAR_MAX) {
+      await page.locator(`${panel} .style-bar:not([hidden])`).waitFor();
+      await page.locator(`${panel} .style-bar [data-action="reopen"]`).click();
+      await page.locator(`${panel} .style-list:not([hidden])`).waitFor();
+    }
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="buy"]`).click();
+    await page.locator(`${panel} li[data-style="${id}"] .confirm`).waitFor();
+    await checkScreen(page, results, size, 'Phong cách quán: Mùa này, xác nhận Mua', PANEL_FRAME);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: panel, target, eps: EPS });
+    const dialogs = await page.evaluate(() => [...document.querySelectorAll('dialog[open], [role="dialog"]:not([hidden]), [aria-modal="true"]')].filter((e) => e.checkVisibility()).length);
+    fails.push(...small.out, ...(dialogs ? [`${dialogs} dialog(s) open`] : []));
+    results.push({ viewport: size, screen: 'Phong cách quán: Mùa này, nút', pass: fails.length === 0, detail: `${rows} kiểu mùa, "${left}"; ${small.count} nút ≥ ${target} px`, fails });
+  } finally {
+    await context.close();
+  }
+}
+
 /**
  * T-51 Phong cách quán: on Tường the locked Ốp gỗ ấm previewed (its
  * challenge line), then Tường bạc hà previewed with the in-place Mua confirm
@@ -1355,10 +1403,12 @@ async function main() {
       }
     }
     const styles = part('styles') ? stylesSave(mods) : null;
+    const seasonStyles = part('styles') ? seasonSave(mods) : null;
     for (const viewport of part('styles') ? P25_VIEWPORTS : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
         await checkStylesPanel(browser, viewport, styles, overflow);
+        await checkSeasonBlock(browser, viewport, seasonStyles, overflow);
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Phong cách quán', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });

@@ -1,4 +1,6 @@
+import { nextSeasonWeek, styleOnSale } from './data/seasons';
 import { STYLE_SLOTS, defaultStyle, styleById, type StyleDef } from './data/styles';
+import { weekIndex } from './progression';
 import { ensureRetention } from './retention';
 import type { GameState, ShopStyles, StyleSlot } from './types';
 
@@ -45,6 +47,7 @@ export function styleBlockedReason(state: GameState, id: string): string | null 
   if (!style) return 'Không có kiểu này';
   if (ownsStyle(state, id)) return `Đã có ${style.name}`;
   if (!isStyleUnlocked(state, id)) return `${style.name} mở khi hoàn thành thử thách tuần`;
+  if (!styleOnSale(style, weekIndex(state))) return `Mua ${style.name} từ tuần ${nextSeasonWeek(style.season!, weekIndex(state))}`;
   if (state.money < style.price) return `Không đủ tiền mua ${style.name}`;
   const tickets = state.retention?.tickets ?? 0;
   if (tickets < style.tickets) return `Thiếu ${style.tickets - tickets} Tem`;
