@@ -377,7 +377,7 @@ function daysBlock(r: WeekResult, best: number | null, startDay = 1): HTMLElemen
 /** What the next shop level brings: new items, or one more level on a few upgrades. */
 function nextLevelLine(state: GameState): HTMLElement {
   const level = state.shopLevel;
-  if (level >= MAX_SHOP_LEVEL) return h('p', { attrs: { 'data-next': 'level' } }, icon('i-level', { size: 16 }), 'Quán đã ở cấp cao nhất.');
+  if (level >= MAX_SHOP_LEVEL) return h('p', { attrs: { 'data-next': 'level' } }, icon('i-level', { size: 16 }), h('span', { text: 'Quán đã ở cấp cao nhất.' }));
   const def = LEVELS[level]!;
   const names = unlockNames(unlocksBetween(level, level + 1));
   const bonus = Object.keys(def.maxLevelBonus ?? {}).map((id) => getUpgrade(id as UpgradeId).name).join(', ');
