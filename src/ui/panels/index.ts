@@ -5,6 +5,7 @@ import { registerPanel, type PanelDef, type PanelRender } from '../hud/panels';
 import { menuBadge, staffBadge } from '../highExpiry';
 import { renderInventoryPanel } from './inventory';
 import { renderMarketingPanel } from './marketing';
+import { stylesNewMark } from '../seasonHints';
 import { renderMenuPanel } from './menu';
 import { renderStaffPanel } from './staff';
 import { renderStylesPanel, STYLES_PANEL_ID } from './styles';
@@ -37,7 +38,7 @@ export const PREP_PANELS: readonly PanelDef[] = [
   { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, badge: staffBadge, group: 'ops' },
   { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel, group: 'dev' },
   { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel, group: 'dev' },
-  { id: STYLES_PANEL_ID, label: 'Phong cách', icon: 'i-paintings', render: renderStylesPanel, group: 'dev' },
+  { id: STYLES_PANEL_ID, label: 'Phong cách', icon: 'i-paintings', render: renderStylesPanel, group: 'dev', isNew: stylesNewMark },
 ];
 
 /** Panels need a running game; on the main menu they say so instead of failing. */
@@ -53,6 +54,6 @@ function guarded(render: PanelRender): PanelRender {
 
 /** Adds the seven panels to the dock. Returns a function that removes them. */
 export function registerPrepPanels(): () => void {
-  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group));
+  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group, p.isNew));
   return () => offs.forEach((off) => off());
 }

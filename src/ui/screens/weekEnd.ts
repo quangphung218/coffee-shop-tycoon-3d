@@ -19,6 +19,7 @@ import { DAY_EVENT_LABELS, WEATHER_LABELS } from '../hud/hud';
 import type { SaveStatus } from '../report';
 import { starsEl } from '../report/reviews';
 import { highEndsNextWeekLines } from '../highExpiry';
+import { seasonWeekEndLine } from '../seasonHints';
 import { challengeBlock, challengeView, sizeGoalHint, sizeGoalLineText } from '../weekGoal';
 
 export interface WeekEndActions {
@@ -441,8 +442,16 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
       ...highEndsNextWeekLines(state, index + 1).map(({ policy, text }) =>
         h('p', { attrs: { 'data-next': `${policy}-ends` } }, icon('i-clock', { size: 16 }), h('span', { text })),
       ),
+      seasonLine(state, index + 1),
     ),
   );
+}
+
+/** E-30: next week starts a season or is its last week (seasonWeekEndLine); null otherwise. */
+function seasonLine(state: GameState, next: number): HTMLElement | null {
+  const line = seasonWeekEndLine(state, next);
+  if (!line) return null;
+  return h('p', { attrs: { 'data-next': `season-${line.kind}` } }, icon(line.kind === 'last' ? 'i-clock' : 'i-paintings', { size: 16 }), h('span', { text: line.text }));
 }
 
 /** Week `next` draws a side challenge (from CHALLENGE_FIRST_WEEK): say so and name the style it can open; null before. */

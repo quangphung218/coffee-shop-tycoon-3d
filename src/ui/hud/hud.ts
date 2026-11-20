@@ -799,13 +799,13 @@ export function createHud(actions: HudActions): Hud {
           spoken.textContent = n > 0 ? `, ${n} mục cần chú ý` : '';
         });
       }
-      // "Mới": a small dot while the panel holds items opened this session and is not open.
+      // "Mới": a small dot while the panel holds items opened this session (or its isNew says so) and is not open.
       const id = p.id;
       const newSpoken = h('span', { class: 'sr-only', attrs: { 'data-fresh-sr': '' } });
       const newDot = h('span', { class: 'dock-new', hidden: true, attrs: { 'aria-hidden': 'true' } });
       btn.append(newSpoken, newDot);
       dockWatch.watch(
-        () => fresh.count(id) > 0 && openId !== id,
+        (s) => (fresh.count(id) > 0 || (p.isNew?.(s) ?? false)) && openId !== id,
         (on) => {
           newDot.hidden = !on;
           newSpoken.textContent = on ? ', có mục mới' : '';
