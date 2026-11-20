@@ -1,5 +1,5 @@
 import { totalWages } from '../../sim/economy';
-import { canChangePolicy, policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
+import { canChangePolicy, HIGH_WAGE_DAYS, highWageDaysLeft, highWageJustEnded, policyLevel, WAGE_POLICY, wageMult } from '../../sim/policies';
 import { STAFF_TRAITS } from '../../sim/data/staffTraits';
 import { UNIFORMS, uniformOf, type Uniform } from '../../sim/data/uniforms';
 import { ROLE_NAMES, rolePlan } from '../../sim/staff';
@@ -30,6 +30,17 @@ export function wagePolicyHint(state: GameState, level: PolicyLevel): string {
   const speed = p.speedMult > 1 ? `làm nhanh hơn ${pct}%` : p.speedMult < 1 ? `làm chậm hơn ${pct}%` : 'tốc độ gốc';
   return `${name}: tổng lương ${total}/ngày, ${speed}.`;
 }
+
+/** "Lương Cao còn N ngày." under Mức lương while the High wage runs (today counted); mirrors highPriceLeftText. */
+export function highWageLeftText(days: number): string {
+  return `Lương Cao còn ${days} ngày.`;
+}
+
+/** The notice the day the High wage ran out: only what the player can do. */
+export const HIGH_WAGE_ENDED_TEXT = `Đặt lại lương Cao để giữ thêm ${HIGH_WAGE_DAYS} ngày.`;
+
+/** The notice's button. */
+export const HIGH_WAGE_RESET_TEXT = 'Đặt lại lương Cao';
 
 /** A daily wage at the chosen Mức lương. */
 const paid = (s: GameState, wage: number): number => Math.round(wage * wageMult(s));
@@ -149,6 +160,25 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   wageSeg.el.setAttribute('aria-labelledby', wageTitleId);
   const wageHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'wage' } });
   const wageWhy = reasonLine(false);
+  // E-29: days of High wage left while it runs; the day it ran out, a notice with a button that sets it again (as Mức giá, E-28).
+  const wageLeft = h('p', { class: 'item-meta', hidden: true, attrs: { 'data-hint': 'wage-left' } });
+  const wageResetBtn = h('button', {
+    class: 'btn btn-secondary btn-sm',
+    attrs: { type: 'button', 'data-action': 'wage-high-again' },
+    text: HIGH_WAGE_RESET_TEXT,
+    on: { click: () => send({ type: 'set_policy', policy: 'wage', level: 'high' }) },
+  });
+  const wageEnded = h('div', { class: 'reason', hidden: true, attrs: { 'data-notice': 'wage-ended', role: 'status' } }, h('p', { text: HIGH_WAGE_ENDED_TEXT }), wageResetBtn);
+  w.watch(
+    (s) => `${highWageDaysLeft(s) ?? ''}|${highWageJustEnded(s)}|${canChangePolicy(s)}`,
+    (_, s) => {
+      const left = highWageDaysLeft(s);
+      wageLeft.hidden = left === null;
+      wageLeft.textContent = left === null ? '' : highWageLeftText(left);
+      // Setting a wage only works while preparing, so the notice shows then.
+      wageEnded.hidden = !(highWageJustEnded(s) && canChangePolicy(s));
+    },
+  );
   w.watch(
     (s) => canChangePolicy(s),
     (_, s) => lockPolicyChoice(wageSeg.el, wageWhy, s),
@@ -374,7 +404,7 @@ export function renderStaffPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       h(
         'div',
         { class: 'setting', attrs: { 'data-policy': 'wage' } },
-        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: wageTitleId }, ...withIcon('i-coin', 'Mức lương', 24)), wageHint, wageWhy),
+        h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: wageTitleId }, ...withIcon('i-coin', 'Mức lương', 24)), wageHint, wageLeft, wageEnded, wageWhy),
         wageSeg.el,
       ),
       h('p', { class: 'intro intro-icon' }, icon('i-people', { size: 16 }), teamCount),

@@ -662,7 +662,8 @@ describe('one row template for Nhân viên, Marketing, Nâng cấp and Việc', 
     q<HTMLButtonElement>(up.body, '[data-upgrade="tables"] .confirm [data-action="confirm"]').click();
     for (const body of [staff.body, mk.body, up.body]) {
       expect(body.textContent).not.toMatch(/Đã (tuyển|chạy|mua)|Còn lại|−[\d.]+đ/);
-      expect(body.querySelector('[role="status"]')).toBeNull();
+      // A hidden status (the E-29 High-wage ended notice) is not a transaction sentence.
+      expect(body.querySelector('[role="status"]:not([hidden])')).toBeNull();
     }
   });
 });
