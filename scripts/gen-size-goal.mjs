@@ -33,6 +33,10 @@
 // SIZE_GOAL_FIRST_WEEK the game reads the SIZE_GOAL row at
 // max(levels at week start, floor(LEVEL_FLOOR_SHARE x LEVEL_CURVE[week])), so a
 // shop that never upgrades still gets the goal of a shop of its age.
+// E-29 adds the staff's training levels (TRAINING_ROW_LEVELS each) and, in
+// weeks 21-30, a floor of NON_DECOR_FLOOR_RATIO x non-decor levels; b_steady2
+// never trains and keeps total / non-decor levels above that ratio, so its
+// rows, and this table, do not change.
 //
 // Usage: node scripts/gen-size-goal.mjs [--samples file.json] [--save file.json] [--dry]
 //   --samples reads samples saved before instead of playing; --save writes them;

@@ -98,6 +98,12 @@ export function setPolicy(state: GameState, policy: PolicyId, level: PolicyLevel
     else delete state.highPriceSinceDay;
     delete state.highPriceEndedDay;
   }
+  if (policy === 'wage') {
+    // E-29: same rule as the price. Setting High again restarts the count.
+    if (level === 'high') state.highWageSinceDay = state.day;
+    else delete state.highWageSinceDay;
+    delete state.highWageEndedDay;
+  }
   return true;
 }
 
@@ -136,5 +142,44 @@ export function expireHighPrice(state: GameState): boolean {
   delete state.highPriceSinceDay;
   state.highPriceEndedDay = state.day;
   state.events.push({ type: 'notify', level: 'info', text: `Giá cao đã hết sau ${HIGH_PRICE_DAYS} ngày, quán về giá thường` });
+  return true;
+}
+
+/** In-game days the High wage policy lasts before it reverts to Standard (E-29, same rule as HIGH_PRICE_DAYS). */
+export const HIGH_WAGE_DAYS = 7;
+
+/** Days of High wage left, today included (HIGH_WAGE_DAYS on the day it is set), or null while the wage is not High. */
+export function highWageDaysLeft(state: GameState): number | null {
+  if (policyLevel(state, 'wage') !== 'high') return null;
+  const since = typeof state.highWageSinceDay === 'number' ? state.highWageSinceDay : state.day;
+  return Math.max(1, Math.min(HIGH_WAGE_DAYS, HIGH_WAGE_DAYS - (state.day - since)));
+}
+
+/** True on the day the High wage ran out while the wage is still not High again. */
+export function highWageJustEnded(state: GameState): boolean {
+  return state.highWageEndedDay === state.day && policyLevel(state, 'wage') !== 'high';
+}
+
+/**
+ * Reverts the High wage policy to Standard once it has run HIGH_WAGE_DAYS
+ * days: set on day D, it holds days D..D+6 and is Standard from day D+7. Call
+ * when a new day starts. Low and Standard never expire. A High wage without a
+ * start day starts its count today. Re-set it with setPolicy(state, 'wage',
+ * 'high'). Returns true when it reverted.
+ */
+export function expireHighWage(state: GameState): boolean {
+  if (policyLevel(state, 'wage') !== 'high') {
+    delete state.highWageSinceDay;
+    return false;
+  }
+  if (typeof state.highWageSinceDay !== 'number') {
+    state.highWageSinceDay = state.day;
+    return false;
+  }
+  if (state.day - state.highWageSinceDay < HIGH_WAGE_DAYS) return false;
+  state.policies = { ...DEFAULT_POLICIES, ...state.policies, wage: 'standard' };
+  delete state.highWageSinceDay;
+  state.highWageEndedDay = state.day;
+  state.events.push({ type: 'notify', level: 'info', text: `Lương cao đã hết sau ${HIGH_WAGE_DAYS} ngày, quán về lương thường` });
   return true;
 }

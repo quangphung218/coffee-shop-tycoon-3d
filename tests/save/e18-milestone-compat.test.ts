@@ -53,8 +53,8 @@ function load(text: string): GameState {
 }
 
 describe('E-18/E-22 milestone save compatibility', { timeout: 120_000 }, () => {
-  it('keeps SAVE_VERSION 8 (E-23 only adds analytics consent): kept milestones are filled on load', () => {
-    expect(SAVE_VERSION).toBe(8);
+  it('keeps SAVE_VERSION 9 (E-23 only adds analytics consent): kept milestones are filled on load', () => {
+    expect(SAVE_VERSION).toBe(9);
   });
 
   it('keeps the milestones an old save reached in E-18’s book, paying nothing on load', () => {

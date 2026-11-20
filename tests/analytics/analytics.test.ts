@@ -151,8 +151,8 @@ describe('analytics track (E-23)', () => {
 describe('analyticsConsent in the save (E-23)', () => {
   const state = () => createNewGame('Consent Cafe', 'normal', 7);
 
-  it('is at SAVE_VERSION 8', () => {
-    expect(SAVE_VERSION).toBe(8);
+  it('is at SAVE_VERSION 9', () => {
+    expect(SAVE_VERSION).toBe(9);
   });
 
   it('migrates v6 and older saves to analyticsConsent "unasked", state untouched', () => {
@@ -161,7 +161,7 @@ describe('analyticsConsent in the save (E-23)', () => {
       const r = migrate(JSON.parse(JSON.stringify({ version, savedAt: 9, state: s })));
       expect(r.ok).toBe(true);
       if (!r.ok) continue;
-      expect(r.value.version).toBe(8);
+      expect(r.value.version).toBe(9);
       expect(r.value.analyticsConsent).toBe('unasked');
       expect(r.value.savedAt).toBe(9);
       expect(r.value.state.shopName).toBe('Consent Cafe');
