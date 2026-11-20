@@ -11,7 +11,9 @@ import {
   sizeGoalRowIndex,
   upgradeAmortizeWeeks,
   weekGoal,
+  type SizeGoalExtra,
 } from './data/week';
+import { UPGRADES } from './data/upgrades';
 import { profit } from './economy';
 import { weekDay, weekIndex } from './progression';
 import { weightedIndex, type RngHolder } from './rng';
@@ -312,11 +314,28 @@ export function totalUpgradeLevels(state: GameState): number {
   return Object.values(state.upgrades).reduce<number>((s, l) => s + (typeof l === 'number' ? l : 0), 0);
 }
 
+const DECOR_UPGRADES: ReadonlySet<string> = new Set(UPGRADES.filter((u) => u.category === 'decor').map((u) => u.id));
+
+/** Training levels (sum of level - 1 over the employed staff) and non-decor upgrade levels the SIZE_GOAL row reads beside the total levels (E-29). */
+export function sizeGoalExtra(state: GameState): SizeGoalExtra {
+  let decor = 0;
+  for (const [id, level] of Object.entries(state.upgrades)) if (typeof level === 'number' && DECOR_UPGRADES.has(id)) decor += level;
+  return {
+    trainingLevels: state.staff.reduce((s, m) => s + Math.max(0, (m.level ?? 1) - 1), 0),
+    nonDecorLevels: totalUpgradeLevels(state) - decor,
+  };
+}
+
+/** SIZE_GOAL row index of week `index` for the shop as it is now (sizeGoalRowIndex with sizeGoalExtra). */
+export function sizeGoalRowOf(state: GameState, index: number): number {
+  return sizeGoalRowIndex(state.difficulty, index, totalUpgradeLevels(state), sizeGoalExtra(state));
+}
+
 /**
  * Targets of the week that follows the current one. From week
  * SIZE_GOAL_FIRST_WEEK at shop level SCALED_GOAL_MIN_LEVEL they are the
- * SIZE_GOAL row sizeGoalRowIndex picks from the shop's total upgrade levels
- * and the week (revenue and profit; stars of weekGoal). Otherwise scaledWeekGoal: from shop level 10 they follow the
+ * SIZE_GOAL row sizeGoalRowOf picks from the shop's total upgrade levels,
+ * its staff's training and non-decor levels (E-29) and the week (revenue and profit; stars of weekGoal). Otherwise scaledWeekGoal: from shop level 10 they follow the
  * revenue of the archived weeks, and `scaled` is true when that revenue set
  * the target. Call before next_day to preview the next week.
  */
@@ -324,7 +343,7 @@ export function nextWeekGoal(state: GameState): { goal: WeekGoal; scaled: boolea
   const index = weekIndex(state) + 1;
   if (state.shopLevel >= SCALED_GOAL_MIN_LEVEL && index >= SIZE_GOAL_FIRST_WEEK) {
     const levels = totalUpgradeLevels(state);
-    const rowIndex = sizeGoalRowIndex(state.difficulty, index, levels);
+    const rowIndex = sizeGoalRowOf(state, index);
     const row = sizeGoal(state.difficulty, rowIndex);
     return {
       goal: { revenue: row.revenue, stars: weekGoal(state.difficulty, index).stars, profit: row.profit, levels, row: rowIndex },
