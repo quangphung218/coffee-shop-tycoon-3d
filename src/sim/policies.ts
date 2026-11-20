@@ -96,12 +96,25 @@ export function setPolicy(state: GameState, policy: PolicyId, level: PolicyLevel
     // Setting High again restarts the count; Low and Standard never expire.
     if (level === 'high') state.highPriceSinceDay = state.day;
     else delete state.highPriceSinceDay;
+    delete state.highPriceEndedDay;
   }
   return true;
 }
 
 /** In-game days the High price policy lasts before it reverts to Standard (E-28). */
 export const HIGH_PRICE_DAYS = 7;
+
+/** Days of High price left, today included (HIGH_PRICE_DAYS on the day it is set), or null while the price is not High. */
+export function highPriceDaysLeft(state: GameState): number | null {
+  if (policyLevel(state, 'price') !== 'high') return null;
+  const since = typeof state.highPriceSinceDay === 'number' ? state.highPriceSinceDay : state.day;
+  return Math.max(1, Math.min(HIGH_PRICE_DAYS, HIGH_PRICE_DAYS - (state.day - since)));
+}
+
+/** True on the day the High price ran out while the price is still not High again. */
+export function highPriceJustEnded(state: GameState): boolean {
+  return state.highPriceEndedDay === state.day && policyLevel(state, 'price') !== 'high';
+}
 
 /**
  * Reverts the High price policy to Standard once it has run HIGH_PRICE_DAYS
@@ -121,6 +134,7 @@ export function expireHighPrice(state: GameState): boolean {
   if (state.day - state.highPriceSinceDay < HIGH_PRICE_DAYS) return false;
   state.policies = { ...DEFAULT_POLICIES, ...state.policies, price: 'standard' };
   delete state.highPriceSinceDay;
+  state.highPriceEndedDay = state.day;
   state.events.push({ type: 'notify', level: 'info', text: `Giá cao đã hết sau ${HIGH_PRICE_DAYS} ngày, quán về giá thường` });
   return true;
 }
