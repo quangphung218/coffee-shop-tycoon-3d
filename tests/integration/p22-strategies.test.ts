@@ -4,6 +4,7 @@ import { MARKETING } from '../../src/sim/data/marketing';
 import { WEEK_GOALS, WEEK_LENGTH } from '../../src/sim/data/week';
 import { totalWages } from '../../src/sim/economy';
 import { dispatch, nextUpgradeCost } from '../../src/sim/index';
+import { policyLevel } from '../../src/sim/policies';
 import { isUnlocked } from '../../src/sim/progression';
 import { createNewGame } from '../../src/sim/state';
 import type { Difficulty, GameState, ToolId } from '../../src/sim/types';
@@ -91,7 +92,8 @@ interface WeekRow {
 }
 
 function playMorning(state: GameState, s: Strategy, weekDay: number, track: () => void): void {
-  if (s.price !== 'standard' && weekDay === 1) expect(dispatch(state, { type: 'set_policy', policy: 'price', level: s.price })).toBe(true);
+  // E-28: High expires after 7 days, so it is set again whenever it has lapsed (never inside one 7-day week).
+  if (s.price !== 'standard' && policyLevel(state, 'price') !== s.price) expect(dispatch(state, { type: 'set_policy', policy: 'price', level: s.price })).toBe(true);
   dispatch(state, { type: 'apply_restock' });
   track();
   if (s.hire === 'one' && weekDay === 1) {
