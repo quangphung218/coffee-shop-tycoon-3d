@@ -29,6 +29,8 @@ export interface ToastInput {
 
 export interface ToastAction {
   label: string;
+  /** The button's data-action; default "toast-action". */
+  name?: string;
   run(): void;
 }
 
@@ -145,7 +147,7 @@ export class Toasts {
     const text = lines.text ? h('p', { class: 'toast-text', text: lines.text }) : null;
     const close = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': 'Đóng thông báo' } }, icon('i-close', { size: 16 }), 'Đóng');
     const action = input.action
-      ? h('button', { class: 'btn btn-secondary toast-action', attrs: { type: 'button', 'data-action': 'toast-action' }, text: input.action.label })
+      ? h('button', { class: 'btn btn-secondary toast-action', attrs: { type: 'button', 'data-action': input.action.name ?? 'toast-action' }, text: input.action.label })
       : null;
     const body = h('div', { class: 'toast-body' }, title, text, action);
     const el = h(

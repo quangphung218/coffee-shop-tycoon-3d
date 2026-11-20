@@ -745,8 +745,9 @@ describe('HUD', () => {
         hud.update(state);
         expect(badge.hidden).toBe(true);
         expect(spokenName(kho)).toBe('Kho');
-        // Panels without a badge function get no badge.
-        expect(hud.el.querySelector('.dock [data-panel="menu"] .dock-badge')).toBeNull();
+        // Panels without a badge function get no badge (Menu has one since E-30: High price ending).
+        expect(hud.el.querySelector('.dock [data-panel="marketing"] .dock-badge')).toBeNull();
+        expect(hud.el.querySelector<HTMLElement>('.dock [data-panel="menu"] .dock-badge')!.hidden).toBe(true);
       } finally {
         off();
       }
