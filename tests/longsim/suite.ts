@@ -24,7 +24,10 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * each week by b_steady2 and b2_styles is printed. E-28 (assertPromise):
  * b2_hi (High once in week 9) gets 3 cups in at most 30% of weeks 21-40 and
  * b2_hi_weekly (High renewed every 7 days) in at least 70% on the mean over
- * seeds 1/42/7/2026 (hiWeeklyMean, run from the challenges-*.sim.ts files).
+ * seeds 1/42/7/2026 (threeCupMeans). E-29: the 4-seed mean 3-cup share of
+ * b2_train, b2_wage_train, b2_nodecor, d_manage and c4_set is held to
+ * THREE_CUP_MEANS (threeCupMeans, run from the means-*.sim.ts files); longSim
+ * leaves those E-29 bots out (MEAN_ONLY).
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -74,29 +77,54 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
   const once = late('b2_hi');
   expect(once, `${label} b2_hi weeks 21-40`).toHaveLength(20);
   expect(share(once, (r) => r.cups === 3), `${label} b2_hi 3 cups`).toBeLessThanOrEqual(HI_ONCE_THREE_CUPS_MAX);
-  // b2_hi_weekly is asserted on the mean over the 4 seeds (hiWeeklyMean), not here.
+  // b2_hi_weekly is asserted on the mean over the 4 seeds (threeCupMeans), not here.
 }
 
 /**
- * E-28: b2_hi_weekly's 3-cup share of weeks 21-40, its mean over `seeds`, is at
- * least HI_WEEKLY_THREE_CUPS_MIN. Relaxed from per seed to the 4-seed mean
+ * 3-cup share of weeks 21-40, its mean over the 4 seeds, per bot: [min, max].
+ * E-28: b2_hi_weekly at least 70%, relaxed from per seed to the 4-seed mean
  * (owner decision Q-15 A): Easy seed 2026 is an outlier that reaches 3 cups in
  * weeks 9-12 and then mostly 2 cups, so it alone falls below 70%.
+ * E-29: training alone (b2_train) lifts at most 10%, a one-time High wage
+ * with training (b2_wage_train) at most 30%, skipping decor (b2_nodecor) at
+ * most 20%; full management (d_manage, and c4_set with High price and High
+ * wage kept up and training) at least 70%.
  */
-export function hiWeeklyMean(difficulty: Difficulty, seeds: number[]): void {
-  describe(`E-28 b2_hi_weekly weeks 21-40, ${difficulty}`, () => {
-    it(`mean 3-cup share over seeds ${seeds.join(', ')} >= ${HI_WEEKLY_THREE_CUPS_MIN * 100}%`, { timeout: TIMEOUT }, () => {
-      const rates = seeds.map((seed) => {
-        const late = inWeeks(playWeeks(difficulty, seed, STRATEGIES.b2_hi_weekly, WEEKS), 21, 40);
-        expect(late, `${difficulty} s${seed} b2_hi_weekly weeks 21-40`).toHaveLength(20);
-        return share(late, (r) => r.cups === 3);
+export const THREE_CUP_MEANS = {
+  b2_hi_weekly: [HI_WEEKLY_THREE_CUPS_MIN, 1],
+  b2_train: [0, 0.1],
+  b2_wage_train: [0, 0.3],
+  b2_nodecor: [0, 0.2],
+  d_manage: [MANAGE_THREE_CUPS_MIN, 1],
+  c4_set: [0.7, 1],
+} as const satisfies Partial<Record<StrategyName, readonly [number, number]>>;
+
+/** Bots only measured on the 4-seed mean (threeCupMeans), not run by longSim. */
+const MEAN_ONLY: readonly StrategyName[] = ['b2_train', 'b2_wage_train', 'b2_nodecor', 'c4_set'];
+
+/**
+ * Asserts each of `bots` (keys of THREE_CUP_MEANS) on its mean 3-cup share of
+ * weeks 21-40 over `seeds`, and prints the per-seed shares. The *.sim.ts
+ * files split the bots so vitest runs them side by side.
+ */
+export function threeCupMeans(difficulty: Difficulty, seeds: number[], bots: readonly (keyof typeof THREE_CUP_MEANS)[]): void {
+  describe(`3 cups weeks 21-40, mean of seeds, ${difficulty}`, () => {
+    for (const name of bots) {
+      const [min, max] = THREE_CUP_MEANS[name];
+      it(`${name}: mean 3-cup share over seeds ${seeds.join(', ')} in ${min * 100}-${max * 100}%`, { timeout: TIMEOUT }, () => {
+        const rates = seeds.map((seed) => {
+          const late = inWeeks(playWeeks(difficulty, seed, STRATEGIES[name], WEEKS), 21, 40);
+          expect(late, `${difficulty} s${seed} ${name} weeks 21-40`).toHaveLength(20);
+          return share(late, (r) => r.cups === 3);
+        });
+        const mean = rates.reduce((s, r) => s + r, 0) / rates.length;
+        process.stdout.write(
+          `\n${difficulty} ${name} 3 cups weeks 21-40: ${seeds.map((s, i) => `s${s} ${Math.round(rates[i]! * 100)}%`).join(', ')} | mean ${Math.round(mean * 1000) / 10}%\n`,
+        );
+        expect(mean, `${difficulty} ${name} mean 3-cup share weeks 21-40`).toBeGreaterThanOrEqual(min);
+        expect(mean, `${difficulty} ${name} mean 3-cup share weeks 21-40`).toBeLessThanOrEqual(max);
       });
-      const mean = rates.reduce((s, r) => s + r, 0) / rates.length;
-      process.stdout.write(
-        `\n${difficulty} b2_hi_weekly 3 cups weeks 21-40: ${seeds.map((s, i) => `s${s} ${Math.round(rates[i]! * 100)}%`).join(', ')} | mean ${Math.round(mean * 1000) / 10}%\n`,
-      );
-      expect(mean, `${difficulty} b2_hi_weekly mean 3-cup share weeks 21-40`).toBeGreaterThanOrEqual(HI_WEEKLY_THREE_CUPS_MIN);
-    });
+    }
   });
 }
 
@@ -226,7 +254,7 @@ export function longSim(difficulty: Difficulty, { seeds, determinismSeed, measur
 
     for (const seed of seeds) {
       it(`seed ${seed}: every bot plays ${WEEKS} weeks`, { timeout: TIMEOUT }, () => {
-        for (const name of Object.keys(STRATEGIES) as StrategyName[]) run(seed, name);
+        for (const name of Object.keys(STRATEGIES) as StrategyName[]) if (!MEAN_ONLY.includes(name)) run(seed, name);
         if (measureOnly) return;
         for (const name of BASELINE) expect(run(seed, name).bankruptDay, `${difficulty} seed ${seed} ${name} bankrupt`).toBeUndefined();
         assertPromise(`${difficulty} seed ${seed}`, (name) => run(seed, name));

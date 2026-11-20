@@ -12,6 +12,7 @@ import { autoRestockSuggestion } from '../../src/sim/inventory';
 import { isUnlocked, weekDay, weekIndex } from '../../src/sim/progression';
 import { policyLevel } from '../../src/sim/policies';
 import { createNewGame } from '../../src/sim/state';
+import { canTrain, trainCost } from '../../src/sim/staffGrowth';
 import { canAffordStyle } from '../../src/sim/styles';
 import { nextUpgradeTicketCost, upgradeBlockedReason } from '../../src/sim/upgrades';
 import { totalUpgradeLevels } from '../../src/sim/week';
@@ -33,6 +34,9 @@ import { playDay } from '../integration/helpers';
  * E-28: the High price lasts 7 days; d_manage and a_manage set it again each
  * time it expires (unchanged play). b2_hi is b_steady2 that sets High once in
  * week 9; b2_hi_weekly is b_steady2 that keeps setting it from week 9.
+ * E-29: Strategy flags for the High wage (also 7 days), training and no
+ * decor; new bots are entries in STRATEGIES: b2_train, b2_wage_train,
+ * b2_nodecor and c4_set.
  * suite.ts (the *.sim.ts files) prints the table and asserts the style unlock and determinism;
  * it runs with `npm run sim:long`, not in `npm run check`.
  */
@@ -58,11 +62,18 @@ interface Strategy {
   highPrice?: 'renew' | 'once';
   /** E-26: buy the active season's styles when the Tem (and, for a sign, the spare money) covers them. */
   styles?: boolean;
+  /** E-29: week from which the wage policy is High; unset keeps standard wages. */
+  highWageFromWeek?: number;
+  /** E-29: High wage lasts HIGH_WAGE_DAYS days; 'renew' sets it again whenever it has expired, 'once' (default) sets it a single time. */
+  highWage?: 'renew' | 'once';
+  /** E-29: train every member whose experience allows the next level, when the money above the reserve (and the Tem) covers it. */
+  train?: boolean;
+  /** E-29: never buy a decor upgrade. */
+  noDecor?: boolean;
 }
 
-export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage' | 'b2_styles' | 'b2_hi' | 'b2_hi_weekly';
-
-export const STRATEGIES: Record<StrategyName, Strategy> = {
+/** Bots by name; a new bot is one more entry here (the flags above), StrategyName follows. */
+export const STRATEGIES = {
   c_spend: { hireDay: 1, spend: true, steady: false, chase: 'eager' },
   b_steady: { hireDay: 2, spend: false, steady: true, chase: 'relaxed' },
   d_manage: { hireDay: 1, spend: true, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 9 },
@@ -76,7 +87,17 @@ export const STRATEGIES: Record<StrategyName, Strategy> = {
   b2_hi: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, highPriceFromWeek: 9, highPrice: 'once' },
   /** E-28: b_steady2 that keeps the High price from week 9, setting it again every time it expires. */
   b2_hi_weekly: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, highPriceFromWeek: 9, highPrice: 'renew' },
-};
+  /** E-29: b_steady2 that trains its staff. */
+  b2_train: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, train: true },
+  /** E-29: b_steady2 that sets the High wage once in week 9 (a one-time lever) and trains its staff. */
+  b2_wage_train: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, highWageFromWeek: 9, highWage: 'once', train: true },
+  /** E-29: b_steady2 that never buys decor. */
+  b2_nodecor: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, noDecor: true },
+  /** E-29: c_spend with 4 staff that keeps High price and High wage from week 9 (set again every 7 days) and trains its staff. */
+  c4_set: { hireDay: 1, spend: true, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 9, highPrice: 'renew', highWageFromWeek: 9, highWage: 'renew', train: true },
+} satisfies Record<string, Strategy>;
+
+export type StrategyName = keyof typeof STRATEGIES;
 
 /** Roles of the team in hiring order: the first hire is the barista. */
 const HIRE_ROLES: readonly StaffRole[] = ['barista', 'server', 'cleaner', 'marketer'];
@@ -92,6 +113,16 @@ function steadyPick(id: UpgradeId): boolean {
   if (TOOLS.has(id) && dayUnlockDay('upgrade', id) > WEEK_LENGTH) return false;
   const def = UPGRADES.find((u) => u.id === id)!;
   return REVENUE_EFFECTS.some((e) => (def.effectPerLevel[e] ?? 0) > 0);
+}
+
+const DECOR = new Set<UpgradeId>(UPGRADES.filter((u) => u.category === 'decor').map((u) => u.id));
+
+/** Trains every member the experience, the Tem and the money above the reserve allow; one level each per day. */
+function trainTeam(state: GameState): void {
+  for (const member of state.staff) {
+    if (canTrain(state, member.id) !== null || state.money - reserve(state) < trainCost(member).money) continue;
+    expect(dispatch(state, { type: 'train_staff', staffId: member.id })).toBe(true);
+  }
 }
 
 function reserve(state: GameState): number {
@@ -189,6 +220,7 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
   let startLevels = 0;
   let stylesBought = 0;
   let highPriceSet = false;
+  let highWageSet = false;
   for (let day = 1; day <= weeks * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
@@ -217,8 +249,15 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
       expect(dispatch(state, { type: 'set_policy', policy: 'price', level: 'high' })).toBe(true);
       highPriceSet = true;
     }
-    if (s.spend) buyCheapest(state, () => true, 100);
-    if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, steadyPick, 1);
+    // E-29: High wage expires the same way; 'once' bots set it a single time.
+    if (s.highWageFromWeek && weekIndex(state) >= s.highWageFromWeek && policyLevel(state, 'wage') !== 'high' && !(s.highWage !== 'renew' && highWageSet)) {
+      expect(dispatch(state, { type: 'set_policy', policy: 'wage', level: 'high' })).toBe(true);
+      highWageSet = true;
+    }
+    const decorOk = (id: UpgradeId) => !(s.noDecor && DECOR.has(id));
+    if (s.spend) buyCheapest(state, decorOk, 100);
+    if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, (id) => decorOk(id) && steadyPick(id), 1);
+    if (s.train) trainTeam(state);
     if (s.styles) stylesBought += buySeasonStyles(state);
     if (s.chase === 'eager' && active && (challenge.id === 'served_week' || challenge.id === 'regular_visits') && state.money - reserve(state) >= CHEAPEST_CAMPAIGN.cost) {
       dispatch(state, { type: 'start_campaign', campaignId: CHEAPEST_CAMPAIGN.id });
