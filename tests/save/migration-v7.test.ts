@@ -23,7 +23,7 @@ function migrated(raw: unknown): GameState {
 }
 
 describe('migrate v7 → v8 (E-28 High price lasts 7 days)', { timeout: 60_000 }, () => {
-  it('is at SAVE_VERSION 8', () => expect(SAVE_VERSION).toBe(8));
+  it('is at SAVE_VERSION 9', () => expect(SAVE_VERSION).toBe(9));
 
   it('starts the count of an old High-price save on the saved day', () => {
     const s = createNewGame('Quán V7', 'normal', 5);

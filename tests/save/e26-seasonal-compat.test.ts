@@ -36,8 +36,8 @@ function load(text: string): GameState {
 }
 
 describe('E-26 seasonal styles save compatibility', () => {
-  it('keeps SAVE_VERSION 8', () => {
-    expect(SAVE_VERSION).toBe(8);
+  it('keeps SAVE_VERSION 9', () => {
+    expect(SAVE_VERSION).toBe(9);
   });
 
   it('an old save keeps its bought and worn styles', () => {

@@ -61,12 +61,12 @@ describe('E-28: High price expires after HIGH_PRICE_DAYS days', { timeout: 60_00
     }
   });
 
-  it('leaves the wage policy High untouched', () => {
+  it('leaves a Low wage untouched (High wage has its own count since E-29)', () => {
     const s = createNewGame('A', 'normal', 1);
-    set(s, 'wage', 'high');
+    set(s, 'wage', 'low');
     set(s, 'price', 'high');
     for (let i = 0; i < 10; i++) nextDay(s);
-    expect(policyLevel(s, 'wage')).toBe('high');
+    expect(policyLevel(s, 'wage')).toBe('low');
     expect(policyLevel(s, 'price')).toBe('standard');
   });
 });
