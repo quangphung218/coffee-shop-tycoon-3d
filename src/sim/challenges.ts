@@ -12,12 +12,12 @@ import {
   scaledChallengeTarget,
 } from './data/challenges';
 import { getMenuItem, MENU } from './data/menu';
-import { WEEK_LENGTH, dayUnlockDay, sizeGoalRowIndex } from './data/week';
+import { WEEK_LENGTH, dayUnlockDay } from './data/week';
 import { weekDay, weekIndex } from './progression';
 import { addTickets } from './retention';
 import { isStyleUnlocked, unlockStyle } from './styles';
 import type { DailyReport, DayStats, Difficulty, GameState, MenuItemId, WeekChallenge } from './types';
-import { totalUpgradeLevels } from './week';
+import { sizeGoalRowOf } from './week';
 
 /** Keeps challenge draws apart from the week plans and daily missions, which hash the same seed. */
 const CHALLENGE_SALT = 0x27d4eb2f;
@@ -126,9 +126,9 @@ function anchorChallenge(challenge: WeekChallenge, size: ChallengeSize): void {
   challenge.target = anchoredChallengeTarget(id, value);
 }
 
-/** ChallengeSize of week `index` for a shop with `state`'s upgrades now (the row its week goal reads, sizeGoalRowIndex). */
+/** ChallengeSize of week `index` for the shop as it is now (the row its week goal reads, sizeGoalRowOf). */
 export function challengeSize(state: GameState, index: number): ChallengeSize {
-  return { difficulty: state.difficulty, row: sizeGoalRowIndex(state.difficulty, index, totalUpgradeLevels(state)) };
+  return { difficulty: state.difficulty, row: sizeGoalRowOf(state, index) };
 }
 
 /**

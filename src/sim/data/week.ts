@@ -282,14 +282,48 @@ export function levelCurve(difficulty: Difficulty, index: number): number {
 }
 
 /**
- * SIZE_GOAL row index of week `index` started with `totalLevels` upgrade
- * levels: the larger of those levels and floor(LEVEL_FLOOR_SHARE x
- * LEVEL_CURVE[week]), so not upgrading does not lower the goal below that of
- * a shop of the same age (E-24).
+ * SIZE_GOAL rows one training level of an employed member adds to the row
+ * index (k, E-29). Training (+LEVEL_SPEED_STEP speed a level) lasts for good,
+ * so it counts like a bought upgrade level. Chosen by one re-score of sampled
+ * weeks 21-40 (seeds 1/42/7/2026, Normal and Easy): every k from 0.5 to 8 gave
+ * b2_train and b2_wage_train the same share of 3-cup weeks, so the smallest
+ * whole k is used; b_steady2 never trains, so its rows do not move.
  */
-export function sizeGoalRowIndex(difficulty: Difficulty, index: number, totalLevels: number): number {
-  const levels = Math.floor(Number.isFinite(totalLevels) ? totalLevels : 0);
-  return Math.min(SIZE_GOAL_MAX_LEVELS, Math.max(levels, Math.floor(LEVEL_FLOOR_SHARE * levelCurve(difficulty, index))));
+export const TRAINING_ROW_LEVELS = 1;
+
+/**
+ * Weeks NON_DECOR_FLOOR_WEEKS read their row at least at
+ * floor(NON_DECOR_FLOOR_RATIO x non-decor upgrade levels) (E-29): a shop that
+ * skips decor and puts the money into revenue upgrades gets the row of a shop
+ * with the same revenue upgrades and the decor b_steady2 buys alongside them.
+ * The ratio is just under the lowest total / non-decor levels b_steady2 had in
+ * those weeks (1.629 over the seeds), so standard play keeps its row.
+ */
+export const NON_DECOR_FLOOR_RATIO = 1.6;
+export const NON_DECOR_FLOOR_WEEKS: readonly [number, number] = [21, 30];
+
+/** What the shop has at a week's start beyond its total upgrade levels (E-29). */
+export interface SizeGoalExtra {
+  /** Training levels of the employed staff: sum of (level - 1). */
+  trainingLevels?: number;
+  /** Upgrade levels outside the decor category. */
+  nonDecorLevels?: number;
+}
+
+/**
+ * SIZE_GOAL row index of week `index` started with `totalLevels` upgrade
+ * levels: the largest of those levels plus TRAINING_ROW_LEVELS x the staff's
+ * training levels (E-29), floor(LEVEL_FLOOR_SHARE x LEVEL_CURVE[week]), so
+ * not upgrading does not lower the goal below that of a shop of the same age
+ * (E-24), and in NON_DECOR_FLOOR_WEEKS floor(NON_DECOR_FLOOR_RATIO x
+ * non-decor levels), so skipping decor does not lower it either (E-29).
+ */
+export function sizeGoalRowIndex(difficulty: Difficulty, index: number, totalLevels: number, extra: SizeGoalExtra = {}): number {
+  const whole = (n: number | undefined) => Math.max(0, Math.floor(Number.isFinite(n) ? n! : 0));
+  const levels = whole(totalLevels) + TRAINING_ROW_LEVELS * whole(extra.trainingLevels);
+  const [from, to] = NON_DECOR_FLOOR_WEEKS;
+  const nonDecor = index >= from && index <= to ? Math.floor(NON_DECOR_FLOOR_RATIO * whole(extra.nonDecorLevels)) : 0;
+  return Math.min(SIZE_GOAL_MAX_LEVELS, Math.max(levels, nonDecor, Math.floor(LEVEL_FLOOR_SHARE * levelCurve(difficulty, index))));
 }
 
 /** Fewest cups a week needs to pay WEEK_REWARDS. */

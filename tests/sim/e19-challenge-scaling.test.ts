@@ -225,7 +225,8 @@ describe('counting challenges follow the size-goal row from week 21 (E-24)', () 
         const state = gameIn(w, d);
         expect(challengeSize(state, w)).toEqual({ difficulty: d, row: sizeGoalRowIndex(d, w, 0) });
         state.upgrades = { tables: 30, better_machine: 30 } as GameState['upgrades'];
-        expect(challengeSize(state, w).row).toBe(sizeGoalRowIndex(d, w, 60));
+        // E-29: all 60 levels are non-decor, so weeks 21-30 also read the non-decor floor.
+        expect(challengeSize(state, w).row).toBe(sizeGoalRowIndex(d, w, 60, { nonDecorLevels: 60 }));
       }
     }
     // Weeks 21-40 of a shop with no upgrades read at least floor(0.85 x LEVEL_CURVE).

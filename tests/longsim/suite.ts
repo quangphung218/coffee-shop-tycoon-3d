@@ -85,14 +85,17 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
  * E-28: b2_hi_weekly at least 70%, relaxed from per seed to the 4-seed mean
  * (owner decision Q-15 A): Easy seed 2026 is an outlier that reaches 3 cups in
  * weeks 9-12 and then mostly 2 cups, so it alone falls below 70%.
- * E-29: training alone (b2_train) lifts at most 10%, a one-time High wage
+ * E-29: training alone (b2_train) lifts at most 20%, a one-time High wage
  * with training (b2_wage_train) at most 30%, skipping decor (b2_nodecor) at
  * most 20%; full management (d_manage, and c4_set with High price and High
  * wage kept up and training) at least 70%.
+ * b2_train was planned at most 10%, relaxed to 20% by owner decision Q-16 A:
+ * measured on E-29 (T-104 + T-105) Normal 16.3%, Easy 17.5%
+ * (v0.39.0 was 22% / 32%); k and the floor were not retuned.
  */
 export const THREE_CUP_MEANS = {
   b2_hi_weekly: [HI_WEEKLY_THREE_CUPS_MIN, 1],
-  b2_train: [0, 0.1],
+  b2_train: [0, 0.2],
   b2_wage_train: [0, 0.3],
   b2_nodecor: [0, 0.2],
   d_manage: [MANAGE_THREE_CUPS_MIN, 1],
