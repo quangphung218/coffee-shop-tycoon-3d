@@ -167,6 +167,16 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     }
     return { ...file, version: 8, state };
   },
+  // E-29: the High wage policy lasts HIGH_WAGE_DAYS days, like the High price.
+  // A save already on High wage starts its count on the saved day, so it keeps
+  // High for 7 more days; no played day is recomputed.
+  8: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    if (isObject(state.policies) && state.policies.wage === 'high' && typeof state.highWageSinceDay !== 'number') {
+      state.highWageSinceDay = typeof state.day === 'number' ? state.day : 1;
+    }
+    return { ...file, version: 9, state };
+  },
 };
 
 function num(v: unknown): number {

@@ -835,6 +835,10 @@ export interface GameState {
   highPriceSinceDay?: number;
   /** Day the High price last ran out (expireHighPrice), so the Menu can offer to set it again; cleared when the price is set. */
   highPriceEndedDay?: number;
+  /** Day the High wage policy was last set; High reverts to Standard HIGH_WAGE_DAYS days later (E-29). Absent unless wage is High. */
+  highWageSinceDay?: number;
+  /** Day the High wage last ran out (expireHighWage), so the staff panel can offer to set it again; cleared when the wage is set. */
+  highWageEndedDay?: number;
   /** Daily gift, lifetime counters and achievements; absent in older saves. */
   retention?: RetentionState;
   /** Today's special order; absent or null when there is none. */
