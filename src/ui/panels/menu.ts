@@ -4,7 +4,7 @@ import { MENU } from '../../sim/data/menu';
 import { dayUnlockDay } from '../../sim/data/week';
 import { sellPrice } from '../../sim/customers';
 import { stockOf } from '../../sim/inventory';
-import { canChangePolicy, HIGH_PRICE_WALKOUT, policyLevel, PREMIUM_FROM_RATING, PRICE_POLICY } from '../../sim/policies';
+import { canChangePolicy, HIGH_PRICE_DAYS, HIGH_PRICE_WALKOUT, highPriceDaysLeft, highPriceJustEnded, policyLevel, PREMIUM_FROM_RATING, PRICE_POLICY } from '../../sim/policies';
 import { isUnlocked, weekDay } from '../../sim/progression';
 import type { GameState, MenuItemDef, MenuItemId, PolicyLevel, UpgradeId } from '../../sim/types';
 import { MENU_REQUIRES, menuBlockedReason } from '../../sim/upgrades';
@@ -37,6 +37,17 @@ export function pricePolicyHint(level: PolicyLevel): string {
   const walkout = Math.round(HIGH_PRICE_WALKOUT * 100);
   return `${base}, ${walkout}% khách chê đắt bỏ về; quán trên ${PREMIUM_FROM_RATING} sao hoặc có máy xịn thì đỡ hơn.`;
 }
+
+/** "Giá Cao còn N ngày." under Mức giá while the High price runs (today counted). */
+export function highPriceLeftText(days: number): string {
+  return `Giá Cao còn ${days} ngày.`;
+}
+
+/** The notice the day High ran out: only what the player can do. */
+export const HIGH_PRICE_ENDED_TEXT = `Đặt lại giá Cao để giữ thêm ${HIGH_PRICE_DAYS} ngày.`;
+
+/** The notice's button. */
+export const HIGH_PRICE_RESET_TEXT = 'Đặt lại giá Cao';
 
 /** Reason under a Mức giá / Mức lương choice that is locked for the day. */
 export const POLICY_LOCKED_HINT = 'Đổi lúc chuẩn bị ngày mai.';
@@ -132,6 +143,25 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   priceSeg.el.setAttribute('aria-labelledby', priceTitleId);
   const priceHint = h('p', { class: 'item-meta', attrs: { 'data-hint': 'price' } });
   const priceWhy = reasonLine(false);
+  // E-28: days of High left while it runs; the day it ran out, a notice with a button that sets it again.
+  const priceLeft = h('p', { class: 'item-meta', hidden: true, attrs: { 'data-hint': 'price-left' } });
+  const resetBtn = h('button', {
+    class: 'btn btn-secondary btn-sm',
+    attrs: { type: 'button', 'data-action': 'price-high-again' },
+    text: HIGH_PRICE_RESET_TEXT,
+    on: { click: () => send({ type: 'set_policy', policy: 'price', level: 'high' }) },
+  });
+  const priceEnded = h('div', { class: 'reason', hidden: true, attrs: { 'data-notice': 'price-ended', role: 'status' } }, h('p', { text: HIGH_PRICE_ENDED_TEXT }), resetBtn);
+  w.watch(
+    (s) => `${highPriceDaysLeft(s) ?? ''}|${highPriceJustEnded(s)}|${canChangePolicy(s)}`,
+    (_, s) => {
+      const left = highPriceDaysLeft(s);
+      priceLeft.hidden = left === null;
+      priceLeft.textContent = left === null ? '' : highPriceLeftText(left);
+      // Setting a price only works while preparing, so the notice shows then.
+      priceEnded.hidden = !(highPriceJustEnded(s) && canChangePolicy(s));
+    },
+  );
   w.watch(
     (s) => policyLevel(s, 'price'),
     (level) => {
@@ -146,7 +176,7 @@ export function renderMenuPanel(body: HTMLElement, ctx: PanelContext): PanelHand
   const priceRow = h(
     'div',
     { class: 'setting', attrs: { 'data-policy': 'price' } },
-    h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: priceTitleId }, ...withIcon('i-coin', 'Mức giá', 24)), priceHint, priceWhy),
+    h('div', { class: 'setting-text' }, h('p', { class: 'item-title', id: priceTitleId }, ...withIcon('i-coin', 'Mức giá', 24)), priceHint, priceLeft, priceEnded, priceWhy),
     priceSeg.el,
   );
 

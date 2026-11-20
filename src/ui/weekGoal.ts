@@ -1,7 +1,6 @@
 import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim/challenges';
 import { WEEK_CHALLENGES } from '../sim/data/challenges';
 import { styleById } from '../sim/data/styles';
-import { policyLevel } from '../sim/policies';
 import { MISSIONS_PER_DAY } from '../sim/progression';
 import type { GameState, WeekChallenge } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
@@ -49,9 +48,6 @@ export const SIZE_GOAL_TEXT = 'Mục tiêu theo cỡ quán';
  */
 const SIZE_GOAL_PROFIT_RATIO = 1.5;
 
-/** Staff a shop needs before sizeGoalHint stops asking for hires. */
-export const SIZE_GOAL_FULL_STAFF = 4;
-
 /** What a shop of this size usually makes in a week, read back from its profit target, rounded to 100.000 đồng. */
 export function sizeGoalUsualProfit(profit: number): number {
   return Math.round(profit / SIZE_GOAL_PROFIT_RATIO / 100_000) * 100_000;
@@ -68,20 +64,14 @@ export function sizeGoalLineText(profit: number): string {
 }
 
 /**
- * What to change to beat a size goal, read from the shop: under 2 staff
- * "Thuê thêm người", 2-3 "Thuê đủ 4 người", and "đặt giá Cao" while the price
- * policy is not Cao, as one sentence. Null once the shop has
- * SIZE_GOAL_FULL_STAFF staff and the Cao price, so no hint shows.
+ * What to do for more cups under a size goal, read from the shop: under 2
+ * staff "Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.", else
+ * "Chỉnh giá mỗi tuần để lên 3 cúp." The High price lasts HIGH_PRICE_DAYS days
+ * (E-28), so the price line always shows.
  */
-export function sizeGoalHint(state: GameState): string | null {
-  const parts: string[] = [];
-  const staff = state.staff.length;
-  if (staff < 2) parts.push('thuê thêm người');
-  else if (staff < SIZE_GOAL_FULL_STAFF) parts.push(`thuê đủ ${SIZE_GOAL_FULL_STAFF} người`);
-  if (policyLevel(state, 'price') !== 'high') parts.push('đặt giá Cao');
-  if (parts.length === 0) return null;
-  const text = parts.join(', ');
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)} để vượt mục tiêu.`;
+export function sizeGoalHint(state: GameState): string {
+  if (state.staff.length < 2) return 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.';
+  return 'Chỉnh giá mỗi tuần để lên 3 cúp.';
 }
 
 const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = {

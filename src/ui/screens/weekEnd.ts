@@ -410,8 +410,8 @@ export function nextWeekGoalText(state: GameState): string {
 
 /**
  * Under "Mục tiêu:" when next week's goal is a SIZE_GOAL row: the shop-size
- * line (the goal and the usual level) and, unless the shop already has
- * SIZE_GOAL_FULL_STAFF staff and the Cao price, what to change (sizeGoalHint).
+ * line (the goal and the usual level) and what to do for more cups
+ * (sizeGoalHint).
  * Each sentence is the last span of its line, so it wraps beside the icon.
  */
 function nextSizeGoalLines(state: GameState): HTMLElement[] {

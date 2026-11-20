@@ -134,8 +134,8 @@ function playOnWithP27(g: GameState): PlayLog {
 }
 
 describe('P27 save compatibility', { timeout: 120_000 }, () => {
-  it('is at SAVE_VERSION 7 (E-23 analytics consent)', () => {
-    expect(SAVE_VERSION).toBe(7);
+  it('is at SAVE_VERSION 8 (E-28 High price expiry)', () => {
+    expect(SAVE_VERSION).toBe(8);
   });
 
   const files = fixtures();

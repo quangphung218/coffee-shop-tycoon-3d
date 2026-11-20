@@ -831,6 +831,10 @@ export interface GameState {
   week?: WeekState;
   /** Price and wage decisions; absent (older saves) = standard. */
   policies?: Policies;
+  /** Day the High price policy was last set; High reverts to Standard HIGH_PRICE_DAYS days later. Absent unless price is High. */
+  highPriceSinceDay?: number;
+  /** Day the High price last ran out (expireHighPrice), so the Menu can offer to set it again; cleared when the price is set. */
+  highPriceEndedDay?: number;
   /** Daily gift, lifetime counters and achievements; absent in older saves. */
   retention?: RetentionState;
   /** Today's special order; absent or null when there is none. */
