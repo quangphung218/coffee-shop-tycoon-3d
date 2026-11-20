@@ -1,6 +1,7 @@
 import { challengeProgress, describeChallenge, nextChallengeStyle } from '../sim/challenges';
 import { WEEK_CHALLENGES } from '../sim/data/challenges';
 import { styleById } from '../sim/data/styles';
+import { highPriceDaysLeft } from '../sim/policies';
 import { MISSIONS_PER_DAY } from '../sim/progression';
 import type { GameState, WeekChallenge } from '../sim/types';
 import { WEEK_REWARD_MIN_CUPS } from '../sim/data/week';
@@ -31,7 +32,7 @@ export interface WeekGoalView {
   /** True when the week's goal follows the shop's recent revenue (isWeekGoalScaled, shop level 10+). */
   scaled?: boolean;
   /** Set when the week's goal is a SIZE_GOAL row (goal.profit, E-21): its total upgrade levels, profit target and the shop's hint (sizeGoalHint; null when nothing is left to change). */
-  size?: { levels: number; profit: number; hint: string | null };
+  size?: { levels: number; profit: number; hint: SizeGoalHint | null };
 }
 
 /** Shown under the bars when the week's goal is scaled. */
@@ -63,15 +64,32 @@ export function sizeGoalLineText(profit: number): string {
   return `${SIZE_GOAL_TEXT}: lãi ${formatMoney(profit)}, quán cỡ này thường đạt khoảng ${formatMoney(sizeGoalUsualProfit(profit))}.`;
 }
 
+/** The size goal's hint and, when it asks for a change, the dock panel that makes it. */
+export interface SizeGoalHint {
+  text: string;
+  panel?: 'menu';
+}
+
+/** The size goal's hint when the price is not High: where to set it. */
+export const SIZE_GOAL_PRICE_HINT = 'Đặt giá Cao ở Menu mỗi tuần để lên 3 cúp';
+
+/** "Giá Cao còn N ngày, đặt lại ở Menu khi hết để giữ 3 cúp." */
+export function sizeGoalHighLeftText(days: number): string {
+  return `Giá Cao còn ${days} ngày, đặt lại ở Menu khi hết để giữ 3 cúp.`;
+}
+
 /**
- * What to do for more cups under a size goal, read from the shop: under 2
- * staff "Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.", else
- * "Chỉnh giá mỗi tuần để lên 3 cúp." The High price lasts HIGH_PRICE_DAYS days
- * (E-28), so the price line always shows.
+ * What to do for more cups under a size goal (UX-405): nothing once the week
+ * has 3 cups; while the High price runs, its days left (HIGH_PRICE_DAYS,
+ * E-28); else SIZE_GOAL_PRICE_HINT with the Menu panel to open.
  */
-export function sizeGoalHint(state: GameState): string {
-  if (state.staff.length < 2) return 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.';
-  return 'Chỉnh giá mỗi tuần để lên 3 cúp.';
+export function sizeGoalHint(state: GameState): SizeGoalHint | null {
+  // A scored week (week end) reads its result; a running one its score so far.
+  const cups = state.week?.result?.cups ?? scoreWeek(state)?.cups ?? 0;
+  if (cups >= MAX_CUPS) return null;
+  const left = highPriceDaysLeft(state);
+  if (left !== null) return { text: sizeGoalHighLeftText(left) };
+  return { text: `${SIZE_GOAL_PRICE_HINT}.`, panel: 'menu' };
 }
 
 const BAR_META: Readonly<Record<WeekGoalId, { label: string; icon: IconId }>> = {
@@ -139,7 +157,8 @@ export function cupsLineText(v: Pick<WeekGoalView, 'score' | 'cups'>): string {
  * goal note (SIZE_GOAL line, its number and the shop's hint, else the E-19 scaled note from shop
  * level 10) and, after an upgrade, what it costs this week.
  */
-export function weekGoalBlock(v: WeekGoalView): HTMLElement {
+export function weekGoalBlock(v: WeekGoalView, link?: (text: string, panel: string) => HTMLElement): HTMLElement {
+  const hint = v.size?.hint;
   return h(
     'div',
     { class: 'week-goal', attrs: { 'data-block': 'week-goal' } },
@@ -164,7 +183,14 @@ export function weekGoalBlock(v: WeekGoalView): HTMLElement {
     h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'cups' } }, icon('i-trophy', { size: 16 }), h('span', { text: cupsLineText(v) })),
     v.size ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'size' } }, SIZE_GOAL_TEXT) : null,
     v.size ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-num' } }, sizeGoalNumberText(v.size.profit)) : null,
-    v.size?.hint ? h('p', { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } }, v.size.hint) : null,
+    hint
+      ? h(
+          'p',
+          { class: 'week-goal-line item-meta', attrs: { 'data-goal': 'size-hint' } },
+          h('span', { text: hint.text }),
+          hint.panel && link ? link('Mở Menu', hint.panel) : null,
+        )
+      : null,
     !v.size && v.scaled ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'scaled' } }, SCALED_GOAL_TEXT) : null,
     v.upgradeCharge > 0
       ? h('p', { class: 'week-goal-line', attrs: { 'data-goal': 'charge' } }, `Nâng cấp tuần này gánh: ${formatMoney(v.upgradeCharge)}`)
