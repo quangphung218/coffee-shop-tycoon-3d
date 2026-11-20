@@ -18,6 +18,7 @@ import { challengeStyleName, unlockNames } from '../hud/events';
 import { DAY_EVENT_LABELS, WEATHER_LABELS } from '../hud/hud';
 import type { SaveStatus } from '../report';
 import { starsEl } from '../report/reviews';
+import { highEndsNextWeekLines } from '../highExpiry';
 import { challengeBlock, challengeView, sizeGoalHint, sizeGoalLineText } from '../weekGoal';
 
 export interface WeekEndActions {
@@ -436,6 +437,10 @@ function nextWeekBlock(state: GameState, index: number): HTMLElement {
       ...nextSizeGoalLines(state),
       nextLevelLine(state),
       nextChallengeLine(state, index + 1),
+      // E-30: a High price / wage with one day left runs out on the next week's first day.
+      ...highEndsNextWeekLines(state, index + 1).map(({ policy, text }) =>
+        h('p', { attrs: { 'data-next': `${policy}-ends` } }, icon('i-clock', { size: 16 }), h('span', { text })),
+      ),
     ),
   );
 }

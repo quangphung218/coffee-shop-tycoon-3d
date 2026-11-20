@@ -8,6 +8,7 @@ import { setAnalyticsConsent, wireAnalytics } from '../analyticsEvents';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
+import { highExpiryOf, highExpiryToast } from '../highExpiry';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast, weekChallengeToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { createServeHints } from '../hud/serveHints';
@@ -463,6 +464,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           const regularId = event.regularId;
           toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId) } };
         }
+        // E-30: the High price / wage expiry notify gets a button that sets High again (same one toast).
+        const expired = toast ? highExpiryOf(event, state) : null;
+        if (expired) toast = highExpiryToast(expired, dispatch);
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);
