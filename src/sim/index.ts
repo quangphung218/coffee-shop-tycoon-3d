@@ -247,7 +247,7 @@ export { buildInsights } from './insights';
 export { advanceCampaigns, customerMultiplier, runCampaign } from './marketing';
 export { assignRole, autoAssignRoles, fireStaff, hireStaff, rolePlan, setAutoAssign } from './staff';
 export { buyUpgrade, getShopLayout, isRemovableDecor, menuBlockedReason, nextUpgradeCost, removeDecor } from './upgrades';
-export { PRICE_POLICY, WAGE_POLICY, policyLevel, setPolicy } from './policies';
+export { HIGH_PRICE_DAYS, PRICE_POLICY, WAGE_POLICY, policyLevel, setPolicy } from './policies';
 export {
   isUnlocked,
   missionProgress,

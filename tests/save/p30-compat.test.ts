@@ -83,8 +83,8 @@ function roundTrip(state: GameState): { version: number; state: GameState } {
 describe('P30 save compatibility', { timeout: 120_000 }, () => {
   const files = fixtures();
 
-  it('is at SAVE_VERSION 7 (E-23)', () => {
-    expect(SAVE_VERSION).toBe(7);
+  it('is at SAVE_VERSION 8 (E-28)', () => {
+    expect(SAVE_VERSION).toBe(8);
   });
 
   for (const [name, text] of Object.entries(files)) {

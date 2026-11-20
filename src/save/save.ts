@@ -157,6 +157,16 @@ const MIGRATIONS: Record<number, (file: Raw) => Raw> = {
     const state: Raw = isObject(file.state) ? { ...file.state } : {};
     return { version: 7, savedAt: typeof file.savedAt === 'number' ? file.savedAt : 0, analyticsConsent: 'unasked', state };
   },
+  // E-28: the High price policy lasts HIGH_PRICE_DAYS days. A save already on
+  // High starts its count on the saved day, so it keeps High for 7 days from
+  // there; no played day is recomputed.
+  7: (file) => {
+    const state: Raw = isObject(file.state) ? { ...file.state } : {};
+    if (isObject(state.policies) && state.policies.price === 'high' && typeof state.highPriceSinceDay !== 'number') {
+      state.highPriceSinceDay = typeof state.day === 'number' ? state.day : 1;
+    }
+    return { ...file, version: 8, state };
+  },
 };
 
 function num(v: unknown): number {

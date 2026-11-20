@@ -92,5 +92,35 @@ export function setPolicy(state: GameState, policy: PolicyId, level: PolicyLevel
     return false;
   }
   state.policies = { ...DEFAULT_POLICIES, ...state.policies, [policy]: level };
+  if (policy === 'price') {
+    // Setting High again restarts the count; Low and Standard never expire.
+    if (level === 'high') state.highPriceSinceDay = state.day;
+    else delete state.highPriceSinceDay;
+  }
+  return true;
+}
+
+/** In-game days the High price policy lasts before it reverts to Standard (E-28). */
+export const HIGH_PRICE_DAYS = 7;
+
+/**
+ * Reverts the High price policy to Standard once it has run HIGH_PRICE_DAYS
+ * days: set on day D, it holds days D..D+6 and is Standard from day D+7. Call
+ * when a new day starts. A High price without a start day (a save that slipped
+ * past migration) starts its count today. Returns true when it reverted.
+ */
+export function expireHighPrice(state: GameState): boolean {
+  if (policyLevel(state, 'price') !== 'high') {
+    delete state.highPriceSinceDay;
+    return false;
+  }
+  if (typeof state.highPriceSinceDay !== 'number') {
+    state.highPriceSinceDay = state.day;
+    return false;
+  }
+  if (state.day - state.highPriceSinceDay < HIGH_PRICE_DAYS) return false;
+  state.policies = { ...DEFAULT_POLICIES, ...state.policies, price: 'standard' };
+  delete state.highPriceSinceDay;
+  state.events.push({ type: 'notify', level: 'info', text: `Giá cao đã hết sau ${HIGH_PRICE_DAYS} ngày, quán về giá thường` });
   return true;
 }
