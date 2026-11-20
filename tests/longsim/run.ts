@@ -30,6 +30,9 @@ import { playDay } from '../integration/helpers';
  * that also buys the active season's styles (buy_style) whenever its Tem
  * covers one, after its upgrades; a sign style is bought only when the money
  * left above the reserve covers its price. The other bots never buy a style.
+ * E-28: the High price lasts 7 days; d_manage and a_manage set it again each
+ * time it expires (unchanged play). b2_hi is b_steady2 that sets High once in
+ * week 9; b2_hi_weekly is b_steady2 that keeps setting it from week 9.
  * suite.ts (the *.sim.ts files) prints the table and asserts the style unlock and determinism;
  * it runs with `npm run sim:long`, not in `npm run check`.
  */
@@ -47,11 +50,17 @@ interface Strategy {
   staff?: number;
   /** Week from which the price policy is high; unset keeps standard prices. */
   highPriceFromWeek?: number;
+  /**
+   * E-28: High lasts HIGH_PRICE_DAYS days. 'renew' (default) sets High again
+   * whenever it has expired, so the price stays High from highPriceFromWeek on;
+   * 'once' sets it a single time and then plays Standard after it expires.
+   */
+  highPrice?: 'renew' | 'once';
   /** E-26: buy the active season's styles when the Tem (and, for a sign, the spare money) covers them. */
   styles?: boolean;
 }
 
-export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage' | 'b2_styles';
+export type StrategyName = 'b_steady' | 'c_spend' | 'd_manage' | 'b_steady2' | 'a2' | 'a_manage' | 'b2_styles' | 'b2_hi' | 'b2_hi_weekly';
 
 export const STRATEGIES: Record<StrategyName, Strategy> = {
   c_spend: { hireDay: 1, spend: true, steady: false, chase: 'eager' },
@@ -63,6 +72,10 @@ export const STRATEGIES: Record<StrategyName, Strategy> = {
   a_manage: { hireDay: 1, spend: false, steady: false, chase: 'eager', staff: 4, highPriceFromWeek: 1 },
   /** E-26: b_steady2 plus seasonal styles. */
   b2_styles: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, styles: true },
+  /** E-28: b_steady2 that sets the High price once in week 9 and lets it expire. */
+  b2_hi: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, highPriceFromWeek: 9, highPrice: 'once' },
+  /** E-28: b_steady2 that keeps the High price from week 9, setting it again every time it expires. */
+  b2_hi_weekly: { hireDay: 2, spend: false, steady: true, chase: 'relaxed', staff: 2, highPriceFromWeek: 9, highPrice: 'renew' },
 };
 
 /** Roles of the team in hiring order: the first hire is the barista. */
@@ -175,6 +188,7 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
   };
   let startLevels = 0;
   let stylesBought = 0;
+  let highPriceSet = false;
   for (let day = 1; day <= weeks * WEEK_LENGTH; day++) {
     if (day > 1) expect(dispatch(state, { type: 'next_day' })).toBe(true);
     state.events = [];
@@ -198,8 +212,10 @@ export function playWeeks(difficulty: Difficulty, seed: number, s: Strategy, wee
         expect(dispatch(state, { type: 'hire_staff', candidateId: pick.id, role: HIRE_ROLES[state.staff.length]! })).toBe(true);
       }
     }
-    if (s.highPriceFromWeek && weekIndex(state) >= s.highPriceFromWeek && policyLevel(state, 'price') !== 'high') {
+    // E-28: High expires after HIGH_PRICE_DAYS days; 'renew' bots set it again the morning it lapses.
+    if (s.highPriceFromWeek && weekIndex(state) >= s.highPriceFromWeek && policyLevel(state, 'price') !== 'high' && !(s.highPrice === 'once' && highPriceSet)) {
       expect(dispatch(state, { type: 'set_policy', policy: 'price', level: 'high' })).toBe(true);
+      highPriceSet = true;
     }
     if (s.spend) buyCheapest(state, () => true, 100);
     if (s.steady && state.day % STEADY_VISIT_EVERY === 0) buyCheapest(state, steadyPick, 1);

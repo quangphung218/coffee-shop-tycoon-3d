@@ -21,7 +21,10 @@ import { STRATEGIES, WEEKS, allStylesWeek, avgScore, inWeeks, playWeeks, share, 
  * over the 4 seeds to CHALLENGE_BANDS (challengeBands). E-26, Normal only:
  * b2_styles ends week 40 with at most STYLES_TEM_END_MAX Tem and bought
  * styles in at least STYLES_SEASONS_MIN seasons (assertStyles); the Tem held
- * each week by b_steady2 and b2_styles is printed.
+ * each week by b_steady2 and b2_styles is printed. E-28 (assertPromise):
+ * b2_hi (High once in week 9) gets 3 cups in at most 30% of weeks 21-40 and
+ * b2_hi_weekly (High renewed every 7 days) in at least 70% on the mean over
+ * seeds 1/42/7/2026 (hiWeeklyMean, run from the challenges-*.sim.ts files).
  */
 
 /** Node's stdout and env (the tsconfig has no Node types); vitest drops console output of afterAll here. */
@@ -42,6 +45,9 @@ const MANAGE_SCORE_LEAD = 8;
 /** E-24: shops that never upgrade (a2, a_manage) get 3 cups in at most 10% of weeks 21-40 (level floor). */
 const NO_UPGRADE: readonly StrategyName[] = ['a2', 'a_manage'];
 const NO_UPGRADE_THREE_CUPS_MAX = 0.1;
+/** E-28: High lasts 7 days. Set once in week 9 (b2_hi) it lifts few late weeks to 3 cups; kept up every week (b2_hi_weekly) it does most. */
+const HI_ONCE_THREE_CUPS_MAX = 0.3;
+const HI_WEEKLY_THREE_CUPS_MIN = 0.7;
 
 /**
  * E-21 promise on weeks 21-40 of one seed, with the SIZE_GOAL table:
@@ -65,6 +71,33 @@ function assertPromise(label: string, run: (name: StrategyName) => WeekRows): vo
     expect(rows, `${label} ${name} weeks 21-40`).toHaveLength(20);
     expect(share(rows, (r) => r.cups === 3), `${label} ${name} 3 cups`).toBeLessThanOrEqual(NO_UPGRADE_THREE_CUPS_MAX);
   }
+  const once = late('b2_hi');
+  expect(once, `${label} b2_hi weeks 21-40`).toHaveLength(20);
+  expect(share(once, (r) => r.cups === 3), `${label} b2_hi 3 cups`).toBeLessThanOrEqual(HI_ONCE_THREE_CUPS_MAX);
+  // b2_hi_weekly is asserted on the mean over the 4 seeds (hiWeeklyMean), not here.
+}
+
+/**
+ * E-28: b2_hi_weekly's 3-cup share of weeks 21-40, its mean over `seeds`, is at
+ * least HI_WEEKLY_THREE_CUPS_MIN. Relaxed from per seed to the 4-seed mean
+ * (owner decision Q-15 A): Easy seed 2026 is an outlier that reaches 3 cups in
+ * weeks 9-12 and then mostly 2 cups, so it alone falls below 70%.
+ */
+export function hiWeeklyMean(difficulty: Difficulty, seeds: number[]): void {
+  describe(`E-28 b2_hi_weekly weeks 21-40, ${difficulty}`, () => {
+    it(`mean 3-cup share over seeds ${seeds.join(', ')} >= ${HI_WEEKLY_THREE_CUPS_MIN * 100}%`, { timeout: TIMEOUT }, () => {
+      const rates = seeds.map((seed) => {
+        const late = inWeeks(playWeeks(difficulty, seed, STRATEGIES.b2_hi_weekly, WEEKS), 21, 40);
+        expect(late, `${difficulty} s${seed} b2_hi_weekly weeks 21-40`).toHaveLength(20);
+        return share(late, (r) => r.cups === 3);
+      });
+      const mean = rates.reduce((s, r) => s + r, 0) / rates.length;
+      process.stdout.write(
+        `\n${difficulty} b2_hi_weekly 3 cups weeks 21-40: ${seeds.map((s, i) => `s${s} ${Math.round(rates[i]! * 100)}%`).join(', ')} | mean ${Math.round(mean * 1000) / 10}%\n`,
+      );
+      expect(mean, `${difficulty} b2_hi_weekly mean 3-cup share weeks 21-40`).toBeGreaterThanOrEqual(HI_WEEKLY_THREE_CUPS_MIN);
+    });
+  });
 }
 
 /** E-22 Sổ khách quen spread for b_steady2: a milestone in at least 60% of weeks 5-40, never more than 3 in one week. */
