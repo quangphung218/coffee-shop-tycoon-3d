@@ -17,7 +17,7 @@ Mục tiêu: giá Cao chỉ có hiệu lực 7 ngày trong game, nên muốn gi�
 
 | Bot | Normal (% tuần 3 cúp) | Easy (% tuần 3 cúp) | Ghi chú |
 | --- | --- | --- | --- |
-| `b_steady2` | 0/0/0/0; điểm TB 83.2/81.5/81.3/81.3 | 0/0/0/0; điểm TB 83.7/81.8/81.7/74.7 | Đúng 2 cúp ở 100% số tuần. Giống hệt v0.38.0 (44 dòng tóm tắt mỗi độ khó, diff bằng nhau). |
+| `b_steady2` | 0/0/0/0; điểm TB 83.2/81.5/81.3/81.3 | 0/0/0/0; điểm TB 83.7/81.8/81.7/74.7 | Đúng 2 cúp ở 100% số tuần. Giống hệt v0.38.0. |
 | `b2_hi` (mới) | 0/0/0/0 | 5/0/0/0 | Assert ≤30% mỗi seed. |
 | `b2_hi_weekly` (mới) | 95/90/90/75, TB 87.5 | 100/95/85/5, TB 71.2 | Assert: trung bình 4 seed ≥70% mỗi độ khó. |
 | `d_manage` | 100 mọi seed | 100 mọi seed | Điểm Normal 100.0/98.4/96.6/99.0; Easy 99.6/97.7/94.7/96.8. Như v0.38.0. |
@@ -26,7 +26,7 @@ Mục tiêu: giá Cao chỉ có hiệu lực 7 ngày trong game, nên muốn gi�
 
 ### Q-15: chủ chọn phương án A
 
-`b2_hi_weekly` được assert theo trung bình 4 seed ≥70% mỗi độ khó, không assert theo từng seed. Lý do: Easy seed 2026 là điểm ngoại lai (5%): 3 cúp ở tuần 9–12 rồi phần lớn chỉ 2 cúp, điểm TB 84.5 so với khoảng 92–94 ở các seed Easy khác. Trung bình Easy 71.2% chỉ vừa trên ngưỡng 70%.
+`b2_hi_weekly` được assert theo trung bình 4 seed ≥70% mỗi độ khó, không assert theo từng seed. Lý do: Easy seed 2026 là điểm ngoại lai (5%): 3 cúp ở tuần 9–12 rồi phần lớn chỉ 2 cúp. Trung bình Easy 71.2% chỉ vừa trên ngưỡng 70%.
 
 ## Quyết định thiết kế và lý do
 
@@ -47,7 +47,7 @@ Mục tiêu: giá Cao chỉ có hiệu lực 7 ngày trong game, nên muốn gi�
 - Test p22/p23 giống hệt và pass.
 - Đầu ra generator `SIZE_GOAL` giống bản đã commit.
 - Các hàng Normal/Easy của bảng thử thách giống bản đã commit.
-- 78 hàng Hard khác bản đã commit. Builder báo giống ở v0.38.0 (chạy generator v0.38.0 trên bản sao v0.38.0 cho cùng đầu ra); reviewer **chưa kiểm chứng** điều này. Giữ bảng đã commit, không tạo lại.
+- Các hàng Hard khác bản đã commit (chưa kiểm chứng). Builder báo giống ở v0.38.0 (chạy generator v0.38.0 trên bản sao v0.38.0 cho cùng đầu ra); reviewer **chưa kiểm chứng** điều này. Giữ bảng đã commit, không tạo lại.
 - Hard (`LONGSIM_HARD`) không chạy.
 
 ## Test
