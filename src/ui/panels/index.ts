@@ -2,8 +2,10 @@ import { stockOutlook } from '../../sim/inventory';
 import type { GameState } from '../../sim/types';
 import { h } from '../core/dom';
 import { registerPanel, type PanelDef, type PanelRender } from '../hud/panels';
+import { menuBadge, staffBadge } from '../highExpiry';
 import { renderInventoryPanel } from './inventory';
 import { renderMarketingPanel } from './marketing';
+import { stylesNewMark } from '../seasonHints';
 import { renderMenuPanel } from './menu';
 import { renderStaffPanel } from './staff';
 import { renderStylesPanel, STYLES_PANEL_ID } from './styles';
@@ -31,12 +33,12 @@ export function openTaskCount(state: GameState): number {
  */
 export const PREP_PANELS: readonly PanelDef[] = [
   { id: 'tasks', label: 'Việc', icon: 'i-tasks', render: renderTasksPanel, badge: openTaskCount, group: 'ops' },
-  { id: 'menu', label: 'Menu', icon: 'i-menu', render: renderMenuPanel, group: 'ops' },
+  { id: 'menu', label: 'Menu', icon: 'i-menu', render: renderMenuPanel, badge: menuBadge, group: 'ops' },
   { id: 'inventory', label: 'Kho', icon: 'i-inventory', render: renderInventoryPanel, badge: lowStockCount, group: 'ops' },
-  { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, group: 'ops' },
+  { id: 'staff', label: 'Nhân viên', icon: 'i-people', render: renderStaffPanel, badge: staffBadge, group: 'ops' },
   { id: 'marketing', label: 'Marketing', icon: 'i-marketing', render: renderMarketingPanel, group: 'dev' },
   { id: 'upgrades', label: 'Nâng cấp', icon: 'i-upgrades', render: renderUpgradesPanel, group: 'dev' },
-  { id: STYLES_PANEL_ID, label: 'Phong cách', icon: 'i-paintings', render: renderStylesPanel, group: 'dev' },
+  { id: STYLES_PANEL_ID, label: 'Phong cách', icon: 'i-paintings', render: renderStylesPanel, group: 'dev', isNew: stylesNewMark },
 ];
 
 /** Panels need a running game; on the main menu they say so instead of failing. */
@@ -52,6 +54,6 @@ function guarded(render: PanelRender): PanelRender {
 
 /** Adds the seven panels to the dock. Returns a function that removes them. */
 export function registerPrepPanels(): () => void {
-  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group));
+  const offs = PREP_PANELS.map((p) => registerPanel(p.id, p.label, p.icon, guarded(p.render), p.badge, p.group, p.isNew));
   return () => offs.forEach((off) => off());
 }

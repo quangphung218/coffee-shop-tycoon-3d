@@ -1967,6 +1967,10 @@ legend {
 .toast-action {
   margin-top: var(--space-2);
 }
+/* UX-410: "Đặt lại giá Cao" / "Đặt lại lương Cao" stay on one line (scripts/check-layout.mjs reset). */
+.toast-action:where([data-action="toast-price-high-again"], [data-action="toast-wage-high-again"]) {
+  white-space: nowrap;
+}
 
 /* Day-1 serving hint (serveHints.ts): a cream pill over what to tap next.
    Taps go through to the scene. Anchored, its bottom centre sits on the
@@ -2000,6 +2004,27 @@ legend {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   white-space: nowrap;
+}
+/* E-30: a brewed drink nobody carries (carryHint.ts): one tappable pill a
+   day, centred under the HUD; wraps on a narrow phone. */
+#ui > .carry-hint {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  max-width: min(92vw, 28rem);
+  min-height: var(--size-target);
+  padding: var(--space-1) var(--space-3);
+  border: var(--size-outline-sm) solid var(--border-outline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel-solid);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--frame-shadow);
 }
 .icon-btn {
   min-width: var(--size-target);

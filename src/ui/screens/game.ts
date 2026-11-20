@@ -8,8 +8,10 @@ import { setAnalyticsConsent, wireAnalytics } from '../analyticsEvents';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
+import { highExpiryOf, highExpiryToast } from '../highExpiry';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast, weekChallengeToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
+import { createCarryHint } from '../hud/carryHint';
 import { createServeHints } from '../hud/serveHints';
 import { focusRegular, revealRegular } from '../panels/tasks';
 import { openOtherPanel } from '../panels/widgets';
@@ -75,6 +77,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   let state: GameState | null = null;
   const toasts = new Toasts();
   const serveHints = createServeHints(storage, options.locateHint);
+  // E-30: one pill a day for a brewed drink nobody carries (tap carries it).
+  const carryHint = createCarryHint((cmd) => dispatch(cmd));
   let angryHinted = false;
   // Anonymous counts (E-23): consent comes from the save; until the player
   // chose this session, the autosave slot's choice applies.
@@ -215,7 +219,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // Under the screens, as when the whole shell was built at once: they share
   // a stacking level and the later element paints on top.
   const firstScreen = screens.get('menu')?.el ?? null;
-  for (const el of [serveHints.el, serveHints.walkoutEl, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
+  for (const el of [serveHints.el, serveHints.walkoutEl, carryHint.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
@@ -243,6 +247,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     runId = newRunId();
     logPlay('run_start');
     serveHints.start(state);
+    carryHint.reset();
     angryHinted = false;
     hud.closePanel();
     toasts.clear();
@@ -262,6 +267,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     state = null;
     runId = null;
     serveHints.stop();
+    carryHint.reset();
     hud.closePanel();
     toasts.clear();
     hud.el.hidden = true;
@@ -439,6 +445,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       if (state) hud.update(state);
       syncReport();
       serveHints.update(state, screens.current !== null || report.visible);
+      carryHint.update(state, screens.current !== null || report.visible);
     },
     handleEvents(events) {
       if (!state) return;
@@ -463,6 +470,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           const regularId = event.regularId;
           toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId) } };
         }
+        // E-30: the High price / wage expiry notify gets a button that sets High again (same one toast).
+        const expired = toast ? highExpiryOf(event, state) : null;
+        if (expired) toast = highExpiryToast(expired, dispatch);
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);

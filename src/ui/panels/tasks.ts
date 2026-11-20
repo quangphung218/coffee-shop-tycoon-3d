@@ -20,10 +20,13 @@ import { DAY_EVENT_LABELS, WEATHER_LABELS, dayEventEffect, weatherEffect, weekDa
 import type { PanelContext, PanelHandle } from '../hud/panels';
 import { challengeBlock, challengeView, weekGoalBlock, weekGoalView, type ChallengeView } from '../weekGoal';
 import { guardStartDay } from '../openGuard';
+import { HIGH_PRICE_TASK_TITLE, HIGH_WAGE_TASK_TITLE, highEndedNow } from '../highExpiry';
+import { HIGH_PRICE_ENDED_TEXT } from './menu';
+import { HIGH_WAGE_ENDED_TEXT } from './staff';
 import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
 export interface DayTask {
-  id: 'menu' | 'restock' | 'staff' | 'marketing';
+  id: 'menu' | 'restock' | 'staff' | 'marketing' | 'price-ended' | 'wage-ended';
   title: string;
   done: boolean;
   /** Something is wrong, not just unfinished (locked items, empty stock). */
@@ -96,6 +99,13 @@ export function dayTasks(state: GameState): DayTask[] {
       panel: 'marketing',
       link: 'Mở Marketing',
     },
+    // E-30: the day High ran out, while it can still be set again (preparation).
+    ...(highEndedNow(state, 'price')
+      ? [{ id: 'price-ended' as const, title: HIGH_PRICE_TASK_TITLE, done: false, warn: false, detail: HIGH_PRICE_ENDED_TEXT, panel: 'menu', link: 'Mở Menu' }]
+      : []),
+    ...(highEndedNow(state, 'wage')
+      ? [{ id: 'wage-ended' as const, title: HIGH_WAGE_TASK_TITLE, done: false, warn: false, detail: HIGH_WAGE_ENDED_TEXT, panel: 'staff', link: 'Mở Nhân viên' }]
+      : []),
   ];
 }
 
@@ -530,7 +540,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       const v = weekGoalView(s);
       goalTitle.hidden = goalBox.hidden = v === null;
       setChildren(goalTitle, ...withIcon('i-trophy', `Mục tiêu tuần ${s.week?.index ?? ''}`, 24));
-      setChildren(goalBox, v ? weekGoalBlock(v) : null);
+      setChildren(goalBox, v ? weekGoalBlock(v, linkBtn) : null);
     },
   );
   // The week's side challenge under the goal, from CHALLENGE_FIRST_WEEK.

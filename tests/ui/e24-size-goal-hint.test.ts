@@ -15,7 +15,9 @@ import type { PanelContext } from '../../src/ui/hud/panels';
 import { renderTasksPanel } from '../../src/ui/panels/tasks';
 import { createShell, type Shell } from '../../src/ui/screens/shell';
 import {
+  SIZE_GOAL_PRICE_HINT,
   SIZE_GOAL_TEXT,
+  sizeGoalHighLeftText,
   sizeGoalHint,
   sizeGoalLineText,
   sizeGoalNumberText,
@@ -97,31 +99,46 @@ function openWeekEnd(state: GameState): HTMLElement {
   return el;
 }
 
-const STATES: { name: string; staff: number; price: PolicyLevel; hint: string | null }[] = [
-  { name: '<2 staff, standard price', staff: 1, price: 'standard', hint: 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.' },
-  { name: '2-3 staff, standard price', staff: 3, price: 'standard', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
-  { name: '4 staff, low price', staff: 4, price: 'low', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
-  { name: '4 staff, Cao price', staff: 4, price: 'high', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
+/** High without a start day counts from today (atReport), and the rollover starts it on the new day (inSizeWeek). */
+const PRICE_HINT = `${SIZE_GOAL_PRICE_HINT}.`;
+const STATES: { name: string; staff: number; price: PolicyLevel; hint: string | null; next: string | null }[] = [
+  { name: '<2 staff, standard price', staff: 1, price: 'standard', hint: PRICE_HINT, next: PRICE_HINT },
+  { name: '2-3 staff, standard price', staff: 3, price: 'standard', hint: PRICE_HINT, next: PRICE_HINT },
+  { name: '4 staff, low price', staff: 4, price: 'low', hint: PRICE_HINT, next: PRICE_HINT },
+  { name: '4 staff, Cao price', staff: 4, price: 'high', hint: sizeGoalHighLeftText(7), next: sizeGoalHighLeftText(7) },
 ];
 
-describe('sizeGoalHint by shop state (UX-301, E-28)', () => {
+describe('sizeGoalHint by shop state (UX-405)', () => {
   it.each([
-    [0, 'standard', 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.'],
-    [1, 'high', 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.'],
-    [2, 'high', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
-    [3, 'low', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
-    [4, 'standard', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
-    [6, 'high', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
-  ] as const)('%i staff, price %s', (staff, price, want) => {
+    [0, 'standard'],
+    [3, 'low'],
+    [6, 'standard'],
+  ] as const)('%i staff, price %s: set High at Menu', (staff, price) => {
     const state = atReport(staff, price);
-    expect(sizeGoalHint(state)).toBe(want);
-    expect(want).not.toMatch(EMOJI);
+    expect(sizeGoalHint(state)).toEqual({ text: 'Đặt giá Cao ở Menu mỗi tuần để lên 3 cúp.', panel: 'menu' });
   });
 
-  it('a save without policies reads the same', () => {
+  it('while High runs: its days left, no route', () => {
+    const state = atReport(2, 'high');
+    state.highPriceSinceDay = state.day - 4;
+    expect(sizeGoalHint(state)).toEqual({ text: sizeGoalHighLeftText(3) });
+    expect(sizeGoalHighLeftText(3)).toBe('Giá Cao còn 3 ngày, đặt lại ở Menu khi hết để giữ 3 cúp.');
+    expect(sizeGoalHighLeftText(3)).not.toMatch(EMOJI);
+  });
+
+  it('null when the week already has 3 cups', () => {
+    for (const price of ['standard', 'high'] as const) {
+      const state = atReport(1, price);
+      state.week!.result!.cups = 3;
+      state.week!.result!.score = 100;
+      expect(sizeGoalHint(state)).toBeNull();
+    }
+  });
+
+  it('a save without policies reads as standard', () => {
     const state = atReport(4, 'high');
     delete state.policies;
-    expect(sizeGoalHint(state)).toBe('Chỉnh giá mỗi tuần để lên 3 cúp.');
+    expect(sizeGoalHint(state)?.panel).toBe('menu');
   });
 });
 
@@ -136,11 +153,11 @@ describe('size goal number text (UX-303)', () => {
 });
 
 describe('Mục tiêu tuần (Việc) by shop state', () => {
-  it.each(STATES)('$name', ({ staff, price, hint }) => {
+  it.each(STATES)('$name', ({ staff, price, next: hint }) => {
     const state = inSizeWeek(staff, price);
     const profit = state.week!.goal.profit!;
     const view = weekGoalView(state)!;
-    expect(view.size?.hint).toBe(hint);
+    expect(view.size?.hint?.text ?? null).toBe(hint);
 
     const body = mountTasks(state);
     const block = body.querySelector('[data-block="week-goal"]')!;
@@ -149,7 +166,9 @@ describe('Mục tiêu tuần (Việc) by shop state', () => {
     const hints = block.querySelectorAll('[data-goal="size-hint"]');
     if (hint) {
       expect(hints).toHaveLength(1);
-      expect(hints[0]!.textContent).toBe(hint);
+      expect(hints[0]!.firstElementChild!.textContent).toBe(hint);
+      // The price hint opens the Menu panel (linkBtn); the days-left one has no link.
+      expect(hints[0]!.querySelector('[data-goto]')?.getAttribute('data-goto') ?? null).toBe(price === 'high' ? null : 'menu');
     } else expect(hints).toHaveLength(0);
     expect(body.textContent).not.toContain('thường lãi');
     expect(body.textContent).not.toMatch(EMOJI);
@@ -176,6 +195,7 @@ describe('Week-end summary: size line and hint under "Mục tiêu:" (UX-303)', (
     if (hint) {
       expect(lines[at + 2]).toBe('size-hint');
       expect(hintEl?.textContent).toBe(hint);
+      expect(sizeGoalHint(state)?.text).toBe(hint);
       // The sentence is the line's last span, so it wraps beside its icon at 390 px (.wk-next p > span:last-child).
       expect(hintEl!.lastElementChild?.tagName).toBe('SPAN');
     } else expect(hintEl).toBeNull();
