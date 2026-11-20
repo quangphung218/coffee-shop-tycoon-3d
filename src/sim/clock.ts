@@ -2,6 +2,7 @@ import { challengeSize, rollWeekChallenge } from './challenges';
 import { rollWeather } from './customers';
 import { weekUnlockDay } from './data/week';
 import { recordRevenue } from './economy';
+import { expireHighPrice } from './policies';
 import { rollMissions, weekDay, weekIndex } from './progression';
 import { closeDay } from './report';
 import { DAY_START_MINUTE, createDayStats } from './state';
@@ -107,6 +108,7 @@ export function startNextDay(state: GameState): boolean {
   state.weather = rollWeather(state);
   const plan = todayPlan(state);
   if (plan) state.weather = plan.weather;
+  expireHighPrice(state);
   state.today = createDayStats(state.day, state.rating);
   state.missions = rollMissions(state.seed, state.day, state.shopLevel);
   setPhase(state, 'preparation');

@@ -55,8 +55,8 @@ function load(text: string): GameState {
 const reachedOf = (g: GameState) => Object.fromEntries(regularBook(g).map((p) => [p.regular.id, p.reached]));
 
 describe('E-27 season-2 regulars: save compatibility', { timeout: 120_000 }, () => {
-  it('keeps SAVE_VERSION 7: succeededBy is optional', () => {
-    expect(SAVE_VERSION).toBe(7);
+  it('keeps SAVE_VERSION 8: succeededBy is optional', () => {
+    expect(SAVE_VERSION).toBe(8);
   });
 
   it('loads an old save with every reached milestone kept, nothing paid and nobody moved in yet', () => {
