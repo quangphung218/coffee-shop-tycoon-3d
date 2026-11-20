@@ -97,14 +97,14 @@ describe('Mục tiêu tuần: size goal line (E-21)', () => {
     expect(state.week!.goal.levels).toBe(levels);
 
     const view = weekGoalView(state)!;
-    // A new game has no staff and the standard price (E-24 UX-301 hint).
-    expect(view.size).toEqual({ levels, profit: row.profit, hint: 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.' });
+    // A new game has the standard price: set High at Menu (UX-405 hint).
+    expect(view.size).toEqual({ levels, profit: row.profit, hint: { text: 'Đặt giá Cao ở Menu mỗi tuần để lên 3 cúp.', panel: 'menu' } });
     const block = weekGoalBlock(view);
     expect(block.querySelector('[data-goal="size"]')?.textContent).toBe(SIZE_GOAL_TEXT);
     expect(SIZE_GOAL_TEXT).toBe('Mục tiêu theo cỡ quán');
     expect(block.querySelector('[data-goal="size"]')?.textContent).not.toMatch(/\d|cấp/);
     expect(block.querySelector('[data-goal="size-num"]')?.textContent).toBe(sizeGoalNumberText(row.profit));
-    expect(block.querySelector('[data-goal="size-hint"]')?.textContent).toBe('Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.');
+    expect(block.querySelector('[data-goal="size-hint"]')?.textContent).toBe('Đặt giá Cao ở Menu mỗi tuần để lên 3 cúp.');
     expect(block.querySelector('[data-goal="scaled"]')).toBeNull();
 
     const body = mountTasks(state);

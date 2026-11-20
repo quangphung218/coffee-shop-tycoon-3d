@@ -422,7 +422,7 @@ function nextSizeGoalLines(state: GameState): HTMLElement[] {
   const hint = sizeGoalHint(state);
   return [
     h('p', { attrs: { 'data-next': 'size' } }, icon('i-chart', { size: 16 }), h('span', { text: sizeGoalLineText(goal.profit) })),
-    ...(hint ? [h('p', { class: 'item-meta', attrs: { 'data-next': 'size-hint' } }, icon('i-forward', { size: 16 }), h('span', { text: hint }))] : []),
+    ...(hint ? [h('p', { class: 'item-meta', attrs: { 'data-next': 'size-hint' } }, icon('i-forward', { size: 16 }), h('span', { text: hint.text }))] : []),
   ];
 }
 
@@ -484,12 +484,41 @@ function canAffordUpgrade(state: GameState): boolean {
   });
 }
 
-/** Up to two things to do next week, read from the shop: hire when nobody works, buy when the money pays an upgrade. */
-export function weekOneHints(state: GameState): string[] {
+/**
+ * Up to two things to do next week, read from the shop: hire when under
+ * `minStaff` work (a barista first, then a server, or the barista a lone
+ * server lacks), buy when the money pays an upgrade.
+ */
+export function weekOneHints(state: GameState, minStaff = 1): string[] {
   const hints: string[] = [];
-  if (state.staff.length === 0) hints.push('Thuê pha chế');
+  if (state.staff.length < minStaff) {
+    const barista = state.staff.some((s) => s.role === 'barista');
+    hints.push(state.staff.length === 0 || !barista ? 'Thuê pha chế' : 'Thuê người phục vụ');
+  }
   if (canAffordUpgrade(state)) hints.push('Mua nâng cấp, tiền chia ra các tuần');
   return hints.slice(0, 2);
+}
+
+/** Weeks LATE_HINT_WEEKS that end below LATE_HINT_MAX_CUPS cups with under LATE_HINT_MIN_STAFF staff get the hire hints (T-111). */
+const LATE_HINT_WEEKS = { from: 2, to: 8 } as const;
+const LATE_HINT_MAX_CUPS = 2;
+const LATE_HINT_MIN_STAFF = 2;
+
+/** Weeks 2-8 below 2 cups with under 2 staff: the weekOneHints (hire first); null otherwise. */
+function lateHintsBlock(state: GameState, r: WeekResult, index: number): HTMLElement | null {
+  if (index < LATE_HINT_WEEKS.from || index > LATE_HINT_WEEKS.to) return null;
+  if (r.cups >= LATE_HINT_MAX_CUPS || state.staff.length >= LATE_HINT_MIN_STAFF) return null;
+  const hints = weekOneHints(state, LATE_HINT_MIN_STAFF);
+  if (!hints.length) return null;
+  return section(
+    'i-forward',
+    `Chuẩn bị tuần ${index + 1}`,
+    h(
+      'div',
+      { class: 'wk-next', attrs: { 'data-block': 'week-hints' } },
+      h('ul', { class: 'wk-hints', attrs: { 'data-block': 'hints' } }, ...hints.map((t) => h('li', { attrs: { 'data-hint': '' }, text: `${t}.` }))),
+    ),
+  );
 }
 
 /** Week 1 below 3 cups: revenue a day week 2 needs against this week's, and the hints; null otherwise. */
@@ -637,6 +666,7 @@ export function createWeekEnd(actions: WeekEndActions): WeekEndScreen {
           challengeSection(state),
           nextWeekBlock(state, index),
           weekOneBlock(state, result, index),
+          lateHintsBlock(state, result, index),
         );
       }
       renderSave();

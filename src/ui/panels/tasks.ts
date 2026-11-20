@@ -540,7 +540,7 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
       const v = weekGoalView(s);
       goalTitle.hidden = goalBox.hidden = v === null;
       setChildren(goalTitle, ...withIcon('i-trophy', `Mục tiêu tuần ${s.week?.index ?? ''}`, 24));
-      setChildren(goalBox, v ? weekGoalBlock(v) : null);
+      setChildren(goalBox, v ? weekGoalBlock(v, linkBtn) : null);
     },
   );
   // The week's side challenge under the goal, from CHALLENGE_FIRST_WEEK.
