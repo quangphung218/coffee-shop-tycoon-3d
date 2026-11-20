@@ -98,30 +98,30 @@ function openWeekEnd(state: GameState): HTMLElement {
 }
 
 const STATES: { name: string; staff: number; price: PolicyLevel; hint: string | null }[] = [
-  { name: '<2 staff, standard price', staff: 1, price: 'standard', hint: 'Thuê thêm người, đặt giá Cao để vượt mục tiêu.' },
-  { name: '2-3 staff, standard price', staff: 3, price: 'standard', hint: 'Thuê đủ 4 người, đặt giá Cao để vượt mục tiêu.' },
-  { name: '4 staff, low price', staff: 4, price: 'low', hint: 'Đặt giá Cao để vượt mục tiêu.' },
-  { name: '4 staff, Cao price (all good)', staff: 4, price: 'high', hint: null },
+  { name: '<2 staff, standard price', staff: 1, price: 'standard', hint: 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.' },
+  { name: '2-3 staff, standard price', staff: 3, price: 'standard', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
+  { name: '4 staff, low price', staff: 4, price: 'low', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
+  { name: '4 staff, Cao price', staff: 4, price: 'high', hint: 'Chỉnh giá mỗi tuần để lên 3 cúp.' },
 ];
 
-describe('sizeGoalHint by shop state (UX-301)', () => {
+describe('sizeGoalHint by shop state (UX-301, E-28)', () => {
   it.each([
-    [0, 'standard', 'Thuê thêm người, đặt giá Cao để vượt mục tiêu.'],
-    [1, 'high', 'Thuê thêm người để vượt mục tiêu.'],
-    [2, 'high', 'Thuê đủ 4 người để vượt mục tiêu.'],
-    [3, 'low', 'Thuê đủ 4 người, đặt giá Cao để vượt mục tiêu.'],
-    [4, 'standard', 'Đặt giá Cao để vượt mục tiêu.'],
-    [4, 'high', null],
-    [6, 'high', null],
+    [0, 'standard', 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.'],
+    [1, 'high', 'Thuê người thứ hai để giữ 2 cúp; chỉnh giá mỗi tuần để lên 3.'],
+    [2, 'high', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
+    [3, 'low', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
+    [4, 'standard', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
+    [6, 'high', 'Chỉnh giá mỗi tuần để lên 3 cúp.'],
   ] as const)('%i staff, price %s', (staff, price, want) => {
     const state = atReport(staff, price);
     expect(sizeGoalHint(state)).toBe(want);
+    expect(want).not.toMatch(EMOJI);
   });
 
-  it('a save without policies reads as standard price', () => {
+  it('a save without policies reads the same', () => {
     const state = atReport(4, 'high');
     delete state.policies;
-    expect(sizeGoalHint(state)).toBe('Đặt giá Cao để vượt mục tiêu.');
+    expect(sizeGoalHint(state)).toBe('Chỉnh giá mỗi tuần để lên 3 cúp.');
   });
 });
 
