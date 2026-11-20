@@ -1967,6 +1967,10 @@ legend {
 .toast-action {
   margin-top: var(--space-2);
 }
+/* UX-410: "Đặt lại giá Cao" / "Đặt lại lương Cao" stay on one line (scripts/check-layout.mjs reset). */
+.toast-action:where([data-action="toast-price-high-again"], [data-action="toast-wage-high-again"]) {
+  white-space: nowrap;
+}
 
 /* Day-1 serving hint (serveHints.ts): a cream pill over what to tap next.
    Taps go through to the scene. Anchored, its bottom centre sits on the

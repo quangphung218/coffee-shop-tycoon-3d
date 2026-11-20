@@ -59,8 +59,10 @@
 // must stay on one line inside its tab; on the Main Menu at 390×844 and
 // 1280×720, with a save of a 24-character shop name made with the doors
 // open, every button label ("Tiếp tục" beside its detail, Ván mới, Tải game,
-// Cài đặt) must stay on one line.
-// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, menu, comma-separated) runs those parts
+// Cài đặt) must stay on one line. UX-410: at the same two sizes, on day 2
+// after High price and High wage ran out, the toasts' "Đặt lại giá Cao" and
+// "Đặt lại lương Cao" buttons must stay on one line (white-space: nowrap).
+// LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, menu, reset, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
 // Holds the machine's perf lock (scripts/lib/perf-lock.mjs) while Chrome is
@@ -1325,6 +1327,79 @@ async function checkMainMenu(browser, viewport, save, results) {
   }
 }
 
+/** UX-410: the reset buttons of the High-expiry toasts (src/ui/highExpiry.ts), each on one line. */
+const RESET_BUTTONS = [
+  ['toast-price-high-again', 'Đặt lại giá Cao'],
+  ['toast-wage-high-again', 'Đặt lại lương Cao'],
+];
+
+/**
+ * The day-1 save one tick before the report (firstDaySave) with High price and
+ * High wage set 6 days before: "Ngày tiếp theo" starts day 2, both run out
+ * there and their toasts show the reset buttons.
+ */
+function highExpirySave(mods) {
+  const state = playFirstDay(mods, { ...NEW_GAME, seed: FIXED_NOW >>> 0, hires: HIRES });
+  state.policies = { ...state.policies, price: 'high', wage: 'high' };
+  state.highPriceSinceDay = state.day - 6;
+  state.highWageSinceDay = state.day - 6;
+  const peek = structuredClone(state);
+  mods.sim.step(peek, 1);
+  if (peek.phase !== 'report') throw new Error('day 1 does not end on the next tick');
+  peek.events = [];
+  mods.sim.dispatch(peek, { type: 'next_day' });
+  const notes = peek.events.filter((e) => e.type === 'notify' && /^(Giá|Lương) cao đã hết/.test(e.text));
+  if (notes.length !== 2) throw new Error(`next_day gave ${notes.length} High expiry notify, expected 2`);
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * UX-410: on day 2, after High price and High wage ran out, each toast's reset
+ * button ("Đặt lại giá Cao", "Đặt lại lương Cao") stays on one line and is at
+ * least --size-target; the toasts stay inside the viewport.
+ */
+async function checkResetButtons(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.rpt-layer:not([hidden]) [data-action="next-day"]');
+  try {
+    await page.locator('.rpt-layer:not([hidden]) [data-action="next-day"]').click();
+    const sel = RESET_BUTTONS.map(([a]) => `.toast-action[data-action="${a}"]`).join(', ');
+    await page.locator(`.toast-action[data-action="${RESET_BUTTONS[1][0]}"]`).waitFor();
+    await page.evaluate(() => {
+      // Hold the toasts while measuring (they close after 8 s).
+      for (const t of document.querySelectorAll('.toast')) t.dispatchEvent(new PointerEvent('pointerenter'));
+    });
+    await settle(page);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const wrapped = await page.evaluate(wrappedText, { sel, eps: EPS });
+    const m = await page.evaluate(({ actions, target, eps }) => {
+      const fails = [];
+      const found = [];
+      for (const [action, label] of actions) {
+        const b = document.querySelector(`.toast-action[data-action="${action}"]`);
+        if (!b || !b.checkVisibility()) {
+          fails.push(`${action} not shown`);
+          continue;
+        }
+        const text = (b.textContent ?? '').trim();
+        if (text !== label) fails.push(`${action} label "${text}", expected "${label}"`);
+        if (getComputedStyle(b).whiteSpace !== 'nowrap') fails.push(`${action} white-space ${getComputedStyle(b).whiteSpace}, expected nowrap`);
+        const r = b.getBoundingClientRect();
+        if (r.width < target - eps || r.height < target - eps) fails.push(`${action} ${r.width.toFixed(1)}×${r.height.toFixed(1)} < ${target} px`);
+        const t = b.closest('.toast').getBoundingClientRect();
+        if (r.left < t.left - eps || r.right > t.right + eps) fails.push(`${action} ${r.left.toFixed(1)}..${r.right.toFixed(1)} outside its toast ${t.left.toFixed(1)}..${t.right.toFixed(1)}`);
+        if (t.left < -eps || t.right > innerWidth + eps) fails.push(`toast of ${action} ${t.left.toFixed(1)}..${t.right.toFixed(1)} outside 0..${innerWidth}`);
+        found.push(`${Math.round(r.width)} px`);
+      }
+      return { fails, found };
+    }, { actions: RESET_BUTTONS, target, eps: EPS });
+    const fails = [...m.fails, ...wrapped.out];
+    results.push({ viewport: size, screen: 'Toast hết Cao: nút Đặt lại một dòng', pass: fails.length === 0, detail: `${wrapped.count} nút một dòng (${m.found.join(', ')}); ≥ ${target} px`, fails });
+  } finally {
+    await context.close();
+  }
+}
+
 function printTable(title, rows) {
   console.log(`\n### ${title}\n\n| Khổ | Màn | Kết quả | Chi tiết |\n| --- | --- | --- | --- |`);
   for (const r of rows) console.log(`| ${r.viewport} | ${r.screen} | ${r.pass ? 'PASS' : 'FAIL'} | ${r.detail} |`);
@@ -1344,11 +1419,11 @@ async function main() {
   const browser = OFFLINE ? offlineBrowser() : await launchBrowser({ headless: process.env.LAYOUT_HEADED !== '1' });
   const overflow = [];
   const shift = [];
-  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge,consent,menu runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
+  // LAYOUT_ONLY=day,hud,event,p25,p27,styles,challenge,consent,menu,reset runs some parts only (all by default); LAYOUT_DAY_WIDTHS=390 narrows the day runs.
   const part = (name) => !only || only.includes(name);
   const dayWidths = process.env.LAYOUT_DAY_WIDTHS?.split(',').map(Number);
   try {
-    const mods = part('day') || part('event') || part('styles') || part('challenge') || part('consent') || part('menu') ? await loadTree() : null;
+    const mods = part('day') || part('event') || part('styles') || part('challenge') || part('consent') || part('menu') || part('reset') ? await loadTree() : null;
     const report = part('day') || part('consent') ? firstDaySave(mods) : null;
     for (const viewport of part('day') ? VIEWPORTS.filter((v) => !dayWidths || dayWidths.includes(v.width)) : []) {
       const size = `${viewport.width}×${viewport.height}`;
@@ -1432,6 +1507,16 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Menu chính', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    const resetSave = part('reset') ? highExpirySave(mods) : null;
+    for (const viewport of part('reset') ? MENU_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkResetButtons(browser, viewport, resetSave, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Toast hết Cao', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
     for (const viewport of part('consent') ? CONSENT_VIEWPORTS : []) {
