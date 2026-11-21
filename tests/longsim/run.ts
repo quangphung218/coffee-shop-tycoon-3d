@@ -2,7 +2,7 @@ import { expect } from 'vitest';
 import { nextChallengeStyle } from '../../src/sim/challenges';
 import { LEVELS } from '../../src/sim/data/levels';
 import { MARKETING } from '../../src/sim/data/marketing';
-import { seasonFor, seasonalStylesFor } from '../../src/sim/data/seasons';
+import { seasonFor, seasonalStylesFor, seasonalVariantsFor } from '../../src/sim/data/seasons';
 import { getMenuItem } from '../../src/sim/data/menu';
 import { UPGRADES } from '../../src/sim/data/upgrades';
 import { WEEK_LENGTH, dayUnlockDay } from '../../src/sim/data/week';
@@ -30,7 +30,9 @@ import { playDay } from '../integration/helpers';
  * high prices from week 1), measured only. E-26 adds b2_styles: b_steady2
  * that also buys the active season's styles (buy_style) whenever its Tem
  * covers one, after its upgrades; a sign style is bought only when the money
- * left above the reserve covers its price. The other bots never buy a style.
+ * left above the reserve covers its price; from E-33 it also buys the
+ * season's colour variants (Tem only, on sale from week 48). The other bots
+ * never buy a style.
  * E-28: the High price lasts 7 days; d_manage and a_manage set it again each
  * time it expires (unchanged play). b2_hi is b_steady2 that sets High once in
  * week 9; b2_hi_weekly is b_steady2 that keeps setting it from week 9.
@@ -131,10 +133,16 @@ function reserve(state: GameState): number {
   return totalWages(state) + dailyRent(state) + autoRestockSuggestion(drained).totalCost;
 }
 
-/** Buys every style of the week's season the Tem covers (a priced one only from money above the reserve); returns the number bought. */
+/**
+ * Buys every style of the week's season the Tem covers (a priced one only from
+ * money above the reserve), then (E-33) its colour variants on sale, newest
+ * cycle first (Tem only); returns the number bought. Variants start at week
+ * 48, so the 40-week runs are unchanged.
+ */
 function buySeasonStyles(state: GameState): number {
   let bought = 0;
-  for (const style of seasonalStylesFor(weekIndex(state))) {
+  const week = weekIndex(state);
+  for (const style of [...seasonalStylesFor(week), ...seasonalVariantsFor(week)]) {
     if (!canAffordStyle(state, style.id) || state.money - reserve(state) < style.price) continue;
     expect(dispatch(state, { type: 'buy_style', styleId: style.id })).toBe(true);
     bought++;
