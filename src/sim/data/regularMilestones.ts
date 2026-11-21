@@ -1,5 +1,6 @@
 import type { GameState } from '../types';
-import { REGULARS, newRegularOrder, regularById, type Regular } from './regulars';
+import { generatedIndex, generatedProfile } from './regularChain';
+import { REGULARS, generatedRegular, newRegularOrder, regularById, type Regular } from './regulars';
 
 /**
  * Sổ khách quen (E-18, E-22): each named regular has four visit milestones at
@@ -190,12 +191,30 @@ export const NEW_REGULAR_BOOK: readonly RegularBookEntry[] = [
 /** Every regular's book entry, the first eight then season 2. */
 const ALL_BOOK: readonly RegularBookEntry[] = [...REGULAR_BOOK, ...NEW_REGULAR_BOOK];
 
+const generatedBook = new Map<number, RegularBookEntry>();
+
+/** Book entry of the k-th season 3+ regular (E-32): composed stories, Tem 1/2/3/3 like everyone. */
+function generatedEntry(k: number): RegularBookEntry {
+  let e = generatedBook.get(k);
+  if (!e) {
+    const p = generatedProfile(k);
+    const m = (i: 0 | 1 | 2 | 3): RegularMilestone => ({ visits: p.visits[i], tickets: MILESTONE_TICKETS[i], story: p.stories[i] });
+    e = { regularId: p.id, favoriteDish: p.favoriteDish, milestones: [m(0), m(1), m(2), m(3)] };
+    generatedBook.set(k, e);
+  }
+  return e;
+}
+
 export function regularBookEntry(regularId: string): RegularBookEntry | undefined {
+  const k = generatedIndex(regularId);
+  if (k >= 0) return generatedEntry(k);
   return ALL_BOOK.find((e) => e.regularId === regularId);
 }
 
 /** Visits of milestones 1–4 of a regular; empty for an id the book does not know. */
 export function milestoneVisits(regularId: string): readonly number[] {
+  const k = generatedIndex(regularId);
+  if (k >= 0) return generatedEntry(k).milestones.map((m) => m.visits);
   return MILESTONE_VISITS[regularId] ?? [];
 }
 
@@ -232,16 +251,27 @@ export interface RegularBookPage {
 }
 
 /**
- * Season-2 regulars (NEW_REGULARS) that have moved in, in the order they did:
- * each is the `succeededBy` of one of the first eight in `state.regulars`.
+ * Regulars that have moved in, in the order they did: season 2
+ * (NEW_REGULARS, each the `succeededBy` of one of the first eight), then
+ * season 3+ (E-32, generated ids, each the `succeededBy` of a season-2 or
+ * later regular) by first visit. Only ids reached along a chain from the first eight count.
  */
 export function movedInRegulars(state: GameState): Regular[] {
   const seen = state.regulars ?? {};
-  const ids = new Set(REGULARS.flatMap((r) => (seen[r.id]?.succeededBy ? [seen[r.id]!.succeededBy!] : [])));
-  return newRegularOrder(state.seed).filter((id) => ids.has(id)).map((id) => regularById(id)!);
+  const ids = new Set<string>();
+  for (const r of REGULARS) {
+    let next = seen[r.id]?.succeededBy;
+    while (next && !ids.has(next) && regularById(next)) {
+      ids.add(next);
+      next = seen[next]?.succeededBy;
+    }
+  }
+  const day = (k: number): number => seen[generatedRegular(k).id]?.firstDay ?? Infinity;
+  const generated = [...ids].map(generatedIndex).filter((k) => k >= 0).sort((a, b) => day(a) - day(b) || a - b);
+  return [...newRegularOrder(state.seed).filter((id) => ids.has(id)).map((id) => regularById(id)!), ...generated.map(generatedRegular)];
 }
 
-/** Regulars the book shows: the first eight, then the season-2 ones that moved in. */
+/** Regulars the book shows: the first eight, then those that moved in (season 2, then 3+). */
 export function bookRegulars(state: GameState): Regular[] {
   return [...REGULARS, ...movedInRegulars(state)];
 }

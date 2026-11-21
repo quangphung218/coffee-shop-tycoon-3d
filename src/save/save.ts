@@ -4,6 +4,7 @@ import { WEEK_CHALLENGE_IDS } from '../sim/data/challenges';
 import { levelForXp, xpToReach } from '../sim/data/levels';
 import { MENU } from '../sim/data/menu';
 import { e18MilestonesReached } from '../sim/data/regularMilestones';
+import { REGULARS, isFirstRegular, regularById } from '../sim/data/regulars';
 import { STYLE_SLOTS, styleById } from '../sim/data/styles';
 import { WEEK_LENGTH } from '../sim/data/week';
 import { settleActors } from '../sim/index';
@@ -225,6 +226,7 @@ export function migrate(raw: unknown): Result<SaveFile> {
   dropUnknownChallenge(file.state);
   cleanStyles(file.state);
   keepE18Milestones(file.state);
+  cleanRegularChain(file.state);
   // Saves from before E-16 get a challenge on a week's first morning; mid-week they wait for the next week.
   ensureWeekChallenge(file.state);
   // Every copy of a run saved before runId existed shares its seed and name.
@@ -345,6 +347,34 @@ function keepE18Milestones(state: GameState): void {
   if (!isObject(regulars)) return;
   for (const seen of Object.values(regulars)) {
     if (isObject(seen) && seen.keptMilestones === undefined && typeof seen.visits === 'number') seen.keptMilestones = e18MilestonesReached(seen.visits);
+  }
+}
+
+/**
+ * E-32 follows `succeededBy` from each first-eight regular as far as it goes,
+ * so a hand-edited or damaged save could loop. Keeps each chain from the
+ * first eight while it names a known regular (not one of the first eight)
+ * that no other chain claimed; drops any other `succeededBy`. Saves written
+ * by the game are left as they are (no version bump: the field is optional),
+ * visits and reached milestones are untouched and no Tem is paid or refunded.
+ */
+function cleanRegularChain(state: GameState): void {
+  const regulars: unknown = state.regulars;
+  if (!isObject(regulars)) return;
+  const kept = new Set<object>();
+  const claimed = new Set<string>();
+  for (const r of REGULARS) {
+    let seen: unknown = regulars[r.id];
+    while (isObject(seen) && seen.succeededBy !== undefined) {
+      const next = seen.succeededBy;
+      if (typeof next !== 'string' || claimed.has(next) || !regularById(next) || isFirstRegular(next)) break;
+      claimed.add(next);
+      kept.add(seen);
+      seen = regulars[next];
+    }
+  }
+  for (const seen of Object.values(regulars)) {
+    if (isObject(seen) && seen.succeededBy !== undefined && !kept.has(seen)) delete seen.succeededBy;
   }
 }
 
