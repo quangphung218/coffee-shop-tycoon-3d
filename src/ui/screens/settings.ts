@@ -61,7 +61,12 @@ const CONSENT_OPTIONS: readonly { value: 'yes' | 'no'; label: string }[] = [
 ];
 /** The Settings row for anonymous counts (E-23). */
 export const CONSENT_LABEL = 'Số liệu ẩn danh';
-export const CONSENT_HINT = 'Chọn Gửi để gửi số liệu chơi ẩn danh giúp cải thiện game. Đổi lại lúc nào cũng được.';
+export const CONSENT_HINT = 'Chỉ gửi tên các mốc chơi, không cookie, không tên quán hay tên người chơi. Đổi lại lúc nào cũng được.';
+/** UX-407: the status line after a change of the Số liệu ẩn danh row. */
+export const CONSENT_SAVED: Record<'yes' | 'no', string> = {
+  yes: 'Đã bật gửi số liệu ẩn danh',
+  no: 'Đã tắt gửi số liệu ẩn danh',
+};
 const CAMERA_KEY_OPTIONS: readonly { value: CameraKeys; label: string }[] = [
   { value: 'qe-wasd', label: 'WASD di chuyển · Q/E xoay' },
   { value: 'qa-arrows', label: 'Mũi tên di chuyển · Q/A xoay' },
@@ -219,7 +224,11 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
         'analyticsConsent',
         CONSENT_OPTIONS,
         () => consentActions.get() as 'yes' | 'no',
-        (c) => consentActions.set(c),
+        (c) => {
+          consentActions.set(c);
+          status.classList.remove('is-error');
+          setChildren(status, icon('i-ok', { size: 16 }), CONSENT_SAVED[c]);
+        },
       )
     : null;
 

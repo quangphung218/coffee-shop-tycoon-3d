@@ -24,3 +24,4 @@ export function sectionBox(args: unknown): unknown;
 export function scrollPanelToEnd(): void;
 export function readDom(args: unknown): unknown[];
 export function textsOf(sel: string): string[];
+export function dockAboveModal(): { modal: string | null; checked: number; fails: string[] };

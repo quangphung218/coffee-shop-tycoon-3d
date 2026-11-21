@@ -221,6 +221,16 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const firstScreen = screens.get('menu')?.el ?? null;
   for (const el of [serveHints.el, serveHints.walkoutEl, carryHint.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
+  // UX-406: under an open screen (Settings, Tạm dừng, ...) or the report the
+  // dock is inert: no focus, no clicks, out of the accessibility tree. CSS
+  // also hides it there, so its badges never show over the modal.
+  const dockEl = hud.el.querySelector<HTMLElement>('.dock');
+  function syncDock(): void {
+    const covered = screens.current !== null || report.visible;
+    if (dockEl && dockEl.hasAttribute('inert') !== covered) dockEl.toggleAttribute('inert', covered);
+  }
+  screens.onChange(syncDock);
+
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
     if (state?.bankrupt && screens.current !== 'bankrupt') {
@@ -230,6 +240,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     report.update(state, state?.phase === 'report' && screens.current === null);
     // Over the report one toast at most; its footer already says the day was saved.
     toasts.limit = report.visible ? 1 : MAX_TOASTS;
+    syncDock();
   }
 
   function startGame(next: GameState, from?: SaveSlot): void {

@@ -36,6 +36,7 @@ export function screenLayer(content: HTMLElement, options: ScreenOptions): HTMLE
 export class ScreenManager<Name extends string> {
   private readonly screens = new Map<Name, Screen>();
   private active: Name | null = null;
+  private readonly listeners: ((name: Name | null) => void)[] = [];
 
   constructor(private readonly root: HTMLElement) {}
 
@@ -53,13 +54,18 @@ export class ScreenManager<Name extends string> {
     return this.screens.get(name);
   }
 
+  /** Calls `fn` after every show(), with the screen now shown (null: none). */
+  onChange(fn: (name: Name | null) => void): void {
+    this.listeners.push(fn);
+  }
+
   show(name: Name | null): void {
     for (const [n, s] of this.screens) if (n !== name) s.el.hidden = true;
     this.active = name;
-    if (name === null) return;
-    const screen = this.screens.get(name);
+    const screen = name === null ? undefined : this.screens.get(name);
+    if (screen) screen.el.hidden = false;
+    for (const fn of this.listeners) fn(name);
     if (!screen) return;
-    screen.el.hidden = false;
     screen.onShow?.();
     const target = screen.initialFocus?.() ?? screen.el.querySelector<HTMLElement>('button, input');
     target?.focus();
