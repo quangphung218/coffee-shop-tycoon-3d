@@ -618,3 +618,43 @@ export function readDom({ each, fields }) {
 export function textsOf(sel) {
   return [...document.querySelectorAll(sel)].map((e) => e.textContent.trim());
 }
+
+/**
+ * Runs in the page (UX-406): with a modal open (aria-modal="true", shown),
+ * no dock element (.dock, its buttons, badges and "Mới" dots) may sit above
+ * it. Each shown dock element is hit-tested at its centre and four inset
+ * corners with elementFromPoint; a hit that lands in the dock fails. The dock
+ * must also be out of reach (inert or visibility hidden) while the modal is open.
+ */
+export function dockAboveModal() {
+  const shown = (el) => (el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : !el.closest('[hidden]'));
+  const modal = [...document.querySelectorAll('[aria-modal="true"]')].find((el) => !el.closest('[hidden]') && shown(el)) ?? null;
+  if (!modal) return { modal: null, checked: 0, fails: ['no open modal'] };
+  const dock = document.querySelector('.dock');
+  const fails = [];
+  if (dock && !dock.closest('[inert]') && getComputedStyle(dock).visibility !== 'hidden') fails.push('dock is neither inert nor hidden under the modal');
+  let checked = 0;
+  for (const el of document.querySelectorAll('.dock, .dock-btn, .dock-badge, .dock-new')) {
+    if (el.closest('[hidden]') || !shown(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 1 || r.height <= 1) continue;
+    checked++;
+    const inset = Math.min(2, r.width / 4, r.height / 4);
+    const points = [
+      [r.left + r.width / 2, r.top + r.height / 2],
+      [r.left + inset, r.top + inset],
+      [r.right - inset, r.top + inset],
+      [r.left + inset, r.bottom - inset],
+      [r.right - inset, r.bottom - inset],
+    ];
+    for (const [x, y] of points) {
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+      const hit = document.elementFromPoint(x, y);
+      if (hit && dock?.contains(hit)) {
+        fails.push(`${el.className} at ${Math.round(x)},${Math.round(y)} is above ${modal.getAttribute('aria-label') ?? modal.className}`);
+        break;
+      }
+    }
+  }
+  return { modal: modal.getAttribute('aria-label') ?? modal.className, checked, fails };
+}

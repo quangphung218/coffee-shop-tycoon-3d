@@ -62,6 +62,10 @@
 // Cài đặt) must stay on one line. UX-410: at the same two sizes, on day 2
 // after High price and High wage ran out, the toasts' "Đặt lại giá Cao" and
 // "Đặt lại lương Cao" buttons must stay on one line (white-space: nowrap).
+// UX-406: at 390×844 and 1440×900, with Cài đặt open over day 2, no dock
+// element (bar, buttons, badges, "Mới" dots) sits above the open modal
+// (scripts/lib/probes.mjs dockAboveModal); UX-407: after Đồng ý on the day-1
+// report a status line names Cài đặt (part "consent").
 // LAYOUT_ONLY (day, hud, event, p25, p27, styles, challenge, consent, menu, reset, comma-separated) runs those parts
 // only and LAYOUT_DAY_WIDTHS (e.g. 390) narrows the day runs, so a long run
 // can be split; the default runs everything.
@@ -82,6 +86,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { BROWSER_ARGS, launchBrowser } from './lib/browser.mjs';
 import { acquirePerfLock } from './lib/perf-lock.mjs';
+import { dockAboveModal } from './lib/probes.mjs';
 import { clockOf, loadSim, playFirstDay, saveText } from './lib/saves.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -771,6 +776,51 @@ async function checkConsentStrip(browser, viewport, save, results) {
       screen: 'Dải hỏi số liệu ẩn danh vs HUD',
       pass: fails.length === 0,
       detail: `dải ${m.top?.toFixed(0) ?? '?'}..${m.bottom?.toFixed(0) ?? '?'} px, ${m.hud} khối HUD đo; ${small.count} nút, ${small.out.length} nút nhỏ`,
+      fails,
+    });
+  } finally {
+    await context.close();
+  }
+}
+
+/** Viewports of the dock-vs-modal check (UX-406): the phone grid dock (no transform) and the desktop one. */
+const DOCK_MODAL_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+];
+
+/**
+ * UX-406 / UX-407: on the day-1 report, Đồng ý leaves a status line naming
+ * Cài đặt; then on day 2, with Cài đặt open from Tạm dừng, no dock element
+ * (bar, buttons, badges, "Mới" dots) may sit above the open modal
+ * (dockAboveModal) and Settings shows the Số liệu ẩn danh row.
+ */
+async function checkDockVsModal(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const { context, page } = await resumeSave(browser, viewport, save, '.rpt-layer:not([hidden]) [data-consent]:not([hidden])');
+  try {
+    const fails = [];
+    await page.locator('.rpt-layer:not([hidden]) [data-action="consent-yes"]').click();
+    const status = page.locator('.rpt-layer:not([hidden]) [data-consent-status]:not([hidden])');
+    await status.waitFor();
+    const statusText = ((await status.textContent()) ?? '').trim();
+    if (!statusText.includes('Cài đặt')) fails.push(`consent status "${statusText}" does not name Cài đặt`);
+    await page.locator('.rpt-layer:not([hidden]) [data-action="next-day"]').click();
+    await page.locator('.dock .dock-btn').first().waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.ui-screen[aria-modal="true"]:not([hidden])').waitFor();
+    await page.locator('.ui-screen[aria-modal="true"]:not([hidden])').getByRole('button', { name: 'Cài đặt' }).click();
+    await page.locator('.ui-screen.is-sheet:not([hidden])').waitFor();
+    await settle(page);
+    const m = await page.evaluate(dockAboveModal);
+    fails.push(...m.fails);
+    const row = await page.locator('.ui-screen.is-sheet:not([hidden]) input[data-setting="analyticsConsent"]').count();
+    if (row !== 2) fails.push(`Settings shows ${row} Số liệu ẩn danh options, expected 2`);
+    results.push({
+      viewport: size,
+      screen: 'Dock dưới Cài đặt đang mở (UX-406/407)',
+      pass: fails.length === 0,
+      detail: `modal ${m.modal ?? '-'}; ${m.checked} phần tử dock hiện ra được đo; dòng trạng thái "${statusText}"`,
       fails,
     });
   } finally {
@@ -1526,6 +1576,15 @@ async function main() {
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Dải hỏi số liệu ẩn danh', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
+      }
+    }
+    for (const viewport of part('consent') ? DOCK_MODAL_VIEWPORTS : []) {
+      const size = `${viewport.width}×${viewport.height}`;
+      try {
+        await checkDockVsModal(browser, viewport, report, overflow);
+      } catch (err) {
+        console.error(`${size}: ${err.stack ?? err}`);
+        overflow.push({ viewport: size, screen: 'Dock dưới Cài đặt đang mở', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });
       }
     }
   } finally {
