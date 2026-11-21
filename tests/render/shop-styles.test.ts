@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_FACADE_COLORS, facadeColors } from '../../src/render/scene/facade';
 import { PALETTE } from '../../src/render/scene/palette';
 import { ShopView } from '../../src/render/scene/shop';
-import { SEASONAL_STYLES } from '../../src/sim/data/seasons';
+import { SEASONAL_STYLES, seasonalVariant, seasonalVariantsFor } from '../../src/sim/data/seasons';
 import { ALL_STYLES, STYLE_SLOTS, defaultStyle, styleById } from '../../src/sim/data/styles';
 import { ensureRetention } from '../../src/sim/retention';
 import { createNewGame } from '../../src/sim/state';
@@ -122,6 +122,45 @@ describe('shop styles in the scene (E-17)', () => {
         shop.setStylePreview(slot, null);
       }
     }
+  });
+
+  it('E-33 colour variants of every seasonal style (cycles 1-3) add no mesh, material or vertex on any quality', () => {
+    const variants = [1, 2, 3].flatMap((c) => SEASONAL_STYLES.map((st) => seasonalVariant(st.id, c)!));
+    expect(variants).toHaveLength(SEASONAL_STYLES.length * 3);
+    for (const quality of ['low', 'medium', 'high'] as const) {
+      const s = game();
+      const shop = view(s, quality);
+      const base = drawList(shop.root);
+      for (const v of variants) {
+        shop.setStylePreview(v.slot, v.id);
+        shop.update(s, 1, 0.016, 0);
+        expect(shop.shownStyles(s)[v.slot].id).toBe(v.id);
+        const now = drawList(shop.root);
+        expect(now.meshes).toBe(base.meshes);
+        expect(now.vertices).toBe(base.vertices);
+        expect([...now.materials]).toEqual([...base.materials]);
+        shop.setStylePreview(v.slot, null);
+      }
+    }
+  });
+
+  it('a bought E-33 variant recolours through recolor() with the same draw calls', () => {
+    const s = game();
+    s.week!.index = 64; // autumn, cycle 1
+    const shop = view(s);
+    const base = drawList(shop.root);
+    const ids = seasonalVariantsFor(64).map((v) => v.id);
+    expect(ids).toEqual(['wall_maple_c1', 'floor_walnut_c1', 'sign_lantern_c1', 'awning_harvest_c1']);
+    wear(s, ids);
+    shop.update(s, 1, 0.016, 0);
+    expect(hasColor(shop.root, styleById('wall_maple_c1')!.color)).toBe(true);
+    expect(hasColor(shop.root, styleById('floor_walnut_c1')!.color)).toBe(true);
+    expect(shop.facade.currentColors.awning).toBe(styleById('awning_harvest_c1')!.color);
+    expect(shop.facade.currentColors.signInk).toBe(styleById('sign_lantern_c1')!.accent);
+    const now = drawList(shop.root);
+    expect(now.meshes).toBe(base.meshes);
+    expect(now.vertices).toBe(base.vertices);
+    expect([...now.materials]).toEqual([...base.materials]);
   });
 
   it('a preview shows a style without buying it and clears back to the chosen one', () => {
