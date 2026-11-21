@@ -61,4 +61,4 @@ Sau epic:
 
 - `npm run layout` thật, perf và media không chạy được trong sandbox. Thay vào đó chạy `LAYOUT_OFFLINE=1 node scripts/check-layout.mjs`: 169 kiểm tra, 0 FAIL; ở bề ngang 390 có 4 biến thể và 16 nút ≥ 44 px. Kết quả này **không tương đương** `npm run layout` thật. Chưa chạy so sánh với nhánh gốc, nên "không có lỗi mới" chỉ dựa vào 0 FAIL.
 - Test css-order không ổn định (flaky). Nó không lỗi trong các lần chạy ở trên.
-- Sim 60 tuần mất khoảng 90–110 giây nên nằm trong script riêng `sim:long:tem`.
+- Sim 60 tuần mất khoảng 90 giây nên nằm trong script riêng `sim:long:tem`.
