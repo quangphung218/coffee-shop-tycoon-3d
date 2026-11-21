@@ -14,9 +14,18 @@ export const STYLES_PANEL_ID = 'styles';
 /** Tab label per slot, in STYLE_SLOTS order. */
 export const SLOT_LABELS: Readonly<Record<StyleSlot, string>> = { wall: 'Tường', floor: 'Sàn', sign: 'Biển hiệu', awning: 'Mái hiên' };
 
-/** "3.000.000đ + 5 Tem", or the money alone for a style without Tem. */
+/** "3.000.000đ + 5 Tem", the money alone for a style without Tem, or "70 Tem" alone for a Tem-only style (UX-404). */
 export function stylePriceText(style: StyleDef): string {
-  return style.tickets > 0 ? `${formatMoney(style.price)} + ${style.tickets} Tem` : formatMoney(style.price);
+  if (style.tickets <= 0) return formatMoney(style.price);
+  return style.price > 0 ? `${formatMoney(style.price)} + ${style.tickets} Tem` : `${style.tickets} Tem`;
+}
+
+/** Purchase confirm: the price and what is left after it, Tem and money each when the style costs them (UX-404). */
+export function styleConfirmText(state: Pick<GameState, 'money' | 'retention'>, style: StyleDef): string {
+  const left: string[] = [];
+  if (style.price > 0 || style.tickets <= 0) left.push(formatMoney(state.money - style.price));
+  if (style.tickets > 0) left.push(`${(state.retention?.tickets ?? 0) - style.tickets} Tem`);
+  return `Mua ${style.name} với ${stylePriceText(style)}? Còn lại ${left.join(' và ')}.`;
 }
 
 /**
@@ -62,7 +71,7 @@ export const PREVIEW_BAR_MEDIA = '(max-width: 480px)';
 
 /** The row's price line: what the style costs, or that it is owned. */
 function styleMetaText(state: GameState, style: StyleDef): string {
-  if (styleOf(state, style.slot).id === style.id) return style.price > 0 ? 'Đã có' : 'Kiểu gốc';
+  if (styleOf(state, style.slot).id === style.id) return style.price > 0 || style.tickets > 0 ? 'Đã có' : 'Kiểu gốc';
   return ownsStyle(state, style.id) ? 'Đã có · đổi miễn phí' : `Giá ${stylePriceText(style)}`;
 }
 
@@ -151,7 +160,7 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
       why.hidden = true;
       more.append(
         inlineConfirm(
-          `Mua ${style.name} với ${stylePriceText(style)}? Còn lại ${formatMoney(s.money - style.price)}.`,
+          styleConfirmText(s, style),
           'Mua',
           'btn-primary',
           () => {
@@ -310,7 +319,7 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
     barWhy.hidden = true;
     bar.append(
       inlineConfirm(
-        `Mua ${style.name} với ${stylePriceText(style)}? Còn lại ${formatMoney(s.money - style.price)}.`,
+        styleConfirmText(s, style),
         'Mua',
         'btn-primary',
         () => {
