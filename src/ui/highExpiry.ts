@@ -11,12 +11,6 @@ import { HIGH_WAGE_ENDED_TEXT, HIGH_WAGE_RESET_TEXT } from './panels/staff';
 
 export type HighPolicy = 'price' | 'wage';
 
-/** Text of the sim's expiry notify (src/sim/policies.ts expireHighPrice / expireHighWage). */
-const EXPIRY_NOTIFY: Readonly<Record<HighPolicy, RegExp>> = {
-  price: /^Giá cao đã hết sau \d+ ngày/,
-  wage: /^Lương cao đã hết sau \d+ ngày/,
-};
-
 /** Toast title: the chooser's words ("Cao", "Chuẩn"). */
 export const HIGH_PRICE_TOAST_TITLE = `Giá Cao đã hết sau ${HIGH_PRICE_DAYS} ngày, quán về giá Chuẩn`;
 export const HIGH_WAGE_TOAST_TITLE = `Lương Cao đã hết sau ${HIGH_WAGE_DAYS} ngày, quán về lương Chuẩn`;
@@ -29,12 +23,54 @@ export const HIGH_WAGE_TOAST_ACTION = 'toast-wage-high-again';
 export const HIGH_PRICE_TASK_TITLE = 'Giá Cao vừa hết';
 export const HIGH_WAGE_TASK_TITLE = 'Lương Cao vừa hết';
 
-/** Which High policy this event says ran out today, or null. */
-export function highExpiryOf(event: GameEvent, state: GameState): HighPolicy | null {
-  if (event.type !== 'notify') return null;
-  if (EXPIRY_NOTIFY.price.test(event.text) && highPriceJustEnded(state)) return 'price';
-  if (EXPIRY_NOTIFY.wage.test(event.text) && highWageJustEnded(state)) return 'wage';
-  return null;
+/**
+ * UI-side watch on highPriceEndedDay / highWageEndedDay (T-117): says which
+ * High ran out since it last looked, from the state alone, not the notify
+ * text, so a reworded sim notify keeps the toast and its button.
+ */
+export interface HighExpiryWatch {
+  /** Marks the state's current expiries as seen (new game, load: a save made on the expiry day does not toast again). */
+  reset(state: GameState): void;
+  /** High policies that ran out today and were not reported yet, price first. */
+  take(state: GameState): HighPolicy[];
+}
+
+const endedDay = (state: GameState, policy: HighPolicy): number | undefined =>
+  policy === 'price' ? state.highPriceEndedDay : state.highWageEndedDay;
+
+const justEnded = (state: GameState, policy: HighPolicy): boolean =>
+  policy === 'price' ? highPriceJustEnded(state) : highWageJustEnded(state);
+
+export function createHighExpiryWatch(): HighExpiryWatch {
+  const seen: Record<HighPolicy, number | undefined> = { price: undefined, wage: undefined };
+  return {
+    reset(state) {
+      seen.price = endedDay(state, 'price');
+      seen.wage = endedDay(state, 'wage');
+    },
+    take(state) {
+      const out: HighPolicy[] = [];
+      for (const policy of ['price', 'wage'] as const) {
+        const day = endedDay(state, policy);
+        if (justEnded(state, policy) && day !== seen[policy]) out.push(policy);
+        seen[policy] = day;
+      }
+      return out;
+    },
+  };
+}
+
+/**
+ * Whether this event is the sim's expiry notify, told by its place, not its
+ * text: startNextDay (src/sim/clock.ts) runs expireHighPrice then
+ * expireHighWage before it sets the 'preparation' phase, and nothing else
+ * there pushes an info notify. So while expiries are pending, the info
+ * notifies before the batch's preparation phase event are theirs, price first.
+ * If that order ever changes, the expiry toast still shows (game.ts shows any
+ * left over), at worst next to the plain notify.
+ */
+export function isExpiryNotify(event: GameEvent, prepSeen: boolean): boolean {
+  return event.type === 'notify' && event.level === 'info' && !prepSeen;
 }
 
 /**
