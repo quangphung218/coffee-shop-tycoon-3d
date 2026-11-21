@@ -527,6 +527,10 @@
   border-radius: var(--radius-md);
   cursor: pointer;
 }
+.book-cell > span {
+  /* "53 lần" stays one line (UX-411). */
+  white-space: nowrap;
+}
 .book-cell.is-reached {
   background: var(--surface-ok);
   color: var(--text-ok);
@@ -560,6 +564,14 @@
   grid-template-areas:
     'icon text status'
     '. more more';
+}
+.regular-new {
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+/* UX-409: the word before a " · " separator and the dot wrap together. */
+.dot-keep {
+  white-space: nowrap;
 }
 .regular-chevron {
   flex: none;
@@ -632,6 +644,22 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+/* UX-411: at 390 px a quarter of the text column is about 66 px, less than
+   lock + "53 lần" + padding; the open page takes the icon column too and the
+   cells pad less, so each cell is about 76 px with room for the label. */
+@media (max-width: 480px) {
+  .item.item-row.regular-row.is-open {
+    grid-template-areas:
+      'icon text status'
+      'more more more';
+  }
+  .book-cells {
+    gap: var(--space-1);
+  }
+  .book-cell {
+    padding-inline: var(--space-1);
+  }
 }
 
 /* Stepper: three separate controls in a group with a 4px gap, so each one
