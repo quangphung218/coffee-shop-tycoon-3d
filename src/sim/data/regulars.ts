@@ -1,4 +1,5 @@
 import type { MenuItemId } from '../types';
+import { generatedId, generatedIndex, generatedProfile } from './regularChain';
 
 /**
  * Named regulars. A customer with the 'regular' persona is matched to one of
@@ -72,8 +73,41 @@ export function isFirstRegular(id: string): boolean {
   return REGULARS.some((r) => r.id === id);
 }
 
+const generated = new Map<number, Regular>();
+
+/** The k-th season 3+ regular (E-32, generatedProfile) as a Regular. */
+export function generatedRegular(k: number): Regular {
+  let r = generated.get(k);
+  if (!r) {
+    const p = generatedProfile(k);
+    r = { id: p.id, name: p.name, favorite: p.favorite, look: p.look };
+    generated.set(k, r);
+  }
+  return r;
+}
+
 export function regularById(id: string): Regular | undefined {
+  const k = generatedIndex(id);
+  if (k >= 0) return generatedRegular(k);
   return REGULARS.find((r) => r.id === id) ?? NEW_REGULARS.find((r) => r.id === id);
+}
+
+/**
+ * E-32: who moves in once `id` (season 2 or later) completes milestone 4:
+ * NEW_REGULARS[i] is followed by generated regular i, generated k by k + 8.
+ * Undefined for the first eight (season 2 comes by newRegularOrder) and
+ * unknown ids.
+ */
+export function chainSuccessor(id: string): string | undefined {
+  const k = generatedIndex(id);
+  if (k >= 0) return generatedId(k + NEW_REGULARS.length);
+  const i = NEW_REGULARS.findIndex((r) => r.id === id);
+  return i >= 0 ? generatedId(i) : undefined;
+}
+
+/** Whether `id` is a season 3+ regular (E-32). */
+export function isGeneratedRegular(id: string): boolean {
+  return generatedIndex(id) >= 0;
 }
 
 const NEW_REGULAR_SALT = 0x2f6b13c5;
