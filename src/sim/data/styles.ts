@@ -1,5 +1,5 @@
 import type { StyleSlot } from '../types';
-import { SEASONAL_STYLES } from './seasons';
+import { SEASONAL_STYLES, variantById } from './seasons';
 
 /**
  * A look for one part of the shop (wall, floor, sign, awning). Styles change
@@ -24,6 +24,10 @@ export interface StyleDef {
   challenge?: true;
   /** Set for a seasonal style (E-26): the SEASON_SETS index whose season sells it (src/sim/data/seasons.ts). */
   season?: number;
+  /** Set for a seasonal colour variant (E-33): the cycle it belongs to (>= 1); see seasonalVariant. */
+  cycle?: number;
+  /** Set for a seasonal colour variant (E-33): id of the seasonal style it recolours. */
+  baseId?: string;
 }
 
 export const STYLE_SLOTS: readonly StyleSlot[] = ['wall', 'floor', 'sign', 'awning'];
@@ -58,9 +62,9 @@ export const STYLES: readonly StyleDef[] = [
 /** Base and seasonal styles; ids are unique over both. */
 export const ALL_STYLES: readonly StyleDef[] = [...STYLES, ...SEASONAL_STYLES];
 
-/** A base or seasonal style by id. */
+/** A base or seasonal style, or a seasonal colour variant (E-33), by id. */
 export function styleById(id: string): StyleDef | undefined {
-  return ALL_STYLES.find((s) => s.id === id);
+  return ALL_STYLES.find((s) => s.id === id) ?? variantById(id);
 }
 
 /** Base styles of a slot, cheapest first (seasonal ones: seasonalStylesFor in ./seasons). */
