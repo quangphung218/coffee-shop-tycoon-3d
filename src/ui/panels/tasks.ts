@@ -317,6 +317,21 @@ export function regularListPages(state: GameState): RegularBookPage[] {
   return [...fresh, ...met.filter((p) => !fresh.includes(p)), ...pages.filter((p) => p.visits === 0)];
 }
 
+/** Rows of seasons 1–2 (8 + 8); a longer Khách quen list (season 3+, E-32) collapses its finished books (T-121). */
+export const REGULAR_LIST_FULL = 16;
+
+/**
+ * T-121: with endless regulars the list grows by 8 a season. Past
+ * REGULAR_LIST_FULL rows, regulars whose four milestones are all reached
+ * (their successor has moved in) go to a collapsed group below, in the same
+ * order; `keep` ids (the open page, "Mới" rows) always stay in the main list.
+ */
+export function splitRegularPages(pages: RegularBookPage[], keep: ReadonlySet<string> = new Set()): { shown: RegularBookPage[]; older: RegularBookPage[] } {
+  if (pages.length <= REGULAR_LIST_FULL) return { shown: pages, older: [] };
+  const done = (p: RegularBookPage): boolean => p.reached >= p.milestones.length && !keep.has(p.regular.id);
+  return { shown: pages.filter((p) => !done(p)), older: pages.filter(done) };
+}
+
 /** Days a season-2 regular keeps the "Mới" label and the top of the Khách quen list after moving in (UX-408). */
 export const NEW_REGULAR_DAYS = 7;
 
@@ -659,19 +674,43 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const regularList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Khách quen' } });
   // A milestone toast's "Xem chuyện" (UX-310) opens the panel with that regular's page open.
   let pageOpen: string | null = pendingRegular;
+  const revealed = pendingRegular;
   // UX-414: with the page, the milestone just reached has its cell open, so its story shows.
   let bookOpen: BookOpen | null = pendingRegular && pendingMilestone > 0 ? { regularId: pendingRegular, index: pendingMilestone - 1 } : null;
   pendingRegular = null;
   pendingMilestone = 0;
   let fresh = new Set<string>();
+  // T-121: finished books of a long list, collapsed under the Thành tựu-style toggle.
+  const olderId = uid('regular');
+  const olderLabel = h('span');
+  const olderBtn = h(
+    'button',
+    { class: 'btn btn-secondary btn-block ach-toggle', hidden: true, attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': olderId, 'data-action': 'regulars-older' } },
+    icon('i-face-happy'),
+    olderLabel,
+    icon('i-chevron-down', { size: 16, class: 'ach-chevron' }),
+  );
+  const olderList = h('ul', { id: olderId, class: 'stack', hidden: true, attrs: { 'aria-label': 'Khách quen đã xong sổ' } });
+  olderBtn.addEventListener('click', () => {
+    const open = olderBtn.getAttribute('aria-expanded') !== 'true';
+    olderBtn.setAttribute('aria-expanded', String(open));
+    olderList.hidden = !open;
+  });
   const drawRegulars = (pages: RegularBookPage[], focus?: string): void => {
     const reached = pages.reduce((n, p) => n + p.reached, 0);
     const total = pages.reduce((n, p) => n + p.milestones.length, 0);
     const met = pages.filter((p) => p.visits > 0).length;
     setChildren(regularSum, ...dotJoin([met === 0 ? 'Chưa có khách quen nào ghé' : `Đã gặp ${met}/${pages.length} khách quen`, `Sổ ${reached}/${total} mốc`]));
-    setChildren(
-      regularList,
-      ...pages.map((p) =>
+    // A toast's regular stays in the main list; a page opened by tap stays where it was.
+    const keep = new Set(fresh);
+    if (revealed) keep.add(revealed);
+    const { shown, older } = splitRegularPages(pages, keep);
+    olderBtn.hidden = older.length === 0;
+    if (older.length === 0) olderList.hidden = true;
+    else olderList.hidden = olderBtn.getAttribute('aria-expanded') !== 'true';
+    olderLabel.textContent = `Đã xong sổ · ${older.length} khách quen`;
+    const rows = (list: RegularBookPage[]): HTMLElement[] =>
+      list.map((p) =>
         regularRow(
           p,
           pageOpen === p.regular.id,
@@ -687,9 +726,10 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
           },
           fresh.has(p.regular.id),
         ),
-      ),
-    );
-    if (focus) regularList.querySelector<HTMLElement>(focus)?.focus();
+      );
+    setChildren(regularList, ...rows(shown));
+    setChildren(olderList, ...rows(older));
+    if (focus) (regularList.querySelector<HTMLElement>(focus) ?? olderList.querySelector<HTMLElement>(focus))?.focus();
   };
   w.watch(
     (s) => JSON.stringify(regularListPages(s).map((p) => [p.regular.id, p.visits, p.reached, isNewRegular(s, p.regular.id)])),
@@ -769,6 +809,8 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
     regularTitle,
     regularIntro,
     regularList,
+    olderBtn,
+    olderList,
     achBtn,
     achList,
     sugTitle,
