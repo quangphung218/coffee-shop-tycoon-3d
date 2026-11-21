@@ -1,6 +1,6 @@
 import { challengesToUnlock } from '../../sim/challenges';
 import { CHALLENGE_FIRST_WEEK } from '../../sim/data/challenges';
-import { SEASONAL_STYLES, seasonFor } from '../../sim/data/seasons';
+import { SEASONAL_STYLES, seasonFor, seasonalVariantsFor } from '../../sim/data/seasons';
 import { STYLE_SLOTS, stylesOf, styleById, type StyleDef } from '../../sim/data/styles';
 import { isStyleUnlocked, ownsStyle, styleBlockedReason, styleOf } from '../../sim/styles';
 import type { GameState, StyleSlot } from '../../sim/types';
@@ -234,7 +234,9 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
   for (const [sl, list] of lists) list.hidden = sl !== slot;
 
   // Mùa này (E-26): the running season's styles, same rows as the slot lists (preview, Mua, confirm); hidden before the first season.
+  // From week 48 the season's colour variants (E-33, seasonalVariantsFor) follow, newest cycle first; their rows are made on first sight.
   const seasonRows = new Map(SEASONAL_STYLES.map((st) => [st.id, row(st)]));
+  const variantRows = new Map<string, HTMLElement>();
   const seasonTitle = h('h3', { class: 'section-title' });
   const seasonLeft = h('span', { class: 'badge badge-neutral', attrs: { 'data-summary': 'season-weeks' } });
   const season = h(
@@ -243,10 +245,11 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
     h('div', { class: 'style-season-head' }, seasonTitle, seasonLeft),
     h('ul', { class: 'stack', attrs: { 'data-season': '' } }, ...seasonRows.values()),
   );
+  const seasonList = season.querySelector('ul')!;
   w.watch(
     (s) => {
       const now = seasonFor(s.week?.index ?? 1);
-      return now ? `${now.set}|${now.weeksLeft}|${now.name}` : '';
+      return now ? `${now.index}|${now.weeksLeft}|${now.name}` : '';
     },
     (_, s) => {
       const now = seasonFor(s.week?.index ?? 1);
@@ -255,6 +258,14 @@ export function renderStylesPanel(body: HTMLElement, ctx: PanelContext): PanelHa
       seasonTitle.textContent = `Mùa này: ${now.name}`;
       seasonLeft.textContent = `Còn ${now.weeksLeft} tuần để mua`;
       for (const [id, li] of seasonRows) li.hidden = !now.ids.includes(id);
+      const variants = seasonalVariantsFor(s.week?.index ?? 1);
+      for (const v of variants) {
+        let li = variantRows.get(v.id);
+        if (!li) variantRows.set(v.id, (li = row(v)));
+        seasonList.append(li);
+      }
+      const onSale = new Set(variants.map((v) => v.id));
+      for (const [id, li] of variantRows) li.hidden = !onSale.has(id);
     },
   );
 
