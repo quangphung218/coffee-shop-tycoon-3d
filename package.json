@@ -12,6 +12,7 @@
     "sim:long": "vitest run --configLoader runner --config tests/longsim/vitest.config.ts",
     "sim:long:s2": "vitest run --configLoader runner --config tests/longsim/vitest.s2.config.ts",
     "sim:long:s3": "vitest run --configLoader runner --config tests/longsim/vitest.s3.config.ts",
+    "sim:long:tem": "vitest run --configLoader runner --config tests/longsim/vitest.tem.config.ts",
     "check": "tsc --noEmit && vitest run && vite build",
     "media": "npm run build && node scripts/capture-media.mjs",
     "media:p20": "npm run build && node scripts/capture-p20.mjs",
