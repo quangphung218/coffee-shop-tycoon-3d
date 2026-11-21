@@ -389,6 +389,14 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     const id = uid('set-group');
     return h('section', { class: 'set-group', attrs: { 'aria-labelledby': id } }, h('p', { class: 'section-title', id, text: title }), ...rows);
   }
+  // UX-412: camera keys, mouse rotate speed and shortcuts mean nothing on a touch screen; ui.css hides the group there.
+  const controls = group(
+    'Điều khiển',
+    cameraKeys.row,
+    rotate.row,
+    h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
+  );
+  controls.classList.add('set-group-keys');
 
   // Title and footer stay put; only .settings-body scrolls (see ui.css).
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
@@ -401,12 +409,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       { class: 'settings-body' },
       group('Âm thanh', music.row, sfx.row),
       group('Hiển thị', quality.row, motion.row),
-      group(
-        'Điều khiển',
-        cameraKeys.row,
-        rotate.row,
-        h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
-      ),
+      controls,
       group('Trò chơi', speed.row, ...(consent ? [consent.row] : [])),
       playLogGroup,
       h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),

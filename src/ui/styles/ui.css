@@ -474,6 +474,10 @@ kbd {
   .menu-keys {
     display: none;
   }
+  /* Settings' Điều khiển group (camera keys, mouse rotate, Phím tắt) too (UX-412). */
+  .set-group-keys {
+    display: none;
+  }
 }
 
 /* Forms */
@@ -2170,8 +2174,14 @@ legend {
 .wk-next p {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0 var(--space-1);
+}
+/* A wrapped line keeps its icon beside the first line, not centred on the
+   block (UX-413): the 16 px icon is centred in one line box. */
+.wk-next p > .ic {
+  flex: none;
+  margin-top: calc((1lh - 16px) / 2);
 }
 .wk-next-label {
   white-space: nowrap;

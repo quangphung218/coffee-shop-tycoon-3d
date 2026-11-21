@@ -14,6 +14,20 @@ export function withIcon(id: IconId, text: string, size: 16 | 24 = 16): (HTMLEle
   return [icon(id, { size }), text];
 }
 
+/**
+ * "Ghé 3 lần · Hay gọi Latte" as nodes whose text is `parts.join(' · ')`, with
+ * each separator kept on the line of the word before it (a nowrap span), so a
+ * wrap never starts a line with a stray "·" or leaves it alone (UX-409).
+ */
+export function dotJoin(parts: readonly string[]): (HTMLElement | string)[] {
+  return parts.flatMap((part, i) => {
+    if (i === parts.length - 1) return [part];
+    const cut = part.lastIndexOf(' ') + 1;
+    const head = part.slice(0, cut);
+    return [...(head ? [head] : []), h('span', { class: 'dot-keep', text: `${part.slice(cut)} ·` }), ' '];
+  });
+}
+
 /** Sets `el` to [icon] text. */
 export function setIconText(el: HTMLElement, id: IconId | null, text: string, size: 16 | 24 = 16): void {
   if (id) setChildren(el, ...withIcon(id, text, size));

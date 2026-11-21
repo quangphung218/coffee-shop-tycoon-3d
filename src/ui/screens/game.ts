@@ -111,8 +111,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   }
 
   // UX-310: Việc panel with the regular's book page open, focus on its row (which scrolls it into view).
-  function showRegular(regularId: string): void {
-    revealRegular(regularId);
+  function showRegular(regularId: string, milestone = 0): void {
+    revealRegular(regularId, milestone);
     hud.openPanel('tasks');
     if (hud.openPanelId === 'tasks') focusRegular(hud.panelEl, regularId);
     else revealRegular(null);
@@ -478,8 +478,9 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
         }
         // UX-310: the milestone toast opens the Việc panel at that regular's row.
         if (toast && event.type === 'regular_milestone') {
-          const regularId = event.regularId;
-          toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId) } };
+          const { regularId, milestone: reached } = event;
+          // UX-414: with the just-reached milestone's cell open, so its story shows.
+          toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId, reached) } };
         }
         // E-30: the High price / wage expiry notify gets a button that sets High again (same one toast).
         const expired = toast ? highExpiryOf(event, state) : null;
