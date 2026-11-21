@@ -84,8 +84,16 @@ export function isSeasonalStyle(style: Pick<StyleDef, 'season'> | undefined): bo
 }
 
 /** True when a style may be sold in a week: always for a base style, only in its season for a seasonal one. */
-export function styleOnSale(style: Pick<StyleDef, 'season'>, week: number): boolean {
-  return style.season === undefined || seasonFor(week)?.set === style.season;
+export function styleOnSale(style: Pick<StyleDef, 'season' | 'cycle'>, week: number): boolean {
+  if (style.season === undefined) return true;
+  if (seasonFor(week)?.set !== style.season) return false;
+  return style.cycle === undefined || cycleFor(week) >= style.cycle;
+}
+
+/** First week >= `week` in which a seasonal style (or variant) is on sale. */
+export function nextStyleSaleWeek(style: Pick<StyleDef, 'season' | 'cycle'>, week: number): number {
+  const next = nextSeasonWeek(style.season!, week);
+  return style.cycle === undefined ? next : Math.max(next, variantFirstWeek(style.season!, style.cycle));
 }
 
 /** First week >= `week` in which the given set is on sale. */
@@ -96,4 +104,105 @@ export function nextSeasonWeek(set: number, week: number): number {
   const from = now ? now.index + 1 : 0;
   const index = from + ((set - (from % n) + n) % n);
   return SEASON_FIRST_WEEK + index * SEASON_WEEKS;
+}
+
+/*
+ * Seasonal colour variants (E-33): a Tem sink once every seasonal style is
+ * bought. A cycle is the SEASON_SETS.length seasons (24 weeks) it takes every
+ * set to come round once; cycle 0 is weeks 24-47. From cycle 1 (week 48) on,
+ * each cycle gives every seasonal style one extra colour variant, made by
+ * blending its colours toward a tint from VARIANT_TINTS (the renderer paints
+ * it through the same recolor() path, so no mesh or material is added). A
+ * variant is sold, like its base style, only in its set's season, from its
+ * cycle on, and stays on sale in that set's later seasons. It costs Tem only
+ * (no money): base Tem * (1 + cycle), one fixed formula rising per cycle.
+ * Variants are not in ALL_STYLES (there is no last cycle); styleById builds
+ * them from their id (`<base id>_c<cycle>`), so saves need no new field.
+ */
+
+/** Seasons in one cycle (every set once): 3. */
+export const SEASONS_PER_CYCLE = SEASON_SETS.length;
+/** Weeks in one cycle: 24. */
+export const CYCLE_WEEKS = SEASONS_PER_CYCLE * SEASON_WEEKS;
+/** First cycle that has variants (weeks 48-71). */
+export const VARIANT_FIRST_CYCLE = 1;
+/** Tints the variants of cycle c blend toward: VARIANT_TINTS[(c - 1) % length]. */
+export const VARIANT_TINTS: readonly number[] = [0x2b59c3, 0x7b2d8e, 0x1b998b, 0xe4572e, 0x3d3b30, 0xf2e8cf];
+/** Share of the tint in a variant colour. */
+export const VARIANT_TINT_SHARE = 0.4;
+
+const VARIANT_ID = /^(.+)_c(\d+)$/;
+
+/** The cycle of a week (0 for weeks 24-47, 1 for 48-71, ...), or -1 before SEASON_FIRST_WEEK. */
+export function cycleFor(week: number): number {
+  const season = seasonFor(week);
+  return season ? Math.floor(season.index / SEASONS_PER_CYCLE) : -1;
+}
+
+/** Tem price of a variant: base Tem * (1 + cycle). */
+export function variantTickets(base: Pick<StyleDef, 'tickets'>, cycle: number): number {
+  return base.tickets * (1 + cycle);
+}
+
+function mix(a: number, b: number, t: number): number {
+  let out = 0;
+  for (const shift of [16, 8, 0]) {
+    const ca = (a >> shift) & 0xff;
+    const cb = (b >> shift) & 0xff;
+    out |= Math.round(ca + (cb - ca) * t) << shift;
+  }
+  return out;
+}
+
+const variantCache = new Map<string, StyleDef>();
+
+/** The variant id of a seasonal style for a cycle. */
+export function variantId(baseId: string, cycle: number): string {
+  return `${baseId}_c${cycle}`;
+}
+
+/** The colour variant of a seasonal style for a cycle >= VARIANT_FIRST_CYCLE, or undefined. */
+export function seasonalVariant(baseId: string, cycle: number): StyleDef | undefined {
+  if (!Number.isInteger(cycle) || cycle < VARIANT_FIRST_CYCLE) return undefined;
+  const base = SEASONAL_STYLES.find((s) => s.id === baseId);
+  if (!base) return undefined;
+  const id = variantId(baseId, cycle);
+  let v = variantCache.get(id);
+  if (!v) {
+    const tint = VARIANT_TINTS[(cycle - VARIANT_FIRST_CYCLE) % VARIANT_TINTS.length]!;
+    v = {
+      id,
+      slot: base.slot,
+      name: `${base.name} (bản ${cycle + 1})`,
+      color: mix(base.color, tint, VARIANT_TINT_SHARE),
+      accent: mix(base.accent, tint, VARIANT_TINT_SHARE),
+      price: 0,
+      tickets: variantTickets(base, cycle),
+      season: base.season,
+      cycle,
+      baseId,
+    };
+    variantCache.set(id, v);
+  }
+  return v;
+}
+
+/** The variant an id names (`<seasonal id>_c<cycle>`), or undefined. */
+export function variantById(id: string): StyleDef | undefined {
+  const m = VARIANT_ID.exec(id);
+  if (!m || String(Number(m[2])) !== m[2]) return undefined;
+  return seasonalVariant(m[1]!, Number(m[2]));
+}
+
+/** The colour variants on sale in a week: those of the running set for cycles VARIANT_FIRST_CYCLE..current, newest cycle first. */
+export function seasonalVariantsFor(week: number): StyleDef[] {
+  const cycle = cycleFor(week);
+  const out: StyleDef[] = [];
+  for (let c = cycle; c >= VARIANT_FIRST_CYCLE; c--) for (const base of seasonalStylesFor(week)) out.push(seasonalVariant(base.id, c)!);
+  return out;
+}
+
+/** First week a variant of a cycle of a set is on sale. */
+export function variantFirstWeek(set: number, cycle: number): number {
+  return SEASON_FIRST_WEEK + (cycle * SEASONS_PER_CYCLE + set) * SEASON_WEEKS;
 }

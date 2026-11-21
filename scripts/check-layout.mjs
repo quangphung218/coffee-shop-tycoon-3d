@@ -1149,6 +1149,54 @@ async function checkSeasonBlock(browser, viewport, save, results) {
   }
 }
 
+/** A new Easy game in week 49 (E-33 T-125): Mùa xuân of cycle 1, its colour variants on sale, Tem enough for Tường hoa đào (bản 2). */
+function variantSave(mods) {
+  const state = mods.stateMod.createNewGame('Quán Thử', 'easy', FIXED_NOW >>> 0);
+  state.money = 20_000_000;
+  mods.retention.ensureRetention(state).tickets = 200;
+  state.week.index = 49;
+  return saveText(mods.save, state, FIXED_NOW);
+}
+
+/**
+ * T-125 Mùa này from week 48: the season's colour variants follow its styles,
+ * each priced "N Tem"; then a variant with its Mua confirm open (at ≤ 480 px
+ * through the bar, then the list opened again). Must not overflow, no dialog,
+ * every button at least --size-target.
+ */
+async function checkSeasonVariants(browser, viewport, save, results) {
+  const size = `${viewport.width}×${viewport.height}`;
+  const panel = '#ui > .panel:not([hidden])';
+  const { context, page } = await resumeSave(browser, viewport, save, '.hud [data-action="open"]');
+  try {
+    await openPanel(page, 'styles');
+    await page.locator(`${panel} [data-block="season"]:not([hidden])`).waitFor();
+    const fails = [];
+    const metas = await page.locator(`${panel} [data-block="season"] li[data-style$="_c1"]:not([hidden]) .item-meta`).allTextContents();
+    if (metas.length < 3) fails.push(`${metas.length} variant rows shown`);
+    fails.push(...metas.filter((t) => !/^Giá \d+ Tem$/.test(t)).map((t) => `variant price "${t}"`));
+    const id = 'wall_peach_c1';
+    await page.locator(`${panel} li[data-style="${id}"]`).scrollIntoViewIfNeeded();
+    await checkScreen(page, results, size, 'Phong cách quán: Mùa này, bản màu', PANEL_FRAME);
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="preview"]`).click();
+    if (viewport.width <= PREVIEW_BAR_MAX) {
+      await page.locator(`${panel} .style-bar:not([hidden])`).waitFor();
+      await page.locator(`${panel} .style-bar [data-action="reopen"]`).click();
+      await page.locator(`${panel} .style-list:not([hidden])`).waitFor();
+    }
+    await page.locator(`${panel} li[data-style="${id}"] [data-action="buy"]`).click();
+    await page.locator(`${panel} li[data-style="${id}"] .confirm`).waitFor();
+    await checkScreen(page, results, size, 'Phong cách quán: Mùa này, bản màu, xác nhận Mua', PANEL_FRAME);
+    const target = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size-target')) || 44);
+    const small = await page.evaluate(smallButtons, { root: panel, target, eps: EPS });
+    const dialogs = await page.evaluate(() => [...document.querySelectorAll('dialog[open], [role="dialog"]:not([hidden]), [aria-modal="true"]')].filter((e) => e.checkVisibility()).length);
+    fails.push(...small.out, ...(dialogs ? [`${dialogs} dialog(s) open`] : []));
+    results.push({ viewport: size, screen: 'Phong cách quán: Mùa này, bản màu, nút', pass: fails.length === 0, detail: `${metas.length} bản màu (${metas.join(', ')}); ${small.count} nút ≥ ${target} px`, fails });
+  } finally {
+    await context.close();
+  }
+}
+
 /**
  * T-51 Phong cách quán: on Tường the locked Ốp gỗ ấm previewed (its
  * challenge line), then Tường bạc hà previewed with the in-place Mua confirm
@@ -1529,11 +1577,13 @@ async function main() {
     }
     const styles = part('styles') ? stylesSave(mods) : null;
     const seasonStyles = part('styles') ? seasonSave(mods) : null;
+    const variantStyles = part('styles') ? variantSave(mods) : null;
     for (const viewport of part('styles') ? P25_VIEWPORTS : []) {
       const size = `${viewport.width}×${viewport.height}`;
       try {
         await checkStylesPanel(browser, viewport, styles, overflow);
         await checkSeasonBlock(browser, viewport, seasonStyles, overflow);
+        await checkSeasonVariants(browser, viewport, variantStyles, overflow);
       } catch (err) {
         console.error(`${size}: ${err.stack ?? err}`);
         overflow.push({ viewport: size, screen: 'Phong cách quán', pass: false, detail: 'dừng giữa chừng', fails: [String(err.message ?? err).split('\n')[0]] });

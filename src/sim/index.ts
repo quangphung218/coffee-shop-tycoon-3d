@@ -207,15 +207,26 @@ export {
 } from './data/regularMilestones';
 export { ALL_STYLES, STYLES, STYLE_SLOTS, defaultStyle, styleById, stylesOf, type StyleDef } from './data/styles';
 export {
+  CYCLE_WEEKS,
   SEASONAL_STYLES,
+  SEASONS_PER_CYCLE,
   SEASON_FIRST_WEEK,
   SEASON_SETS,
   SEASON_WEEKS,
   isSeasonalStyle,
+  VARIANT_FIRST_CYCLE,
+  cycleFor,
   nextSeasonWeek,
+  nextStyleSaleWeek,
   seasonFor,
   seasonalStylesFor,
+  seasonalVariant,
+  seasonalVariantsFor,
   styleOnSale,
+  variantById,
+  variantFirstWeek,
+  variantId,
+  variantTickets,
   type Season,
   type SeasonSet,
 } from './data/seasons';
