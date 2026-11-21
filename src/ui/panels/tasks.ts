@@ -7,7 +7,7 @@ import { ACHIEVEMENTS } from '../../sim/data/retention';
 import { missionProgress } from '../../sim/progression';
 import { achievementProgress, giftPreview, parseDateKey, type AchievementProgress } from '../../sim/retention';
 import { isVipDay, SPECIAL_ORDER_FROM_DAY } from '../../sim/specialOrders';
-import { bookRegulars, regularBook, type RegularBookPage } from '../../sim/data/regularMilestones';
+import { bookRegulars, movedInRegulars, regularBook, type RegularBookPage } from '../../sim/data/regularMilestones';
 import type { GameState, MenuItemId, Mission, MissionId, SpecialOrder, SuggestionKind } from '../../sim/types';
 import { todayPlan } from '../../sim/week';
 import { h, isAriaDisabled, setAriaDisabled, setChildren, uid, Watcher } from '../core/dom';
@@ -23,7 +23,7 @@ import { guardStartDay } from '../openGuard';
 import { HIGH_PRICE_TASK_TITLE, HIGH_WAGE_TASK_TITLE, highEndedNow } from '../highExpiry';
 import { HIGH_PRICE_ENDED_TEXT } from './menu';
 import { HIGH_WAGE_ENDED_TEXT } from './staff';
-import { linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
+import { dotJoin, linkBtn, reasonLine, sender, setReason, withIcon } from './widgets';
 
 export interface DayTask {
   id: 'menu' | 'restock' | 'staff' | 'marketing' | 'price-ended' | 'wage-ended';
@@ -312,15 +312,33 @@ export function regularListPages(state: GameState): RegularBookPage[] {
   const seen = state.regulars ?? {};
   const pages = regularBook(state);
   const met = pages.filter((p) => p.visits > 0).sort((a, b) => (seen[b.regular.id]?.lastDay ?? 0) - (seen[a.regular.id]?.lastDay ?? 0));
-  return [...met, ...pages.filter((p) => p.visits === 0)];
+  // UX-408: a season-2 regular who just moved in leads the list (latest move-in first) for NEW_REGULAR_DAYS.
+  const fresh = met.filter((p) => isNewRegular(state, p.regular.id)).sort((a, b) => (seen[b.regular.id]?.firstDay ?? 0) - (seen[a.regular.id]?.firstDay ?? 0));
+  return [...fresh, ...met.filter((p) => !fresh.includes(p)), ...pages.filter((p) => p.visits === 0)];
+}
+
+/** Days a season-2 regular keeps the "Mới" label and the top of the Khách quen list after moving in (UX-408). */
+export const NEW_REGULAR_DAYS = 7;
+
+/** UX-408: a season-2 regular (moved in for a first-eight one) within NEW_REGULAR_DAYS of their first visit. */
+export function isNewRegular(state: GameState, regularId: string): boolean {
+  const seen = state.regulars?.[regularId];
+  if (!seen || seen.visits === 0 || !movedInRegulars(state).some((r) => r.id === regularId)) return false;
+  return state.day - seen.firstDay < NEW_REGULAR_DAYS;
 }
 
 /** Regular whose book page the next Việc panel render opens (UX-310); taken by that render. */
 let pendingRegular: string | null = null;
+/** Milestone (1–4) cell that render opens too (UX-414); 0 for none. */
+let pendingMilestone = 0;
 
-/** The next render of the Việc panel opens this regular's page in the Khách quen list. */
-export function revealRegular(regularId: string | null): void {
+/**
+ * The next render of the Việc panel opens this regular's page in the Khách
+ * quen list and, with `milestone` (1–4), that milestone's cell (UX-414).
+ */
+export function revealRegular(regularId: string | null, milestone = 0): void {
   pendingRegular = regularId;
+  pendingMilestone = regularId ? milestone : 0;
 }
 
 /** Focuses (and so scrolls to) a regular's row head in a rendered Việc panel; false when it is not there. */
@@ -337,13 +355,13 @@ export function focusRegular(container: ParentNode, regularId: string): boolean 
  * progress line, four milestone cells and the line the open cell fills in:
  * story and favourite dish once reached, the visits still needed if not.
  */
-function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | null, onPage: () => void, toggle: (index: number) => void): HTMLElement {
+function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | null, onPage: () => void, toggle: (index: number) => void, fresh = false): HTMLElement {
   const name = page.regular.name;
   const pageId = uid('book');
   const detailId = uid('book');
   const openIndex = open?.regularId === page.regular.id ? open.index : -1;
   const total = page.milestones.length;
-  const meta = page.visits === 0 ? 'Chưa ghé quán' : `Ghé ${page.visits} lần · Hay gọi ${getMenuItem(page.regular.favorite).name}`;
+  const meta = page.visits === 0 ? ['Chưa ghé quán'] : [`Ghé ${page.visits} lần`, `Hay gọi ${getMenuItem(page.regular.favorite).name}`];
   const progress =
     page.visits === 0 ? `Mốc 1 mở khi ghé đủ ${page.milestones[0]?.visits ?? 0} lần` : page.nextVisits === null ? `Đã mở cả ${total} mốc` : `Ghé ${page.visits}/${page.nextVisits} lần tới mốc ${page.reached + 1}`;
   // The name is the disclosure; its ::after stretches over the row so the whole row is the tap target.
@@ -389,7 +407,13 @@ function regularRow(page: RegularBookPage, pageOpen: boolean, open: BookOpen | n
     'li',
     { class: `item item-row regular-row${pageOpen ? ' is-open' : ''}`, attrs: { 'data-regular': page.regular.id, 'data-book': page.regular.id, 'data-reached': String(page.reached) } },
     h('span', { class: 'item-icon' }, icon(MENU_ICONS[page.regular.favorite], { size: 32 })),
-    h('div', { class: 'item-text' }, h('p', { class: 'item-title' }, head), h('p', { class: 'item-meta', text: meta })),
+    h(
+      'div',
+      { class: 'item-text' },
+      // UX-408: "Mới" for a regular who just moved in (same label as a row opened this session).
+      h('p', { class: 'item-title' }, head, fresh ? h('span', { class: 'badge badge-new regular-new', attrs: { 'data-new-regular': '' } }, 'Mới') : null),
+      h('p', { class: 'item-meta' }, ...dotJoin(meta)),
+    ),
     h(
       'span',
       { class: 'item-status book-dots', attrs: { 'aria-hidden': 'true', 'data-book-dots': '' } },
@@ -635,13 +659,16 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
   const regularList = h('ul', { class: 'stack', attrs: { 'aria-label': 'Khách quen' } });
   // A milestone toast's "Xem chuyện" (UX-310) opens the panel with that regular's page open.
   let pageOpen: string | null = pendingRegular;
+  // UX-414: with the page, the milestone just reached has its cell open, so its story shows.
+  let bookOpen: BookOpen | null = pendingRegular && pendingMilestone > 0 ? { regularId: pendingRegular, index: pendingMilestone - 1 } : null;
   pendingRegular = null;
-  let bookOpen: BookOpen | null = null;
+  pendingMilestone = 0;
+  let fresh = new Set<string>();
   const drawRegulars = (pages: RegularBookPage[], focus?: string): void => {
     const reached = pages.reduce((n, p) => n + p.reached, 0);
     const total = pages.reduce((n, p) => n + p.milestones.length, 0);
     const met = pages.filter((p) => p.visits > 0).length;
-    regularSum.textContent = `${met === 0 ? 'Chưa có khách quen nào ghé' : `Đã gặp ${met}/${pages.length} khách quen`} · Sổ ${reached}/${total} mốc`;
+    setChildren(regularSum, ...dotJoin([met === 0 ? 'Chưa có khách quen nào ghé' : `Đã gặp ${met}/${pages.length} khách quen`, `Sổ ${reached}/${total} mốc`]));
     setChildren(
       regularList,
       ...pages.map((p) =>
@@ -658,14 +685,19 @@ export function renderTasksPanel(body: HTMLElement, ctx: PanelContext): PanelHan
             bookOpen = same ? null : { regularId: p.regular.id, index };
             drawRegulars(pages, `[data-book="${p.regular.id}"] [data-milestone="${index + 1}"]`);
           },
+          fresh.has(p.regular.id),
         ),
       ),
     );
     if (focus) regularList.querySelector<HTMLElement>(focus)?.focus();
   };
   w.watch(
-    (s) => JSON.stringify(regularListPages(s).map((p) => [p.regular.id, p.visits, p.reached])),
-    (_, s) => drawRegulars(regularListPages(s)),
+    (s) => JSON.stringify(regularListPages(s).map((p) => [p.regular.id, p.visits, p.reached, isNewRegular(s, p.regular.id)])),
+    (_, s) => {
+      const pages = regularListPages(s);
+      fresh = new Set(pages.filter((p) => isNewRegular(s, p.regular.id)).map((p) => p.regular.id));
+      drawRegulars(pages);
+    },
   );
 
   const achListId = uid('ach');

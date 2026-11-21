@@ -730,11 +730,34 @@
 .rpt-consent[hidden] {
   display: none;
 }
-.rpt-consent-q {
+.rpt-consent-text {
   flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.rpt-consent-q {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
+}
+/* UX-407: what is sent, under the question. */
+.rpt-consent-d {
+  font-size: var(--font-size-caption);
+  color: var(--text-muted);
+}
+/* UX-407: one line after Đồng ý / Không, in place of the strip. */
+.rpt-consent-status {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+.rpt-consent-status[hidden] {
+  display: none;
 }
 .rpt-consent-actions {
   display: flex;

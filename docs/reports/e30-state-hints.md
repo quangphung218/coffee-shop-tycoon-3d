@@ -9,7 +9,7 @@ Scope: UI only. `src/sim` is unchanged.
 - Dock badge: "1" on the last day and on the expiry day, during prep only.
 - Việc lines: "Giá Cao vừa hết" / "Lương Cao vừa hết".
 - Week-end: "Giá Cao hết vào ngày đầu tuần N".
-- Caveat: the toast detects the expiry message by its text plus sim flags, so changing the message text would break detection.
+- Caveat (fixed in T-117): the toast used to detect the expiry message by its text. It now comes from `highPriceEndedDay` / `highWageEndedDay` (a UI-side watch in `src/ui/highExpiry.ts`); the sim notify it replaces is found by its place in the day-start batch, not its text. `tests/ui/t117-high-expiry-flag.test.ts` rewords the notify and checks the buttons stay.
 
 ### UX-402: Season lines (T-110)
 - The lines describe the coming week. Reason: an "ends" line shown at week-end is too late to act on.

@@ -58,6 +58,13 @@ export const CONSENT_DAY = 1;
 export const CONSENT_QUESTION = 'Gửi số liệu ẩn danh để cải thiện game?';
 export const CONSENT_YES = 'Đồng ý';
 export const CONSENT_NO = 'Không';
+/** UX-407: what is sent, under the question. Matches docs/reports/e23-goatcounter-optin.md (path and title of an event only). */
+export const CONSENT_DETAIL = 'Chỉ gửi tên các mốc chơi (như hết ngày 1, lên cấp). Không cookie, không tên quán hay tên người chơi.';
+/** UX-407: the short status line that replaces the question once answered, and where to change it. */
+export const CONSENT_DONE: Record<'yes' | 'no', string> = {
+  yes: 'Đã bật gửi số liệu ẩn danh. Đổi trong Cài đặt > Số liệu ẩn danh.',
+  no: 'Không gửi số liệu. Đổi trong Cài đặt > Số liệu ẩn danh.',
+};
 
 export interface DailyReportView {
   /** Full-screen overlay; append it to the #ui root. */
@@ -590,15 +597,24 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   footLabel(nextBtn, 'i-next-day', 'Ngày tiếp theo');
   // E-23 consent strip: a row in the footer, not a dialog; "Ngày tiếp theo" works without an answer.
   const consentQuestionId = 'rpt-consent-q';
+  const consentDetailId = 'rpt-consent-d';
+  // UX-407: after an answer a one-line status (role=status, announced) says what was chosen and where to change it; it goes with the report.
+  const consentStatus = h('p', { class: 'rpt-consent-status', hidden: true, attrs: { role: 'status', 'data-consent-status': '' } });
   const chooseConsent = (c: 'yes' | 'no'): void => {
     options.consent?.choose(c);
     consentStrip.hidden = true;
+    setChildren(consentStatus, icon('i-ok', { size: 16 }), CONSENT_DONE[c]);
+    consentStatus.hidden = false;
     nextBtn.focus();
   };
   const consentStrip = h(
     'div',
-    { class: 'rpt-consent', hidden: true, attrs: { role: 'group', 'aria-labelledby': consentQuestionId, 'data-consent': '' } },
-    h('p', { class: 'rpt-consent-q', id: consentQuestionId, text: CONSENT_QUESTION }),
+    {
+      class: 'rpt-consent',
+      hidden: true,
+      attrs: { role: 'group', 'aria-labelledby': consentQuestionId, 'aria-describedby': consentDetailId, 'data-consent': '' },
+    },
+    h('div', { class: 'rpt-consent-text' }, h('p', { class: 'rpt-consent-q', id: consentQuestionId, text: CONSENT_QUESTION }), h('p', { class: 'rpt-consent-d', id: consentDetailId, text: CONSENT_DETAIL })),
     h(
       'div',
       { class: 'rpt-consent-actions' },
@@ -609,6 +625,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
   function syncConsent(): void {
     const want = shown && day === CONSENT_DAY && (options.consent?.ask() ?? false);
     if (consentStrip.hidden === want) consentStrip.hidden = !want;
+    if (!shown && !consentStatus.hidden) consentStatus.hidden = true;
   }
   const backBtn = (): HTMLElement => h('button', { class: 'btn btn-secondary', attrs: { type: 'button' }, on: { click: () => showTab('summary') } }, ...labelled('i-chart', 'Về Tổng kết'));
 
@@ -634,7 +651,7 @@ export function createDailyReport(options: DailyReportOptions): DailyReportView 
     summary,
     insights,
     reviews,
-    h('div', { class: 'rpt-foot' }, consentStrip, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
+    h('div', { class: 'rpt-foot' }, consentStrip, consentStatus, save, h('div', { class: 'rpt-foot-actions' }, toggleBtn, nextBtn)),
   );
   dialog.addEventListener('keydown', (e) => trapFocus(dialog, e));
   const el = h('div', { class: 'ui-screen is-scrim rpt-layer', hidden: true, attrs: { 'data-screen': 'report' } }, dialog);

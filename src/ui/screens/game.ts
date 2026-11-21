@@ -8,7 +8,7 @@ import { setAnalyticsConsent, wireAnalytics } from '../analyticsEvents';
 import { isTyping } from '../core/dom';
 import { formatClock } from '../core/format';
 import { MAX_TOASTS, Toasts } from '../core/toast';
-import { highExpiryOf, highExpiryToast } from '../highExpiry';
+import { createHighExpiryWatch, highExpiryToast, isExpiryNotify } from '../highExpiry';
 import { resetRegularToasts, toastForEvent, uniformUnlockToast, weekChallengeToast } from '../hud/events';
 import { createHud, HUD_SPEEDS, phaseLabel, type Hud } from '../hud/hud';
 import { createCarryHint } from '../hud/carryHint';
@@ -80,6 +80,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   // E-30: one pill a day for a brewed drink nobody carries (tap carries it).
   const carryHint = createCarryHint((cmd) => dispatch(cmd));
   let angryHinted = false;
+  // T-117: which High ran out comes from highPriceEndedDay / highWageEndedDay, not the notify text.
+  const highExpiry = createHighExpiryWatch();
   // Anonymous counts (E-23): consent comes from the save; until the player
   // chose this session, the autosave slot's choice applies.
   const tracking = wireAnalytics(options.analytics);
@@ -111,8 +113,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   }
 
   // UX-310: Việc panel with the regular's book page open, focus on its row (which scrolls it into view).
-  function showRegular(regularId: string): void {
-    revealRegular(regularId);
+  function showRegular(regularId: string, milestone = 0): void {
+    revealRegular(regularId, milestone);
     hud.openPanel('tasks');
     if (hud.openPanelId === 'tasks') focusRegular(hud.panelEl, regularId);
     else revealRegular(null);
@@ -221,6 +223,16 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
   const firstScreen = screens.get('menu')?.el ?? null;
   for (const el of [serveHints.el, serveHints.walkoutEl, carryHint.el, hud.el, hud.panelEl, report.el, toasts.el]) root.insertBefore(el, firstScreen);
 
+  // UX-406: under an open screen (Settings, Tạm dừng, ...) or the report the
+  // dock is inert: no focus, no clicks, out of the accessibility tree. CSS
+  // also hides it there, so its badges never show over the modal.
+  const dockEl = hud.el.querySelector<HTMLElement>('.dock');
+  function syncDock(): void {
+    const covered = screens.current !== null || report.visible;
+    if (dockEl && dockEl.hasAttribute('inert') !== covered) dockEl.toggleAttribute('inert', covered);
+  }
+  screens.onChange(syncDock);
+
   function syncReport(): void {
     // A bankrupt run is over: its screen covers everything and nothing goes on.
     if (state?.bankrupt && screens.current !== 'bankrupt') {
@@ -230,6 +242,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     report.update(state, state?.phase === 'report' && screens.current === null);
     // Over the report one toast at most; its footer already says the day was saved.
     toasts.limit = report.visible ? 1 : MAX_TOASTS;
+    syncDock();
   }
 
   function startGame(next: GameState, from?: SaveSlot): void {
@@ -249,6 +262,7 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
     serveHints.start(state);
     carryHint.reset();
     angryHinted = false;
+    highExpiry.reset(state);
     hud.closePanel();
     toasts.clear();
     resetRegularToasts();
@@ -452,6 +466,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
       tracking.onEvents(events, state);
       // A regular who reaches a milestone gets that toast, not a second "ghé quán" one.
       const milestone = events.some((e) => e.type === 'regular_milestone');
+      const expired = highExpiry.take(state);
+      let prepSeen = false;
       for (const event of events) {
         let toast = event.type === 'regular_arrived' && milestone ? null : toastForEvent(event, state);
         // Day 1: one toast that hides by itself, then the walkouts only count up next to the HUD;
@@ -467,12 +483,13 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
         }
         // UX-310: the milestone toast opens the Việc panel at that regular's row.
         if (toast && event.type === 'regular_milestone') {
-          const regularId = event.regularId;
-          toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId) } };
+          const { regularId, milestone: reached } = event;
+          // UX-414: with the just-reached milestone's cell open, so its story shows.
+          toast = { ...toast, action: { label: MILESTONE_ACTION, run: () => showRegular(regularId, reached) } };
         }
         // E-30: the High price / wage expiry notify gets a button that sets High again (same one toast).
-        const expired = toast ? highExpiryOf(event, state) : null;
-        if (expired) toast = highExpiryToast(expired, dispatch);
+        if (event.type === 'phase' && event.phase === 'preparation') prepSeen = true;
+        if (toast && expired.length > 0 && isExpiryNotify(event, prepSeen)) toast = highExpiryToast(expired.shift()!, dispatch);
         if (toast) toasts.show(toast);
         const uniform = uniformUnlockToast(event);
         if (uniform) toasts.show(uniform);
@@ -501,6 +518,8 @@ export function mountGame(base: MenuShell, options: ShellOptions): Shell & GameM
           }
         }
       }
+      // Should the sim's notifies move, the button still shows.
+      for (const policy of expired) toasts.show(highExpiryToast(policy, dispatch));
     },
     startGame,
     showMenu,

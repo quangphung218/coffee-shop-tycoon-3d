@@ -61,7 +61,12 @@ const CONSENT_OPTIONS: readonly { value: 'yes' | 'no'; label: string }[] = [
 ];
 /** The Settings row for anonymous counts (E-23). */
 export const CONSENT_LABEL = 'Số liệu ẩn danh';
-export const CONSENT_HINT = 'Chọn Gửi để gửi số liệu chơi ẩn danh giúp cải thiện game. Đổi lại lúc nào cũng được.';
+export const CONSENT_HINT = 'Chỉ gửi tên các mốc chơi, không cookie, không tên quán hay tên người chơi. Đổi lại lúc nào cũng được.';
+/** UX-407: the status line after a change of the Số liệu ẩn danh row. */
+export const CONSENT_SAVED: Record<'yes' | 'no', string> = {
+  yes: 'Đã bật gửi số liệu ẩn danh',
+  no: 'Đã tắt gửi số liệu ẩn danh',
+};
 const CAMERA_KEY_OPTIONS: readonly { value: CameraKeys; label: string }[] = [
   { value: 'qe-wasd', label: 'WASD di chuyển · Q/E xoay' },
   { value: 'qa-arrows', label: 'Mũi tên di chuyển · Q/A xoay' },
@@ -219,7 +224,11 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
         'analyticsConsent',
         CONSENT_OPTIONS,
         () => consentActions.get() as 'yes' | 'no',
-        (c) => consentActions.set(c),
+        (c) => {
+          consentActions.set(c);
+          status.classList.remove('is-error');
+          setChildren(status, icon('i-ok', { size: 16 }), CONSENT_SAVED[c]);
+        },
       )
     : null;
 
@@ -380,6 +389,14 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
     const id = uid('set-group');
     return h('section', { class: 'set-group', attrs: { 'aria-labelledby': id } }, h('p', { class: 'section-title', id, text: title }), ...rows);
   }
+  // UX-412: camera keys, mouse rotate speed and shortcuts mean nothing on a touch screen; ui.css hides the group there.
+  const controls = group(
+    'Điều khiển',
+    cameraKeys.row,
+    rotate.row,
+    h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
+  );
+  controls.classList.add('set-group-keys');
 
   // Title and footer stay put; only .settings-body scrolls (see ui.css).
   const done = h('button', { class: 'btn btn-primary', attrs: { type: 'button' }, on: { click: () => actions.onBack() } }, 'Xong');
@@ -392,12 +409,7 @@ export function createSettings(storage: StorageLike, initial: Settings, actions:
       { class: 'settings-body' },
       group('Âm thanh', music.row, sfx.row),
       group('Hiển thị', quality.row, motion.row),
-      group(
-        'Điều khiển',
-        cameraKeys.row,
-        rotate.row,
-        h('details', { class: 'keys-details' }, h('summary', {}, icon('i-chevron-down', { size: 16 }), 'Phím tắt'), keysList),
-      ),
+      controls,
       group('Trò chơi', speed.row, ...(consent ? [consent.row] : [])),
       playLogGroup,
       h('p', { class: 'hint app-version', text: `Phiên bản ${VERSION_LABEL}` }),
